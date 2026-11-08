@@ -2,6 +2,7 @@
 #   docker compose -f compose.gpu.yaml up -d
 # Mac 側の .env で ARAG_TEI_EMBED_URL=http://<GPU機>:8081 / ARAG_TEI_RERANK_URL=http://<GPU機>:8082 を指定する。
 # イメージ 89-* は Ada Lovelace（RTX 40 系, sm_89）用。
+# ruri（比較用）は profile で別起動: docker compose -f compose.gpu.yaml --profile ruri up -d
 name: arag-gpu
 
 x-gpu: &gpu
@@ -27,6 +28,25 @@ services:
     image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
     command: ["--model-id", "${TEI_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}"]
     ports: ["8082:80"]
+    volumes: [tei-cache:/data]
+    restart: unless-stopped
+
+  # 比較候補（specs/002-tei-verification）。接頭辞「検索クエリ: 」「検索文書: 」はアプリ側で付ける
+  tei-embed-ruri:
+    <<: *gpu
+    profiles: [ruri]
+    image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
+    command: ["--model-id", "cl-nagoya/ruri-v3-310m", "--max-batch-tokens", "16384"]
+    ports: ["8083:80"]
+    volumes: [tei-cache:/data]
+    restart: unless-stopped
+
+  tei-rerank-ruri:
+    <<: *gpu
+    profiles: [ruri]
+    image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
+    command: ["--model-id", "cl-nagoya/ruri-v3-reranker-310m"]
+    ports: ["8084:80"]
     volumes: [tei-cache:/data]
     restart: unless-stopped
 

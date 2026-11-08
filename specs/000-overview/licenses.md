@@ -27,6 +27,12 @@
 | caniuse-lite（Next の推移的依存・データ） | npm | — | CC-BY-4.0 | 2026-11-08 | https://www.npmjs.com/package/caniuse-lite |
 | Mailpit（開発用メール受信、P4 で導入予定） | コンテナ | latest | MIT | 2026-11-08 | https://github.com/axllent/mailpit |
 | pip-licenses（CI） | Python | 5.5.5 | MIT | 2026-11-08 | https://pypi.org/project/pip-licenses/ |
+| sentence-transformers（tools/tei-verify 専用・開発のみ） | Python | 6.2.0 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/sentence-transformers/ |
+| FlagEmbedding（tools/tei-verify 専用・開発のみ。PyPI メタデータは UNKNOWN、リポジトリの LICENSE で確認） | Python | 1.4.2 | MIT | 2026-11-08 | https://github.com/FlagOpen/FlagEmbedding/blob/master/LICENSE |
+| torch（CPU 版、tools/tei-verify 専用・開発のみ。BSL-1.0 は Boost Software License） | Python | 2.15.0 | BSD-3-Clause 系の複合（Apache-2.0 / BSD-2/3 / BSL-1.0 / ISC / MIT / Zlib） | 2026-11-08 | https://pypi.org/project/torch/ |
+| transformers / huggingface-hub / accelerate / datasets / peft（同上・推移的依存） | Python | 5.22.2 / 2.4.0 / 1.15.0 / 5.1.0 / 0.21.2 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/transformers/ |
+| ir-datasets / sentencepiece / scikit-learn / numpy（同上・推移的依存） | Python | 0.6.3 / 0.2.3 / 1.9.1 / 2.5.4 | MIT / Apache-2.0 / BSD-3-Clause / BSD-3-Clause 系 | 2026-11-08 | https://pypi.org/project/ir-datasets/ |
+| tqdm（同上・推移的依存） | Python | 4.70.1 | MPL-2.0 AND MIT（改変しないため影響なし） | 2026-11-08 | https://pypi.org/project/tqdm/ |
 | next / react | npm | 16.4.5 / 19.3.1 | MIT | 2026-11-08 | https://github.com/vercel/next.js |
 | tailwindcss | npm | 4.3.5 | MIT | 2026-11-08 | https://www.npmjs.com/package/tailwindcss |
 | better-auth | npm | 1.7.18 | MIT | 2026-11-08 | https://github.com/better-auth/better-auth |
