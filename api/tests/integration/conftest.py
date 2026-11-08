@@ -2,8 +2,10 @@
 
 import os
 import subprocess
+import uuid
 from collections.abc import AsyncIterator, Iterable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 import psycopg
@@ -15,6 +17,9 @@ from arag.db.engine import make_engine, make_sessionmaker
 from arag.db.models import Base
 from arag.main import create_app
 from arag.settings import Settings
+
+if TYPE_CHECKING:
+    from arag.ingest.index import QdrantIndex
 
 API_DIR = Path(__file__).resolve().parents[2]
 TEST_DB = "arag_test"
@@ -95,3 +100,20 @@ def as_user(user_id: str, role: str = "member") -> dict[str, str]:
 ADMIN = as_user("admin1", "admin")
 ALICE = as_user("alice")
 BOB = as_user("bob")
+
+
+@pytest.fixture
+async def qdrant_index() -> AsyncIterator["QdrantIndex"]:
+    from qdrant_client import AsyncQdrantClient
+
+    from arag.ingest.index import QdrantIndex
+
+    client = AsyncQdrantClient(url=Settings().qdrant_url, timeout=5)
+    try:
+        await client.get_collections()
+    except Exception as e:
+        pytest.skip(f"qdrant に接続できません（make up-infra）: {e}")
+    index = QdrantIndex(client, alias=f"test_{uuid.uuid4().hex[:8]}")
+    yield index
+    await client.delete_collection(index.collection)
+    await client.close()
