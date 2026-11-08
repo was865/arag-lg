@@ -34,13 +34,25 @@ class Settings(BaseSettings):
     section_level: int = 2
     embed_tokenizer: str = "BAAI/bge-m3"
     embed_model: str = "BAAI/bge-m3"
+    # モデル別の接頭辞（ruri-v3: "検索文書: " / "検索クエリ: "）
+    embed_document_prefix: str = ""
+    embed_query_prefix: str = ""
     embed_batch_size: int = 32
     context_model: str = ""
     context_concurrency: int = 8
     vlm_model: str = ""
     sudachi_mode: Literal["A", "B", "C"] = "B"
     bm25_avgdl: float = 200.0
+    # 英語の語幹化（Snowball）。既定は off（specs/004-retrieval §10 の評価で決める）
+    sparse_en_stem: bool = False
     qdrant_collection: str = "chunks"
+    # 検索（specs/004-retrieval §7）
+    search_fusion: Literal["rrf", "dbsf"] = "rrf"
+    search_rrf_k: int = 60
+    search_weights: str = "1,1"  # dense,sparse
+    rerank_enabled: bool = True
+    rerank_input: Literal["context+text", "text"] = "context+text"
+    rerank_timeout_sec: float = 10.0
     ingest_max_retries: int = 3
     ingest_concurrency: int = 2
     trash_retention_days: int = 30

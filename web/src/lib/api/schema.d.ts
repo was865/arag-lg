@@ -489,6 +489,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Endpoint */
+        post: operations["search_endpoint_v1_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trash": {
         parameters: {
             query?: never;
@@ -798,6 +815,16 @@ export interface components {
             /** Token Len */
             token_len: number;
         };
+        /** PathHit */
+        PathHit: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Score */
+            score: number;
+        };
         /** Readiness */
         Readiness: {
             /** Checks */
@@ -809,6 +836,116 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "unavailable";
+        };
+        /** SearchHit */
+        SearchHit: {
+            /** Block Type */
+            block_type: string;
+            /** Boxes */
+            boxes: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Context */
+            context: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Name */
+            document_name: string;
+            /** Fused Score */
+            fused_score: number;
+            /** Heading Path */
+            heading_path: string;
+            /**
+             * Kb Id
+             * Format: uuid
+             */
+            kb_id: string;
+            /** Page End */
+            page_end: number | null;
+            /** Page Start */
+            page_start: number | null;
+            /** Rank */
+            rank: number;
+            /** Score */
+            score: number;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Section Text */
+            section_text?: string | null;
+            /** Text */
+            text: string;
+        };
+        /** SearchRequest */
+        SearchRequest: {
+            /** Block Types */
+            block_types?: ("text" | "table" | "figure" | "code" | "formula" | "list")[] | null;
+            /**
+             * Candidate K
+             * @default 50
+             */
+            candidate_k: number;
+            /**
+             * Debug
+             * @default false
+             */
+            debug: boolean;
+            /** Document Ids */
+            document_ids?: string[] | null;
+            /**
+             * Include Archived
+             * @default false
+             */
+            include_archived: boolean;
+            /**
+             * Include Section
+             * @default false
+             */
+            include_section: boolean;
+            /** Kb Ids */
+            kb_ids?: string[] | null;
+            /**
+             * Mode
+             * @default hybrid
+             * @enum {string}
+             */
+            mode: "hybrid" | "dense" | "keyword";
+            /** Must Contain */
+            must_contain?: string[] | null;
+            /** Query */
+            query: string;
+            /**
+             * Top K
+             * @default 6
+             */
+            top_k: number;
+        };
+        /** SearchResult */
+        SearchResult: {
+            /** Degraded */
+            degraded?: ("dense" | "rerank")[];
+            /** Hits */
+            hits: components["schemas"]["SearchHit"][];
+            trace: components["schemas"]["SearchTrace"];
+        };
+        /** SearchTrace */
+        SearchTrace: {
+            /** Dense */
+            dense?: components["schemas"]["PathHit"][] | null;
+            /** Sparse */
+            sparse?: components["schemas"]["PathHit"][] | null;
+            /** Stages */
+            stages?: components["schemas"]["StageTiming"][];
         };
         /** SectionOut */
         SectionOut: {
@@ -833,6 +970,18 @@ export interface components {
             text: string;
             /** Token Len */
             token_len: number;
+        };
+        /** StageTiming */
+        StageTiming: {
+            /** Count */
+            count?: number | null;
+            /** Ms */
+            ms: number;
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "scope" | "embed" | "query" | "hydrate" | "rerank" | "section";
         };
         /** TrashItem */
         TrashItem: {
@@ -1960,6 +2109,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_endpoint_v1_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
                 };
             };
             /** @description Validation Error */

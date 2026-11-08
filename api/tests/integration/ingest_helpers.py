@@ -23,6 +23,9 @@ class FakeEmbedder:
     async def dimension(self) -> int:
         return 4
 
+    async def embed_query(self, texts: Sequence[str]) -> list[list[float]]:
+        return await self.embed(texts)
+
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         self.calls += 1
         if self.calls <= self.fail_times:

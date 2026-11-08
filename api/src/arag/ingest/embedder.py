@@ -22,6 +22,7 @@ class Embedder(Protocol):
 
     async def dimension(self) -> int: ...
     async def embed(self, texts: Sequence[str]) -> list[list[float]]: ...
+    async def embed_query(self, texts: Sequence[str]) -> list[list[float]]: ...
 
 
 class TeiEmbedder:
@@ -34,6 +35,8 @@ class TeiEmbedder:
         timeout_sec: float = 60.0,
         max_attempts: int = 3,
         backoff_sec: float = 1.0,
+        document_prefix: str = "",
+        query_prefix: str = "",
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
@@ -42,6 +45,9 @@ class TeiEmbedder:
         self.timeout_sec = timeout_sec
         self.max_attempts = max_attempts
         self.backoff_sec = backoff_sec
+        # ruri-v3 は「検索文書: 」「検索クエリ: 」を付ける。bge-m3 は空（specs/004-retrieval §2）
+        self.document_prefix = document_prefix
+        self.query_prefix = query_prefix
         self._transport = transport
         self._dim: int | None = None
 
@@ -54,6 +60,13 @@ class TeiEmbedder:
         return self._dim
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        """文書側の埋め込み。"""
+        return await self._embed([self.document_prefix + t for t in texts])
+
+    async def embed_query(self, texts: Sequence[str]) -> list[list[float]]:
+        return await self._embed([self.query_prefix + t for t in texts])
+
+    async def _embed(self, texts: Sequence[str]) -> list[list[float]]:
         out: list[list[float]] = []
         async with self._client() as client:
             for i in range(0, len(texts), self.batch_size):

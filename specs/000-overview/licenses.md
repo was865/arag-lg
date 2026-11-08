@@ -29,6 +29,7 @@
 | docling-core[chunking] | Python | 2.106.0 | MIT | 2026-11-08 | https://pypi.org/project/docling-core/ |
 | transformers / tokenizers / huggingface-hub（docling-core[chunking] 経由。トークナイザのみ使用） | Python | 5.22.2 / 0.23.3 / — | Apache-2.0 | 2026-11-08 | https://pypi.org/project/transformers/ |
 | pypdf | Python | 7.0.0 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/pypdf/ |
+| snowballstemmer | Python | 3.1.1 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/snowballstemmer/ |
 | python-multipart | Python | 0.0.33 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/python-multipart/ |
 | docling-serve（GPU 機 / CPU 版コンテナ） | コンテナ | v1.38.2 | MIT | 2026-11-08 | https://github.com/docling-project/docling-serve |
 | pip-licenses（CI） | Python | 5.5.5 | MIT | 2026-11-08 | https://pypi.org/project/pip-licenses/ |

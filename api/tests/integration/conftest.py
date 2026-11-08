@@ -97,7 +97,9 @@ async def make_client(
     """設定を変えたクライアントを作る（終了時に片付ける）。"""
     stack = contextlib.AsyncExitStack()
 
-    async def make(index: "QdrantIndex | None" = None, **overrides: object) -> httpx.AsyncClient:
+    async def make(
+        index: "QdrantIndex | None" = None, search_deps: object = None, **overrides: object
+    ) -> httpx.AsyncClient:
         settings = Settings(
             database_url=database_url,
             storage_dir=storage_root,
@@ -105,7 +107,13 @@ async def make_client(
             **overrides,  # type: ignore[arg-type]
         )
         # index を渡すと API も同じ索引を使う（完全削除で点が消えることを確かめる）
-        app = create_app(settings=settings, checks=[], payload_sync=payload_sync, index=index)
+        app = create_app(
+            settings=settings,
+            checks=[],
+            payload_sync=payload_sync,
+            index=index,
+            search_deps=search_deps,  # type: ignore[arg-type]
+        )
         c = await stack.enter_async_context(
             httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", timeout=30)
         )

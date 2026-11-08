@@ -3,6 +3,7 @@
 python -m arag.cli reindex [--all | --content-hash H ...] [--dry-run]
 python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin]
 python -m arag.cli gc [--retention-days N]
+python -m arag.cli sync-payload
 """
 
 import argparse
@@ -22,7 +23,7 @@ from arag.db.models import Content, IngestJob
 from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
 from arag.ingest.gc import run_gc
-from arag.ingest.index import QdrantIndex
+from arag.ingest.index import QdrantIndex, QdrantPayloadSync
 from arag.ingest.sparse import SPARSE_VERSION
 from arag.kb.uploads import SUPPORTED
 from arag.settings import Settings
@@ -150,6 +151,22 @@ async def gc(settings: Settings, *, retention_days: int | None) -> int:
         await engine.dispose()
 
 
+async def sync_payload(settings: Settings) -> int:
+    """全内容の payload（document_ids / kb_ids）を DB に合わせ直す（specs/004-retrieval R5）。"""
+    engine = make_engine(settings.database_url)
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    try:
+        sm = make_sessionmaker(engine)
+        async with sm() as s:
+            hashes = list(await s.scalars(select(Content.content_hash).where(Content.status == "ready")))
+        await QdrantPayloadSync(QdrantIndex(client, settings.qdrant_collection), sm).sync(hashes)
+        print(f"同期しました: {len(hashes)} 件")
+        return 0
+    finally:
+        await client.close()
+        await engine.dispose()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="arag.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -167,7 +184,10 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--timeout", type=float, default=3600)
     g = sub.add_parser("gc", help="ごみ箱の期限切れ削除と孤立内容の回収を今すぐ実行する")
     g.add_argument("--retention-days", type=int, default=None, help="既定は ARAG_TRASH_RETENTION_DAYS")
+    sub.add_parser("sync-payload", help="Qdrant の payload（参照する文書・KB）を DB に合わせ直す")
     args = parser.parse_args(argv)
+    if args.cmd == "sync-payload":
+        return asyncio.run(sync_payload(Settings()))
     if args.cmd == "gc":
         return asyncio.run(gc(Settings(), retention_days=args.retention_days))
     if args.cmd == "reindex":

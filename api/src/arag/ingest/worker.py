@@ -165,6 +165,8 @@ def build_deps(settings: Settings) -> IngestDeps:
         embedder=TeiEmbedder(
             settings.tei_embed_url,
             model=settings.embed_model,
+            document_prefix=settings.embed_document_prefix,
+            query_prefix=settings.embed_query_prefix,
             batch_size=settings.embed_batch_size,
             timeout_sec=settings.http_timeout_sec,
         ),
@@ -180,7 +182,9 @@ def build_deps(settings: Settings) -> IngestDeps:
         else None,
         contextualizer=contextualizer,
         describer=describer,
-        sparse_factory=lambda: SparseEncoder(settings.sudachi_mode, avgdl=settings.bm25_avgdl),
+        sparse_factory=lambda: SparseEncoder(
+            settings.sudachi_mode, avgdl=settings.bm25_avgdl, en_stem=settings.sparse_en_stem
+        ),
         publisher=RedisPublisher(Redis.from_url(settings.redis_url, decode_responses=True)),
         section_max_tokens=settings.section_max_tokens,
         section_level=settings.section_level,

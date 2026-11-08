@@ -54,3 +54,36 @@ def test_tf_saturation_value() -> None:
 def test_query_weights_are_one(enc: SparseEncoder) -> None:
     q = enc.encode_query("規程 規程 目的")
     assert q.values == [1.0, 1.0]
+
+
+# ---- v2: 英語（specs/004-retrieval R6a）
+
+
+def test_english_words_stay_latin_and_lowercase(enc: SparseEncoder) -> None:
+    terms = enc.terms("Running Kafka consumers RUN fast")
+    assert "running" in terms and "kafka" in terms and "consumers" in terms and "run" in terms
+    # カタカナに変えない（Sudachi の normalized_form は "Running" → ランニング）
+    assert not any(t in terms for t in ("ランニング", "ラン"))
+    # 大文字小文字で別の語にならない
+    assert enc.terms("RUN") == enc.terms("run") == ["run"]
+
+
+def test_english_function_words_are_dropped(enc: SparseEncoder) -> None:
+    terms = enc.terms("The idempotency keys were changed to the order ID")
+    assert "the" not in terms and "were" not in terms and "to" not in terms
+    assert "ザ" not in terms and "ワー" not in terms
+    assert {"idempotency", "keys", "changed", "order", "id"} <= set(terms)
+
+
+def test_mixed_japanese_and_english(enc: SparseEncoder) -> None:
+    terms = enc.terms("dedupe windowを60秒から180秒へ変更する")
+    assert {"dedupe", "window", "変更"} <= set(terms)
+
+
+def test_english_stemming_is_optional() -> None:
+    plain = SparseEncoder("B")
+    stem = SparseEncoder("B", en_stem=True)
+    assert "consumers" in plain.terms("consumers")
+    assert stem.terms("consumers running") == ["consum", "run"]
+    # 日本語と型番は変わらない
+    assert stem.terms("MX-17 の機器") == plain.terms("MX-17 の機器")

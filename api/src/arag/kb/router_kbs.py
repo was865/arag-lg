@@ -75,8 +75,7 @@ async def _set_status(kb_id: uuid.UUID, ctx: CtxDep, new: str) -> KbOut:
         action = "kb.archive" if new == "archived" else "kb.unarchive"
         await ctx.audit(AuditEvent(action=action, resource_type="kb", resource_id=str(kb.id)))
         await ctx.session.commit()
-        # アーカイブは検索対象から外す（payload の kb_ids を更新）
-        await ctx.payload_sync.sync(await service.content_hashes_of_kb(ctx.session, kb.id))
+        # payload は変えない。アーカイブ済みの除外は検索時のフィルタで行う（specs/004-retrieval R5）
     return _out(ctx, kb, await service.count_docs(ctx.session, kb.id))
 
 

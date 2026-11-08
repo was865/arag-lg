@@ -785,6 +785,25 @@
         "title": "OutlineSection",
         "type": "object"
       },
+      "PathHit": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "score"
+        ],
+        "title": "PathHit",
+        "type": "object"
+      },
       "Readiness": {
         "properties": {
           "checks": {
@@ -813,6 +832,313 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "SearchHit": {
+        "properties": {
+          "block_type": {
+            "title": "Block Type",
+            "type": "string"
+          },
+          "boxes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Boxes",
+            "type": "array"
+          },
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "fused_score": {
+            "title": "Fused Score",
+            "type": "number"
+          },
+          "heading_path": {
+            "title": "Heading Path",
+            "type": "string"
+          },
+          "kb_id": {
+            "format": "uuid",
+            "title": "Kb Id",
+            "type": "string"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Start"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "section_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Text"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rank",
+          "chunk_id",
+          "document_id",
+          "document_name",
+          "kb_id",
+          "section_id",
+          "heading_path",
+          "page_start",
+          "page_end",
+          "block_type",
+          "text",
+          "context",
+          "boxes",
+          "score",
+          "fused_score"
+        ],
+        "title": "SearchHit",
+        "type": "object"
+      },
+      "SearchRequest": {
+        "properties": {
+          "block_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "text",
+                    "table",
+                    "figure",
+                    "code",
+                    "formula",
+                    "list"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Types"
+          },
+          "candidate_k": {
+            "default": 50,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Candidate K",
+            "type": "integer"
+          },
+          "debug": {
+            "default": false,
+            "title": "Debug",
+            "type": "boolean"
+          },
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Ids"
+          },
+          "include_archived": {
+            "default": false,
+            "title": "Include Archived",
+            "type": "boolean"
+          },
+          "include_section": {
+            "default": false,
+            "title": "Include Section",
+            "type": "boolean"
+          },
+          "kb_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kb Ids"
+          },
+          "mode": {
+            "default": "hybrid",
+            "enum": [
+              "hybrid",
+              "dense",
+              "keyword"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "must_contain": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Must Contain"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 6,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest",
+        "type": "object"
+      },
+      "SearchResult": {
+        "properties": {
+          "degraded": {
+            "items": {
+              "enum": [
+                "dense",
+                "rerank"
+              ],
+              "type": "string"
+            },
+            "title": "Degraded",
+            "type": "array"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/SearchTrace"
+          }
+        },
+        "required": [
+          "hits",
+          "trace"
+        ],
+        "title": "SearchResult",
+        "type": "object"
+      },
+      "SearchTrace": {
+        "properties": {
+          "dense": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PathHit"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dense"
+          },
+          "sparse": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PathHit"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sparse"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageTiming"
+            },
+            "title": "Stages",
+            "type": "array"
+          }
+        },
+        "title": "SearchTrace",
         "type": "object"
       },
       "SectionOut": {
@@ -881,6 +1207,43 @@
           "text"
         ],
         "title": "SectionOut",
+        "type": "object"
+      },
+      "StageTiming": {
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "ms": {
+            "title": "Ms",
+            "type": "integer"
+          },
+          "name": {
+            "enum": [
+              "scope",
+              "embed",
+              "query",
+              "hydrate",
+              "rerank",
+              "section"
+            ],
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "ms"
+        ],
+        "title": "StageTiming",
         "type": "object"
       },
       "TrashItem": {
@@ -2621,6 +2984,47 @@
         "summary": "Upload",
         "tags": [
           "uploads"
+        ]
+      }
+    },
+    "/v1/search": {
+      "post": {
+        "operationId": "search_endpoint_v1_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Endpoint",
+        "tags": [
+          "search"
         ]
       }
     },

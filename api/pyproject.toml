@@ -21,6 +21,7 @@ dependencies = [
     "python-multipart>=0.0.33",
     "qdrant-client>=1.20.0",
     "redis>=8.1.0",
+    "snowballstemmer>=3",
     "sqlalchemy[asyncio]>=2.1.8",
     "structlog>=26.1.0",
     "sudachidict-core>=20261015",
@@ -55,7 +56,7 @@ packages = ["arag"]
 
 [[tool.mypy.overrides]]
 # 型情報を同梱していない依存
-module = ["sudachipy.*"]
+module = ["sudachipy.*", "snowballstemmer.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

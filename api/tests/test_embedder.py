@@ -60,3 +60,21 @@ async def test_4xx_is_not_retried() -> None:
     with pytest.raises(EmbedError, match="413"):
         await _embedder(handler).embed(["x"])
     assert calls == 1
+
+
+async def test_document_and_query_prefixes() -> None:
+    seen: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        inputs = json.loads(req.content)["inputs"]
+        seen.extend(inputs)
+        return httpx.Response(200, json=[[1.0] for _ in inputs])
+
+    e = _embedder(handler, document_prefix="検索文書: ", query_prefix="検索クエリ: ")
+    await e.embed(["本文"])
+    await e.embed_query(["質問"])
+    assert seen == ["検索文書: 本文", "検索クエリ: 質問"]
+    # 既定は接頭辞なし（bge-m3）
+    seen.clear()
+    await _embedder(handler).embed_query(["質問"])
+    assert seen == ["質問"]

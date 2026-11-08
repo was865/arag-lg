@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .conftest import ADMIN, ALICE, BOB
+from .conftest import ADMIN, ALICE, BOB, RecordingSync
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +25,9 @@ async def test_personal_kb_created_once_under_concurrency(
     assert kbs[0]["writable"] is True
 
 
-async def test_org_kb_lifecycle_and_visibility(client: httpx.AsyncClient) -> None:
+async def test_org_kb_lifecycle_and_visibility(
+    client: httpx.AsyncClient, payload_sync: RecordingSync
+) -> None:
     # member は作れない
     res = await client.post("/v1/kbs", json={"name": "全社規程"}, headers=ALICE)
     assert res.status_code == 403
@@ -42,8 +44,11 @@ async def test_org_kb_lifecycle_and_visibility(client: httpx.AsyncClient) -> Non
     assert (await client.patch(f"/v1/kbs/{kb_id}", json={"name": "x"}, headers=ALICE)).status_code == 403
 
     # アーカイブ → 一覧に status=archived で残る
+    synced = len(payload_sync.calls)
     res = await client.post(f"/v1/kbs/{kb_id}/archive", headers=ADMIN)
     assert res.json()["status"] == "archived"
+    # アーカイブの切替では payload を同期しない（検索時のフィルタで扱う）
+    assert len(payload_sync.calls) == synced
     assert (await client.post(f"/v1/kbs/{kb_id}/unarchive", headers=ADMIN)).json()["status"] == "active"
 
     # 削除 → 一覧から消える → 復元

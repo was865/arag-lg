@@ -42,7 +42,7 @@ async def test_upsert_count_delete(qdrant_index: QdrantIndex) -> None:
     assert await qdrant_index.count(H) == 0
 
 
-async def test_sync_payload_drops_trashed_and_archived(
+async def test_sync_payload_drops_trashed_keeps_archived(
     qdrant_index: QdrantIndex, sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
     await qdrant_index.ensure_collection(4)
@@ -84,6 +84,13 @@ async def test_sync_payload_drops_trashed_and_archived(
     async with sessionmaker() as s:
         await s.execute(text("UPDATE app.documents SET deleted_at = now() WHERE id = :d"), {"d": d1})
         await s.execute(text("UPDATE app.knowledge_bases SET status = 'archived' WHERE id = :b"), {"b": kb2})
+        await s.commit()
+    await sync.sync([H])
+    p = await payload()
+    # アーカイブは検索時のフィルタで除く（payload からは外さない。specs/004-retrieval R5）
+    assert p["document_ids"] == [str(d2)] and p["kb_ids"] == [str(kb2)]
+    async with sessionmaker() as s:
+        await s.execute(text("UPDATE app.knowledge_bases SET deleted_at = now() WHERE id = :b"), {"b": kb2})
         await s.commit()
     await sync.sync([H])
     p = await payload()

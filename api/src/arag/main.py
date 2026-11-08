@@ -18,6 +18,8 @@ from arag.kb import router_documents, router_folders, router_kbs, router_uploads
 from arag.kb.sync import PayloadSync
 from arag.logging import configure_logging
 from arag.middleware import RequestIdMiddleware
+from arag.search import router as router_search
+from arag.search.service import SearchDeps, build_search_deps
 from arag.settings import Settings
 from arag.storage import LocalStorage
 
@@ -38,6 +40,7 @@ def create_app(
     payload_sync: PayloadSync | None = None,
     publisher: Publisher | None = None,
     index: Index | None = None,
+    search_deps: SearchDeps | None = None,
 ) -> FastAPI:
     """依存（設定・readiness チェック）を注入できるようにして、テストで外部サービスを不要にする。"""
     settings = settings or Settings()
@@ -56,6 +59,8 @@ def create_app(
     if payload_sync is None:
         payload_sync = QdrantPayloadSync(app.state.index, app.state.sessionmaker)
     app.state.payload_sync = payload_sync
+    client = getattr(app.state.index, "client", None) or AsyncQdrantClient(url=settings.qdrant_url)
+    app.state.search_deps = search_deps or build_search_deps(settings, client)
     # from_url は接続しない（初回コマンド時に接続）
     app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
     app.state.publisher = publisher or RedisPublisher(app.state.redis)
@@ -66,4 +71,5 @@ def create_app(
     app.include_router(router_folders.router)
     app.include_router(router_uploads.router)
     app.include_router(router_documents.router)
+    app.include_router(router_search.router)
     return app

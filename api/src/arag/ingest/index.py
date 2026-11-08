@@ -143,7 +143,10 @@ class QdrantIndex:
 
 
 async def live_refs(session: AsyncSession, content_hash: str) -> tuple[list[str], list[str]]:
-    """検索対象になる参照: 生存文書 × 生存かつアーカイブされていない KB。"""
+    """payload に載せる参照: 生存文書 × ごみ箱でない KB（アーカイブ含む）。
+
+    アーカイブ済み KB の除外は検索時に行う（specs/004-retrieval R2・R5）。
+    """
     rows = await session.execute(
         select(Document.id, Document.kb_id)
         .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
@@ -151,7 +154,6 @@ async def live_refs(session: AsyncSession, content_hash: str) -> tuple[list[str]
             Document.content_hash == content_hash,
             Document.deleted_at.is_(None),
             KnowledgeBase.deleted_at.is_(None),
-            KnowledgeBase.status == "active",
         )
     )
     pairs = rows.all()
