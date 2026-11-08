@@ -21,7 +21,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from arag.eval.dataset import Case
-from arag.eval.metrics import fact_coverage, normalize_text
+from arag.eval.metrics import normalize_text
 
 TERMINAL = {"run.completed", "run.failed", "run.cancelled"}
 SEARCH_TOOLS = {"search", "keyword_search"}
@@ -124,6 +124,23 @@ def trajectory(steps: list[dict[str, Any]]) -> Trajectory:
         "retrieve_attempts": sum(1 for s in steps if s.get("parent_id") and s["name"] == "retrieve"),
         "rewrites": sum(1 for s in steps if s["name"] == "rewrite_query"),
     }
+
+
+_DATE = re.compile(r"(\d{4})\s*(?:年|/|-|\.)\s*(\d{1,2})\s*(?:月|/|-|\.)\s*(\d{1,2})\s*日?")
+
+
+def canon(s: str) -> str:
+    """事実照合用の正規化。normalize_text に加え、日付（2026年6月5日・2026/6/5）を 2026-06-05 にそろえる。"""
+    return _DATE.sub(lambda m: f"{m[1]}-{int(m[2]):02d}-{int(m[3]):02d}", normalize_text(s))
+
+
+def facts_matched(answer: str, facts: list[list[str]]) -> list[bool]:
+    a = canon(answer)
+    return [any(canon(x) in a for x in f) for f in facts]
+
+
+def _coverage(matched: list[bool]) -> float:
+    return 1.0 if not matched else sum(matched) / len(matched)
 
 
 def faithfulness_from_claims(claims: list[dict[str, Any]]) -> tuple[float | None, list[str]]:
@@ -273,13 +290,13 @@ async def run_case(
             answer="", cited_documents=[], relevant_documents=case.relevant_documents,
             citation_recall=0.0 if case.relevant_documents else 1.0,
             citation_precision=0.0 if case.relevant_documents else 1.0,
-            fact_coverage=fact_coverage("", facts), faithfulness=None, unsupported_claims=[],
+            fact_coverage=_coverage(facts_matched("", facts)), faithfulness=None, unsupported_claims=[],
             tokens=0, duration_ms=0, no_answer=True, no_answer_reason=None,
             error=data.get("message"), **traj,
         )  # fmt: skip
     answer = data["answer"]
     cited = cited_documents(data)
-    norm = normalize_text(answer)
+    matched = facts_matched(answer, facts)
     faith: float | None = None
     unsupported: list[str] = []
     judge_error = None
@@ -299,7 +316,7 @@ async def run_case(
         relevant_documents=case.relevant_documents,
         citation_recall=citation_recall(set(cited), case.relevant_documents),
         citation_precision=citation_precision(set(cited), case.relevant_documents),
-        fact_coverage=fact_coverage(norm, facts),
+        fact_coverage=_coverage(matched),
         faithfulness=faith,
         unsupported_claims=unsupported,
         tokens=data["tokens_in"] + data["tokens_out"],
@@ -307,7 +324,7 @@ async def run_case(
         no_answer=data.get("no_answer_reason") is not None,
         no_answer_reason=data.get("no_answer_reason"),
         judge_error=judge_error,
-        facts_matched=[any(normalize_text(a) in norm for a in f) for f in facts],
+        facts_matched=matched,
         **traj,
     )
 

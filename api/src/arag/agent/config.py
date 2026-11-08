@@ -33,6 +33,8 @@ class AgentCfg:
     max_steps: int = 12
     parallel_tools: int = 3
     top_k: int = 6
+    # 1 文書から返す件数の上限（0 で無制限）。複数資料の照合を 1 回の検索で拾えるようにする
+    per_document: int = 3
     candidate_k: int = 30
     max_retrieve_retries: int = 1
     grade_threshold: float = 0.3
@@ -50,6 +52,7 @@ class AgentCfg:
             max_steps=_int(o.get("max_steps"), 5, 20, d.max_steps),
             parallel_tools=_int(o.get("parallel_tools"), 1, 8, d.parallel_tools),
             top_k=top_k,
+            per_document=_int(o.get("per_document"), 0, 20, d.per_document),
             # 候補数は最終件数以上でなければ意味が無いので引き上げる
             candidate_k=max(_int(o.get("candidate_k"), 1, 50, d.candidate_k), top_k),
             max_retrieve_retries=_int(o.get("max_retrieve_retries"), 0, 2, d.max_retrieve_retries),

@@ -97,9 +97,33 @@ def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
     return "\n\n".join(parts)
 
 
+def diversify(hits: list[SearchHit], *, k: int, per_document: int) -> list[SearchHit]:
+    """スコア順のまま、1 文書 per_document 件までで k 件選ぶ。足りなければ残りから順に埋める。"""
+    if per_document <= 0:
+        return hits[:k]
+    count: dict[Any, int] = {}
+    picked: list[SearchHit] = []
+    rest: list[SearchHit] = []
+    for h in hits:
+        if len(picked) < k and count.get(h.document_id, 0) < per_document:
+            count[h.document_id] = count.get(h.document_id, 0) + 1
+            picked.append(h)
+        else:
+            rest.append(h)
+    chosen = {id(h) for h in picked + rest[: k - len(picked)]}
+    return [h for h in hits if id(h) in chosen]
+
+
 async def _run_search(ctx: RunContext, req: SearchRequest) -> SearchResult:
+    """検索して、1 文書に偏らないよう top_k 件に絞る（多めに取ってから選ぶ）。"""
+    k, per = req.top_k, ctx.cfg.per_document
+    if per > 0:
+        req = req.model_copy(update={"top_k": min(k * 2, req.candidate_k)})
     async with ctx.sessionmaker() as s:
-        return await ctx.search(s, ctx.principal, req)
+        res = await ctx.search(s, ctx.principal, req)
+    if per > 0:
+        res = res.model_copy(update={"hits": diversify(res.hits, k=k, per_document=per)})
+    return res
 
 
 def _hits_output(res: SearchResult) -> dict[str, Any]:

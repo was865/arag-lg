@@ -221,3 +221,11 @@ def test_summarize_and_markdown() -> None:
     assert s["by_tag"]["en"]["citation_recall"] == 0.0
     md = to_markdown({"suite": "demo", "model_id": "qwen", "summary": s, "cases": [r.__dict__ for r in rs]})
     assert "| 引用再現率 |" in md and "| b |" in md
+
+
+def test_facts_matched_normalizes_dates() -> None:
+    from arag.eval.answer import facts_matched
+
+    facts = [["2026-06-05"], ["2026/06/07"], ["ＡＢＣ"]]
+    assert facts_matched("納期は2026年6月5日です", facts) == [True, False, False]
+    assert facts_matched("期限 2026/6/7", [["2026年6月7日"]]) == [True]
