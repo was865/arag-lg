@@ -64,7 +64,9 @@ COMPLETED: dict[str, Any] = {
 def test_cited_documents_and_sources() -> None:
     assert cited_documents(COMPLETED) == ["a.pdf", "b.pdf"]
     srcs = cited_sources(COMPLETED)
-    assert [s["n"] for s in srcs] == [1, 2, 3]
+    # [3] は回答に書かれていないので引用に数えない
+    assert [s["n"] for s in srcs] == [1, 2]
+    assert cited_documents(COMPLETED | {"answer": "引用なし"}) == []
     assert srcs[1] == {"n": 2, "title": "b.pdf", "heading": "2 章", "body": "翌営業日PM"}
 
 

@@ -144,6 +144,8 @@ _FULLWIDTH = re.compile(r"[【［]\s*([0-9０-９]+)\s*[】］]")
 _GROUP = re.compile(r"\[\s*([0-9０-９]+(?:\s*[,，、\-–]\s*[0-9０-９]+)+)\s*\](?!\()")
 _SINGLE_FW = re.compile(r"\[\s*([０-９]+)\s*\]")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
+# 小さいモデルは資料タグ <資料 n="1"> をまねて [n=1] や [資料 n="1"] と書くことがある
+_ATTR = re.compile(r"\[\s*(?:資料\s*)?n\s*=\s*[\"']?([0-9０-９]+)[\"']?\s*\]")
 
 
 def _num(s: str) -> int:
@@ -167,7 +169,8 @@ def _expand(m: re.Match[str]) -> str:
 
 
 def normalize_markers(text: str) -> str:
-    """【1】［1］[１] → [1]、[1,2] [1、2] → [1][2]、[1-3] → [1][2][3]。Markdown のリンクは触らない。"""
+    """【1】［1］[１] [n=1] → [1]、[1,2] [1、2] → [1][2]、[1-3] → [1][2][3]。Markdown のリンクは触らない。"""
+    text = _ATTR.sub(lambda m: f"[{_num(m.group(1))}]", text)
     text = _FULLWIDTH.sub(lambda m: f"[{_num(m.group(1))}]", text)
     text = _SINGLE_FW.sub(lambda m: f"[{_num(m.group(1))}]", text)
     return _GROUP.sub(_expand, text)

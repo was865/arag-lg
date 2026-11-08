@@ -93,6 +93,7 @@ def test_format_material_isolates_content() -> None:
 
 def test_normalize_markers() -> None:
     assert normalize_markers("A【1】B［２］C[3,4]D[5、6]E[7-9]") == "A[1]B[2]C[3][4]D[5][6]E[7][8][9]"
+    assert normalize_markers('A[n=1]B[n="2"]C[資料 n="3"]') == "A[1]B[2]C[3]"
     assert normalize_markers("[リンク](http://x) [1]") == "[リンク](http://x) [1]"
     assert normalize_markers("[1-50]") == "[1-50]"  # 長すぎる範囲は触らない
 

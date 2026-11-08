@@ -9,7 +9,9 @@
 - 軌跡・コスト: モデルが呼んだツール数・実際に走った検索の回数・書き直し回数・トークン・所要時間・回答不能
 """
 
+import asyncio
 import json
+import re
 import statistics
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import asdict, dataclass, field
@@ -63,11 +65,18 @@ class CaseResult:
 # ── 純関数 ──────────────────────────────────────────────────────────────
 
 
+def _cited_refs(completed: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """回答に実際に書かれた番号の引用（引用が無いと API は参考として全資料を返すので、番号で絞る）。"""
+    used = {m for m in re.findall(r"\[(\d+)\]", completed.get("answer", ""))}
+    cmap = completed.get("citation_map", {})
+    return sorted(((n, r) for n, r in cmap.items() if n in used), key=lambda kv: int(kv[0]))
+
+
 def cited_documents(completed: dict[str, Any]) -> list[str]:
     """引用した文書の名前（出現順・重複なし）。"""
     titles = {s["id"]: s["title"] for s in completed.get("sources", [])}
     out: list[str] = []
-    for ref in completed.get("citation_map", {}).values():
+    for _, ref in _cited_refs(completed):
         t = titles.get(ref["source_id"], ref["source_id"])
         if t not in out:
             out.append(t)
@@ -82,7 +91,7 @@ def cited_sources(completed: dict[str, Any]) -> list[dict[str, Any]]:
         for sec in s["sections"]
     }
     out = []
-    for n, ref in sorted(completed.get("citation_map", {}).items(), key=lambda kv: int(kv[0])):
+    for n, ref in _cited_refs(completed):
         if (sec := secs.get(ref["section_id"])) is not None:
             out.append({"n": int(n)} | sec)
     return out
@@ -310,7 +319,12 @@ class HttpRunApi:
         self.client = client
 
     async def start(self, body: dict[str, Any]) -> str:
-        res = await self.client.post("/v1/runs", json=body)
+        for _ in range(20):
+            res = await self.client.post("/v1/runs", json=body)
+            if res.status_code != 429:
+                break
+            # 回数制限（ARAG_RATE_LIMIT_RUNS_PER_MIN）にかかったら待って出し直す
+            await asyncio.sleep(float(res.headers.get("retry-after") or 10))
         if res.status_code >= 400:
             raise RuntimeError(f"run を開始できません: {res.status_code} {res.text[:200]}")
         return str(res.json()["run_id"])
