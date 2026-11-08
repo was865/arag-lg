@@ -17,6 +17,15 @@
 | PyJWT | Python | 2.15.1 | MIT | 2026-11-08 | https://pypi.org/project/PyJWT/ |
 | opentelemetry-sdk | Python | 1.45.2 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/opentelemetry-sdk/ |
 | langfuse（SDK、任意） | Python | 5.2.0 | MIT | 2026-11-08 | https://pypi.org/project/langfuse/ |
+| psycopg / psycopg-binary（LGPL：改変なし・ライブラリ利用のみ。decisions.md §12 で許可） | Python | 3.3.8 | LGPL-3.0-only | 2026-11-08 | https://pypi.org/project/psycopg/ |
+| pydantic-settings | Python | 2.16.2 | MIT | 2026-11-08 | https://pypi.org/project/pydantic-settings/ |
+| structlog | Python | 26.1.0 | MIT OR Apache-2.0 | 2026-11-08 | https://pypi.org/project/structlog/ |
+| httpx | Python | 0.28.1 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/httpx/ |
+| certifi（推移的依存） | Python | 2026.10.23 | MPL-2.0（ファイル単位の弱いコピーレフト。改変しないため影響なし） | 2026-11-08 | https://pypi.org/project/certifi/ |
+| ruff / mypy / pytest / pytest-asyncio（開発のみ） | Python | 0.17.4 / 2.4.1 / 9.2.0 / 1.4.1 | MIT / MIT / MIT / Apache-2.0 | 2026-11-08 | https://pypi.org/project/ruff/ |
+| server-only | npm | 0.0.1 | MIT | 2026-11-08 | https://www.npmjs.com/package/server-only |
+| caniuse-lite（Next の推移的依存・データ） | npm | — | CC-BY-4.0 | 2026-11-08 | https://www.npmjs.com/package/caniuse-lite |
+| Mailpit（開発用メール受信、P4 で導入予定） | コンテナ | latest | MIT | 2026-11-08 | https://github.com/axllent/mailpit |
 | pip-licenses（CI） | Python | 5.5.5 | MIT | 2026-11-08 | https://pypi.org/project/pip-licenses/ |
 | next / react | npm | 16.4.5 / 19.3.1 | MIT | 2026-11-08 | https://github.com/vercel/next.js |
 | tailwindcss | npm | 4.3.5 | MIT | 2026-11-08 | https://www.npmjs.com/package/tailwindcss |

@@ -186,3 +186,14 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 1. TEI で `bge-reranker-v2-m3`・`ruri-v3-310m`・`ruri-v3-reranker-310m` が起動し、FlagEmbedding / sentence-transformers と同じスコアを返すか（数値一致テストを P0 に入れる）。
 2. TEI の CPU イメージで開発機（Apple Silicon）と CI が回るか。GPU 本番は `cuda` イメージ。
 3. Docling の日本語 OCR エンジン選定（P1）。
+
+## 12. 開発環境（2026-11-08 ユーザー確認）
+
+| 機械 | 役割 | 備考 |
+|---|---|---|
+| Mac（Apple Silicon, arm64） | 日常開発。Next.js・FastAPI・Postgres・Qdrant・Redis を compose で起動 | TEI の CPU イメージは **amd64 のみ**（`cpu-1.9.4` を確認）。Mac では TEI を動かさず GPU 機を参照する |
+| Windows + RTX 4090（同一 LAN, SSH 可） | 推論（TEI embed / rerank）と入庫ワーカー（Docling）、P1・P2 の全量 eval | Docker Desktop（WSL2 + NVIDIA GPU）で `compose.gpu.yaml` を起動。TEI は Ada 用イメージ `89-1.9.4` |
+| GitHub Actions（ubuntu, amd64） | CI。TEI は `cpu-1.9.4` と小モデルで疎通のみ | GPU 不要 |
+
+- アプリは推論先を環境変数（`TEI_EMBED_URL` / `TEI_RERANK_URL`）で受け取り、どの機械で動いているかを意識しない。
+- 追加確認: **psycopg 3（LGPL-3.0）**は langgraph-checkpoint-postgres の必須依存。改変せずライブラリとして使う限り商用に制約はない（LGPL は「個別判断」の対象としてここで許可）。
