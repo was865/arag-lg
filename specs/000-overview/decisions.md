@@ -183,6 +183,8 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 ## 11. 残課題（P0 で確認）
 
 1. TEI で `bge-reranker-v2-m3`・`ruri-v3-310m`・`ruri-v3-reranker-310m` が起動し、FlagEmbedding / sentence-transformers と同じスコアを返すか（数値一致テストを P0 に入れる）。
+   - **結果（2026-11-08、`specs/002-tei-verification/report.md`）**: 4 モデルとも TEI 1.9.4（`89-1.9.4`）で起動。embedding は両系列合格（最小 cosine 0.99999）。rerank は当初基準（raw 差 ≤ 1e-2・全順位一致）を満たさない（bge 最大 2.15e-2、ruri 最大 1.47e-2）。原因は TEI の GeLU tanh 近似（bge）と fp16 で、設定では消せない。入れ替わりは参照差 < 0.005 logit の非関連文書どうしに限られ、上位 3 件は全クエリで一致。
+   - **決定（ユーザー確認済み）**: rerank の受け入れ基準を「sigmoid 後の最大差 ≤ 5e-3」かつ「上位 k 件（既定 3）の順位一致。参照差 < 0.01 の同点圏は除く」に改め、**TEI を継続採用**する。今回の結果はこの基準を満たす（sigmoid 最大差 bge 2.2e-3・ruri 1.1e-3）。TEI の fp32 起動は非 Flash 実装で極端に遅いため使わない。
 2. TEI の CPU イメージで開発機（Apple Silicon）と CI が回るか。GPU 本番は `cuda` イメージ。
 3. Docling の日本語 OCR エンジン選定（P1）。
 
