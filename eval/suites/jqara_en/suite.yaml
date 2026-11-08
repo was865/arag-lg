@@ -1,0 +1,6 @@
+# JQaRA の質問を英語に訳し、日本語コーパス（jqara の KB）を検索する（英→日。specs/004-retrieval E2a）
+adapter: translate
+base: jqara
+to: en
+model: deepseek:deepseek-v4-pro
+thresholds: {}

@@ -11,6 +11,7 @@ import ast
 import io
 import json
 import re
+import time
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -146,25 +147,46 @@ def build_jqara(
     return files, cases
 
 
-def _jqara_rows(cfg: dict[str, Any]) -> Iterator[dict[str, Any]]:
-    """質問 query_limit 件ぶんの行（行は質問ごとに連続して並ぶ）。"""
+def _get_with_retry(c: httpx.Client, params: dict[str, Any], attempts: int = 8) -> httpx.Response:
+    """datasets-server は 502 / 429 を時々返すので待って再試行する。"""
+    for i in range(attempts):
+        try:
+            res = c.get(ROWS_API, params=params)
+            if res.status_code not in (429, 500, 502, 503, 504):
+                res.raise_for_status()
+                return res
+        except httpx.TransportError:
+            pass
+        time.sleep(min(60, 5 * 2**i))
+    res.raise_for_status()
+    return res
+
+
+def _jqara_rows(cfg: dict[str, Any], cache: Path) -> Iterator[dict[str, Any]]:
+    """質問 query_limit 件ぶんの行（行は質問ごとに連続して並ぶ）。
+
+    取得した頁は cache に残し、再実行で続きから取る。
+    """
+    pages = cache / "rows"
+    pages.mkdir(parents=True, exist_ok=True)
     want = cfg.get("query_limit") or 100
     seen: list[str] = []
     offset = 0
     with httpx.Client(timeout=60) as c:
         while True:
-            res = c.get(
-                ROWS_API,
-                params={
-                    "dataset": cfg["dataset"],
-                    "config": "default",
-                    "split": cfg.get("split", "test"),
-                    "offset": offset,
-                    "length": 100,
-                },
-            )
-            res.raise_for_status()
-            rows = [x["row"] for x in res.json()["rows"]]
+            params = {
+                "dataset": cfg["dataset"],
+                "config": "default",
+                "split": cfg.get("split", "test"),
+                "offset": offset,
+                "length": 100,
+            }
+            page = pages / f"{offset:07d}.json"
+            if page.exists():
+                rows = json.loads(page.read_text(encoding="utf-8"))
+            else:
+                rows = [x["row"] for x in _get_with_retry(c, params).json()["rows"]]
+                page.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
             if not rows:
                 return
             for r in rows:
@@ -178,15 +200,83 @@ def _jqara_rows(cfg: dict[str, Any]) -> Iterator[dict[str, Any]]:
                 print(f"  {offset} 行（質問 {len(seen)} 件）")
 
 
+# ---- 翻訳（日英をまたぐ検索の題集。E2a）
+
+
+def build_translated(
+    base: dict[str, Any], translations: dict[str, str], *, suite: str, to: str
+) -> dict[str, Any]:
+    """元の題集の質問だけを訳した題集。文書と KB は元のものを使う（kb_suite）。"""
+    cases = []
+    for c in base["cases"]:
+        q = translations.get(c["id"])
+        if not q:
+            continue
+        tags = [to, "cross", *(t for t in c.get("tags", []) if t not in ("ja", "en"))]
+        cases.append(
+            {**c, "id": c["id"].replace(base["suite"], suite, 1), "query": q, "rewritten": None, "tags": tags}
+        )
+    return {
+        "suite": suite,
+        "kb_suite": base["suite"],
+        "files_dir": f"../{base['suite']}/files",
+        "documents": base["documents"],
+        "thresholds": {},
+        "cases": cases,
+    }
+
+
+_LANG = {"en": "英語", "ja": "日本語"}
+
+
+def _translate(cases: list[dict[str, Any]], to: str, model_name: str) -> dict[str, str]:
+    from langchain.chat_models import init_chat_model
+
+    model = init_chat_model(model_name)
+    out: dict[str, str] = {}
+    for i in range(0, len(cases), 25):
+        part = {c["id"]: c["query"] for c in cases[i : i + 25]}
+        prompt = (
+            f"次の検索質問をそれぞれ自然な{_LANG[to]}に訳してください。固有名詞は訳先の言語で一般的な表記にする。"
+            '出力は {"<id>": "<訳文>"} の JSON だけ。\n\n' + json.dumps(part, ensure_ascii=False)
+        )
+        res = model.invoke(prompt, response_format={"type": "json_object"})
+        data = json.loads(str(res.content))
+        out.update({k: str(v) for k, v in data.items() if k in part})
+        print(f"  訳 {len(out)}/{len(cases)}")
+    return out
+
+
+def _prepare_translated(root: Path, cfg: dict[str, Any], suite: str, cache: Path) -> int:
+    base = yaml.safe_load(
+        (root / "eval" / ".cache" / cfg["base"] / "golden.yaml").read_text(encoding="utf-8")
+    )
+    tr_path = cache / "translations.json"
+    tr = json.loads(tr_path.read_text(encoding="utf-8")) if tr_path.exists() else {}
+    todo = [c for c in base["cases"] if c["id"] not in tr]
+    if todo:
+        tr |= _translate(todo, cfg["to"], cfg.get("model", "deepseek:deepseek-v4-pro"))
+        tr_path.write_text(json.dumps(tr, ensure_ascii=False, indent=1), encoding="utf-8")
+    golden = build_translated(base, tr, suite=suite, to=cfg["to"])
+    (cache / "golden.yaml").write_text(
+        yaml.safe_dump(golden, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    print(f"{suite}: 質問 {len(golden['cases'])} 件（KB は {cfg['base']} を使う）→ {cache}")
+    return 0
+
+
 def prepare(root: Path, suite: str) -> int:
     cfg = yaml.safe_load((root / "eval" / "suites" / suite / "suite.yaml").read_text(encoding="utf-8"))
     cache = root / "eval" / ".cache" / suite
+    if cfg["adapter"] == "translate":
+        cache.mkdir(parents=True, exist_ok=True)
+        return _prepare_translated(root, cfg, suite, cache)
     files_dir = cache / "files"
     files_dir.mkdir(parents=True, exist_ok=True)
     if cfg["adapter"] == "beir":
         files, cases = _prepare_beir(cfg, cache)
     elif cfg["adapter"] == "jqara":
-        files, cases = build_jqara(list(_jqara_rows(cfg)), cfg)
+        files, cases = build_jqara(list(_jqara_rows(cfg, cache)), cfg)
     else:
         raise SystemExit(f"未知の adapter: {cfg['adapter']}")
     for name, body in files.items():

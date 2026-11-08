@@ -1,0 +1,15 @@
+{
+  "suite": "jqara",
+  "variant": "rrf_dense2",
+  "aggregate": {
+    "recall_at_5": 0.4032,
+    "recall_at_k": 0.5738,
+    "precision_at_k": 0.5,
+    "mrr": 0.8967,
+    "ndcg_at_k": 0.7056,
+    "n": 100,
+    "fact_coverage": 0.97,
+    "p50_ms": 180.6303,
+    "p95_ms": 236.8348
+  }
+}

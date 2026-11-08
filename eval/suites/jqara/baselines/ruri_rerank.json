@@ -1,0 +1,15 @@
+{
+  "suite": "jqara",
+  "variant": "ruri_rerank",
+  "aggregate": {
+    "recall_at_5": 0.4982,
+    "recall_at_k": 0.6787,
+    "precision_at_k": 0.61,
+    "mrr": 0.9246,
+    "ndcg_at_k": 0.8303,
+    "n": 100,
+    "fact_coverage": 0.98,
+    "p50_ms": 179.3524,
+    "p95_ms": 210.8481
+  }
+}

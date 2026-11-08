@@ -1,0 +1,590 @@
+- kind: fact
+  query: MX-17の振動値はいくつですか？
+  answer: '0.91'
+  key_facts:
+  - - MX-17
+    - 振動
+    - '0.91'
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: fact
+  query: MX-25の部品到着予定はいつですか？
+  answer: 翌営業日PM
+  key_facts:
+  - - MX-25
+    - 部品到着予定
+    - 翌営業日PM
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: fact
+  query: 暫定判定が「停止候補」で注記コードがN7の場合、何時間以内に再測定しますか？
+  answer: 48時間以内
+  key_facts:
+  - - 停止候補
+    - N7
+    - 48時間以内に再測定する
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: exact_id
+  query: 設備ID「MX-17」の注記コードは何ですか？
+  answer: N9
+  key_facts:
+  - - MX-17
+    - 注記コード
+    - N9
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: multi_hop
+  query: MX-17は暫定判定が停止候補、注記コードがN9、部品到着予定が翌営業日AMです。この設備はどう対応すべきですか？
+  answer: 夜間停止枠まで運転継続できる
+  key_facts:
+  - - MX-17
+    - 停止候補
+    - N9
+  - - 翌営業日AM
+    - 夜間停止枠まで運転継続できる
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: paraphrase
+  query: MX-17は仮判定で停止の可能性があり、交換部品が翌朝に届く場合、いつまで稼働を続けられますか？
+  answer: 夜間停止枠まで
+  key_facts:
+  - - 翌営業日AM
+    - 夜間停止枠まで運転継続できる
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: english
+  query: What is the temperature value for equipment ID MX-17?
+  answer: '0.88'
+  key_facts:
+  - - MX-17
+    - 温度
+    - '0.88'
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: english
+  query: According to the inspection rules, what is recommended when the note code
+    N9 is attached to a provisional judgment of '停止候補'?
+  answer: 即時停止を推奨する
+  key_facts:
+  - - 停止候補
+    - N9
+    - 即時停止を推奨する
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+- kind: fact
+  query: 冷却ラインCL-2で温度上昇と同時に発生した異常は何ですか？
+  answer: 流量低下
+  key_facts:
+  - - 温度上昇
+    - 流量低下
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: fact
+  query: センサーT2の測定値は何℃でしたか？
+  answer: 86.4℃
+  key_facts:
+  - - T2
+    - 86.4℃
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: fact
+  query: センサーF1の流量は何L/minでしたか？
+  answer: 42 L/min
+  key_facts:
+  - - F1
+    - 42 L/min
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: exact_id
+  query: V-12が固着している場合、交換前に閉じるバイパスの識別子は何ですか？
+  answer: BT-3
+  key_facts:
+  - - V-12
+    - BT-3
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: multi_hop
+  query: T2が86.4℃、F1が42 L/minを示したとき、点検の第一候補となる部品は何ですか？
+  answer: V-12バイパス弁
+  key_facts:
+  - - T2
+    - 86.4℃
+    - F1
+    - 42 L/min
+  - - V-12固着を第一候補として点検する
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: paraphrase
+  query: V-12が動かなくなっていたとき、入れ替える前に遮断しておくべき経路は何ですか？
+  answer: BT-3
+  key_facts:
+  - - V-12が固着している場合は、BT-3バイパスを閉じたうえでV-12を交換する
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: english
+  query: What is the measured flow rate of sensor F1?
+  answer: 42 L/min
+  key_facts:
+  - - F1
+    - 42 L/min
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: english
+  query: According to the report, which part should be checked first when T2 temperature
+    rise and F1 flow drop occur at the same time?
+  answer: V-12バイパス弁
+  key_facts:
+  - - V-12バイパス弁
+  - - V-12固着を第一候補として点検する
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+- kind: fact
+  query: この要求で納期はいつまでですか？
+  answer: '2026-06-07'
+  key_facts:
+  - - 納期は2026-06-07まで
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: fact
+  query: 通常時、初年度費用はどのくらいを目安としていますか？
+  answer: 80万円
+  key_facts:
+  - - 初年度費用は80万円以下を目安とする
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: fact
+  query: ログを保管できることが求められているリージョンはどこですか？
+  answer: 日本国内リージョン
+  key_facts:
+  - - 日本国内リージョンでログ保管できること
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: exact_id
+  query: この文書の申請番号を教えてください。
+  answer: PR-2026-0519
+  key_facts:
+  - - '申請番号: PR-2026-0519'
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: multi_hop
+  query: 通常は初年度費用80万円以下が目安ですが、緊急保守の場合はいくらまで許容されますか？
+  answer: 95万円
+  key_facts:
+  - - 初年度費用は80万円以下を目安とする
+    - 緊急保守の場合は95万円まで許容する
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: paraphrase
+  query: 画像を外部のクラウドに送らず、装置内でAI推論を行うために必要な機能は何ですか？
+  answer: ローカル推論モード
+  key_facts:
+  - - ローカル推論モード
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: english
+  query: What is the required deadline for delivery in this purchase request?
+  answer: '2026-06-07'
+  key_facts:
+  - - 納期は2026-06-07まで
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: english
+  query: Who is the applicant of this request?
+  answer: 保全部
+  key_facts:
+  - - '申請者: 保全部'
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+- kind: fact
+  query: 工場機密情報に該当するデータは何ですか？
+  answer: 画像データ、設備ログ、異常検知結果
+  key_facts:
+  - - 画像データ
+    - 設備ログ
+    - 異常検知結果
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: fact
+  query: 外部クラウドへ送信する場合に必須となる条件は何ですか？
+  answer: 国内リージョン、暗号化、監査ログ保存180日以上
+  key_facts:
+  - - 国内リージョン
+    - 暗号化
+    - 監査ログ保存180日以上
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: fact
+  query: 緊急保守目的でCISO承認が不要となる金額の上限はいくらですか？
+  answer: 95万円以下
+  key_facts:
+  - - 95万円以下
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: exact_id
+  query: この外部機器・クラウド接続セキュリティ規程の版番号は何ですか？
+  answer: v2.2
+  key_facts:
+  - - v2.2
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: multi_hop
+  query: 工場機密情報に該当する画像データをクラウドに送信しないローカル推論モードを持つ機器は、導入にどのような確認が必要ですか？
+  answer: 情報システム部の簡易確認
+  key_facts:
+  - - 画像データ
+    - 設備ログ
+    - 異常検知結果
+  - - 情報システム部の簡易確認
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: paraphrase
+  query: 社外のオンラインサービスに工場の情報を送る際、設置場所・通信の秘匿化・操作記録の保管期間について必須とされる条件をまとめてください。
+  answer: 国内リージョン、暗号化、監査ログ保存180日以上
+  key_facts:
+  - - 国内リージョン
+    - 暗号化
+    - 監査ログ保存180日以上
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: english
+  query: What data is classified as factory confidential information?
+  answer: 画像データ、設備ログ、異常検知結果
+  key_facts:
+  - - 画像データ
+    - 設備ログ
+    - 異常検知結果
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: english
+  query: What security certification must vendors have?
+  answer: ISO 27001または同等のセキュリティ認証
+  key_facts:
+  - - ISO 27001または同等のセキュリティ認証
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+- kind: fact
+  query: BetaEdge Mini の初年度費用はいくらですか？
+  answer: 74万円
+  key_facts:
+  - - BetaEdge Mini
+    - 74万円
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: fact
+  query: GammaVision Cloud の納期はいつですか？
+  answer: '2026-06-04'
+  key_facts:
+  - - GammaVision Cloud
+    - '2026-06-04'
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: fact
+  query: AlphaGate X2 のログ保管期間は何日ですか？
+  answer: 365日
+  key_facts:
+  - - AlphaGate X2
+    - 365日
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: exact_id
+  query: 「SOC2」認証を取得している候補はどれですか？
+  answer: GammaVision Cloud
+  key_facts:
+  - - SOC2
+    - GammaVision Cloud
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: multi_hop
+  query: 最も初年度費用が安い候補は、注記でどの要件を満たさないとされていますか？
+  answer: ログ保管条件とローカル推論要件
+  key_facts:
+  - - GammaVision Cloud
+    - 68万円
+  - - ログ保管条件とローカル推論要件
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: paraphrase
+  query: GammaVision Cloud を利用する場合、最初の1年間にかかる金額はいくらですか？
+  answer: 68万円
+  key_facts:
+  - - GammaVision Cloud
+    - 68万円
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: english
+  query: What is the initial annual cost for AlphaGate X2?
+  answer: 92万円
+  key_facts:
+  - - AlphaGate X2
+    - 92万円
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: english
+  query: Which candidate does not support local inference?
+  answer: GammaVision Cloud
+  key_facts:
+  - - GammaVision Cloud
+    - なし
+  relevant_documents:
+  - 08-multi-file-vendor-quotes.pdf
+- kind: fact
+  query: RED routeでP2 chatterが発生した場合、最初に確認するものは何ですか？
+  answer: Kafka consumer lag
+  key_facts:
+  - - Kafka consumer lag
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: fact
+  query: RED routeでP2 chatterが発生した場合、dedupe windowを何秒から何秒へ一時変更しますか？
+  answer: 60秒から180秒
+  key_facts:
+  - - 60秒
+    - 180秒
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: fact
+  query: RED routeのP2 chatterに対する恒久対応は何ですか？
+  answer: イベントIDのidempotency keyを注文ID + 明細IDに変更する
+  key_facts:
+  - - イベントID
+    - idempotency key
+    - 注文ID + 明細ID
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: exact_id
+  query: 「shadow ack」の正式名称は何ですか？
+  answer: shadow acknowledgement
+  key_facts:
+  - - shadow ack
+    - shadow acknowledgement
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: multi_hop
+  query: Priority 2 alert chattering が Revenue Event Delivery route で発生した場合、最初に確認する指標は何ですか？
+  answer: Kafka consumer lag
+  key_facts:
+  - - Priority 2 alert chattering
+    - Revenue Event Delivery route
+    - Kafka consumer lag
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: paraphrase
+  query: 売上計上イベントを送るKafka経路で、重要度2の警告が短時間に点灯と消灯を繰り返すとき、初めに確認する値は何ですか？
+  answer: Kafka consumer lag
+  key_facts:
+  - - Kafka consumer lag
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: english
+  query: What should be enabled if the issue recurs within 10 minutes after changing
+    the dedupe window?
+  answer: shadow ack
+  key_facts:
+  - - shadow ack
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: english
+  query: What is the first check when P2 chatter occurs on the RED route?
+  answer: Kafka consumer lag
+  key_facts:
+  - - Kafka consumer lag
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: fact
+  query: v1.4の基本ルールで、AI回答を顧客へ提示する場合に必須とされている3つの要件は何ですか？
+  answer: 担当者レビュー、根拠資料確認、レビュー記録180日保存
+  key_facts:
+  - - 担当者レビュー
+    - 根拠資料確認
+    - レビュー記録180日保存
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: fact
+  query: 高リスク顧客にAI回答を提示する場合、v1.4基本ルールで部長承認は必要ですか？
+  answer: 部長承認が必要
+  key_facts:
+  - - 高リスク顧客
+    - 部長承認
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: fact
+  query: 例外メモEX-44の適用期間はいつからいつまでですか？
+  answer: 2026-05-10から2026-06-10まで
+  key_facts:
+  - - '2026-05-10'
+    - '2026-06-10'
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: exact_id
+  query: EX-44の例外期限を過ぎた場合、どのルールに戻りますか？
+  answer: 基本ルールへ戻る
+  key_facts:
+  - - 基本ルール
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: multi_hop
+  query: 2026年5月20日にカスタマーサクセス部が低リスク顧客向けFAQ回答を提示する場合、部長承認は省略できますか？
+  answer: 省略できます
+  key_facts:
+  - - '2026-05-10'
+    - '2026-06-10'
+  - - カスタマーサクセス部
+    - 低リスク顧客
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: paraphrase
+  query: 通常業務で、AIが作成した回答を顧客に開示する前に実施すべき確認と、その確認記録を保管しておく期間は何ですか？
+  answer: 担当者レビュー、根拠資料確認、180日保存
+  key_facts:
+  - - 担当者レビュー
+  - - 根拠資料確認
+  - - 180日保存
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: english
+  query: Under exception memo EX-44, which department and customer risk level allow
+    the director approval to be omitted between 2026-05-10 and 2026-06-10?
+  answer: カスタマーサクセス部、低リスク顧客
+  key_facts:
+  - - カスタマーサクセス部
+  - - 低リスク顧客
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: english
+  query: After the exception period expires, whose approvals are needed to extend
+    exception memo EX-44?
+  answer: CISOと法務の承認
+  key_facts:
+  - - CISO
+    - 法務
+  relevant_documents:
+  - 10-exception-latest-rule-conflict.pdf
+- kind: cross_doc
+  query: 第2工場の月次設備点検台帳で停止候補とされた設備ID MX-17の注記コードと、冷却ラインCL-2異常報告の図面で赤枠が示す部品名をそれぞれ教えてください。
+  answer: N9 / V-12バイパス弁
+  key_facts:
+  - - MX-17
+    - N9
+  - - V-12バイパス弁
+    - 赤枠
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+  - 05-image-grounding-cooling-line.pdf
+- kind: cross_doc
+  query: Based on the purchase request, security policy, and vendor quotes, which
+    candidate meets all mandatory requirements?
+  answer: AlphaGate X2
+  key_facts:
+  - - AlphaGate X2
+    - 国内リージョン / 365日
+    - あり
+    - ISO 27001
+    - 92万円
+  - - 必須要件
+    - ローカル推論モード
+    - '2026-06-07'
+    - 95万円
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+  - 07-multi-file-security-policy.pdf
+  - 08-multi-file-vendor-quotes.pdf
+- kind: cross_doc
+  query: 納期2026-06-07までと初年度費用の条件（目安80万円、緊急保守95万円まで許容）だけに注目した場合、見積比較の候補のうち両方を満たすものはどれですか。
+  answer: AlphaGate X2 と GammaVision Cloud
+  key_facts:
+  - - AlphaGate X2
+    - '2026-06-05'
+    - 92万円
+  - - GammaVision Cloud
+    - '2026-06-04'
+    - 68万円
+  - - '2026-06-07'
+    - 95万円
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+  - 08-multi-file-vendor-quotes.pdf
+- kind: cross_doc
+  query: According to the security policy requirement for vendor certification (ISO
+    27001 or equivalent), which candidates in the quote comparison satisfy it?
+  answer: AlphaGate X2 と BetaEdge Mini
+  key_facts:
+  - - ISO 27001
+    - AlphaGate X2
+    - BetaEdge Mini
+  relevant_documents:
+  - 07-multi-file-security-policy.pdf
+  - 08-multi-file-vendor-quotes.pdf
+- kind: cross_doc
+  query: 緊急購買要求では画像データをクラウドへ送信しないローカル推論モードを必須としていますが、セキュリティ規程上、仮にクラウド送信する場合に必須となる3条件は何ですか。
+  answer: 国内リージョン、暗号化、監査ログ保存180日以上
+  key_facts:
+  - - 画像データ
+    - クラウド
+    - ローカル推論モード
+  - - 国内リージョン
+    - 暗号化
+    - 監査ログ保存180日以上
+  relevant_documents:
+  - 06-multi-file-requirement-request.pdf
+  - 07-multi-file-security-policy.pdf
+- kind: cross_doc
+  query: SREチームのRunbookでRED routeのP2 chatter発生時に最初に確認する項目と、AI回答の顧客提示ルール例外メモEX-44で省略できない事項をそれぞれ教えてください。
+  answer: Kafka consumer lag / 担当者レビュー・根拠資料確認・180日保存
+  key_facts:
+  - - RED route
+    - P2 chatter
+    - Kafka consumer lag
+  - - 担当者レビュー
+    - 根拠資料確認
+    - 180日保存
+  relevant_documents:
+  - 09-query-rewrite-acronym-runbook.pdf
+  - 10-exception-latest-rule-conflict.pdf
+- kind: cross_doc
+  query: 冷却ラインCL-2異常報告の温度センサーT2の値と、運用略語集で「shadow ack」の意味をそれぞれ答えてください。
+  answer: 86.4℃ / 本番通知前に検証用通知だけを確認する運用
+  key_facts:
+  - - T2
+    - 86.4℃
+  - - shadow ack
+    - 本番通知前に検証用通知だけを確認する運用
+  relevant_documents:
+  - 05-image-grounding-cooling-line.pdf
+  - 09-query-rewrite-acronym-runbook.pdf
+- kind: cross_doc
+  query: 月次設備点検台帳でMX-14に付された注記コードと、AI回答の顧客提示ルール例外メモEX-44で部長承認を省略できる終了日を答えてください。
+  answer: N7 / 2026-06-10
+  key_facts:
+  - - MX-14
+    - N7
+  - - EX-44
+    - '2026-06-10'
+  relevant_documents:
+  - 04-cross-page-table-semantic-loss.pdf
+  - 10-exception-latest-rule-conflict.pdf
+- kind: negative
+  query: 第2工場の冷却ラインCL-2で、V-12交換後の試運転時に必要な温度センサーT2の校正基準は何ですか。
+  answer: 文書に記載なし
+  key_facts: []
+  relevant_documents: []
+- kind: negative
+  query: エッジAIゲートウェイ AlphaGate X2の消費電力は何ワットですか。
+  answer: 文書に記載なし
+  key_facts: []
+  relevant_documents: []
+- kind: negative
+  query: AI回答の顧客提示ルールで、高リスク顧客向けFAQ回答の部長承認を省略できる条件は何ですか。
+  answer: 文書に記載なし
+  key_facts: []
+  relevant_documents: []
+- kind: negative
+  query: RED routeのP2 chatterが発生した場合、Kafka consumer lagが1000を超えていたときのエスカレーション先はどこですか。
+  answer: 文書に記載なし
+  key_facts: []
+  relevant_documents: []
+- kind: negative
+  query: 月次設備点検台帳でMX-11の次回点検予定日はいつですか。
+  answer: 文書に記載なし
+  key_facts: []
+  relevant_documents: []

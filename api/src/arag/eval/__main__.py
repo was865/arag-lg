@@ -58,6 +58,10 @@ def files_dir(root: Path, suite: GoldenSuite, gp: Path) -> Path:
     return p if p.is_absolute() else (root / p if (root / p).exists() else gp.parent / p)
 
 
+def kb_suite_of(suite: str) -> str:
+    return load_suite(golden_path(repo_root(), suite)).kb_suite or suite
+
+
 async def find_kb(settings: Settings, suite: str) -> str | None:
     engine = make_engine(settings.database_url)
     try:
@@ -78,6 +82,9 @@ async def cmd_ingest(args: argparse.Namespace, settings: Settings) -> int:
     root = repo_root()
     gp = golden_path(root, args.suite)
     suite = load_suite(gp)
+    if suite.kb_suite:
+        print(f"{args.suite} は題集 {suite.kb_suite} の KB を使います（先にそちらを ingest）")
+        return 0
     headers = {"X-Dev-User-Id": EVAL_USER, "X-Dev-Role": "admin"}
     async with httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c:
         kb = await find_kb(settings, args.suite)
@@ -115,7 +122,7 @@ async def cmd_ingest(args: argparse.Namespace, settings: Settings) -> int:
 
 async def cmd_index(args: argparse.Namespace, settings: Settings) -> int:
     variants, models = load_variants(repo_root() / "eval" / "variants.yaml")
-    kb = await find_kb(settings, args.suite)
+    kb = await find_kb(settings, kb_suite_of(args.suite))
     if kb is None:
         raise SystemExit(f"先に ingest してください（KB「{kb_name(args.suite)}」がありません）")
     engine = make_engine(settings.database_url)
@@ -137,7 +144,7 @@ async def cmd_run(args: argparse.Namespace, settings: Settings) -> int:
     root = repo_root()
     suite = load_suite(golden_path(root, args.suite))
     variants, models = load_variants(root / "eval" / "variants.yaml")
-    kb = await find_kb(settings, args.suite)
+    kb = await find_kb(settings, suite.kb_suite or args.suite)
     if kb is None:
         raise SystemExit(f"先に ingest してください（KB「{kb_name(args.suite)}」がありません）")
     out_dir = Path(args.out) if args.out else root / "eval" / ".reports" / args.suite
@@ -197,6 +204,11 @@ async def cmd_run(args: argparse.Namespace, settings: Settings) -> int:
         await client.close()
         await engine.dispose()
     table = compare_table(results)
+    # 言語別（E2a）: 題集に en / ja の題が混ざるときはタグ別の表も出す
+    for tag in ("ja", "en"):
+        sub = compare_table(results, tag=tag)
+        if sub and sub != table and len({t for r in results for t in r.get("by_tag", {})} & {"ja", "en"}) > 1:
+            table += f"\n\n#### {tag} の題のみ（n={results[0]['by_tag'][tag]['n']:.0f}）\n\n" + sub
     (out_dir / "compare.md").write_text(table + "\n", encoding="utf-8")
     print(table)
     print(f"レポート: {out_dir}")

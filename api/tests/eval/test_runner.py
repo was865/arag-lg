@@ -52,3 +52,28 @@ async def test_run_suite_miss_lowers_metrics() -> None:
 def test_ranked_documents_keeps_first_rank() -> None:
     hits = [FakeHit("b"), FakeHit("a"), FakeHit("b"), FakeHit("c")]
     assert ranked_documents(hits) == ["b", "a", "c"]
+
+
+async def test_negative_cases_excluded_and_tag_aggregate() -> None:
+    suite = GoldenSuite.model_validate(
+        {
+            "suite": "t",
+            "documents": ["a.pdf", "b.pdf"],
+            "cases": [
+                {"id": "c1", "query": "q", "tags": ["ja"], "relevant_documents": ["a.pdf"]},
+                {"id": "c2", "query": "what", "tags": ["en"], "relevant_documents": ["a.pdf"]},
+                {"id": "neg", "query": "無い", "tags": ["ja", "negative"]},
+            ],
+        }
+    )
+
+    async def fake(case: Case) -> list[FakeHit]:
+        return [FakeHit("a.pdf")] if case.id == "c1" else [FakeHit("b.pdf")]
+
+    result = await run_suite(suite, fake)
+    neg = result["cases"][2]
+    # 正解文書の無い題（答えが無いことを問う題）は検索指標を持たず、集計から除く
+    assert neg["recall_at_5"] is None and neg["mrr"] is None
+    assert result["aggregate"]["recall_at_5"] == 0.5
+    assert result["by_tag"]["ja"]["recall_at_5"] == 1.0
+    assert result["by_tag"]["en"]["recall_at_5"] == 0.0 and result["by_tag"]["en"]["n"] == 1

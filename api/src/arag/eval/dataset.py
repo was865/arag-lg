@@ -18,6 +18,7 @@ class Case(BaseModel):
     tags: list[str] = Field(default_factory=list)  # 言語は ja / en / cross（日英をまたぐ）
     relevant_documents: list[str] = Field(default_factory=list)
     key_facts: list[KeyFact] = Field(default_factory=list)
+    answer: str | None = None  # 参考解答（検索評価では使わない。P3 の回答評価用）
 
 
 class Thresholds(BaseModel):
@@ -30,6 +31,7 @@ class GoldenSuite(BaseModel):
     suite: str
     owner_user_id: str | None = None  # 旧版互換（新版は KB「評価: <suite>」で分ける）
     files_dir: str | None = None
+    kb_suite: str | None = None  # 別の題集の KB をそのまま使う（訳した題集など）
     documents: list[str]
     thresholds: Thresholds = Thresholds()
     cases: list[Case]

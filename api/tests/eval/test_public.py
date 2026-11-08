@@ -53,3 +53,28 @@ def test_build_jqara_groups_by_question_and_uses_answers() -> None:
     assert len(cases) == 1  # 正解の無い質問は除く
     assert cases[0]["relevant_documents"] == ["jqara-10.md"]
     assert cases[0]["key_facts"] == [{"any": ["絶対零度"]}]
+
+
+def test_build_translated_reuses_kb_and_documents() -> None:
+    from arag.eval.public import build_translated
+
+    base = {
+        "suite": "jqara",
+        "files_dir": "files",
+        "documents": ["a.md", "b.md"],
+        "cases": [
+            {
+                "id": "jqara-1",
+                "query": "最も低い温度は?",
+                "tags": ["ja", "jqara"],
+                "relevant_documents": ["a.md"],
+                "key_facts": [{"any": ["絶対零度"]}],
+            },
+            {"id": "jqara-2", "query": "訳なし", "tags": ["ja"], "relevant_documents": ["b.md"]},
+        ],
+    }
+    g = build_translated(base, {"jqara-1": "What is the lowest temperature?"}, suite="jqara_en", to="en")
+    assert g["kb_suite"] == "jqara" and g["documents"] == ["a.md", "b.md"]
+    [c] = g["cases"]  # 訳の無い題は落とす
+    assert c["id"] == "jqara_en-1" and c["query"] == "What is the lowest temperature?"
+    assert c["tags"] == ["en", "cross", "jqara"] and c["key_facts"] == [{"any": ["絶対零度"]}]

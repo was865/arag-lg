@@ -198,3 +198,16 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 
 - アプリは推論先を環境変数（`TEI_EMBED_URL` / `TEI_RERANK_URL`）で受け取り、どの機械で動いているかを意識しない。
 - 追加確認: **psycopg 3（LGPL-3.0）**は langgraph-checkpoint-postgres の必須依存。改変せずライブラリとして使う限り商用に制約はない（LGPL は「個別判断」の対象としてここで許可）。
+
+## 13. 検索の既定値（P2、2026-11-08。根拠は `specs/004-retrieval/report.md`）
+
+| 項目 | 既定 | 根拠 |
+|---|---|---|
+| 融合 | RRF k=60・重み dense:sparse = 1:1 | 重み 2 倍・DBSF との差は nDCG ±0.004 以内 |
+| rerank | 有効、入力は文脈 + 本文 | 外すと nDCG −0.045（SciFact）/ −0.115（JQaRA）。本文のみは −0.028 / −0.010 |
+| rerank モデル | **当面 bge-reranker-v2-m3**（ruri-v3-reranker-310m を推奨候補として保留） | ruri は JQaRA +0.127・SciFact +0.014。日英をまたぐ題集の確認と、長い英語文書での p50 超過（452 ms）の扱いを決めてから切り替える。切り替えは URL の変更だけ |
+| 埋め込み | bge-m3（変更しない） | rerank 後の差は ±0.005〜0.022。変更は全量再索引が要り、日英をまたぐ検索が未検証 |
+| 英語ステミング | 無効 | 差 ±0.001 |
+| candidate_k | 50 | 既定で E3（p50 ≤ 300 ms・p95 ≤ 800 ms）を満たす |
+| 日本語の公開データ | hotchpotch/JQaRA test（CC-BY-SA 4.0、評価のみ・配布しない） | MIRACL ja より取得が軽く、紛らわしい負例を含む |
+| 文脈の有無・英語文書の文脈の言語 | 未決 | DeepSeek の残高切れで公開データの文脈が欠けたため再測定が必要 |

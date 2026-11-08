@@ -136,10 +136,10 @@ GitHub の CI には GPU も実モデルも無いので、品質ゲートは **G
 | `SEARCH_TOP_K` / `SEARCH_CANDIDATE_K` | 6 / 50 | |
 | `SEARCH_FUSION` | `rrf` | `rrf` / `dbsf` |
 | `SEARCH_RRF_K` / `SEARCH_WEIGHTS` | 60 / `1,1` | dense, sparse の順 |
-| `RERANK_ENABLED` / `RERANK_INPUT` | true / `context+text` | |
+| `RERANK_ENABLED` / `RERANK_INPUT` | true / `context+text` | 評価で確認済み（report.md §3） |
 | `RERANK_TIMEOUT_SEC` | 10 | |
 | `EMBED_QUERY_PREFIX` / `EMBED_DOCUMENT_PREFIX` | 空 / 空 | ruri は「検索クエリ: 」「検索文書: 」 |
-| `SPARSE_EN_STEM` | false | 評価で決める |
+| `SPARSE_EN_STEM` | false | 評価で効果なし（report.md §3） |
 
 ## 8. テスト
 
@@ -154,6 +154,8 @@ GitHub の CI には GPU も実モデルも無いので、品質ゲートは **G
 `pyyaml`（MIT、題集）、`snowballstemmer`（BSD-3、英語ステミングの評価用）。公開データの取得は `httpx` で直接（`datasets` ライブラリは入れない）。
 
 ## 10. 未決事項（評価で決めて本書へ反映）
+
+> 2026-11-08 中間: 1 は rerank モデルと文脈以外を決定、2 は JQaRA、3 は 50 のまま（`decisions.md` §13）。4 と rerank モデル・文脈の有無は DeepSeek の残高補充後に再測定（`report.md` §5）。
 
 1. 融合方式・重み、rerank 入力、文脈の有無、埋め込み・rerank モデル、英語ステミング（E2・E2a）。
 2. 日本語の公開データセットの選定（ライセンス・規模）。

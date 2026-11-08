@@ -34,13 +34,14 @@ def to_markdown(result: dict[str, Any]) -> str:
         "| id | recall@5 | recall@k | prec@k | mrr | ndcg@k | facts | n |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
+
+    def fmt(v: float | None) -> str:
+        return "—" if v is None else f"{v:.2f}"
+
     for c in result["cases"]:
-        fc = c["fact_coverage"]
-        fc_str = f"{fc:.2f}" if fc is not None else "—"
+        cells = [fmt(c[k]) for k in ("recall_at_5", "recall_at_k", "precision_at_k", "mrr", "ndcg_at_k")]
         lines.append(
-            f"| {c['id']} | {c['recall_at_5']:.2f} | {c['recall_at_k']:.2f} | "
-            f"{c['precision_at_k']:.2f} | {c['mrr']:.2f} | {c['ndcg_at_k']:.2f} | "
-            f"{fc_str} | {c['n_retrieved']} |"
+            f"| {c['id']} | " + " | ".join(cells) + f" | {fmt(c['fact_coverage'])} | {c['n_retrieved']} |"
         )
     lines += ["", "## 集計（平均）", ""]
     for k, v in result["aggregate"].items():
@@ -48,8 +49,16 @@ def to_markdown(result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def compare_table(results: list[dict[str, Any]]) -> str:
-    """variant ごとの集計を 1 表に。品質指標は列ごとの最良値を太字にする。"""
+def compare_table(results: list[dict[str, Any]], tag: str | None = None) -> str:
+    """variant ごとの集計を 1 表に。品質指標は列ごとの最良値を太字にする。tag を渡すとそのタグの題だけ。"""
+    if tag is not None:
+        results = [
+            {"variant": r.get("variant"), "aggregate": r["by_tag"][tag]}
+            for r in results
+            if tag in r.get("by_tag", {})
+        ]
+        if not results:
+            return ""
     keys = [k for k in QUALITY + LATENCY if any(k in r["aggregate"] for r in results)]
     best = {k: max(r["aggregate"][k] for r in results if k in r["aggregate"]) for k in keys if k in QUALITY}
     lines = [

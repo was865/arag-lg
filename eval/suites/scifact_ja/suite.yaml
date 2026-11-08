@@ -1,0 +1,6 @@
+# BEIR SciFact の質問を日本語に訳し、英語コーパス（beir_scifact の KB）を検索する（日→英。specs/004-retrieval E2a）
+adapter: translate
+base: beir_scifact
+to: ja
+model: deepseek:deepseek-v4-pro
+thresholds: {}

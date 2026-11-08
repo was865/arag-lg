@@ -1,0 +1,14 @@
+{
+  "suite": "beir_scifact",
+  "variant": "rrf_sparse2",
+  "aggregate": {
+    "recall_at_5": 0.8749,
+    "recall_at_k": 0.9153,
+    "precision_at_k": 0.1037,
+    "mrr": 0.8031,
+    "ndcg_at_k": 0.8275,
+    "n": 300,
+    "p50_ms": 295.829,
+    "p95_ms": 330.7966
+  }
+}

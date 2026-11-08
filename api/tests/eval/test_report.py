@@ -63,3 +63,29 @@ def test_compare_table_lists_variants_and_marks_best():
     assert lines[0].startswith("| variant |")
     assert any(ln.startswith("| default |") and "**1.000**" in ln for ln in lines)
     assert any(ln.startswith("| dbsf |") and "0.500" in ln for ln in lines)
+
+
+def test_compare_table_by_tag_and_markdown_with_negative() -> None:
+    from arag.eval.report import compare_table, to_markdown
+
+    r = {
+        "suite": "s",
+        "variant": "v",
+        "aggregate": {"recall_at_5": 0.5},
+        "by_tag": {"en": {"recall_at_5": 0.25, "n": 1}},
+        "cases": [
+            {
+                "id": "neg",
+                "recall_at_5": None,
+                "recall_at_k": None,
+                "precision_at_k": None,
+                "mrr": None,
+                "ndcg_at_k": None,
+                "fact_coverage": None,
+                "n_retrieved": 3,
+            },
+        ],
+    }
+    assert "0.250" in compare_table([r], tag="en")
+    assert compare_table([r], tag="zz") == ""
+    assert "| neg | — |" in to_markdown(r)

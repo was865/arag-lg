@@ -53,27 +53,44 @@ async def run_suite(suite: GoldenSuite, search_fn: SearchFn) -> dict[str, Any]:
         # 結果本文 + 親セクション本文（旧版の前後 1 塊の展開に相当）
         corpus = normalize_text("\n".join(f"{h.text}\n{h.section_text or ''}" for h in hits))
         facts = [kf.any for kf in case.key_facts]
-        cases.append(
+        # 正解文書の無い題（答えが無いことを問う題）は検索指標を持たない
+        scores: dict[str, float | None] = (
             {
-                "id": case.id,
-                "tags": case.tags,
-                "n_retrieved": len(hits),
                 "recall_at_5": recall_at_k(ranked, relevant, 5),
                 "recall_at_k": recall_at_k(ranked, relevant, case.top_k),
                 "precision_at_k": precision_at_k(ranked, relevant, case.top_k),
                 "mrr": mrr(ranked, relevant),
                 "ndcg_at_k": ndcg_at_k(ranked, relevant, case.top_k),
+            }
+            if relevant
+            else dict.fromkeys(METRICS)
+        )
+        cases.append(
+            {
+                "id": case.id,
+                "tags": case.tags,
+                "n_retrieved": len(hits),
+                **scores,
                 "fact_coverage": fact_coverage(corpus, facts) if facts else None,
                 "ranked": ranked[: case.top_k],
                 "ms": round(latencies[-1], 1),
             }
         )
-    aggregate: dict[str, float] = {k: _mean([c[k] for c in cases]) for k in METRICS}
-    fc = [c["fact_coverage"] for c in cases if c["fact_coverage"] is not None]
-    if fc:
-        aggregate["fact_coverage"] = _mean(fc)
+    aggregate = _aggregate(cases)
     # 初回は接続確立などで遅いので p50/p95 から除く（E3）
     warm = latencies[1:] if len(latencies) > 1 else latencies
     aggregate["p50_ms"] = _percentile(warm, 0.5)
     aggregate["p95_ms"] = _percentile(warm, 0.95)
-    return {"suite": suite.suite, "cases": cases, "aggregate": aggregate}
+    tags = sorted({t for c in cases for t in c["tags"]})
+    by_tag = {t: _aggregate([c for c in cases if t in c["tags"]]) for t in tags}
+    return {"suite": suite.suite, "cases": cases, "aggregate": aggregate, "by_tag": by_tag}
+
+
+def _aggregate(cases: list[dict[str, Any]]) -> dict[str, float]:
+    scored = [c for c in cases if c["recall_at_5"] is not None]
+    out: dict[str, float] = {k: _mean([c[k] for c in scored]) for k in METRICS}
+    out["n"] = len(scored)
+    fc = [c["fact_coverage"] for c in cases if c["fact_coverage"] is not None]
+    if fc:
+        out["fact_coverage"] = _mean(fc)
+    return out
