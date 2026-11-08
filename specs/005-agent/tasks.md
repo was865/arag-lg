@@ -27,12 +27,12 @@
 
 ## D. UI
 
-- [ ] D1 Mac: 旧版の視覚資産（globals.css・フォント・アイコン）と UI 依存の移植、licenses
-- [ ] D2 Mac: API 中継（Route Handler、SSE をバッファしない）と開発用ヘッダ
-- [ ] D3 Mac: run のデータ層（EventSource → reducer → `Turn`）と vitest
-- [ ] D4 Mac: チャット画面（Composer・Messages・ToolSteps・AnswerFooter・引用・右パネル）— R34
-- [ ] D5 Mac: サイドバー（スレッド一覧・新規・切替・名前変更・ピン・削除）— R36
-- [ ] D6 Mac: 再接続（active-run・Last-Event-ID）・取消・再生成・質問の編集 — R35
+- [x] D1 Mac: 旧版の視覚資産（globals.css・フォント・アイコン）と UI 依存の移植、licenses
+- [x] D2 Mac: API 中継（Route Handler、SSE をバッファしない）と開発用ヘッダ
+- [x] D3 Mac: run のデータ層（EventSource → reducer → `Turn`）と vitest
+- [x] D4 Mac: チャット画面（Composer・Messages・ToolSteps・AnswerFooter・引用・右パネル）— R34
+- [x] D5 Mac: サイドバー（スレッド一覧・新規・切替・名前変更・ピン・削除）— R36
+- [x] D6 Mac: 再接続（active-run・Last-Event-ID）・取消・再生成・質問の編集 — R35
 
 ## E. 評価
 

@@ -1,1 +1,306 @@
 @import "tailwindcss";
+
+@plugin "@tailwindcss/typography";
+
+/* ── Class-based dark mode (the workspace toggles `.theme-dark` on root) ── */
+@custom-variant dark (&:where(.theme-dark, .theme-dark *));
+
+/* ── Design tokens exposed to Tailwind utilities ──────────────────────────
+   Semantic colors map to runtime CSS variables that the theme classes swap.
+   This lets utilities like `bg-surface`, `text-muted`, `border-divider`,
+   `bg-accent` automatically follow the active theme + the user-picked accent. */
+@theme inline {
+  /* CJK は自前ホストの webfont を先頭に置き、OS/プラットフォームに依らず同じ字面を出す（layout.tsx で
+     import）。zh=MiSans / ja=Noto Sans JP を言語別に当てる（下部 html:lang()）。いずれも実ウェイトの
+     静的カット（400/500/600/700）を unicode-range サブセットで配信するため、可変フォント補間に由来する
+     字重ムラは出ない。webfont 未読込/失敗時は地域標準書体(PingFang SC / Hiragino Sans 等)へ
+     フォールバックする（既定は簡体優先）。 */
+  --font-cjk: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Yu Gothic UI", "Noto Sans CJK JP", sans-serif;
+  /* 英数字は自前ホストの Inter を先頭に置き、数字・日付・ラベルを精緻かつクロスプラットフォーム一貫で描く
+     （CJK は後続の地域書体へ自動フォールバック＝Latin-first × CJK-fallback）。「测算」UI の数値の可読性に効く。 */
+  --font-sans: "Inter", -apple-system, "Segoe UI", var(--font-cjk), system-ui, sans-serif;
+  /* 等宽は拉丁/数字を SF Mono で精緻に揃えるが、CJK 字形は SF Mono に無い。末尾の generic
+     `monospace` に落とすと OS 任せの未管理 CJK 回退になり（PingFang 指定も font-synthesis:none も
+     html:lang() 切替も全て無視され）字重がムラになる。var(--font-cjk) を挟み、CJK だけは sans と
+     同じ受管ネイティブ書体（zh=PingFang / ja=Hiragino）へ回す。 */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, var(--font-cjk), monospace;
+
+  /* The shell switches column layout at these widths (tablet → overlay drawer,
+     wide → full 3-column). `tablet:` ≥769px, `wide:` ≥1181px. */
+  --breakpoint-tablet: 769px;
+  --breakpoint-wide: 1181px;
+
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-elev: var(--surface-elev);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-divider: var(--divider);
+  --color-divider-strong: var(--divider-strong);
+  --color-bubble-user: var(--bubble-user);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-code-bg: var(--code-bg);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-glow: var(--accent-glow);
+
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-e3: var(--shadow-3);
+}
+
+/* ── Theme palettes ─────────────────────────────────────────────────────── */
+.theme-light {
+  --bg: #faf8f3;
+  --bg-2: #f4f1ea;
+  --surface: #ffffff;
+  --surface-2: #fbf9f4;
+  --surface-elev: #ffffff;
+  --fg: #1f1b16;
+  --fg-2: #2e2a23;
+  --muted: #7a736b;
+  --muted-2: #9a938b;
+  --divider: rgba(31, 27, 22, 0.08);
+  --divider-strong: rgba(31, 27, 22, 0.14);
+  --bubble-user: #efeae0;
+  /* 誤り・取消・危険操作（旧版のハードコード #B83A1F をトークン化） */
+  --danger: #b83a1f;
+  --danger-soft: #fdefea;
+  --code-bg: #f1ecdf;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.07);
+  --shadow-3: 0 14px 40px rgba(0, 0, 0, 0.12);
+}
+
+.theme-dark {
+  --bg: #16151a;
+  --bg-2: #1b1a20;
+  --surface: #1f1e24;
+  --surface-2: #25232b;
+  --surface-elev: #2a2832;
+  --fg: #eeeae0;
+  --fg-2: #dad5c9;
+  --muted: #8e8a85;
+  --muted-2: #5e5b57;
+  --divider: rgba(255, 255, 255, 0.07);
+  --divider-strong: rgba(255, 255, 255, 0.13);
+  --bubble-user: #2c2a33;
+  /* 深色では明るめにしてコントラストを確保する（#B83A1F は 2.89:1 で不足） */
+  --danger: #f2876b;
+  --danger-soft: rgba(184, 58, 31, 0.18);
+  --code-bg: #15141a;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 14px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Accent is user-selectable; default = terracotta. Soft/glow derived via color-mix
+   so a single --accent change updates every tinted surface. */
+:root {
+  --accent: #d97757;
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 25%, transparent);
+  /* Secondary decorative glow for the login backdrop (set per-accent at runtime). */
+  --accent-alt-glow: color-mix(in srgb, #3fa77e 30%, transparent);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    height: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    /* CJK はフォールバックフォントに 500/600 の実ウェイトが無いことが多く、
+       合成太字(faux bold)で字ごとに太さがちぐはぐになる。合成を切り実ウェイトのみ使う。 */
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    color: var(--fg);
+    background: var(--bg);
+    /* standalone PWA でのラバーバンド/引っ張り更新を防ぐ（シェルは h-dvh + overflow-hidden） */
+    overscroll-behavior-y: none;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    padding: 0.05em 0.4em;
+    border: 0.5px solid var(--divider-strong);
+    border-radius: 5px;
+    background: var(--surface-2);
+    color: var(--fg-2);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  /* Custom scrollbars matching the surface */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--divider-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--divider-strong);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-2);
+    background-clip: content-box;
+  }
+}
+
+/* ── Keyframes (referenced via animate-* utilities below) ───────────────── */
+@keyframes ar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ar-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ar-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes ar-hl-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes ar-toast-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes ar-fade-up {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes ar-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ar-scale-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes ar-pop-in {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+/* 取数レールの不定進捗：総数未知の間だけ、ハイライトを左右にスキャンさせる */
+@keyframes ar-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@theme {
+  --animate-spin-fast: ar-spin 0.7s linear infinite;
+  --animate-blink: ar-blink 1s step-end infinite;
+  --animate-soft-pulse: ar-pulse 1.4s ease-in-out infinite;
+  --animate-hl-pulse: ar-hl-pulse 1.6s ease-out;
+  --animate-toast-in: ar-toast-in 0.24s cubic-bezier(0.3, 0.7, 0.4, 1);
+  --animate-overlay-in: ar-overlay-in 0.16s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  --animate-fade-up: ar-fade-up 0.3s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  --animate-scale-in: ar-scale-in 0.18s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  --animate-pop-in: ar-pop-in 0.16s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  --animate-scan: ar-scan 1.3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Utility: tabular numerals for metrics/timers */
+@utility nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ドキュメント本文のスクリーンショット画像。背景に溶けないよう枠線・角丸・影を付与し、
+   直後の斜体だけの段落をキャプションとして中央寄せ・小さめに見せる。
+   remark は画像も斜体もそれぞれ独立した <p> に包むため :has() で隣接段落を狙う。 */
+.prose img {
+  border: 0.5px solid var(--divider-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-2);
+}
+.prose p:has(> img:only-child) {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+.prose p:has(> img:only-child) + p:has(> em:only-child) {
+  margin-top: 0;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+.prose p:has(> img:only-child) + p:has(> em:only-child) > em {
+  font-style: normal;
+}

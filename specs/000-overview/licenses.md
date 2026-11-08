@@ -51,6 +51,11 @@
 | openapi-typescript / openapi-fetch | npm | 7.13.0 / 0.17.0 | MIT | 2026-11-08 | https://www.npmjs.com/package/openapi-typescript |
 | storybook / vitest | npm | 10.6.6 / 5.1.0 | MIT | 2026-11-08 | https://www.npmjs.com/package/storybook |
 | @playwright/test | npm | 1.65.0 | Apache-2.0 | 2026-11-08 | https://www.npmjs.com/package/@playwright/test |
+| clsx / tailwind-merge（旧版 UI から移植） | npm | 2.1.1 / 3.7.0 | MIT | 2026-11-09 | https://www.npmjs.com/package/tailwind-merge |
+| react-markdown / remark-gfm / remark-math / rehype-katex | npm | 10.1.0 / 4.0.1 / 6.0.0 / 7.0.1 | MIT | 2026-11-09 | https://github.com/remarkjs/react-markdown |
+| katex / mermaid（回答中の数式・図） | npm | 0.16.47 / 11.17.2 | MIT | 2026-11-09 | https://github.com/mermaid-js/mermaid |
+| @fontsource/inter / @fontsource/noto-sans-jp（フォント同梱） | npm | 5.3.0 / 5.3.1 | OFL-1.1 | 2026-11-09 | https://fontsource.org/fonts/noto-sans-jp |
+| @tailwindcss/typography（開発のみ） | npm | — | MIT | 2026-11-09 | https://www.npmjs.com/package/@tailwindcss/typography |
 | PostgreSQL | コンテナ | 17 系 | PostgreSQL | 2026-11-08 | https://www.postgresql.org/about/licence/ |
 | Qdrant | コンテナ | v1.20.0 | Apache-2.0 | 2026-11-08 | https://github.com/qdrant/qdrant |
 | Redis（RSALv2 を選択） | コンテナ | 8.10.3 | RSALv2 | 2026-11-08 | https://redis.io/legal/licenses/ |

@@ -1,0 +1,223 @@
+export const modals = {
+  // 言語切替（既存、維持）
+  languageLabel: "言語",
+  languageHint: "UI と回答の言語",
+  languageSwitchTitle: "言語を切り替える",
+  languageSwitchDesc: "言語を切り替えるとページが再読み込みされます。続けますか？",
+
+  // ===== settings-modal =====
+  settingsTitle: "設定",
+
+  navModel: "モデル",
+  navSources: "データソース",
+  navAgent: "エージェント挙動",
+  navAppearance: "外観",
+  navSecurity: "セキュリティ",
+  navAccount: "アカウント",
+
+  modelUnavailable: "未設定",
+  modelUnavailableHint: "このモデルは API キーが未設定のため利用できません。管理者にお問い合わせください。",
+  modelPrivacyNote:
+    "プロンプト・回答はログに保存されますが、モデル提供元に利用・または学習されることがありません。",
+
+  agentMaxStepsLabel: "最大検索ラウンド数",
+  agentMaxStepsHint: "回答前に実行できる資料検索の最大ラウンド数です。複雑な質問では値を上げると完了しやすくなります。低すぎる場合は、回答できない理由を表示します。",
+  agentParallelToolsLabel: "並列ツール実行",
+  agentParallelToolsHint: "同時に走らせるツール数",
+  agentRequireCitationsLabel: "引用の必須化",
+  agentRequireCitationsHint: "回答中の各事実に引用を付けることを強制",
+  agentAdmitUnknownLabel: '未知の場合に "わからない" と返す',
+  agentMultiHopLabel: "多ホップ検索",
+  agentMultiHopHint: "決定論的テキスト PRF 多ホップ。hop-1 のヒットでクエリを補強してもう一度検索し、マルチホップ型の問いの再現率を上げる（有効時は検索コストが約2倍）",
+  agentVerifyLabel: "根拠検証と訂正",
+  agentVerifyHint: "回答後に各主張が出典で裏付けられるか逐一検証し、未裏付け内容を自動訂正する。品質は上がるが応答時間が大きく増える。オフにすると応答が速くなる（検証・訂正は行わない）",
+  agentTopKLabel: "返却チャンク数",
+  agentTopKHint: "リランク後に回答へ渡す最終チャンク数（top_k）",
+  agentCandidateKLabel: "候補プール件数",
+  agentCandidateKHint: "ベクトル/キーワード検索それぞれの候補件数（candidate_k）。多いほど再現率は上がるが遅くなる",
+
+  appearanceDarkModeLabel: "ダークモード",
+  appearanceDarkModeHint: "目に優しい暗い配色に切り替えます",
+  appearanceAccentColorLabel: "アクセントカラー",
+  appearanceToolViewLabel: "ツール実行の表示",
+  appearanceToolViewHint: "エージェントのツール呼び出しの見せ方",
+  appearanceToolViewCard: "カード（折りたたみ）",
+  appearanceToolViewTimeline: "タイムライン",
+  appearanceToolViewLog: "ターミナル風ログ",
+  appearanceShowReasoningLabel: "推論過程を表示",
+  appearanceShowReasoningHint: "ツール活動内にモデルの推論過程（reasoning）を表示する。既定はオフ。表示のみに影響し生成は変えない",
+  appearanceDensityLabel: "情報密度",
+  appearanceDensityCompact: "コンパクト",
+  appearanceDensityComfy: "快適",
+  appearanceCitationStyleLabel: "引用スタイル",
+  appearanceCitationStyleNumbered: "上付き番号",
+  appearanceCitationStyleChip: "[N] チップ",
+  appearanceCitationStylePill: "ピル形",
+
+  securityJwtTitle: "現在のJWT (デコード)",
+  securityCopyBtn: "コピー",
+  securityCopiedBtn: "コピーしました",
+  securityClaimsLoading: "// セッションを読み込み中…",
+  securityTokenExpiryLabel: "トークン有効期限",
+  securityTokenExpiryHint: "exp 到達時に自動で再ログインが必要になります",
+  securityTokenRemainingFormat: "{lifetime} (残り {remaining})",
+  securityTokenExpired: "期限切れ",
+  securityTokenLifetimeHours: "{h}時間",
+  securityRememberTokenLabel: "Refresh Token を保存",
+  securityRememberTokenHint:
+    "ON: ブラウザを閉じても 30 日間サインインを保持 / OFF: 終了で破棄",
+  securityRevokeAllBtn: "全デバイスでサインアウト",
+  securityRevokingBtn: "サインアウト中…",
+
+  // アクティブセッション一覧（jti = サインインしている各デバイス）
+  securitySessionsTitle: "アクティブセッション",
+  securitySessionsLoading: "読み込み中…",
+  securitySessionsEmpty: "他のアクティブセッションはありません。",
+  securitySessionsCurrentBadge: "現在",
+  securitySessionsCurrentBrowser: "このブラウザ",
+  /** 直近の活動を相対時刻で表示する文言。{relative} は Intl.RelativeTimeFormat の出力（例: "3 分前"）。 */
+  securitySessionsLastSeen: "最終アクティブ {relative}",
+  /** last_seen_at が無い行（旧スキーマ or 未検証）のフォールバック。{relative} はサインイン時刻からの相対表現。 */
+  securitySessionsIssuedAt: "サインイン {relative}",
+  securitySessionsRevokeOthersBtn: "他のデバイスからサインアウト",
+  securitySessionsRevokeOthersBusy: "処理中…",
+  securitySessionsRevokeBtn: "サインアウト",
+  securitySessionsRevokeBusy: "サインアウト中…",
+  securitySessionsConfirmCurrentTitle: "このデバイスからサインアウト",
+  securitySessionsConfirmCurrentBody: "サインアウト後は再ログインが必要になります。続行しますか？",
+  securitySessionsUnknownDevice: "不明なデバイス",
+
+  accountDisplayNameLabel: "表示名",
+  accountLanguageLabel: "言語",
+
+  // ===== help-modal =====
+  helpAriaLabel: "ARag ヘルプ",
+  helpVersion: "v2.4 · ヘルプ",
+
+  helpTabOverview: "概要",
+  helpTabWorkflow: "基本の流れ",
+  helpTabFeatures: "主要機能",
+  helpTabShortcuts: "ショートカット",
+  helpTabTips: "うまく使うコツ",
+
+  helpDocs: "ドキュメント",
+  helpContactSupport: "サポートに連絡",
+
+  overviewHeroTag: "AGENTIC RAG",
+  overviewHeroTitle: "社内ナレッジに、エージェントの目で。",
+  overviewHeroBody:
+    "ARag は <strong>エージェント型 RAG アシスタント</strong> です。アップロードした文書を解析・チャンク化・ベクトル化してナレッジベースに取り込み、質問に対しては自らクエリ分解・ハイブリッド検索（ベクトル＋キーワード）・リランクを行い、複数ステップで情報源を辿って<strong>引用付きの根拠ある回答</strong>を生成します。",
+  overviewStatDocs: "索引済みドキュメント",
+  overviewStatSources: "接続データソース",
+  overviewStatLastSync: "最終更新",
+  overviewCard01Title: "基本の流れ",
+  overviewCard01Desc: "質問 → エージェント実行 → 引用付き回答までの3ステップ。",
+  overviewCard02Title: "主要機能",
+  overviewCard02Desc: "スコープ・添付・ツール可視化・引用パネル・共有の使い方。",
+  overviewCard03Title: "ショートカット",
+  overviewCard03Desc: "⌘N / ⌘K / ⌘B など、手を止めずに操作するためのキー。",
+  overviewCard04Title: "うまく使うコツ",
+  overviewCard04Desc: "質問の書き方・精度を上げる小ワザ・避けたい使い方。",
+
+  workflowLead: "ARag は <strong>3つのフェーズ</strong> で動きます。各フェーズはすべて画面上で可視化され、いつでも介入できます。",
+  workflowStep01Title: "質問を入力する",
+  workflowStep01Body:
+    "画面下のコンポーザーに自然文で質問を入力します。「いつ」「誰が」「なぜ」など5W1Hを含めると精度が上がります。",
+  workflowStep01Hint:
+    "左のスコープピッカーで対象範囲（全社・プロジェクト・特定部門）を絞り込めます。",
+  workflowStep02Title: "エージェントが情報源を辿る",
+  workflowStep02Body:
+    "クエリ埋め込み → ベクトル検索＋キーワード検索（ハイブリッド検索）→ リランキング → 近傍拡張、と進み、必要に応じて原文を取得してから回答を生成する、複数ステップで動作します。途中経過はツール実行カードでリアルタイムに確認できます。",
+  workflowStep02Hint: "誤った方向に進んだら ⌘⌫ または停止ボタンで即座にキャンセル可能。",
+  workflowStep03Title: "引用付きの回答を受け取る",
+  workflowStep03Body:
+    "回答中の番号 [1] [2] が一次資料への引用です。クリックすると右パネルで該当セクションがハイライトされ、根拠を確認できます。",
+  workflowStep03Hint:
+    "👍/👎 でフィードバック、コピー・再生成・Markdown エクスポートにも対応。",
+
+  featuresLead: "ARag の各機能は <strong>少ない操作で深く掘る</strong> ことを目的に設計されています。",
+  featScopeTitle: "検索範囲のスコープ",
+  featScopeBody:
+    "コンポーザー左のピッカーから「全社」「プロジェクト単位」「データソース指定」など対象を絞り込めます。広すぎる範囲はノイズの原因に。まずは狭く始めて広げるのがおすすめ。",
+  featAttachTitle: "ファイル添付",
+  featAttachBody:
+    "PDF・Word・スプレッドシート・画像をドラッグ＆ドロップで質問に添付できます。「この資料の要点をまとめて」「決定事項を抽出して」など、添付ファイル前提の質問にそのまま対応。",
+  featStepsTitle: "ツール実行の可視化",
+  featStepsBody:
+    "各ステップ（クエリ分解・検索・取得・要約）がカードで表示されます。Tweaks パネルから「カード」「タイムライン」「ターミナル風ログ」の3表示に切り替え可能。",
+  featCiteTitle: "引用と一次資料パネル",
+  featCiteBody:
+    "回答中の [1] [2] をクリックすると右パネルが開き、該当箇所がハイライトされます。一次資料はそのままダウンロード・新規タブで閲覧・共有リンクで配布できます。",
+  featThreadTitle: "スレッド管理",
+  featThreadBody:
+    "過去の質問はサイドバーから即座に再オープン。検索ボックスで履歴を絞り込み、スターでピン留めできます。ナレッジベース（個人/共有）もサイドバーから直接開けます。",
+  featShareTitle: "共有とエクスポート",
+  featShareBody:
+    "スレッド全体を Markdown でエクスポート、または共有リンクを生成。リンクには 3 段階のアクセス権限（自分のみ / 社内 / リンクを知る全員）があり、同一スレッドの URL は不変。「自分のみ」に戻せば共有を停止できます。",
+
+  shortcutsLead: "<strong>⌘</strong> は macOS、Windows / Linux では <strong>Ctrl</strong> に読み替えてください。",
+  shortcutsGroupBasic: "基本操作",
+  shortcutsNewThread: "新規スレッドを開く",
+  shortcutsOpenSettings: "設定を開く",
+  shortcutsToggleSidebar: "サイドバーを開閉",
+  shortcutsOpenSidebar: "サイドバーを開く",
+  shortcutsCloseModal: "モーダル / パネルを閉じる",
+  shortcutsGroupRunning: "実行中",
+  shortcutsStopAgent: "エージェントの実行を停止",
+  shortcutsSend: "質問を送信",
+  shortcutsNewline: "コンポーザーで改行",
+  shortcutsGroupAnswer: "回答",
+  shortcutsCopyAnswer: "回答をコピー（フォーカス時）",
+  shortcutsRegenerate: "回答を再生成",
+  shortcutsJumpCitation: "引用 [N] にジャンプ",
+
+  tipsLead: "質問の書き方ひとつで、エージェントの体感速度と精度は大きく変わります。",
+  tipDo01Title: "具体的な制約を含める",
+  tipDo01Body:
+    "「2024年Q3の」「営業部門の」など期間・主体・対象を明示すると、エージェントが検索範囲を絞れます。",
+  tipDo02Title: "複数の質問は分割する",
+  tipDo02Body:
+    "「Aの背景と、Bの今後の方針」のような複合質問は精度が下がります。スレッドを分けるか、順番に聞きましょう。",
+  tipDo03Title: "略語は展開する",
+  tipDo03Body:
+    "社内特有の略語（例: PJK, OKR-Q3）は初出で展開すると、エージェントが正しい索引にヒットしやすくなります。",
+  tipDont01Title: "機密情報の社外共有",
+  tipDont01Body:
+    "「リンクを知る全員」を選ぶと社外の誰でも閲覧でき、共有されるのは対話の原文です（マスク処理はされません）。機密スレッドを共有する前に、アクセス権限が適切か確認してください。",
+  tipDont02Title: "広すぎるスコープ",
+  tipDont02Body:
+    "常に「全社」で検索するとノイズが増えます。プロジェクト / 部門単位に絞ると速度も精度も向上します。",
+  tipDont03Title: "回答の鵜呑み",
+  tipDont03Body:
+    "エージェントは引用元を示しますが、解釈は必ず一次資料で確認してください。👎 フィードバックは改善に反映されます。",
+  tipsTryTitle: "まずは試してみる",
+  tipsTryDesc: "空のスレッドにあるサジェスト質問から、エージェントの動きを体感できます。",
+  tipsTryNewThread: "で新規スレッド",
+
+  // ===== share-modal =====
+  shareItemTitle: "資料を共有",
+  shareThreadTitle: "スレッドを共有",
+  shareAccessLabel: "アクセス権限",
+  sharePermPrivateLabel: "自分のみ",
+  sharePermPrivateDesc: "リンクを知っていてもアクセスできません",
+  sharePermTeamLabel: "社内 (ARag, Inc.)",
+  sharePermTeamDesc: "ログインしている社員のみ",
+  sharePermLinkLabel: "リンクを知っている人",
+  sharePermLinkDesc: "社外でも閲覧可能",
+  shareCopyBtn: "コピー",
+  shareCopiedBtn: "コピー済",
+  shareCancelBtn: "キャンセル",
+  shareCopyAndCloseBtn: "リンクをコピーして閉じる",
+  shareLinkDisabled: "非公開の会話はリンクを生成しません",
+  shareSaveFirst: "会話を保存してから共有してください",
+  shareUpdateFailed: "アクセス権限の更新に失敗しました",
+
+  // ===== confirm-modal =====
+  confirmDefaultLabel: "OK",
+  cancelDefaultLabel: "キャンセル",
+
+  // ===== work-calendar-modal =====
+  workCalendarTitle: "稼働日カレンダー",
+  workCalendarSubtitle: "法定祝休日・調休補班（週末出勤）· 閲覧のみ",
+  workCalendarUnavailable: "カレンダーを読み込めませんでした。時間をおいて再試行してください",
+};

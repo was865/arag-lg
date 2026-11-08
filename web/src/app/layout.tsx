@@ -1,16 +1,65 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/constants";
+import { getDictionary } from "@/i18n/dictionary";
+import { LocaleProvider } from "@/i18n/context";
+import { ToastProvider } from "@/components/feedback/toast-provider";
+// 自前ホストの書体（Latin/数字 = Inter、日本語 = Noto Sans JP）。実ウェイトのみ読み込む。
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-700.css";
+import "@fontsource/noto-sans-jp/400.css";
+import "@fontsource/noto-sans-jp/500.css";
+import "@fontsource/noto-sans-jp/600.css";
+import "@fontsource/noto-sans-jp/700.css";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 
-// フォント（Inter + Noto Sans JP）と旧版のデザイントークンは P4 の UI 移植で入れる。
 export const metadata: Metadata = {
   title: "ARag",
   description: "社内文書に根拠を持って答えるナレッジアシスタント",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "ARag" },
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
+
+/* 保存済みのテーマとアクセント色を初回描画の前に当てる（ちらつき防止）。 */
+const themeBootstrap = `
+(function () {
+  var dark = false;
+  try {
+    var raw = localStorage.getItem('${THEME_STORAGE_KEY}');
+    var t = raw ? JSON.parse(raw) : {};
+    dark = !!t.dark;
+    var el = document.documentElement;
+    el.classList.add(dark ? 'theme-dark' : 'theme-light');
+    if (t.accent) el.style.setProperty('--accent', t.accent);
+  } catch (e) {
+    document.documentElement.classList.add('theme-light');
+  }
+  var meta = document.createElement('meta');
+  meta.name = 'theme-color';
+  meta.content = dark ? '${THEME_COLOR_DARK}' : '${THEME_COLOR_LIGHT}';
+  document.head.appendChild(meta);
+})();
+`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ja" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
+      <body>
+        <LocaleProvider locale="ja" dict={getDictionary()}>
+          <ToastProvider>{children}</ToastProvider>
+        </LocaleProvider>
+      </body>
     </html>
   );
 }
