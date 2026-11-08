@@ -11,10 +11,10 @@
 - [x] A6 Mac: `write_audit`（test_audit）— R36
 
 ## B. KB・フォルダ・権限
-- [ ] B1 Mac: 権限の純関数（個人/全社 × owner/admin/member × read/write/purge の表駆動テスト）— R4〜R6・R34
-- [ ] B2 Mac: 個人 KB の自動作成（integration: 並行 10 要求で 1 件）— R3
-- [ ] B3 Mac: KB API（作成・名前変更・アーカイブ・削除・復元、権限外は 404）— R4〜R6
-- [ ] B4 Mac: フォルダ API（同名 409・循環移動 400・削除の再帰・復元で祖先も復活）— R32・R33
+- [x] B1 Mac: 権限の純関数（個人/全社 × owner/admin/member × read/write/purge の表駆動テスト）— R4〜R6・R34
+- [x] B2 Mac: 個人 KB の自動作成（integration: 並行 10 要求で 1 件）— R3
+- [x] B3 Mac: KB API（作成・名前変更・アーカイブ・削除・復元、権限外は 404）— R4〜R6
+- [x] B4 Mac: フォルダ API（同名 409・循環移動 400・削除の再帰・復元で祖先も復活）— R32・R33
 
 ## C. アップロード
 - [ ] C1 Mac: 形式判定と上限（415 / 413）— R11

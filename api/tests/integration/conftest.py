@@ -2,9 +2,10 @@
 
 import os
 import subprocess
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterable, Iterator
 from pathlib import Path
 
+import httpx
 import psycopg
 import pytest
 from sqlalchemy import text
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.db.models import Base
+from arag.main import create_app
 from arag.settings import Settings
 
 API_DIR = Path(__file__).resolve().parents[2]
@@ -57,3 +59,39 @@ async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
 @pytest.fixture
 def sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return make_sessionmaker(engine)
+
+
+class RecordingSync:
+    """payload 同期の呼び出しを記録する偽物。"""
+
+    def __init__(self) -> None:
+        self.calls: list[set[str]] = []
+
+    async def sync(self, content_hashes: Iterable[str]) -> None:
+        self.calls.append(set(content_hashes))
+
+
+@pytest.fixture
+def payload_sync() -> RecordingSync:
+    return RecordingSync()
+
+
+@pytest.fixture
+async def client(
+    engine: AsyncEngine, database_url: str, tmp_path: Path, payload_sync: RecordingSync
+) -> AsyncIterator[httpx.AsyncClient]:
+    settings = Settings(database_url=database_url, storage_dir=str(tmp_path / "storage"), auth_mode="dev")
+    app = create_app(settings=settings, checks=[], payload_sync=payload_sync)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
+    await app.state.engine.dispose()
+
+
+def as_user(user_id: str, role: str = "member") -> dict[str, str]:
+    return {"X-Dev-User-Id": user_id, "X-Dev-Role": role}
+
+
+ADMIN = as_user("admin1", "admin")
+ALICE = as_user("alice")
+BOB = as_user("bob")

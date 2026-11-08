@@ -1,10 +1,15 @@
 """ルーターが使う共通の依存関数。"""
 
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Annotated
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from arag.audit import AuditEvent, write_audit
+from arag.auth.principal import CurrentPrincipal, Principal
+from arag.kb.sync import PayloadSync
 from arag.settings import Settings
 from arag.storage import Storage
 
@@ -25,4 +30,39 @@ def get_storage(request: Request) -> Storage:
 
 
 def request_id_of(request: Request) -> str | None:
-    return request.headers.get("x-request-id")
+    # RequestIdMiddleware が scope["state"] に入れた値（受信ヘッダが不正なら採番済み）
+    rid: str | None = getattr(request.state, "request_id", None)
+    return rid
+
+
+@dataclass(frozen=True, slots=True)
+class Ctx:
+    """ルーターで毎回使う組（利用者・DB・監査用の要求情報）。"""
+
+    principal: Principal
+    session: AsyncSession
+    request_id: str | None
+    ip: str | None
+    payload_sync: PayloadSync
+
+    async def audit(self, event: AuditEvent) -> None:
+        await write_audit(
+            self.session, event, principal=self.principal, request_id=self.request_id, ip=self.ip
+        )
+
+
+async def get_ctx(
+    request: Request,
+    principal: CurrentPrincipal,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Ctx:
+    return Ctx(
+        principal=principal,
+        session=session,
+        request_id=request_id_of(request),
+        ip=request.client.host if request.client else None,
+        payload_sync=request.app.state.payload_sync,
+    )
+
+
+CtxDep = Annotated[Ctx, Depends(get_ctx)]
