@@ -16,6 +16,7 @@ class SearchConfig:
     weights: tuple[float, float] = (1.0, 1.0)  # dense, sparse
     rerank_enabled: bool = True
     rerank_input: RerankInput = "context+text"
+    rerank_max_chars: int = 0  # rerank 入力の文字数上限（0 は上限なし）
 
     @classmethod
     def from_settings(cls, s: Settings) -> "SearchConfig":
@@ -28,6 +29,7 @@ class SearchConfig:
             weights=(w[0], w[1]),
             rerank_enabled=s.rerank_enabled,
             rerank_input=s.rerank_input,
+            rerank_max_chars=s.rerank_max_chars,
         )
 
     def with_(self, **kw: Any) -> "SearchConfig":

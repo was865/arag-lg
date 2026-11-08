@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     rerank_enabled: bool = True
     rerank_input: Literal["context+text", "text"] = "context+text"
     rerank_timeout_sec: float = 10.0
+    # rerank のモデル名（ARAG_TEI_RERANK_URL の TEI が載せているもの。記録用。specs/004-retrieval report §4）
+    rerank_model: str = "cl-nagoya/ruri-v3-reranker-310m"
+    # rerank 入力（文脈 + 本文）の文字数上限。長い英語文書で所要時間が延びるのを抑える（0 は上限なし）
+    rerank_max_chars: int = 0
     ingest_max_retries: int = 3
     ingest_concurrency: int = 2
     trash_retention_days: int = 30

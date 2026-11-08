@@ -37,4 +37,4 @@
   - 文脈は GPU 機の Qwen3-8B で付け直して比較（report.md §5）。rerank は ruri-v3-reranker-310m に決定
 - [x] D3 E3: 所要時間の測定（p50 / p95）、必要なら `candidate_k` を調整
 - [x] D4 結果を `specs/004-retrieval/report.md` にまとめる
-- [ ] D5 rerank の既定を ruri-v3-reranker-310m に切り替える: `compose.gpu.yaml` の既定 reranker、`eval/variants.yaml` の対応、基準値の保存し直し。SciFact の p50 超過に備えて rerank 入力の文字数上限を検討
+- [x] D5 rerank の既定を ruri-v3-reranker-310m に切り替える: `compose.gpu.yaml` の既定 reranker、`eval/variants.yaml` の対応、基準値の保存し直し。SciFact の p50 超過に備えて rerank 入力の文字数上限を検討

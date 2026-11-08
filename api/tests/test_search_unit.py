@@ -112,3 +112,27 @@ async def test_rerank_empty_input_makes_no_request() -> None:
         raise AssertionError
 
     assert await _reranker(handler).rerank("q", []) == []
+
+
+def test_rerank_text_max_chars() -> None:
+    """rerank 入力の文字数上限（長い英語文書で所要時間を抑える）。0 は上限なし。"""
+    from types import SimpleNamespace
+
+    from arag.search.service import _rerank_text
+
+    ch = SimpleNamespace(context="文脈", text="x" * 100)
+    assert _rerank_text(ch, SearchConfig()) == "文脈\n\n" + "x" * 100  # type: ignore[arg-type]
+    capped = _rerank_text(ch, SearchConfig(rerank_max_chars=10))  # type: ignore[arg-type]
+    assert capped == "文脈\n\nxxxxxx" and len(capped) == 10
+    assert _rerank_text(ch, SearchConfig(rerank_input="text", rerank_max_chars=5)) == "xxxxx"  # type: ignore[arg-type]
+
+
+def test_rerank_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    from arag.search.service import build_search_deps
+    from arag.settings import Settings
+
+    s = Settings(_env_file=None, tei_rerank_url="http://tei", rerank_max_chars=1500)  # type: ignore[call-arg]
+    assert s.rerank_model == "cl-nagoya/ruri-v3-reranker-310m"
+    assert SearchConfig.from_settings(s).rerank_max_chars == 1500
+    deps = build_search_deps(s, client=None)  # type: ignore[arg-type]
+    assert deps.reranker is not None and deps.reranker.model == "cl-nagoya/ruri-v3-reranker-310m"

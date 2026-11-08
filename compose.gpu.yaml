@@ -1,9 +1,12 @@
 # GPU 機（Windows + RTX 4090、Docker Desktop + WSL2）で推論サービスだけを起動する。
 #   docker compose -f compose.gpu.yaml up -d
-# Mac 側の .env で ARAG_TEI_EMBED_URL=http://<GPU機>:8081 / ARAG_TEI_RERANK_URL=http://<GPU機>:8082 を指定する。
+# Mac 側の .env で ARAG_TEI_EMBED_URL=http://<GPU機>:8081 / ARAG_TEI_RERANK_URL=http://<GPU機>:8084 を指定する。
+# rerank の既定は ruri-v3-reranker-310m（:8084、specs/004-retrieval report §4）。ポートの意味は変えない
+#   （:8082 は bge-reranker-v2-m3 のまま比較用に回した）。
 # イメージ 89-* は Ada Lovelace（RTX 40 系, sm_89）用。
 # docling-serve（解析、:5001）も同じファイルで起動する。Mac 側の .env で ARAG_DOCLING_URL=http://<GPU機>:5001
-# ruri（比較用）は profile で別起動: docker compose -f compose.gpu.yaml --profile ruri up -d
+# 比較用（ruri-v3-310m 埋め込み :8083・bge-reranker-v2-m3 :8082）は profile で別起動:
+#   docker compose -f compose.gpu.yaml --profile compare up -d
 name: arag-gpu
 
 x-gpu: &gpu
@@ -24,29 +27,31 @@ services:
     volumes: [tei-cache:/data]
     restart: unless-stopped
 
+  # 比較用（2026-11-08 までの既定）
   tei-rerank:
     <<: *gpu
+    profiles: [compare]
     image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
-    command: ["--model-id", "${TEI_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}"]
+    command: ["--model-id", "BAAI/bge-reranker-v2-m3"]
     ports: ["8082:80"]
     volumes: [tei-cache:/data]
     restart: unless-stopped
 
-  # 比較候補（specs/002-tei-verification）。接頭辞「検索クエリ: 」「検索文書: 」はアプリ側で付ける
+  # 埋め込みの比較候補（specs/002-tei-verification）。接頭辞「検索クエリ: 」「検索文書: 」はアプリ側で付ける
   tei-embed-ruri:
     <<: *gpu
-    profiles: [ruri]
+    profiles: [compare]
     image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
     command: ["--model-id", "cl-nagoya/ruri-v3-310m", "--max-batch-tokens", "16384"]
     ports: ["8083:80"]
     volumes: [tei-cache:/data]
     restart: unless-stopped
 
+  # rerank の既定。別モデルにするときは TEI_RERANK_MODEL と Mac 側の ARAG_RERANK_MODEL を合わせる
   tei-rerank-ruri:
     <<: *gpu
-    profiles: [ruri]
     image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
-    command: ["--model-id", "cl-nagoya/ruri-v3-reranker-310m"]
+    command: ["--model-id", "${TEI_RERANK_MODEL:-cl-nagoya/ruri-v3-reranker-310m}"]
     ports: ["8084:80"]
     volumes: [tei-cache:/data]
     restart: unless-stopped
@@ -64,6 +69,9 @@ services:
       - "--max-model-len=16384"
       - "--kv-cache-memory-bytes=2600M"
       - "--enable-prefix-caching"
+      # エージェントのツール呼び出し（specs/005-agent）
+      - "--enable-auto-tool-choice"
+      - "--tool-call-parser=hermes"
     ports: ["8090:8000"]
     ipc: host
     volumes: [hf-cache:/root/.cache/huggingface]

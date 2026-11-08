@@ -118,7 +118,23 @@ JQaRA の recall@5 が低いのは 1 問あたり正解文書が平均 5 件超�
 
 再索引でチャンク ID が変わると variant 用の別コレクションが古くなり、`no_context` の値が 0.250 / 0.006 になる事故があった。`run` の前に DB のチャンク ID とコレクションの点を照合し、ずれていれば止めるようにした（`variants.collection_drift`）。
 
-## 6. 補足
+## 6. rerank の切り替え後（D5、2026-11-09）
+
+`default` を ruri-v3-reranker-310m にして全題集を測り直し、基準値を保存し直した（旧既定は variant `bge_rerank`）。nDCG@10、p50 / p95 ms:
+
+| 題集 | default（ruri rerank） | bge_rerank | no_context | ruri_embed（埋め込みも ruri） | default の p50 / p95 |
+|---|---|---|---|---|---|
+| beir_scifact | 0.840 | 0.820 | 0.842 | 0.846 | 304 / 335 |
+| jqara | 0.830 | 0.699 | 0.819 | 0.842 | 147 / 172 |
+| jqara_en | 0.645 | 0.527 | 0.654 | 0.685 | 159 / 180 |
+| scifact_ja | 0.839 | 0.786 | 0.820 | 0.849 | 232 / 264 |
+| agentic_rag_demo / _ext | recall@5 1.0 | 1.0 | | | 96 / 112 |
+
+- 文脈の効果は rerank を変えても小さく、向きもまちまち（−0.009〜+0.019）。有効のまま。
+- **rerank 入力の文字数上限**（`ARAG_RERANK_MAX_CHARS`、variant `rerank_cap1000` / `rerank_cap2000`）: SciFact で 2000 字は nDCG −0.002・p50 −9 ms、1000 字は −0.018・−60 ms。日本語のチャンク（最大 512 トークン）にはほぼ効かない。既定は上限なし（0）。SciFact の p50 は測るたびに 292〜323 ms と揺れ、E3（300 ms）の境目にある（GPU 機で vLLM も同居するため）。超えが続くなら 2000 字にする。
+- GPU 機の `compose.gpu.yaml` は rerank の既定サービスを ruri（:8084）にし、bge（:8082）と ruri 埋め込み（:8083）を profile `compare` に回した。ポートの意味は変えていない。
+
+## 7. 補足
 
 - Qdrant の IDF（sparse の BM25）はコレクション全体で計算されるので、評価用 KB が同じコレクションに入ると本番の IDF も変わる。評価は開発環境だけで行う前提。
 - 入庫の所要時間: 並列 8 で約 30 件/分（LLM 文脈待ち）、32 で約 700 件/分（残高切れ後の見出し文脈のみ。LLM ありの実効値は未測定）。

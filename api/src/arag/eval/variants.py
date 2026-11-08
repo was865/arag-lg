@@ -22,6 +22,7 @@ from arag.search.service import SearchDeps
 from arag.settings import Settings
 
 DEFAULT_EMBED = "bge-m3"
+DEFAULT_RERANKER = "ruri-v3-reranker-310m"
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,8 @@ class Variant:
     rerank: bool = True
     rerank_input: str = "context+text"
     embed: str = DEFAULT_EMBED
-    reranker: str = "bge-reranker-v2-m3"
+    reranker: str = DEFAULT_RERANKER
+    rerank_max_chars: int = 0
     context: bool = True
     sparse_en_stem: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
@@ -68,6 +70,7 @@ class Variant:
             weights=self.weights,
             rerank_enabled=self.rerank,
             rerank_input=self.rerank_input,  # type: ignore[arg-type]
+            rerank_max_chars=self.rerank_max_chars,
         )
 
 

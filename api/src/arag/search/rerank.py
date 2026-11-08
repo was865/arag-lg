@@ -30,7 +30,7 @@ class TeiReranker:
         self,
         base_url: str,
         *,
-        model: str = "BAAI/bge-reranker-v2-m3",
+        model: str = "cl-nagoya/ruri-v3-reranker-310m",
         batch_size: int = 32,  # TEI の --max-client-batch-size 既定
         timeout_sec: float = 10.0,
         max_attempts: int = 3,

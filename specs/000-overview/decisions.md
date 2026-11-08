@@ -205,7 +205,7 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 |---|---|---|
 | 融合 | RRF k=60・重み dense:sparse = 1:1 | 重み 2 倍・DBSF との差は nDCG ±0.003 以内 |
 | rerank | 有効、入力は文脈 + 本文 | 外すと nDCG −0.042（SciFact）/ −0.115（JQaRA）/ −0.10〜−0.25（日英をまたぐ）。本文のみは −0.019 / −0.005 |
-| rerank モデル | **ruri-v3-reranker-310m**（Apache-2.0。切り替え作業は 004 tasks D5） | bge-reranker-v2-m3 より 4 題集すべてで上（JQaRA +0.131・SciFact +0.018・jqara_en +0.119・scifact_ja +0.053）。SciFact だけ p50 323 ms で E3 を超えるので rerank 入力の文字数上限で抑える |
+| rerank モデル | **ruri-v3-reranker-310m**（Apache-2.0。2026-11-09 切替済み。GPU 機 :8084、`ARAG_RERANK_MAX_CHARS` で入力上限） | bge-reranker-v2-m3 より 4 題集すべてで上（JQaRA +0.131・SciFact +0.018・jqara_en +0.119・scifact_ja +0.053）。SciFact だけ p50 323 ms で E3 を超えるので rerank 入力の文字数上限で抑える |
 | 埋め込み | bge-m3（ruri-v3-310m は候補） | rerank 後の差は単一言語 ±0.005、日英をまたぐと最大 +0.039（ruri_both）。全量再索引が要るので実文書の題集でも確かめてから決める |
 | 英語ステミング | 無効 | SciFact −0.018 |
 | candidate_k | 50 | E3（p50 ≤ 300 ms・p95 ≤ 800 ms）をほぼ満たす |

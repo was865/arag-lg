@@ -9,7 +9,7 @@ uv sync
 uv run pytest -q
 # bge（GPU 機で compose.gpu.yaml を起動済みとする）
 uv run python -m tei_verify --preset bge --embed-url http://localhost:8081 --rerank-url http://localhost:8082
-# ruri（--profile ruri で起動）
+# ruri（--profile compare で起動）
 uv run python -m tei_verify --preset ruri --embed-url http://localhost:8083 --rerank-url http://localhost:8084
 ```
 

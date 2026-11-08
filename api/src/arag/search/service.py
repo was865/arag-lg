@@ -250,8 +250,10 @@ async def _hydrate(session: AsyncSession, scope: Scope, cands: list[_Cand]) -> l
 def _rerank_text(chunk: Chunk | None, cfg: SearchConfig) -> str:
     assert chunk is not None
     if cfg.rerank_input == "context+text" and chunk.context:
-        return f"{chunk.context}\n\n{chunk.text}"
-    return chunk.text
+        text = f"{chunk.context}\n\n{chunk.text}"
+    else:
+        text = chunk.text
+    return text[: cfg.rerank_max_chars] if cfg.rerank_max_chars > 0 else text
 
 
 def _to_hit(rank: int, c: _Cand) -> SearchHit:
@@ -304,7 +306,9 @@ def build_search_deps(settings: Any, client: AsyncQdrantClient) -> SearchDeps:
         )
         if settings.tei_embed_url
         else None,
-        reranker=TeiReranker(settings.tei_rerank_url, timeout_sec=settings.rerank_timeout_sec)
+        reranker=TeiReranker(
+            settings.tei_rerank_url, model=settings.rerank_model, timeout_sec=settings.rerank_timeout_sec
+        )
         if settings.tei_rerank_url
         else None,
         sparse_factory=lambda: SparseEncoder(
