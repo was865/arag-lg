@@ -49,6 +49,8 @@ async def test_search_then_answer_with_citation_cleanup() -> None:
     sys = model.calls[0][0]
     assert isinstance(sys, SystemMessage) and "<資料" in sys.text and "必ず付ける" in sys.text
     assert c.stats.tool_calls == 1 and c.stats.model_calls == 2
+    # ターンの最初の呼び出しはツールを必ず使わせる（前のターンの記憶だけで引用なしに答えない）
+    assert model.tool_choices == ["any", None]
 
 
 async def test_step_budget_forces_final_answer_without_tools() -> None:
@@ -96,3 +98,10 @@ async def test_tool_failure_becomes_error_step_and_message() -> None:
     assert tm.status == "error" and "失敗" in tm.text
     errs = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "error"]
     assert errs and c.stats.tool_errors == 1
+
+
+async def test_tool_choice_not_forced_without_citations() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="こんにちは")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    await run(agent, ctx(FakeSearch(), cfg=AgentCfg(require_citations=False)), "こんにちは")
+    assert model.tool_choices == [None]

@@ -18,6 +18,8 @@ def test_local_openai_compatible_model() -> None:
     assert m.model_name == "qwen3-8b"  # type: ignore[attr-defined]
     assert m.extra_body == {"chat_template_kwargs": {"enable_thinking": False}}  # type: ignore[attr-defined]
     assert m.temperature == 0  # type: ignore[attr-defined]
+    # ストリーミングでもトークン数を受け取る（自前サーバでは既定で切れている）
+    assert m.stream_usage is True  # type: ignore[attr-defined]
 
 
 def test_settings_parse_kwargs_from_env(monkeypatch) -> None:  # type: ignore[no-untyped-def]

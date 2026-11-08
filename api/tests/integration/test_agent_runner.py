@@ -22,7 +22,7 @@ from arag.db.models import AuditLog, Citation, Message, Run, Thread
 from arag.errors import ApiError
 from arag.settings import Settings
 
-from ..agent_fakes import FakeSearch, FakeToolModel, script, tool_call
+from ..agent_fakes import FakeSearch, FakeToolModel, fake_hit, script, tool_call
 
 pytestmark = pytest.mark.integration
 ALICE = Principal(user_id="alice")
@@ -174,7 +174,10 @@ async def test_model_unavailable_fails_with_message(
 
 
 async def test_no_sources_reason(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
-    model = FakeToolModel(messages=script(tool_call("search", query="x"), AIMessage(content="")))
+    # 0 件なので書き換え（utility 無しは会話モデル）→ 再検索 → 回答なし
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="x"), AIMessage(content="別の語"), AIMessage(content=""))
+    )
     deps = make_deps(sessionmaker, redis, model, search=FakeSearch())
     _, run = await start(sessionmaker, "q")
     await execute_run(deps, run.id)
@@ -195,3 +198,35 @@ async def test_reap_stale_and_conflict(sessionmaker: async_sessionmaker[AsyncSes
     assert await reap_stale(deps, timedelta(seconds=60)) == 1
     last = (await events(redis, run.id))[-1]
     assert last["type"] == "run.failed" and last["code"] == "runner_lost"
+
+
+async def test_utility_model_rewrites_low_score_search(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    """runner が書き換え用モデルを RunContext に渡し、低スコアのとき再検索する（R17）。"""
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="持ち出し"), AIMessage(content="答え[1]"))
+    )
+    utility = FakeToolModel(messages=script(AIMessage(content="社外持出し 規程")))
+    search = FakeSearch("無関係な本文")
+    search.hits = [fake_hit("無関係な本文", score=0.05)]
+    deps = make_deps(sessionmaker, redis, model, search)
+    deps.resolve_models = lambda mid: ResolvedModels(id="fake", model=model, utility=utility)
+    _th, run = await start(sessionmaker, "持ち出しの規定は？")
+    assert await execute_run(deps, run.id) == "completed"
+    assert [r.query for r in search.requests] == ["持ち出し", "社外持出し 規程"]
+
+
+async def test_uncited_answer_is_no_relevant_sources(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="x"), AIMessage(content="資料からは見つかりませんでした。"))
+    )
+    deps = make_deps(sessionmaker, redis, model)
+    _, run = await start(sessionmaker, "q")
+    await execute_run(deps, run.id)
+    done = (await events(redis, run.id))[-1]
+    # モデル自身の説明を残し、理由だけ付ける
+    assert done["no_answer_reason"] == "no_relevant_sources"
+    assert done["answer"] == "資料からは見つかりませんでした。"

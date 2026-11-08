@@ -117,8 +117,12 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
 def _classify(answer: str, ctx: RunContext) -> str | None:
     if answer.strip():
         # 調べたのに資料が 1 件も無く、引用も無い回答は「資料なし」として数える（知識ギャップの分析用）
-        if ctx.stats.tool_calls and len(ctx.registry) == 0 and not cited_numbers(answer):
-            return "no_sources"
+        if ctx.stats.tool_calls and not cited_numbers(answer):
+            if len(ctx.registry) == 0:
+                return "no_sources"
+            # 資料はあったが引用の無い回答（多くは「見つからなかった」）。引用必須のときだけ数える
+            if ctx.cfg.require_citations:
+                return "no_relevant_sources"
         return None
     if ctx.stats.tool_errors and len(ctx.registry) == 0:
         return "tool_failed"
@@ -165,6 +169,8 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         }
     )
     if models is not None:
+        # 書き換え（CRAG）は utility が無ければ会話モデルで行う
+        ctx.utility_model = models.utility or models.model
         agent = deps.agent_for(models)
         base = {"configurable": {"thread_id": str(thread_id)}}
         if req.get("branch"):

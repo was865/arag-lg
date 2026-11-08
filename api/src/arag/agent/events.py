@@ -6,7 +6,9 @@ from pydantic import BaseModel, Field, TypeAdapter
 
 from arag.agent.steps import Step
 
-NoAnswerReason = Literal["no_sources", "step_budget_exhausted", "tool_failed", "generation_failed"]
+NoAnswerReason = Literal[
+    "no_sources", "no_relevant_sources", "step_budget_exhausted", "tool_failed", "generation_failed"
+]
 
 
 class CitationRef(BaseModel):

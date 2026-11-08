@@ -2,7 +2,7 @@
 
 `docs/handoff.md` 第 3 節 P3。完了基準: **チャット UI でストリーム表示が正しく動き、引用 [n] から原文を開け、切断・リロード後も生成中の回答を続けて表示できる**。回答品質は `agentic_rag_demo_ext` の回答評価で旧版の基準（引用再現率 1.0・精度 0.92〜1.0・事実網羅 1.0・忠実度約 0.79）を下回らないこと。
 
-前提: P2 の検索関数（`arag.search.service.search`）。UI 文言は日本語のみ。回答は質問の言語にかかわらず日本語（英語で質問されたときも日本語。英語で答えてほしいと明示されたときだけ英語）。
+前提: P2 の検索関数（`arag.search.service.search`）。UI 文言は日本語のみ。回答は質問と同じ言語（日本語の質問には資料が英語でも日本語で答える）。実機確認で、英語の質問に日本語で返すより自然と判断した（decisions §14）。
 
 ## 1. 対話の実行（run）
 
@@ -49,7 +49,7 @@
 - R20. 上限: モデル呼び出しは `max_steps`（5〜20、既定 12）回まで。上限に達したら、それまでの出典で回答をまとめる最終呼び出しを 1 回だけ行う。
 - R21. モデルの失敗（再試行後も失敗）は目録の代替モデルへ切り替えて続ける。代替も失敗したら `generation_failed`。
 - R22. 長い会話は要約して文脈に収める（直近のターンは原文のまま）。
-- R23. 回答不能の理由を `no_answer_reason ∈ {no_sources, step_budget_exhausted, tool_failed, generation_failed}` で保存する（回答できたら null）。理由ごとに日本語の説明文を回答本文として返す。
+- R23. 回答不能の理由を `no_answer_reason ∈ {no_sources, no_relevant_sources, step_budget_exhausted, tool_failed, generation_failed}` で保存する（回答できたら null）。回答本文が空なら理由ごとの日本語の説明文を返す。`no_relevant_sources` は資料を得たが引用の無い回答（引用必須のとき）で、モデル自身の説明文を残す。
 - R24. エージェント挙動設定 `agent_cfg`: `max_steps`, `parallel_tools`（1〜8）, `top_k`（1〜20、既定 6）, `candidate_k`（top_k〜50）, `max_retrieve_retries`, `grade_threshold`（0〜1）, `require_citations`（既定 true）, `admit_unknown`（既定 true）, `verify`（既定 false）。範囲外の値は丸める。
 
 ## 5. 保存

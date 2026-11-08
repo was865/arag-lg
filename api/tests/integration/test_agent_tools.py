@@ -75,6 +75,9 @@ async def test_search_registers_numbers_within_scope(
     out3 = await op_search(ctx, ev, "c3", "MX-17", document_ids=["[1]"])
     docs = set(re.findall(r'文書="([^"]+)"', out3))
     assert docs == {n1.document_name}
+    # 前のターンの番号など解決できない指定は無視して、絞らずに検索する
+    out4 = await op_search(ctx, ev, "c4", "MX-17", document_ids=["[99]"])
+    assert out4.startswith("注意: 文書の指定 [99]") and "絞らずに検索" in out4 and '<資料 n="1"' in out4
 
 
 async def test_crag_rewrites_when_scores_are_low(
@@ -90,7 +93,9 @@ async def test_crag_rewrites_when_scores_are_low(
         question="MX-17 はどうする？",
     )
     ev = Events()
-    await op_search(ctx, ev, "c1", "MX-17 対応")
+    out = await op_search(ctx, ev, "c1", "MX-17 対応")
+    # 書き換えても低いままなら、関連が薄いことを結果に添える
+    assert out.startswith("注意: ") and "見つからなかった" in out
     names = [s["name"] for s in ev.steps() if s["status"] != "running"]
     assert names == ["retrieve", "rewrite_query", "retrieve"]
     rw = next(s for s in ev.steps() if s["name"] == "rewrite_query" and s["status"] == "done")
@@ -98,8 +103,9 @@ async def test_crag_rewrites_when_scores_are_low(
     # 閾値以上なら書き換えない
     ctx2 = make_ctx(sessionmaker, qdrant_index, reranker=FakeReranker(constant=0.9), utility=util)
     ev2 = Events()
-    await op_search(ctx2, ev2, "c1", "MX-17")
+    out2 = await op_search(ctx2, ev2, "c1", "MX-17")
     assert {s["name"] for s in ev2.steps()} == {"retrieve"}
+    assert not out2.startswith("注意: ")
 
 
 async def test_keyword_search_requires_all_terms(
@@ -109,6 +115,11 @@ async def test_keyword_search_requires_all_terms(
     out = await op_keyword_search(ctx, Events(), "c1", ["MX-17", "部品"])
     assert "翌営業日" in out and "180 日" not in out
     assert "1 つ以上" in await op_keyword_search(ctx, Events(), "c1", ["  "])
+    # 全語を含む資料が無ければ意味検索で補う
+    ev = Events()
+    out2 = await op_keyword_search(ctx, ev, "c2", ["MX-17", "存在しない語"])
+    assert out2.startswith("注意: 語をすべて含む") and "<資料 " in out2
+    assert [s["input"]["mode"] for s in ev.steps() if s["status"] == "done"] == ["keyword", "hybrid"]
 
 
 async def test_list_outline_and_read_section(

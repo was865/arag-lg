@@ -73,6 +73,9 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         if calls >= ctx.cfg.max_steps:
             prompt += FINAL_NOTE
             overrides["tools"] = []
+        elif calls == 1 and ctx.cfg.require_citations and request.tools:
+            # 小さいモデルは追質問で前の回答だけを頼りに引用なしで答えがちなので、最初は必ずツールを使わせる
+            overrides["tool_choice"] = "any"
         return await handler(request.override(system_message=SystemMessage(prompt), **overrides))
 
 

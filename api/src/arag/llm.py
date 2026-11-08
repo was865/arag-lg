@@ -13,6 +13,9 @@ def chat_model(name: str, *, base_url: str = "", kwargs: dict[str, Any] | None =
     if base_url:
         # 自前サーバは鍵を見ないが、クライアントは空の鍵を受け付けない
         extra |= {"base_url": base_url, "api_key": os.environ.get("ARAG_CONTEXT_API_KEY", "EMPTY")}
+        if name.startswith("openai:"):
+            # 自前サーバでは stream_usage が既定で切れ、ストリーミング時のトークン数が 0 になる
+            extra.setdefault("stream_usage", True)
     model: BaseChatModel = init_chat_model(name, **extra)
     return model
 

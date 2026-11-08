@@ -20,10 +20,13 @@ class FakeToolModel(GenericFakeChatModel):
 
     calls: list[list[BaseMessage]] = Field(default_factory=list)
     tool_counts: list[int] = Field(default_factory=list)
+    tool_choices: list[Any] = Field(default_factory=list)
     bound: int = 0
+    choice: Any = None
 
-    def bind_tools(self, tools: Sequence[Any], **_kw: Any) -> Any:  # type: ignore[override]
+    def bind_tools(self, tools: Sequence[Any], **kw: Any) -> Any:  # type: ignore[override]
         self.bound = len(tools)
+        self.choice = kw.get("tool_choice")
         return self
 
     def _generate(
@@ -35,6 +38,7 @@ class FakeToolModel(GenericFakeChatModel):
     ) -> ChatResult:
         self.calls.append(list(messages))
         self.tool_counts.append(self.bound)
+        self.tool_choices.append(self.choice)
         self.bound = 0
         return super()._generate(messages, stop, run_manager, **kwargs)
 

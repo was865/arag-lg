@@ -56,22 +56,30 @@ async def _scope(session: AsyncSession, ctx: RunContext) -> Scope:
     return await resolve_scope(session, ctx.principal, req)
 
 
-def _doc_ids_for_search(ctx: RunContext, refs: list[str] | None) -> list[uuid.UUID] | None:
-    """モデルが指定した文書（ID または出典番号）を run の範囲と重ねる。"""
+def _doc_ids_for_search(ctx: RunContext, refs: list[str] | None) -> tuple[list[uuid.UUID] | None, list[str]]:
+    """モデルが指定した文書（ID または出典番号）を run の範囲と重ねる。解決できなかった指定も返す。
+
+    出典番号はターンごとに振るので、前のターンの番号を渡されることがある。全部解決できなければ絞らない。
+    """
     if not refs:
-        return ctx.document_ids
+        return ctx.document_ids, []
     ids: list[uuid.UUID] = []
+    unknown: list[str] = []
     for r in refs:
         n = _ref_number(r)
         c = ctx.registry.get(n) if n is not None else None
         if c is not None:
             ids.append(c.document_id)
+        elif found := _uuids([r]):
+            ids.extend(found)
         else:
-            ids.extend(_uuids([r]))
+            unknown.append(r)
+    if not ids:
+        return ctx.document_ids, unknown
     if ctx.document_ids is not None:
         allowed = set(ctx.document_ids)
         ids = [i for i in ids if i in allowed]
-    return ids
+    return ids, unknown
 
 
 def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
@@ -109,11 +117,22 @@ def _best(res: SearchResult) -> float:
     return max((h.score for h in res.hits), default=0.0)
 
 
+_JA = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
+
+
+def rewrite_message(question: str, query: str, hits: list[SearchHit]) -> str:
+    heads = "\n".join(f"- {h.document_name} > {h.heading_path}" for h in hits[:3]) or "（なし）"
+    msg = f"質問: {question}\n直前の検索クエリ: {query}\n上位の資料:\n{heads}"
+    if not _JA.search(question):
+        # 日本語の rerank は英日の組で点が低く出る。小さいモデルは指示が無いと英語のまま言い換える
+        msg += "\n\n質問は日本語以外です。日本語に訳した検索クエリを出力してください。"
+    return msg
+
+
 async def _rewrite(ctx: RunContext, query: str, res: SearchResult) -> str | None:
     if ctx.utility_model is None:
         return None
-    heads = "\n".join(f"- {h.document_name} > {h.heading_path}" for h in res.hits[:3]) or "（なし）"
-    msg = f"質問: {ctx.question}\n直前の検索クエリ: {query}\n上位の資料:\n{heads}"
+    msg = rewrite_message(ctx.question, query, res.hits)
     out = await ctx.utility_model.ainvoke([SystemMessage(load_prompt("agent_rewrite")), HumanMessage(msg)])
     text = str(out.content if isinstance(out.content, str) else out.text).strip().strip("「」\"'")
     text = text.splitlines()[0].strip() if text else ""
@@ -131,7 +150,7 @@ async def op_search(
     mode: str = "hybrid",
     must_contain: list[str] | None = None,
 ) -> str:
-    docs = _doc_ids_for_search(ctx, document_ids)
+    docs, unknown = _doc_ids_for_search(ctx, document_ids)
     base: dict[str, Any] = {
         "kb_ids": ctx.kb_ids,
         "document_ids": docs,
@@ -159,12 +178,7 @@ async def op_search(
     used = query
     # 関連度による再検索（R17）。rerank が効いていないとき（縮退）はスコアが比較できないので行わない
     tries = 0
-    while (
-        mode == "hybrid"
-        and tries < ctx.cfg.max_retrieve_retries
-        and _best(res) < ctx.cfg.grade_threshold
-        and "rerank" not in res.degraded
-    ):
+    while tries < ctx.cfg.max_retrieve_retries and _is_low(ctx, res, mode):
         tries += 1
         rw = StepClock(
             emit,
@@ -206,7 +220,25 @@ async def op_search(
         again.done(f"{len(res2.hits)} 件（最高スコア {_best(res2):.2f}）・{adopted}", _hits_output(res2))
         if better:
             res, used = res2, new_q
-    return _render_hits(ctx, used, res.hits)
+    out = _render_hits(ctx, used, res.hits)
+    if unknown:
+        out = (
+            f"注意: 文書の指定 {', '.join(unknown)} はこのターンの出典番号・文書 ID ではないため無視しました"
+            f"{'（文書を絞らずに検索）' if docs == ctx.document_ids else ''}。"
+            "出典番号はターンごとに振り直されます。\n\n" + out
+        )
+    if res.hits and _is_low(ctx, res, mode):
+        # 小さいモデルは無関係な資料でも答えを組み立てがちなので、関連の薄さを明示する
+        out = (
+            f"注意: どの資料も質問との関連度が低い（最高スコア {_best(res):.2f}）。"
+            "質問に直接答える記述が無ければ、資料からは見つからなかったと答えること。"
+            "言葉が似ているだけの無関係な資料を根拠にしない。\n\n" + out
+        )
+    return out
+
+
+def _is_low(ctx: RunContext, res: SearchResult, mode: str) -> bool:
+    return mode == "hybrid" and "rerank" not in res.degraded and _best(res) < ctx.cfg.grade_threshold
 
 
 async def op_keyword_search(
@@ -215,9 +247,15 @@ async def op_keyword_search(
     terms = [t.strip() for t in terms if t.strip()][:10]
     if not terms:
         return "検索語を 1 つ以上指定してください。"
-    return await op_search(
-        ctx, emit, call_id, " ".join(terms), document_ids=document_ids, mode="keyword", must_contain=terms
+    query = " ".join(terms)
+    out = await op_search(
+        ctx, emit, call_id, query, document_ids=document_ids, mode="keyword", must_contain=terms
     )
+    if "<資料 " in out:
+        return out
+    # 表記ゆれ（「ISO認証」と「ISO 27001認証」など）で 0 件になりやすいので、意味検索で補う
+    alt = await op_search(ctx, emit, f"{call_id}:h", query, document_ids=document_ids)
+    return f"注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。\n\n{alt}"
 
 
 async def op_list_documents(ctx: RunContext, query: str | None = None) -> str:

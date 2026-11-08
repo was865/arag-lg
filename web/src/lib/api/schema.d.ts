@@ -1143,7 +1143,7 @@ export interface components {
              * No Answer Reason
              * @default null
              */
-            no_answer_reason: ("no_sources" | "step_budget_exhausted" | "tool_failed" | "generation_failed") | null;
+            no_answer_reason: ("no_sources" | "no_relevant_sources" | "step_budget_exhausted" | "tool_failed" | "generation_failed") | null;
             /** Sources */
             sources: components["schemas"]["SourceView"][];
             /** Tokens In */

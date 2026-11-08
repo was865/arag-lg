@@ -1204,6 +1204,7 @@
               {
                 "enum": [
                   "no_sources",
+                  "no_relevant_sources",
                   "step_budget_exhausted",
                   "tool_failed",
                   "generation_failed"

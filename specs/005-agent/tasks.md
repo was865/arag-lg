@@ -23,7 +23,7 @@
 - [x] C2 Mac: runner（取得・心拍・取りこぼし回収・同時数・取消・保存）— R2・R12・R25
 - [x] C3 Mac: API: スレッド CRUD・run 作成（409・新規スレッド）・分岐・active-run・SSE（Last-Event-ID・410・心拍）・取消・`/v1/models` — R1〜R9・R11・R26・R27
 - [x] C4 Mac: レート制限・月次上限・監査 — R30〜R32
-- [ ] C5 Mac+Win: compose に runner を追加し、vLLM（Qwen3-8B・tool calling）で実機確認
+- [x] C5 Mac+Win: compose に runner を追加し、vLLM（Qwen3-8B・tool calling）で実機確認
 
 ## D. UI
 
