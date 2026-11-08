@@ -25,7 +25,7 @@ from arag.db.models import Chunk, Document, Section
 from arag.eval.__main__ import find_kb, kb_suite_of
 from arag.ingest.chunking import ChunkDraft, SectionDraft
 from arag.ingest.contextualize import LlmContextualizer
-from arag.ingest.worker import chat_model
+from arag.llm import chat_model
 from arag.settings import Settings
 
 

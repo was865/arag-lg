@@ -11,6 +11,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -239,3 +240,119 @@ class AuditLog(Base):
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+
+# --- 対話（specs/000-overview/data-model.md §3.2、specs/005-agent/design.md §5）---
+
+
+class Thread(Base):
+    """スレッド。LangGraph の thread_id と同じ値。"""
+
+    __tablename__ = "threads"
+    __table_args__ = (Index("ix_threads_user_list", "user_id", "pinned", "updated_at"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class Message(Base):
+    """1 ターン = 1 行。run の終了時に確定する（表示・分析用のビュー。状態の正は checkpoint）。"""
+
+    __tablename__ = "messages"
+    __table_args__ = (UniqueConstraint("thread_id", "ordinal"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("threads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    answer_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="completed")
+    model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tokens_in: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    steps: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    citation_map: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    no_answer_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    request: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = _now()
+
+
+class Citation(Base):
+    """引用（番号ごとの出典スナップショット。文書が消えても残すので文書へ FK は張らない）。分析用。"""
+
+    __tablename__ = "citations"
+    __table_args__ = (UniqueConstraint("message_id", "ordinal"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    chunk_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    section_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    document_title: Mapped[str] = mapped_column(Text, nullable=False)
+    heading_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    snippet: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    block_type: Mapped[str] = mapped_column(String(32), nullable=False, default="text")
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class MessageFeedback(Base):
+    __tablename__ = "message_feedback"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    rating: Mapped[str] = mapped_column(String(8), nullable=False)
+    reason_tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class Run(Base):
+    """エージェントの実行。run キューを兼ねる（specs/005-agent/design.md §1）。"""
+
+    __tablename__ = "runs"
+    __table_args__ = (
+        Index("ix_runs_queued", "created_at", postgresql_where=text("status = 'queued'")),
+        # 同じスレッドで同時に動く run は 1 つまで（R3）
+        Index(
+            "uq_runs_active_thread",
+            "thread_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("threads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    request: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    locked_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = _ts_nullable()
+    error_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = _now()
+    started_at: Mapped[datetime | None] = _ts_nullable()
+    finished_at: Mapped[datetime | None] = _ts_nullable()

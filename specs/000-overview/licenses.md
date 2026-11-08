@@ -34,6 +34,8 @@
 | 評価データ: BEIR SciFact（取得のみ・配布しない） | データ | — | CC BY-NC 2.0（評価用途に限る） | 2026-11-08 | https://github.com/beir-cellar/beir |
 | 評価データ: hotchpotch/JQaRA（取得のみ・配布しない） | データ | test | CC-BY-SA 4.0 | 2026-11-08 | https://huggingface.co/datasets/hotchpotch/JQaRA |
 | python-multipart | Python | 0.0.33 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/python-multipart/ |
+| langgraph-checkpoint-postgres | Python | 3.2.0 | MIT | 2026-11-09 | https://pypi.org/project/langgraph-checkpoint-postgres/ |
+| psycopg-pool（LGPL：改変なし・ライブラリ利用のみ。decisions.md §12 で許可） | Python | 3.3.3 | LGPL-3.0-only | 2026-11-09 | https://pypi.org/project/psycopg-pool/ |
 | docling-serve（GPU 機 / CPU 版コンテナ） | コンテナ | v1.38.2 | MIT | 2026-11-08 | https://github.com/docling-project/docling-serve |
 | pip-licenses（CI） | Python | 5.5.5 | MIT | 2026-11-08 | https://pypi.org/project/pip-licenses/ |
 | sentence-transformers（tools/tei-verify 専用・開発のみ） | Python | 6.2.0 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/sentence-transformers/ |

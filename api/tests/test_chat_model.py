@@ -1,6 +1,6 @@
 """文脈付与のモデル生成（自前の OpenAI 互換サーバ・追加引数）。"""
 
-from arag.ingest.worker import chat_model
+from arag.llm import chat_model
 from arag.settings import Settings
 
 

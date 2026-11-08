@@ -489,6 +489,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/messages/{message_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Feedback */
+        put: operations["put_feedback_v1_messages__message_id__feedback_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Models */
+        get: operations["list_models_v1_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run New Thread */
+        post: operations["start_run_new_thread_v1_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Run */
+        post: operations["cancel_run_v1_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Run */
+        get: operations["stream_run_v1_runs__run_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search": {
         parameters: {
             query?: never;
@@ -500,6 +585,77 @@ export interface paths {
         put?: never;
         /** Search Endpoint */
         post: operations["search_endpoint_v1_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Threads */
+        get: operations["list_threads_v1_threads_get"];
+        put?: never;
+        /** Create Thread */
+        post: operations["create_thread_v1_threads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Thread Detail */
+        get: operations["get_thread_detail_v1_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Thread */
+        delete: operations["delete_thread_v1_threads__thread_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Thread */
+        patch: operations["patch_thread_v1_threads__thread_id__patch"];
+        trace?: never;
+    };
+    "/v1/threads/{thread_id}/active-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Active Run */
+        get: operations["get_active_run_v1_threads__thread_id__active_run_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/threads/{thread_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_threads__thread_id__runs_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -530,6 +686,41 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActiveRunOut */
+        ActiveRunOut: {
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /** Query */
+            query: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
+        /** AnswerDelta */
+        AnswerDelta: {
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "answer.delta";
+        };
+        /** AnswerReset */
+        AnswerReset: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "answer.reset";
+        };
         /** Body_upload_v1_kbs__kb_id__uploads_post */
         Body_upload_v1_kbs__kb_id__uploads_post: {
             /**
@@ -596,6 +787,13 @@ export interface components {
             text: string;
             /** Token Len */
             token_len: number;
+        };
+        /** CitationRef */
+        CitationRef: {
+            /** Section Id */
+            section_id: string;
+            /** Source Id */
+            source_id: string;
         };
         /** DocumentOut */
         DocumentOut: {
@@ -664,6 +862,30 @@ export interface components {
             filename?: string | null;
             /** Folder Id */
             folder_id?: string | null;
+        };
+        /** FeedbackIn */
+        FeedbackIn: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /** Reason Tags */
+            reason_tags?: string[];
+        };
+        /** FeedbackOut */
+        FeedbackOut: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /** Reason Tags */
+            reason_tags: string[];
         };
         /** FolderCreate */
         FolderCreate: {
@@ -793,6 +1015,64 @@ export interface components {
              */
             status: "ok";
         };
+        /** MessageOut */
+        MessageOut: {
+            /** Answer */
+            answer: string;
+            /** Citation Map */
+            citation_map: {
+                [key: string]: components["schemas"]["CitationRef"];
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            feedback?: components["schemas"]["FeedbackOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Model Id */
+            model_id: string | null;
+            /** No Answer Reason */
+            no_answer_reason: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /** Query */
+            query: string;
+            /** Sources */
+            sources: components["schemas"]["SourceView"][];
+            /** Status */
+            status: string;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+        };
+        /** ModelOut */
+        ModelOut: {
+            /** Available */
+            available: boolean;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Tags */
+            tags: string[];
+        };
+        /** ModelsOut */
+        ModelsOut: {
+            /** Default Id */
+            default_id: string | null;
+            /** Models */
+            models: components["schemas"]["ModelOut"][];
+        };
         /** OutlineSection */
         OutlineSection: {
             /** Chunk Count */
@@ -836,6 +1116,114 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "unavailable";
+        };
+        /** RunCancelled */
+        RunCancelled: {
+            /** Message Id */
+            message_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "run.cancelled";
+        };
+        /** RunCompleted */
+        RunCompleted: {
+            /** Answer */
+            answer: string;
+            /** Citation Map */
+            citation_map: {
+                [key: string]: components["schemas"]["CitationRef"];
+            };
+            /** Duration Ms */
+            duration_ms: number;
+            /** Message Id */
+            message_id: string;
+            /**
+             * No Answer Reason
+             * @default null
+             */
+            no_answer_reason: ("no_sources" | "step_budget_exhausted" | "tool_failed" | "generation_failed") | null;
+            /** Sources */
+            sources: components["schemas"]["SourceView"][];
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "run.completed";
+        };
+        /** RunCreated */
+        RunCreated: {
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Thread Id
+             * Format: uuid
+             */
+            thread_id: string;
+        };
+        RunEvent: components["schemas"]["RunStarted"] | components["schemas"]["StepEvent"] | components["schemas"]["AnswerDelta"] | components["schemas"]["AnswerReset"] | components["schemas"]["SourcesEvent"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"];
+        /** RunFailed */
+        RunFailed: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "run.failed";
+        };
+        /** RunRequest */
+        RunRequest: {
+            /** Agent Cfg */
+            agent_cfg?: {
+                [key: string]: unknown;
+            } | null;
+            /** Document Ids */
+            document_ids?: string[] | null;
+            /** From Message Id */
+            from_message_id?: string | null;
+            /**
+             * Include Archived
+             * @default false
+             */
+            include_archived: boolean;
+            /** Kb Ids */
+            kb_ids?: string[] | null;
+            /** Model Id */
+            model_id?: string | null;
+            /** Query */
+            query: string;
+        };
+        /** RunStarted */
+        RunStarted: {
+            /** Message Id */
+            message_id: string;
+            /** Model Id */
+            model_id: string;
+            /** Run Id */
+            run_id: string;
+            /** Thread Id */
+            thread_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "run.started";
         };
         /** SearchHit */
         SearchHit: {
@@ -971,6 +1359,46 @@ export interface components {
             /** Token Len */
             token_len: number;
         };
+        /** SourceSection */
+        SourceSection: {
+            /** Block Type */
+            block_type: string;
+            /** Body */
+            body: string;
+            /** Heading */
+            heading: string;
+            /** Id */
+            id: string;
+            /** N */
+            n: number;
+            /** Page */
+            page?: number | null;
+        };
+        /** SourceView */
+        SourceView: {
+            /** Id */
+            id: string;
+            /** Score */
+            score?: number | null;
+            /** Sections */
+            sections: components["schemas"]["SourceSection"][];
+            /** Title */
+            title: string;
+        };
+        /** SourcesEvent */
+        SourcesEvent: {
+            /** Citation Map */
+            citation_map: {
+                [key: string]: components["schemas"]["CitationRef"];
+            };
+            /** Sources */
+            sources: components["schemas"]["SourceView"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "sources";
+        };
         /** StageTiming */
         StageTiming: {
             /** Count */
@@ -982,6 +1410,116 @@ export interface components {
              * @enum {string}
              */
             name: "scope" | "embed" | "query" | "hydrate" | "rerank" | "section";
+        };
+        /** Step */
+        Step: {
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /** Id */
+            id: string;
+            /** Input */
+            input?: {
+                [key: string]: unknown;
+            };
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Output */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            /** Parent Id */
+            parent_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "done" | "error";
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /** StepEvent */
+        StepEvent: {
+            step: components["schemas"]["Step"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "step";
+        };
+        /** ThreadCreate */
+        ThreadCreate: {
+            /**
+             * Title
+             * @default 新しいチャット
+             */
+            title: string;
+        };
+        /** ThreadDetail */
+        ThreadDetail: {
+            active_run: components["schemas"]["ActiveRunOut"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Messages */
+            messages: components["schemas"]["MessageOut"][];
+            /** Pinned */
+            pinned: boolean;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ThreadList */
+        ThreadList: {
+            /** Items */
+            items: components["schemas"]["ThreadOut"][];
+        };
+        /** ThreadOut */
+        ThreadOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Pinned */
+            pinned: boolean;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ThreadPatch */
+        ThreadPatch: {
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Title */
+            title?: string | null;
         };
         /** TrashItem */
         TrashItem: {
@@ -2122,6 +2660,159 @@ export interface operations {
             };
         };
     };
+    put_feedback_v1_messages__message_id__feedback_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_models_v1_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelsOut"];
+                };
+            };
+        };
+    };
+    start_run_new_thread_v1_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_v1_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_run_v1_runs__run_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "text/event-stream": components["schemas"]["RunEvent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_endpoint_v1_search_post: {
         parameters: {
             query?: never;
@@ -2142,6 +2833,239 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_threads_v1_threads_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_thread_v1_threads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_detail_v1_threads__thread_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_thread_v1_threads__thread_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_thread_v1_threads__thread_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_active_run_v1_threads__thread_id__active_run_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveRunOut"];
+                };
+            };
+            /** @description 実行中の run は無い */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_threads__thread_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCreated"];
                 };
             };
             /** @description Validation Error */

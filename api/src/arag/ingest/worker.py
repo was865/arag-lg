@@ -12,7 +12,6 @@ import signal
 import socket
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import psycopg
 import structlog
@@ -31,6 +30,7 @@ from arag.ingest.index import QdrantIndex
 from arag.ingest.parser import DoclingServeParser
 from arag.ingest.pipeline import IngestDeps, run_ingest
 from arag.ingest.sparse import SparseEncoder
+from arag.llm import chat_model
 from arag.logging import configure_logging, get_logger
 from arag.settings import Settings
 from arag.storage import LocalStorage
@@ -135,16 +135,6 @@ class Worker:
             if self.running:
                 log.info("waiting_running_jobs", count=len(self.running))
                 await asyncio.gather(*self.running, return_exceptions=True)
-
-
-def chat_model(name: str, *, base_url: str = "", kwargs: dict[str, Any] | None = None):  # type: ignore[no-untyped-def]
-    from langchain.chat_models import init_chat_model
-
-    extra: dict[str, Any] = dict(kwargs or {})
-    if base_url:
-        # 自前サーバは鍵を見ないが、クライアントは空の鍵を受け付けない
-        extra |= {"base_url": base_url, "api_key": os.environ.get("ARAG_CONTEXT_API_KEY", "EMPTY")}
-    return init_chat_model(name, **extra)
 
 
 def build_deps(settings: Settings) -> IngestDeps:

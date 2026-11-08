@@ -67,3 +67,15 @@ class Settings(BaseSettings):
     ingest_concurrency: int = 2
     trash_retention_days: int = 30
     http_timeout_sec: float = 60.0
+
+    # --- P3 エージェント（specs/005-agent/design.md §9）---
+    # モデル目録（JSON）: [{id, label, model, base_url?, kwargs?, tags?}]。先頭の利用可能なものが既定
+    chat_models: list[dict[str, Any]] = []
+    # 書き換え・要約用（目録の id。空なら会話モデルと同じ）
+    utility_model: str = ""
+    run_concurrency: int = 8
+    run_heartbeat_sec: float = 10.0
+    run_stale_sec: float = 60.0
+    run_events_ttl_sec: int = 3600
+    rate_limit_runs_per_min: int = 20
+    monthly_token_limit: int = 0  # 0 は無制限

@@ -64,3 +64,23 @@ async def test_write_audit(sessionmaker: async_sessionmaker[AsyncSession]) -> No
         row = (await s.execute(text("SELECT actor_id, action, result FROM app.audit_logs"))).one()
     assert tuple(row) == ("u1", "document.delete", "ok")
     assert AuditLog.__tablename__ == "audit_logs"
+
+
+async def test_one_active_run_per_thread(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    """specs/005-agent R3: 同じスレッドの queued / running は 1 つまで（DB で保証）。"""
+    import uuid
+
+    from arag.db.models import Run, Thread
+
+    async with sessionmaker() as s:
+        t = Thread(user_id="u1", title="t")
+        s.add(t)
+        await s.flush()
+        s.add(Run(thread_id=t.id, message_id=uuid.uuid4(), user_id="u1", status="completed"))
+        s.add(Run(thread_id=t.id, message_id=uuid.uuid4(), user_id="u1", status="queued"))
+        await s.commit()
+        tid = t.id
+    async with sessionmaker() as s:
+        s.add(Run(thread_id=tid, message_id=uuid.uuid4(), user_id="u1", status="running"))
+        with pytest.raises(IntegrityError):
+            await s.commit()

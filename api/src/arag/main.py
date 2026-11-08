@@ -8,6 +8,8 @@ from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 
 from arag import health
+from arag.agent import router as router_agent
+from arag.agent.openapi import install_event_schemas
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.errors import install_error_handlers
 from arag.health import Check
@@ -72,4 +74,6 @@ def create_app(
     app.include_router(router_uploads.router)
     app.include_router(router_documents.router)
     app.include_router(router_search.router)
+    app.include_router(router_agent.router)
+    install_event_schemas(app)
     return app

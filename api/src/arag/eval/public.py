@@ -230,7 +230,7 @@ _LANG = {"en": "英語", "ja": "日本語"}
 
 
 def _translate(cases: list[dict[str, Any]], to: str, cfg: dict[str, Any]) -> dict[str, str]:
-    from arag.ingest.worker import chat_model
+    from arag.llm import chat_model
 
     model = chat_model(
         cfg.get("model", "deepseek:deepseek-v4-pro"),
