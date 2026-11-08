@@ -4,6 +4,7 @@ uv run python -m arag.eval ingest --suite agentic_rag_demo
 uv run python -m arag.eval index  --suite agentic_rag_demo --variant no_context ruri_embed
 uv run python -m arag.eval run    --suite agentic_rag_demo --variant default dbsf [--gate] [--save-baseline]
 uv run python -m arag.eval prepare --suite beir_scifact   # 公開データの取得（eval/.cache/）
+uv run python -m arag.eval answer  --suite agentic_rag_demo_ext [--model qwen3-8b] [--judge deepseek]
 """
 
 import argparse
@@ -230,6 +231,60 @@ async def cmd_run(args: argparse.Namespace, settings: Settings) -> int:
     return 1 if failed else 0
 
 
+async def cmd_answer(args: argparse.Namespace, settings: Settings) -> int:
+    """回答評価（specs/005-agent R33）。compose の api・runner が動いていること。"""
+    from dotenv import load_dotenv
+
+    from arag.agent.config import ModelCatalog
+    from arag.eval.answer import HttpRunApi, make_judge, result_json, run_case
+    from arag.eval.answer import to_markdown as answer_markdown
+
+    root = repo_root()
+    # 評価者の API キー（DEEPSEEK_API_KEY など）は .env にある
+    load_dotenv(root / ".env", override=False)
+    suite = load_suite(golden_path(root, args.suite))
+    kb = await find_kb(settings, suite.kb_suite or args.suite)
+    if kb is None:
+        print(
+            f"KB「{kb_name(suite.kb_suite or args.suite)}」がありません。先に ingest してください",
+            file=sys.stderr,
+        )
+        return 2
+    cases = [c for c in suite.cases if not args.only or c.id in args.only][: args.limit or None]
+    judge = None
+    if args.judge:
+        spec = next(
+            (m for m in ModelCatalog.from_raw(settings.chat_models).models if m.id == args.judge), None
+        )
+        if spec is None:
+            print(f"評価者 {args.judge} は ARAG_CHAT_MODELS にありません", file=sys.stderr)
+            return 2
+        judge = make_judge(spec.build())
+    headers = {"X-Dev-User-Id": EVAL_USER, "X-Dev-Role": "admin"}
+    results = []
+    async with httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c:
+        api = HttpRunApi(c)
+        for i, case in enumerate(cases, 1):
+            r = await run_case(api, case, kb_id=kb, model_id=args.model, judge=judge)
+            results.append(r)
+            faith = "—" if r.faithfulness is None else f"{r.faithfulness:.2f}"
+            print(
+                f"[{i}/{len(cases)}] {case.id} {r.status} "
+                f"再現 {r.citation_recall:.2f} 精度 {r.citation_precision:.2f} "
+                f"網羅 {r.fact_coverage:.2f} 忠実 {faith} ツール {r.tool_calls} {r.duration_ms}ms",
+                flush=True,
+            )
+    result = result_json(args.suite, args.model, args.judge, results)
+    out_dir = Path(args.out) if args.out else root / "eval" / ".reports" / args.suite
+    out_dir.mkdir(parents=True, exist_ok=True)
+    name = f"answer__{args.model or 'default'}"
+    (out_dir / f"{name}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / f"{name}.md").write_text(answer_markdown(result), encoding="utf-8")
+    print(answer_markdown(result).split("## 題ごと")[0])
+    print(f"レポート: {out_dir / name}.md")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="arag.eval")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -250,12 +305,22 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--out")
     pr = sub.add_parser("prepare", help="公開データセットを取得して golden を作る")
     pr.add_argument("--suite", required=True)
+    a = sub.add_parser("answer", help="題集を実際のエージェントで解かせて回答を評価する")
+    a.add_argument("--suite", required=True)
+    a.add_argument("--api", default="http://localhost:8100")
+    a.add_argument("--model", help="ARAG_CHAT_MODELS の id（省略で既定）")
+    a.add_argument("--judge", help="忠実度の評価者（ARAG_CHAT_MODELS の id）。省略で忠実度は出さない")
+    a.add_argument("--only", nargs="+", help="題 id で絞る")
+    a.add_argument("--limit", type=int, default=0)
+    a.add_argument("--out")
     args = p.parse_args(argv)
     settings = Settings()
     if args.cmd == "ingest":
         return asyncio.run(cmd_ingest(args, settings))
     if args.cmd == "index":
         return asyncio.run(cmd_index(args, settings))
+    if args.cmd == "answer":
+        return asyncio.run(cmd_answer(args, settings))
     if args.cmd == "prepare":
         from arag.eval.public import prepare
 
