@@ -82,10 +82,24 @@ def _list_files(directory: Path) -> list[Path]:
     )
 
 
+SSE_IDS_PER_STREAM = 100  # URL の長さを抑える
+
+
 async def ingest_dir(
-    directory: Path, *, api: str, kb: str, user: str, role: str, batch: int, timeout_sec: float
+    directory: Path,
+    *,
+    api: str,
+    kb: str,
+    user: str,
+    role: str,
+    batch: int,
+    timeout_sec: float,
+    only: set[str] | None = None,
+    quiet: bool = False,
 ) -> int:
     files = await asyncio.to_thread(_list_files, directory)
+    if only is not None:
+        files = [p for p in files if p.name in only]
     if not files:
         print("対象ファイルがありません", file=sys.stderr)
         return 1
@@ -107,22 +121,27 @@ async def ingest_dir(
                 print(f"アップロード失敗: {res.status_code} {res.text}", file=sys.stderr)
                 return 1
             for item in res.json()["items"]:
-                print(f"{item['status']:9s} {item['filename']}")
+                if not quiet:
+                    print(f"{item['status']:9s} {item['filename']}")
                 if item["job_id"]:
                     jobs[item["job_id"]] = item["filename"]
         final: dict[str, dict[str, object]] = {}
-        if jobs:
+        ids = list(jobs)
+        for g in range(0, len(ids), SSE_IDS_PER_STREAM):
+            group = ids[g : g + SSE_IDS_PER_STREAM]
             async with client.stream(
-                "GET", "/v1/jobs/events", params={"ids": ",".join(jobs)}, timeout=timeout_sec
+                "GET", "/v1/jobs/events", params={"ids": ",".join(group)}, timeout=timeout_sec
             ) as stream:
                 async for line in stream.aiter_lines():
                     if not line.startswith("data: "):
                         continue
                     ev = json.loads(line[6:])
                     final[ev["job_id"]] = ev
-                    print(
-                        f"  [{ev.get('progress', ''):>3}] {jobs[ev['job_id']]}: {ev.get('stage_detail', '')}"
-                    )
+                    if not quiet or ev.get("status") in ("ready", "error", "cancelled"):
+                        detail = ev.get("stage_detail", "")
+                        print(f"  [{ev.get('progress', ''):>3}] {jobs[ev['job_id']]}: {detail}")
+            if len(ids) > SSE_IDS_PER_STREAM:
+                print(f"進捗: {min(g + SSE_IDS_PER_STREAM, len(ids))}/{len(ids)} 件")
     elapsed = time.monotonic() - started
     ok = sum(1 for e in final.values() if e.get("status") == "ready")
     chunks = sum(int(e.get("chunk_count") or 0) for e in final.values())  # type: ignore[call-overload]

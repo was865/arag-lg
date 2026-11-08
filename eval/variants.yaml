@@ -1,0 +1,30 @@
+# 検索の比較条件（specs/004-retrieval design §6.1）。`base` で継承する。
+# 別コレクションが要るもの（embed が bge-m3 以外・context: false・sparse_en_stem: true）は先に
+#   uv run python -m arag.eval index --suite S --variant <名前>
+# モデルの URL は .env（環境変数）から読む。ruri は GPU 機の compose.gpu.yaml --profile ruri（:8083 / :8084）
+models:
+  bge-m3: {url_env: ARAG_TEI_EMBED_URL, model: BAAI/bge-m3}
+  ruri-v3-310m:
+    url_env: ARAG_EVAL_RURI_EMBED_URL
+    model: cl-nagoya/ruri-v3-310m
+    query_prefix: "検索クエリ: "
+    document_prefix: "検索文書: "
+  bge-reranker-v2-m3: {url_env: ARAG_TEI_RERANK_URL, model: BAAI/bge-reranker-v2-m3}
+  ruri-v3-reranker-310m: {url_env: ARAG_EVAL_RURI_RERANK_URL, model: cl-nagoya/ruri-v3-reranker-310m}
+
+variants:
+  default: {mode: hybrid, fusion: rrf, rrf_k: 60, weights: [1, 1], rerank: true, rerank_input: context+text}
+  dense_only: {base: default, mode: dense}
+  keyword_only: {base: default, mode: keyword}
+  no_rerank: {base: default, rerank: false}
+  dense_only_no_rerank: {base: default, mode: dense, rerank: false}
+  keyword_only_no_rerank: {base: default, mode: keyword, rerank: false}
+  rrf_dense2: {base: default, weights: [2, 1]}
+  rrf_sparse2: {base: default, weights: [1, 2]}
+  dbsf: {base: default, fusion: dbsf}
+  rerank_text_only: {base: default, rerank_input: text}
+  no_context: {base: default, context: false}
+  ruri_embed: {base: default, embed: ruri-v3-310m}
+  ruri_rerank: {base: default, reranker: ruri-v3-reranker-310m}
+  ruri_both: {base: default, embed: ruri-v3-310m, reranker: ruri-v3-reranker-310m}
+  en_stem: {base: default, sparse_en_stem: true}

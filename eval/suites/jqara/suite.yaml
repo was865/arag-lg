@@ -1,0 +1,7 @@
+# 日本語の公開データ（specs/004-retrieval R23）。hotchpotch/JQaRA test（CC-BY-SA 4.0。評価にだけ使い、配布しない）
+# 質問ごとに 100 件の候補文（正例 + BM25 等で集めた紛らわしい負例）がある。全質問の候補をまとめてコーパスにする
+adapter: jqara
+dataset: hotchpotch/JQaRA
+split: test
+query_limit: 100
+thresholds: {}

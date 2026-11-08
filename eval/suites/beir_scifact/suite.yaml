@@ -1,0 +1,10 @@
+# 英語の検索評価（specs/004-retrieval R23・E2a）。旧版 rag/eval/suites/beir_scifact の移植。
+# データ: BEIR SciFact（SciFact は CC BY-NC 2.0。評価にだけ使い、配布しない）
+adapter: beir
+dataset: scifact
+split: test
+source_url: https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/scifact.zip
+query_limit: 300
+# 関連文書 + ID 順の先頭で 1,500 件（全 5,183 件だと入庫の文脈付与に時間がかかるため）
+corpus_limit: 1500
+thresholds: {}

@@ -20,7 +20,7 @@ class SearchRequest(BaseModel):
     top_k: int = Field(6, ge=1, le=50)
     candidate_k: int = Field(50, ge=1, le=200)
     include_section: bool = False
-    must_contain: list[str] | None = Field(None, max_length=10)
+    must_contain: list[str] | None = Field(default=None, max_length=10)
     debug: bool = False
 
     @field_validator("query")

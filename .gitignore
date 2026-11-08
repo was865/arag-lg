@@ -9,3 +9,7 @@ __pycache__/
 
 # LocalStorage の既定 root（開発用）
 .data/
+
+# 検索評価の取得データ・レポート（specs/004-retrieval）
+eval/.cache/
+eval/.reports/
