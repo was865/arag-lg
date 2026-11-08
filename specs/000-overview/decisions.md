@@ -82,7 +82,7 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 | LibreOffice（.doc/.xls/.ppt/.rtf 変換） | — | MPL-2.0（別プロセス実行） | Docling 公式の対応形式表 |
 
 - 対応形式: PDF / DOCX / XLSX / PPTX / HTML / Markdown / CSV / 画像 ほか。旧 Office 形式は LibreOffice が必要（旧版の `soffice` 変換と同じ）。
-- 決定: **Docling を既定パーサ**。`HybridChunker` で見出し階層 + token 上限の分割。P1 で確認する未決事項: 日本語 OCR の品質（RapidOCR の日本語モデル vs Tesseract `jpn`）、大 PDF のページ窓分割、表の跨ページ結合。
+- 決定: **Docling を既定パーサ**。実行形態は **docling-serve**（MIT, v1.38.2 / 2026-10-27, https://github.com/docling-project/docling-serve ）を HTTP で呼ぶ（GPU 機は `docling-serve-cu130`、Mac 単独は arm64 対応の `docling-serve-cpu`）。api/worker のイメージに torch を入れずに済み、GPU 機とファイル共有も不要になる（specs/003-ingestion/design.md §1）。`HybridChunker` で見出し階層 + token 上限の分割。P1 で確認する未決事項: 日本語 OCR の品質（RapidOCR の日本語モデル vs Tesseract `jpn`）、大 PDF のページ窓分割、表の跨ページ結合。
 
 **MinerU（不採用）**: 4.x（3.1.0 / 2026-04 以降）で AGPL-3.0 から **「MinerU Open Source License」（Apache-2.0 + 追加条項）** に変更された（https://github.com/opendatalab/MinerU/blob/master/LICENSE.md ）。追加条項は (a) 月間 MAU 1 億超 または 月商 2,000 万 USD 超で商用ライセンス必須、(b) 第三者向けオンラインサービスで使う場合は UI か公開文書で MinerU 使用の明示が必須、(c) 違反時は自動失効。AGPL ではなくなったが、**表示義務が当社と顧客の製品に及ぶ**ため、授权原则の「自社事業に制限が及ぶ許諾」に該当すると判断し、既定・同梱とも不採用。Docling で品質が不足する文書種別が eval で判明した場合のみ、表示義務を受け入れるかをユーザーが判断する。
 
