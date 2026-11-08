@@ -41,7 +41,7 @@
 | `ingest/worker.py` | ワーカー本体（並列数・ハートビート・定期 GC・graceful shutdown） |
 | `ingest/events.py` | 進捗の publish（worker）/ subscribe（API の SSE） |
 | `audit.py` | `write_audit(...)`（R36） |
-| `cli.py` | `python -m arag.cli reindex [--all|--content-hash]`（R41）、`ingest-dir`（E1 用） |
+| `cli.py` | `python -m arag.cli reindex [--all|--content-hash]`（R41）、`ingest-dir`（E1 用）、`gc [--retention-days N]`（即時 GC） |
 
 ## 3. パイプライン
 
@@ -145,7 +145,7 @@ arq は redis-py < 6 に固定されており Redis 8 用クライアントと�
 | `ARAG_STORAGE_DIR` | `/data/storage` | LocalStorage の root |
 | `ARAG_DOCLING_URL` | 空 | docling-serve。空なら PDF 等の入庫はエラー（テキスト系のみ可） |
 | `ARAG_DOCLING_PAGE_WINDOW` | `20` | R15 |
-| `ARAG_DOCLING_OCR_LANG` | `ja,en` | |
+| `ARAG_DOCLING_OCR_LANG` | （空） | 空ならサーバ既定（RapidOCR）。指定は 1 言語のみ |
 | `ARAG_UPLOAD_MAX_MB` | `200` | R11 |
 | `ARAG_CHUNK_MAX_TOKENS` / `ARAG_SECTION_MAX_TOKENS` / `ARAG_SECTION_LEVEL` | `512` / `2000` / `2` | R17 |
 | `ARAG_EMBED_TOKENIZER` | `BAAI/bge-m3` | トークン数の計測 |
@@ -177,7 +177,7 @@ arq は redis-py < 6 に固定されており Redis 8 用クライアントと�
 
 ## 10. 未決事項（実装中に決めて本書へ反映）
 
-1. 日本語 OCR の既定エンジン（docling-serve の `ocr_preset`: EasyOCR `ja` / RapidOCR / Tesseract `jpn`）。スキャン PDF の小さな比較で決める。
+1. ~~日本語 OCR の既定エンジン~~ → §11 で決定（RapidOCR 既定・言語指定なし）。
 2. `section_level` と子チャンク上限（512）は P2 の eval で見直す。
 3. 文脈付与の文書全文上限（60k トークン）とモデルの費用（7 文書での実測をジョブの usage から出す）。
 
@@ -187,6 +187,8 @@ arq は redis-py < 6 に固定されており Redis 8 用クライアントと�
 |---|---|---|
 | 表の直列化 | 子チャンクの表は Markdown（`MarkdownTableSerializer`）。分割時はヘッダ行を各片に繰り返す | 既定の triplet 形式（「A, 値 = 1」）は分割片のヘッダが崩れ、引用表示でも読みにくい |
 | スライド・シート | `DoclingDocument.filter(page_nrs=…)` で 1 枚ずつ切る | `merge_peers` が見出しの無い枚をまたいで結合するため |
+| 日本語 OCR | docling-serve の既定（`ocr_preset=auto` → RapidOCR、PP-OCRv5）に任せ、`ocr_lang` は送らない。`ARAG_DOCLING_OCR_LANG` で 1 言語だけ指定可（例 `iso:ja`） | 評価 PDF 2 件の 1 頁目を 145dpi 画像化し `force_ocr` で比較：テキスト層との一致率 0.95（既定・`iso:ja` とも同じ）。`ocr_lang=ja,en` は RapidOCR が 1 言語のみのため変換失敗。EasyOCR は v1.38.2 イメージで失敗、Tesseract は jpn 未同梱 |
+| ページをまたぐ表 | チャンク化の前に、続きの表（直前が表・次ページ開始・列数同じ・列ヘッダ／キャプション無し）を前の表へ結合（`merge_continued_tables`、chunker v2） | docling は改ページで表を分け、続きの先頭データ行がヘッダ扱いになる（評価 PDF 04） |
 | アーカイブ | 閲覧・書込は変えず、Qdrant payload の `kb_ids` / `document_ids` から外す（検索対象外） | 旧版と同じ意味。切替時に payload を同期する |
 | 権限外の応答 | 閲覧不可は 404、閲覧可だが書込不可は 403 | 閲覧できる KB の存在は秘匿の対象ではない |
 | アップロードの検査 | 全ファイルを先に一時保存して 413 / 415 を判定し、1 件でも不可なら全体を拒否 | 一部だけ入る状態を作らない |

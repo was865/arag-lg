@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     storage_dir: str = "./.data/storage"
     docling_url: str = ""
     docling_page_window: int = 20
-    docling_ocr_lang: str = "ja,en"
+    # 空なら docling-serve の既定（RapidOCR・PP-OCRv5 多言語。日本語も読める）。
+    # RapidOCR は 1 言語のみ（例 "iso:ja"）。"ja,en" のような複数指定は変換が失敗する
+    docling_ocr_lang: str = ""
     docling_timeout_sec: float = 900.0
     upload_max_mb: int = 200
     chunk_max_tokens: int = 512

@@ -186,7 +186,7 @@ class DoclingServeParser:
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.page_window = page_window
-        self.ocr_lang = ocr_lang or ["ja", "en"]
+        self.ocr_lang = list(ocr_lang or [])
         self.timeout_sec = timeout_sec
         self.http_timeout_sec = http_timeout_sec
         self.poll_interval_sec = poll_interval_sec
@@ -233,8 +233,10 @@ class DoclingServeParser:
             "to_formats": "json",
             "image_export_mode": "embedded",
             "do_ocr": "true",
-            "ocr_lang": list(self.ocr_lang),
         }
+        # 未指定ならサーバ既定のエンジン・言語に任せる（specs/003-ingestion/design.md §11）
+        if self.ocr_lang:
+            form["ocr_lang"] = list(self.ocr_lang)
         if window:
             form["page_range"] = [str(window[0]), str(window[1])]
         try:

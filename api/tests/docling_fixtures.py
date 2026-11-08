@@ -33,7 +33,7 @@ def prov(page: int) -> ProvenanceItem:
     return ProvenanceItem(page_no=page, bbox=BoundingBox(l=10, t=700, r=300, b=680), charspan=(0, 1))
 
 
-def table(rows: list[list[str]], page: int) -> tuple[TableData, ProvenanceItem]:
+def table(rows: list[list[str]], page: int, *, header: bool = True) -> tuple[TableData, ProvenanceItem]:
     cells = [
         TableCell(
             text=v,
@@ -41,7 +41,7 @@ def table(rows: list[list[str]], page: int) -> tuple[TableData, ProvenanceItem]:
             end_row_offset_idx=i + 1,
             start_col_offset_idx=j,
             end_col_offset_idx=j + 1,
-            column_header=(i == 0),
+            column_header=header and i == 0,
         )
         for i, r in enumerate(rows)
         for j, v in enumerate(r)
@@ -83,4 +83,21 @@ def headingless_doc(pages: int = 4) -> DoclingDocument:
     for p in range(1, pages + 1):
         doc.add_page(page_no=p, size=Size(width=600, height=800))
         doc.add_text(DocItemLabel.TEXT, f"{p} ページ目の本文。" * 4, prov=prov(p))
+    return doc
+
+
+def cross_page_table_doc(cols_b: int = 3, caption_b: bool = False) -> DoclingDocument:
+    """ページをまたぐ表（2 ページ目の続きにヘッダ行が無い）。"""
+    doc = DoclingDocument(name="点検台帳")
+    for p in (1, 2):
+        doc.add_page(page_no=p, size=Size(width=600, height=800))
+    doc.add_heading("点検表", level=1, prov=prov(1))
+    a, pa = table([["設備ID", "判定", "注記"], ["MX-11", "監視", "N1"], ["MX-14", "再点検", "N7"]], 1)
+    doc.add_table(data=a, prov=pa)
+    rows_b = [["MX-17", "停止候補", "N9"], ["MX-21", "監視", "N2"]]
+    b, pb = table([r[:cols_b] for r in rows_b], 2, header=False)
+    tb = doc.add_table(data=b, prov=pb)
+    if caption_b:
+        tb.captions.append(doc.add_text(DocItemLabel.CAPTION, "表2: 別の表", prov=prov(2)).get_ref())
+    doc.add_text(DocItemLabel.TEXT, "MX-17 は即時停止を推奨する。", prov=prov(2))
     return doc

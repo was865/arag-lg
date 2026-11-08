@@ -154,7 +154,7 @@ async def test_docling_windows_and_merge(tmp_path: Path) -> None:
 
     r = await _parser(fake, page_window=2).parse(_pdf(tmp_path, 5), "規程.pdf", "pdf", on_progress)
     assert [q["page_range"] for q in fake.requests] == [[1, 2], [3, 4], [5, 5]]
-    assert fake.requests[0]["ocr_lang"] == ["ja", "en"]
+    assert fake.requests[0]["ocr_lang"] == []  # 既定はサーバ任せ（送らない）
     assert r.page_count == 5
     assert sorted(r.doc.pages) == [1, 2, 3, 4, 5]
     assert [t.text for t in r.doc.texts] == ["p1", "p2", "p3", "p4", "p5"]
@@ -194,3 +194,9 @@ async def test_docling_connection_error(tmp_path: Path) -> None:
     with pytest.raises(ParseError) as e:
         await parser.parse(_pdf(tmp_path, 1), "a.pdf", "pdf")
     assert e.value.user_message == "解析サービスに接続できません"
+
+
+async def test_docling_ocr_lang_when_configured(tmp_path: Path) -> None:
+    fake = FakeDocling()
+    await _parser(fake, ocr_lang=["iso:ja"]).parse(_pdf(tmp_path, 1), "a.pdf", "pdf")
+    assert fake.requests[0]["ocr_lang"] == ["iso:ja"]

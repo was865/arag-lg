@@ -48,8 +48,8 @@
 - [x] F4 Mac: ごみ箱一覧（残り日数つき）
 
 ## G. 運用・実データ
-- [ ] G1 Win: `compose.gpu.yaml` に docling-serve（cu130, :5001）を追加し、評価用 PDF 1 件の変換時間・GPU メモリを測る。日本語 OCR エンジンの比較（スキャン PDF 2〜3 件）— design §10-1
+- [ ] G1 Win:（OCR 比較は済・report.md。GPU メモリの測定のみ残り） `compose.gpu.yaml` に docling-serve（cu130, :5001）を追加し、評価用 PDF 1 件の変換時間・GPU メモリを測る。日本語 OCR エンジンの比較（スキャン PDF 2〜3 件）— design §10-1
 - [x] G2 Mac: `/readyz` に docling-serve を追加 — R40
 - [x] G3 Mac: `cli reindex` / `cli ingest-dir` — R41
-- [ ] G4 Mac: 評価用 PDF 7 件を `eval/assets/agentic_rag_demo/` に複製し（済）、fixture JSON を作成（docling-serve 稼働後）
-- [ ] G5 Mac+Win: E1〜E5（requirements「完了の確認」）を GPU 機のサービスに向けて実行し、結果（所要時間・チャンク数・文脈付与の費用）を `specs/003-ingestion/report.md` に記録
+- [x] G4 Mac: 評価用 PDF 7 件を `eval/assets/agentic_rag_demo/` に複製し、fixture JSON を作成（`api/tests/fixtures/04-cross-page-table.docling.json`）
+- [x] G5 Mac+Win:（文脈付与の費用はモデル未設定のため未測定） E1〜E5（requirements「完了の確認」）を GPU 機のサービスに向けて実行し、結果（所要時間・チャンク数・文脈付与の費用）を `specs/003-ingestion/report.md` に記録

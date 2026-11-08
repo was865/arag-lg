@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.cli import reindex
+from arag.cli import gc, reindex
 from arag.ingest.index import QdrantIndex
 from arag.ingest.pipeline import run_ingest
 from arag.settings import Settings
@@ -49,3 +49,28 @@ async def test_reindex_requeues_changed_versions_without_reparse(
 
     (Path(storage_root) / content_prefix(h) / "original.md").unlink()
     assert await run_ingest(uuid.UUID(job_id), deps) == "ready"
+
+
+async def test_gc_command_with_zero_retention(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+    database_url: str,
+) -> None:
+    kb = await _personal(client, ALICE)
+    item = (await _upload(client, kb, [("a.md", MD.encode())])).json()["items"][0]
+    await run_ingest(uuid.UUID(item["job_id"]), make_deps(sessionmaker, storage_root, qdrant_index))
+    settings = Settings(
+        database_url=database_url, storage_dir=storage_root, qdrant_collection=qdrant_index.alias
+    )
+    # 既定の保持期間内なら何も消えない
+    assert await gc(settings, retention_days=None) == 0
+    async with sessionmaker() as s:
+        assert await s.scalar(text("SELECT count(*) FROM app.contents")) == 1
+        await s.execute(text("UPDATE app.documents SET deleted_at = now() - interval '1 second'"))
+        await s.commit()
+    assert await gc(settings, retention_days=0) == 0
+    async with sessionmaker() as s:
+        assert await s.scalar(text("SELECT count(*) FROM app.contents")) == 0
+        assert await s.scalar(text("SELECT count(*) FROM app.documents")) == 0

@@ -2,6 +2,7 @@
 
 python -m arag.cli reindex [--all | --content-hash H ...] [--dry-run]
 python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin]
+python -m arag.cli gc [--retention-days N]
 """
 
 import argparse
@@ -9,18 +10,23 @@ import asyncio
 import json
 import sys
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
+from qdrant_client import AsyncQdrantClient
 from sqlalchemy import or_, select
 
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.db.models import Content, IngestJob
 from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
+from arag.ingest.gc import run_gc
+from arag.ingest.index import QdrantIndex
 from arag.ingest.sparse import SPARSE_VERSION
 from arag.kb.uploads import SUPPORTED
 from arag.settings import Settings
+from arag.storage import LocalStorage
 
 
 async def reindex(settings: Settings, *, all_: bool, hashes: list[str], dry_run: bool) -> int:
@@ -123,6 +129,27 @@ async def ingest_dir(
     return 0 if ok == len(jobs) else 2
 
 
+async def gc(settings: Settings, *, retention_days: int | None) -> int:
+    """ごみ箱の期限切れ削除と孤立内容の回収を今すぐ 1 回行う（ワーカーは 1 時間ごと）。"""
+    days = settings.trash_retention_days if retention_days is None else retention_days
+    engine = make_engine(settings.database_url)
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    try:
+        async with make_sessionmaker(engine)() as s:
+            counts = await run_gc(
+                s,
+                LocalStorage(settings.storage_dir),
+                QdrantIndex(client, settings.qdrant_collection),
+                now=datetime.now(UTC),
+                retention=timedelta(days=days),
+            )
+        print(f"保持期間 {days} 日: " + json.dumps(counts, ensure_ascii=False))
+        return 0
+    finally:
+        await client.close()
+        await engine.dispose()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="arag.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -138,7 +165,11 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--role", default="admin", choices=["owner", "admin", "member"])
     d.add_argument("--batch", type=int, default=10)
     d.add_argument("--timeout", type=float, default=3600)
+    g = sub.add_parser("gc", help="ごみ箱の期限切れ削除と孤立内容の回収を今すぐ実行する")
+    g.add_argument("--retention-days", type=int, default=None, help="既定は ARAG_TRASH_RETENTION_DAYS")
     args = parser.parse_args(argv)
+    if args.cmd == "gc":
+        return asyncio.run(gc(Settings(), retention_days=args.retention_days))
     if args.cmd == "reindex":
         return asyncio.run(reindex(Settings(), all_=args.all, hashes=args.content_hash, dry_run=args.dry_run))
     return asyncio.run(

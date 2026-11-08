@@ -1,8 +1,8 @@
 """チャンク化（specs/003-ingestion D3・R17・R18）。"""
 
-from arag.ingest.chunking import chunk_document
+from arag.ingest.chunking import chunk_document, merge_continued_tables
 
-from .docling_fixtures import CharTokenizer, headingless_doc, regulation_doc
+from .docling_fixtures import CharTokenizer, cross_page_table_doc, headingless_doc, regulation_doc
 
 
 def test_sections_follow_heading_level_2() -> None:
@@ -59,3 +59,51 @@ def test_ordinals_are_sequential() -> None:
     res = chunk_document(regulation_doc(), CharTokenizer(max_tokens=60))
     assert [c.ordinal for c in res.chunks] == list(range(len(res.chunks)))
     assert [s.ordinal for s in res.sections] == list(range(len(res.sections)))
+
+
+def test_cross_page_table_continuation_is_merged() -> None:
+    doc = cross_page_table_doc()
+    merged = merge_continued_tables(doc)
+    assert len(doc.tables) == 2  # 元の文書は変えない
+    assert len(merged.tables) == 1
+    t = merged.tables[0]
+    assert [row[0].text for row in t.data.grid] == ["設備ID", "MX-11", "MX-14", "MX-17", "MX-21"]
+    assert [p.page_no for p in t.prov] == [1, 2]
+    r = chunk_document(doc, CharTokenizer(max_tokens=400))
+    tables = [c for c in r.chunks if c.block_type == "table"]
+    assert len(tables) == 1
+    assert tables[0].text.splitlines()[0].startswith("| 設備ID")
+    assert "MX-21" in tables[0].text
+    assert (tables[0].page_start, tables[0].page_end) == (1, 2)
+
+
+def test_cross_page_split_repeats_header() -> None:
+    r = chunk_document(cross_page_table_doc(), CharTokenizer(max_tokens=90))
+    tables = [c for c in r.chunks if c.block_type == "table"]
+    assert len(tables) > 1
+    assert all(c.text.startswith("| 設備ID") for c in tables)
+    assert any("MX-21" in c.text for c in tables)
+
+
+def test_tables_not_merged_when_shape_or_caption_differs() -> None:
+    assert len(merge_continued_tables(cross_page_table_doc(cols_b=2)).tables) == 2
+    assert len(merge_continued_tables(cross_page_table_doc(caption_b=True)).tables) == 2
+
+
+def test_real_docling_output_cross_page_table() -> None:
+    """評価 PDF 04 を docling-serve v1.38.2 で変換した実出力（tests/fixtures）。"""
+    from pathlib import Path
+
+    from docling_core.types.doc.document import DoclingDocument
+
+    path = Path(__file__).parent / "fixtures" / "04-cross-page-table.docling.json"
+    doc = DoclingDocument.load_from_json(path)
+    assert len(doc.tables) == 2  # docling は改ページで表を分ける
+    r = chunk_document(doc, CharTokenizer(max_tokens=2000))
+    tables = [c for c in r.chunks if c.block_type == "table"]
+    assert len(tables) == 1
+    lines = [ln for ln in tables[0].text.splitlines() if ln.startswith("|")]
+    assert lines[0].split("|")[1].strip() == "設備ID"
+    assert [ln.split("|")[1].strip() for ln in lines[2:]] == ["MX-11", "MX-14", "MX-17", "MX-21", "MX-25"]
+    headings = [s.heading_path for s in r.sections][1:]
+    assert headings == ["月次設備点検台帳", "1. 判定ルール", "2. 点検表 A", "最終判断の補足"]
