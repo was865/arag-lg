@@ -20,9 +20,11 @@ export function ScopePicker({ open, anchorRef, value, onChange, onClose, attachm
   const [pos, setPos] = useState({ left: 0, bottom: 0 });
   const { t } = useT();
   // 旧版のプリセット（全社・Wiki・Slack など）は実在しないデータソースだったので、添付だけを残す
-  const scopePresets: ScopePreset[] = [
+  const presets: ScopePreset[] = [
     { id: "files", label: t.chat.scopeFilesOnly, iconName: "paperclip", desc: t.chat.scopeFilesOnlyDesc, sources: ["uploads"] },
   ];
+  // 添付が無いときは選べない項目を出さない
+  const scopePresets = attachmentCount > 0 ? presets : [];
   const { kbs } = useKbs();
 
   // 検索範囲セレクタ用の KB 行: 「全て」 + アクセスできる実 KB。kbId が retrieve に反映される。
@@ -68,7 +70,6 @@ export function ScopePicker({ open, anchorRef, value, onChange, onClose, attachm
       <span className="absolute -bottom-[6px] left-[18px] h-2.5 w-2.5 rotate-45 border-b-[0.5px] border-r-[0.5px] border-divider-strong bg-surface" />
       <div className="flex items-center justify-between border-b-[0.5px] border-divider px-3.5 py-2.5 text-[12px] font-semibold text-muted">
         <span>{t.chat.scopeHeader}</span>
-        <kbd>⌘K</kbd>
       </div>
       <div className="overflow-y-auto p-1.5">
         {/* 実検索範囲 = ナレッジベース。ここの選択だけが retrieve の kb_ids に反映される。 */}
@@ -135,7 +136,7 @@ export function ScopePicker({ open, anchorRef, value, onChange, onClose, attachm
           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">{t.chat.scopeIncludeArchived}</span>
         </button>
 
-        <div className="mx-1 my-1.5 h-px bg-divider" />
+        {scopePresets.length > 0 && <div className="mx-1 my-1.5 h-px bg-divider" />}
 
         {scopePresets.map((p) => {
           const isFiles = p.id === "files";

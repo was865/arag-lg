@@ -24,7 +24,8 @@ function greeting(t: Dictionary, h: number) {
 
 interface EmptyStateProps {
   user: AppUser;
-  stats: WorkspaceStats;
+  /** 読み込み前は null（0 件と誤解されないよう指標の行を出さない）。 */
+  stats: WorkspaceStats | null;
   onFillComposer: (text: string) => void;
 }
 
@@ -32,10 +33,12 @@ export function EmptyState({ user, stats, onFillComposer }: EmptyStateProps) {
   const { t } = useT();
   const hour = useHour();
   const usageTips = USAGE_TIPS;
-  const meta = [
-    [stats.indexedDocumentCount.toLocaleString("ja-JP"), t.chat.metaIndexed],
-    [stats.kbCount.toLocaleString("ja-JP"), t.chat.metaConnected],
-  ];
+  const meta = stats
+    ? [
+        [stats.indexedDocumentCount.toLocaleString("ja-JP"), t.chat.metaIndexed],
+        [stats.kbCount.toLocaleString("ja-JP"), t.chat.metaConnected],
+      ]
+    : [];
 
   return (
     <div className="grid min-h-[calc(100vh-52px-130px)] min-w-0 place-items-center px-6 py-10 max-md:min-h-0 max-md:px-[18px] max-md:py-7">
@@ -52,7 +55,7 @@ export function EmptyState({ user, stats, onFillComposer }: EmptyStateProps) {
 
         <TipCarousel tips={usageTips} onFill={onFillComposer} />
 
-        <div className="mt-9 flex justify-center gap-6 border-t-[0.5px] border-divider pt-[18px] max-md:mt-6 max-md:flex-wrap max-md:gap-x-[18px] max-md:gap-y-2.5">
+        <div className="mt-9 flex min-h-[37px] justify-center gap-6 border-t-[0.5px] border-divider pt-[18px] max-md:mt-6 max-md:flex-wrap max-md:gap-x-[18px] max-md:gap-y-2.5">
           {meta.map(([a, b]) => (
             <div key={b} className="text-[11px] text-muted max-md:text-[10.5px]">
               <strong className="text-fg">{a}</strong>

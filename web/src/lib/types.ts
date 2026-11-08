@@ -81,6 +81,8 @@ export interface ThreadSummary {
   updated: string;
   pinned?: boolean;
   active?: boolean;
+  /** 回答を生成中（別のスレッドを見ている間も裏で続く）。 */
+  running?: boolean;
 }
 
 export interface CompletedThread {

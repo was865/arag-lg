@@ -27,6 +27,7 @@ export const sidebar = {
 
   // thread row
   threadMenuLabel: "スレッド操作メニュー",
+  threadRunning: "回答を生成中",
 
   // thread context menu
   star: "スター",

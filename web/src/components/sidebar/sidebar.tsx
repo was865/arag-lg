@@ -1,5 +1,6 @@
 "use client";
 
+import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { SidebarHeader } from "@/components/sidebar/sidebar-header";
@@ -141,7 +142,7 @@ export function Sidebar(props: SidebarProps) {
       />
 
       {/* New thread */}
-      <SidebarNewButton label={t.sidebar.newThread} shortcut="⌘N" onClick={onNewChat} />
+      <SidebarNewButton label={t.sidebar.newThread} shortcut={SHORTCUT_LABEL.newThread} onClick={onNewChat} />
 
       {/* Search */}
       <div className="relative mx-3 mb-3">
@@ -244,6 +245,14 @@ export function Sidebar(props: SidebarProps) {
                 onRenameCancel={cancelRename}
                 onSelect={() => onSelectThread(th.id)}
                 onOpenMenu={(rect) => setMenuAnchor({ id: th.id, rect })}
+                trailing={
+                  th.running ? (
+                    <span
+                      aria-label={t.sidebar.threadRunning}
+                      className="block h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent"
+                    />
+                  ) : undefined
+                }
               />
             ))}
           </div>

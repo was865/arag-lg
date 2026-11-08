@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
-import { AnswerFooter, CancelledNotice, ErrorNotice } from "@/components/chat/answer-footer";
+import { AnswerFooter, CancelledNotice, ErrorNotice, UncitedNotice } from "@/components/chat/answer-footer";
 import { UserAttachments } from "@/components/uploads/uploads";
 import type { CitationStyle, StagedFile, Turn, ToolView } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
@@ -230,6 +230,9 @@ export function Transcript({
               )}
               {/* 取消でも途中までの回答は残す（runner が保存する） */}
               {turn.status === "cancelled" && <CancelledNotice onRetry={() => onRegenerate(idx)} />}
+              {turn.status === "done" && turn.noAnswerReason === "no_relevant_sources" && turn.answer.trim() && (
+                <UncitedNotice />
+              )}
               {turn.status === "error" && <ErrorNotice message={turn.error} onRetry={() => onRegenerate(idx)} />}
               {/* 各 done 回答が自分の指標・操作を持つ（複数ターン対応）。 */}
               {turn.status === "done" && (

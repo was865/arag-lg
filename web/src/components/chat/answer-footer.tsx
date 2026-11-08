@@ -150,6 +150,23 @@ export function CancelledNotice({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/** 資料を調べたのに引用の無い回答（小さいモデルで起きる）。内容を確かめるよう促す。 */
+export function UncitedNotice() {
+  const { t } = useT();
+  return (
+    <div className="flex items-start gap-2.5 rounded-[10px] border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-muted">
+      <svg viewBox="0 0 16 16" width="14" height="14" className="mt-px shrink-0" aria-hidden>
+        <path d="M8 2.5l6 10.5H2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+        <path d="M8 6.5v3M8 11.2v.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      <span>
+        <strong className="font-semibold text-fg">{t.chat.noAnswerUncited}</strong>
+        {t.chat.noAnswerUncitedHint}
+      </span>
+    </div>
+  );
+}
+
 /** 生成に失敗したターン（理由とやり直し）。 */
 export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: () => void }) {
   const { t } = useT();

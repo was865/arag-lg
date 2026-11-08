@@ -24,6 +24,7 @@ import { useTweaks } from "@/hooks/use-tweaks";
 import { usePanelWidth } from "@/components/workspace/use-panel-width";
 import { chatApi, type ThreadOut } from "@/lib/chat/api";
 import { MODEL_STORAGE_KEY } from "@/lib/constants";
+import { shortcutAction } from "@/lib/shortcuts";
 import type { FeedbackRating, FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { AppUser, ModelOption, ScopeValue, Source, ThreadSummary, Turn } from "@/lib/types";
 import { cn, relativeTime } from "@/lib/utils";
@@ -42,7 +43,8 @@ const DEV_USER: AppUser = {
   emailVerifiedAt: null,
 };
 
-const FALLBACK_MODEL: ModelOption = { id: "", label: "モデル未設定", tag: "", desc: "", available: false };
+const LOADING_MODEL: ModelOption = { id: "", label: "読み込み中…", tag: "", desc: "", available: false };
+const NO_MODEL: ModelOption = { id: "", label: "モデル未設定", tag: "", desc: "", available: false };
 
 function threadPath(id: string | null): string {
   return id ? `/c/${encodeURIComponent(id)}` : "/";
@@ -76,9 +78,9 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
   const [activeCiteTurn, setActiveCiteTurn] = useState(0);
   const [activeSourceId, setActiveSourceId] = useState("");
   const [highlightSectionId, setHighlightSectionId] = useState<string | null>(null);
-  const [models, setModels] = useState<ModelOption[]>([]);
+  const [models, setModels] = useState<ModelOption[] | null>(null);
   const [modelId, setModelId] = useState<string | null>(null);
-  const [stats, setStats] = useState<WorkspaceStats>(EMPTY_STATS);
+  const [stats, setStats] = useState<WorkspaceStats | null>(null);
   const [scope, setScope] = useState<ScopeValue>({
     id: "kb:all",
     label: t.chat.scopeAllKbs,
@@ -89,6 +91,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
 
   const refreshThreads = useCallback(async () => {
     try {
@@ -131,14 +134,17 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
         const usable = opts.find((o) => o.id === saved && o.available);
         setModelId(usable?.id ?? m.default_id ?? null);
       })
-      .catch(() => setModels([]));
-  }, []);
+      .catch(() => {
+        setModels([]);
+        push("モデルの一覧を取得できませんでした", "error");
+      });
+  }, [push]);
 
   useEffect(() => {
     chatApi
       .documentStats()
       .then((s) => setStats(normalizeStats(s, kbs.length)))
-      .catch(() => {});
+      .catch(() => setStats(EMPTY_STATS));
   }, [kbs.length]);
 
   const conv = convs[activeId ?? NEW_THREAD];
@@ -168,7 +174,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
     turns.length === 0 ? "empty" : running ? "running" : lastTurn?.status === "cancelled" ? "cancelled" : "done";
   const activeThread = threads.find((x) => x.id === activeId);
   const title = activeThread?.title ?? turns[0]?.query ?? "";
-  const model = models.find((m) => m.id === modelId) ?? models[0] ?? FALLBACK_MODEL;
+  const model = models === null ? LOADING_MODEL : (models.find((m) => m.id === modelId) ?? models[0] ?? NO_MODEL);
 
   // 右パネルは既定で最後のターンを追う
   const lastIdx = turns.length - 1;
@@ -195,7 +201,16 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
   }, [turns]);
   const onChatScroll = () => {
     const el = scrollRef.current;
-    if (el) stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (!el) return;
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    setAwayFromBottom(!stickToBottom.current);
+  };
+  const jumpToLatest = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickToBottom.current = true;
+    setAwayFromBottom(false);
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
   // ── 操作 ─────────────────────────────────────────────────────────────
@@ -204,6 +219,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
     window.history.pushState(null, "", threadPath(id));
     setRightPanelOpen(false);
     stickToBottom.current = true;
+    setAwayFromBottom(false);
     if (isMobile) setSidebarCollapsed(true);
   };
 
@@ -363,17 +379,36 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
     }
   };
 
-  // Esc で右パネルを閉じる
+  // キーボード操作（Esc で右パネルを閉じる、⇧⌘O 新規、⌘B サイドバー、⌘⌫ 停止）。
+  // 最新の状態を見るため、登録は 1 回にして処理は ref から呼ぶ
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && rightPanelOpen) setRightPanelOpen(false);
+    onKeyRef.current = (e) => {
+      if (e.key === "Escape" && rightPanelOpen) {
+        setRightPanelOpen(false);
+        return;
+      }
+      const action = shortcutAction(e, { running });
+      if (!action) return;
+      e.preventDefault();
+      if (action === "new-thread") {
+        selectThread(null);
+        setComposerValue("");
+      } else if (action === "toggle-sidebar") setSidebarCollapsed((c) => !c);
+      else stopRun();
     };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => onKeyRef.current(e);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rightPanelOpen]);
+  }, []);
 
   // ── 描画 ─────────────────────────────────────────────────────────────
-  const threadList: ThreadSummary[] = threads.map(toSummary);
+  const threadList: ThreadSummary[] = threads.map((th) => ({
+    ...toSummary(th),
+    running: convs[th.id]?.turns.at(-1)?.status === "running",
+  }));
   const backdropVisible = isWide ? false : isMobile ? !sidebarCollapsed || rightPanelShown : rightPanelShown;
 
   return (
@@ -403,7 +438,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
             onRenameThread={renameThread}
             onDeleteThread={deleteThread}
             onToggleStar={toggleStar}
-            dataSourceCount={stats.totalDocumentCount}
+            dataSourceCount={stats?.totalDocumentCount ?? 0}
             dark={tweaks.dark}
             user={DEV_USER}
           />
@@ -478,7 +513,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
             </div>
           </header>
 
-          <div className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[1fr_auto] overflow-hidden">
+          <div className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[1fr_auto] overflow-hidden">
             <div ref={scrollRef} onScroll={onChatScroll} className="overflow-x-hidden overflow-y-auto">
               {phase === "empty" ? (
                 activeId && !conv?.loaded ? (
@@ -520,13 +555,27 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
               )}
             </div>
 
+            {awayFromBottom && phase !== "empty" && (
+              <div className="pointer-events-none relative h-0">
+                <button
+                  type="button"
+                  onClick={jumpToLatest}
+                  className="pointer-events-auto absolute -top-12 left-1/2 z-10 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border-[0.5px] border-divider-strong bg-surface px-3 text-[12px] font-medium text-fg shadow-e2 hover:bg-surface-2"
+                >
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+                    <path d="M8 3v10M8 13l-4-4M8 13l4-4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {running ? "生成中の回答へ" : "最新へ"}
+                </button>
+              </div>
+            )}
             <Composer
               value={composerValue}
               onChange={setComposerValue}
               onSubmit={() => startRun(composerValue)}
               onStop={stopRun}
               model={model}
-              models={models}
+              models={models ?? []}
               onSelectModel={(m) => {
                 setModelId(m.id);
                 try {

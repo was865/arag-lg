@@ -1,5 +1,6 @@
 "use client";
 
+import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ModelPicker } from "@/components/chat/model-picker";
@@ -327,7 +328,7 @@ export function Composer({
       </div>
       <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-2 text-center text-[11px] text-muted-2 max-md:hidden">
         {running ? (
-          <span><kbd>⌘+⌫</kbd>{t.chat.cancelHintText}</span>
+          <span><kbd>{SHORTCUT_LABEL.stop}</kbd>{t.chat.cancelHintText}</span>
         ) : pending ? (
           t.chat.pendingHint
         ) : (
@@ -343,7 +344,7 @@ export function Composer({
               </>
             )}
             <span className="text-divider-strong">·</span>
-            <span><kbd>⌘N</kbd>{t.chat.hintNewThread}</span>
+            <span><kbd>{SHORTCUT_LABEL.newThread}</kbd>{t.chat.hintNewThread}</span>
           </>
         )}
       </div>

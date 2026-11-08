@@ -63,6 +63,7 @@ export const chat = {
   editHint: "編集して送信すると、この質問から先の会話を作り直します。",
   noAnswerNoSources: "社内の資料に該当する記述が見つかりませんでした",
   noAnswerUncited: "資料から根拠を示せませんでした",
+  noAnswerUncitedHint: "。この回答には出典が付いていないので、内容は資料で確かめてください。",
   reconnecting: "接続し直しています…",
 
   // answer-markdown
