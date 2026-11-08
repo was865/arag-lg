@@ -25,7 +25,7 @@ DENY = re.compile(
 LESSER = re.compile(r"LGPL|Lesser General Public", re.IGNORECASE)
 
 # 個別に許可した依存（specs/000-overview/licenses.md と decisions.md §12 に根拠を記載）
-ALLOW = {"psycopg", "psycopg-binary"}
+ALLOW = {"psycopg", "psycopg-binary", "psycopg-pool"}
 # 自分自身（ライセンス未記載で UNKNOWN になる）
 SELF = {"arag", "web"}
 

@@ -132,6 +132,8 @@ async def test_list_outline_and_read_section(
     assert "a.md" in await op_list_documents(ctx, "a.m") and "org.md" not in await op_list_documents(
         ctx, "a.m"
     )
+    # 名前に無い語（内容の語）で探したら本文の検索へ誘導する
+    assert "search を使って" in await op_list_documents(ctx, "海外リージョン")
     # 添付で文書を絞った run は、その文書しか見えない
     only = make_ctx(sessionmaker, qdrant_index, document_ids=[uuid.UUID(world.doc_org)])
     assert "a.md" not in await op_list_documents(only)

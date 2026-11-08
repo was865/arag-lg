@@ -276,7 +276,10 @@ async def op_list_documents(ctx: RunContext, query: str | None = None) -> str:
             q = q.where(Document.filename.ilike(f"%{query.strip()}%"))
         rows = (await s.execute(q)).all()
     if not rows:
-        return f"「{query}」に一致する文書はありません。" if query else "検索範囲に文書がありません。"
+        if not query:
+            return "検索範囲に文書がありません。"
+        # 小さいモデルは内容の語で文書名を探して諦めがちなので、本文の検索へ誘導する
+        return f"「{query}」を名前に含む文書はありません。文書の内容を探すときは search を使ってください。"
     lines = [f"文書 {min(len(rows), LIST_MAX)} 件{'（先頭 50 件）' if len(rows) > LIST_MAX else ''}:"]
     for r in rows[:LIST_MAX]:
         pages = f"{r.page_count} ページ、" if r.page_count else ""
