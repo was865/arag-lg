@@ -36,6 +36,6 @@
 
 ## E. 評価
 
-- [ ] E1 Mac: `python -m arag.eval answer`（引用再現率・精度・事実網羅・ツール数・トークン・時間・回答不能率）— R33
+- [x] E1 Mac: `python -m arag.eval answer`（引用再現率・精度・事実網羅・ツール数・トークン・時間・回答不能率）— R33
 - [ ] E2 Mac: 評価者（忠実度）と人手ラベルの一致確認
-- [ ] E3 Mac+Win: `agentic_rag_demo_ext` で旧版基準と比較、`grade_threshold`・`verify` の既定を決めて report.md に
+- [x] E3 Mac+Win: `agentic_rag_demo_ext` で旧版基準と比較、`grade_threshold`・`verify` の既定を決めて report.md に（閾値の値振りは未実施、report.md §3）
