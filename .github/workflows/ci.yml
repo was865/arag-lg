@@ -1,0 +1,106 @@
+# CI（specs/001-p0-skeleton R17・R18）
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: api } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+      - name: scripts のテスト
+        run: uv run pytest -q -p no:cacheprovider --rootdir ../scripts ../scripts
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: web/package.json }
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  generated:
+    name: OpenAPI 生成物の一致
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: web/package.json }
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
+      - run: cd api && uv sync --locked
+      - run: cd web && pnpm install --frozen-lockfile
+      - run: make gen-check
+
+  licenses:
+    name: ライセンス走査
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: web/package.json }
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
+      - run: cd web && pnpm install --frozen-lockfile
+      - run: make licenses
+
+  compose-smoke:
+    name: compose 起動スモーク
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    env:
+      ARAG_TEI_EMBED_URL: http://tei-embed:80
+      ARAG_TEI_RERANK_URL: http://tei-rerank:80
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker compose --profile cpu up -d --build --wait --wait-timeout 300 postgres qdrant redis api web
+      - run: docker compose --profile cpu up -d tei-embed tei-rerank
+      - name: /readyz が 200 になるまで待つ（TEI のモデル取得を含む）
+        run: |
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /tmp/ready.json -w '%{http_code}' http://localhost:8100/readyz || true)
+            if [ "$code" = "200" ]; then cat /tmp/ready.json; exit 0; fi
+            sleep 10
+          done
+          cat /tmp/ready.json; exit 1
+      - run: curl -fsS http://localhost:3100/api/healthz
+      - name: トップページに API 状態が出る
+        run: curl -fsS http://localhost:3100/ | grep -q '正常'
+      - name: Valkey へ差し替えても起動する
+        run: |
+          docker compose rm -sf redis
+          REDIS_IMAGE=valkey/valkey:9.1.3 REDIS_CLI=valkey-cli docker compose up -d --wait redis
+          curl -fsS http://localhost:8100/readyz
+      - if: failure()
+        run: docker compose --profile cpu logs --no-color | tail -300
+      - if: always()
+        run: docker compose --profile cpu down -v

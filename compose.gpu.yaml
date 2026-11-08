@@ -1,0 +1,34 @@
+# GPU 機（Windows + RTX 4090、Docker Desktop + WSL2）で推論サービスだけを起動する。
+#   docker compose -f compose.gpu.yaml up -d
+# Mac 側の .env で ARAG_TEI_EMBED_URL=http://<GPU機>:8081 / ARAG_TEI_RERANK_URL=http://<GPU機>:8082 を指定する。
+# イメージ 89-* は Ada Lovelace（RTX 40 系, sm_89）用。
+name: arag-gpu
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  tei-embed:
+    <<: *gpu
+    image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
+    command: ["--model-id", "${TEI_EMBED_MODEL:-BAAI/bge-m3}", "--max-batch-tokens", "16384"]
+    ports: ["8081:80"]
+    volumes: [tei-cache:/data]
+    restart: unless-stopped
+
+  tei-rerank:
+    <<: *gpu
+    image: ghcr.io/huggingface/text-embeddings-inference:89-1.9.4
+    command: ["--model-id", "${TEI_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}"]
+    ports: ["8082:80"]
+    volumes: [tei-cache:/data]
+    restart: unless-stopped
+
+volumes:
+  tei-cache:

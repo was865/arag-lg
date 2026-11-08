@@ -1,0 +1,85 @@
+# ARag 開発・CI 用の構成（specs/001-p0-skeleton/design.md）。
+#   docker compose up -d                 … postgres / qdrant / redis / api / web
+#   docker compose --profile cpu up -d   … 上記 + TEI（CPU・小モデル。amd64 のみ。疎通は api の /readyz で確認）
+# Mac では TEI を動かさず、GPU 機（compose.gpu.yaml）を ARAG_TEI_*_URL で参照する。
+# ホスト側ポートは旧版 a-rag（5432/6333/6379/8000/3000）と同時に動かせるようずらしている。
+name: arag
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: arag
+      POSTGRES_PASSWORD: arag
+      POSTGRES_DB: arag
+    ports: ["${POSTGRES_PORT:-5433}:5432"]
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arag -d arag"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports: ["${QDRANT_PORT:-6343}:6333", "${QDRANT_GRPC_PORT:-6344}:6334"]
+    volumes: [qdrant:/qdrant/storage]
+    healthcheck:
+      # イメージに curl が無いため bash の /dev/tcp で /readyz を叩く
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && printf \"GET /readyz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    # Valkey へ切替: REDIS_IMAGE=valkey/valkey:9.1.3 REDIS_CLI=valkey-cli
+    image: ${REDIS_IMAGE:-redis:8.10.3}
+    ports: ["${REDIS_PORT:-6380}:6379"]
+    healthcheck:
+      test: ["CMD-SHELL", "${REDIS_CLI:-redis-cli} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./api
+    environment:
+      ARAG_DATABASE_URL: postgresql://arag:arag@postgres:5432/arag
+      ARAG_QDRANT_URL: http://qdrant:6333
+      ARAG_REDIS_URL: redis://redis:6379/0
+      ARAG_TEI_EMBED_URL: ${ARAG_TEI_EMBED_URL:-}
+      ARAG_TEI_RERANK_URL: ${ARAG_TEI_RERANK_URL:-}
+    ports: ["${API_PORT:-8100}:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    build: ./web
+    environment:
+      API_BASE_URL: http://api:8000
+    ports: ["${WEB_PORT:-3100}:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+
+  tei-embed:
+    profiles: ["cpu"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4
+    platform: linux/amd64
+    command: ["--model-id", "${TEI_EMBED_MODEL:-intfloat/multilingual-e5-small}"]
+    ports: ["8081:80"]
+    volumes: [tei-cache:/data]
+
+  tei-rerank:
+    profiles: ["cpu"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4
+    platform: linux/amd64
+    command: ["--model-id", "${TEI_RERANK_MODEL:-BAAI/bge-reranker-base}"]
+    ports: ["8082:80"]
+    volumes: [tei-cache:/data]
+
+volumes:
+  pgdata:
+  qdrant:
+  tei-cache:
