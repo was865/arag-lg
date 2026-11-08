@@ -49,6 +49,7 @@ class JobOut(BaseModel):
     page_count: int | None
     chunk_count: int | None
     created_at: datetime
+    started_at: datetime | None
     finished_at: datetime | None
 
 
@@ -69,6 +70,7 @@ async def _job_out(ctx: CtxDep, job: IngestJob, document_id: uuid.UUID | None) -
         page_count=content.page_count if content else None,
         chunk_count=chunk_count,
         created_at=job.created_at,
+        started_at=job.started_at,
         finished_at=job.finished_at,
     )
 

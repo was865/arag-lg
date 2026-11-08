@@ -42,6 +42,8 @@ async def reset_for_retry(session: AsyncSession, job: IngestJob) -> None:
     job.attempts = 0
     job.cancel_requested = False
     job.locked_by = None
+    # 手動の再試行・再索引は新しい実行（自動再試行は claim の COALESCE で初回の開始時刻を保つ）
+    job.started_at = None
     job.finished_at = None
     await session.execute(update(IngestJob).where(IngestJob.id == job.id).values(run_after=text("now()")))
     await session.execute(

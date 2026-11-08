@@ -594,6 +594,18 @@
             "title": "Stage Detail",
             "type": "string"
           },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -611,6 +623,7 @@
           "page_count",
           "chunk_count",
           "created_at",
+          "started_at",
           "finished_at"
         ],
         "title": "JobOut",

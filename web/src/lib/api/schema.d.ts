@@ -724,6 +724,8 @@ export interface components {
             stage: string;
             /** Stage Detail */
             stage_detail: string;
+            /** Started At */
+            started_at: string | null;
             /** Status */
             status: string;
         };

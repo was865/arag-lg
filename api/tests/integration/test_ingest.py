@@ -231,6 +231,8 @@ async def test_cancel_queued_and_running(
     # 取消したジョブは再試行できる（attempts リセット）
     res = await client.post(f"/v1/jobs/{items[1]['job_id']}/retry", headers=ALICE)
     assert res.json()["status"] == "queued" and res.json()["attempts"] == 0
+    # 手動の再試行は新しい実行なので開始時刻も消す（所要時間が前回からにならないように）
+    assert res.json()["started_at"] is None and res.json()["finished_at"] is None
 
 
 async def test_auto_retry_then_error(
