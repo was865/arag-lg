@@ -53,6 +53,11 @@ strict = true
 mypy_path = "src"
 packages = ["arag"]
 
+[[tool.mypy.overrides]]
+# 型情報を同梱していない依存
+module = ["sudachipy.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 markers = ["integration: compose の infra（postgres・qdrant・redis）が必要"]
 testpaths = ["tests"]

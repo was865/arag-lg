@@ -25,8 +25,8 @@
 ## D. パイプライン部品（純関数・偽依存）
 - [ ] D1 Mac: `PlainTextParser`（TXT / JSON / CSV / MD）— R16
 - [ ] D2 Mac: `DoclingServeParser`（偽 HTTP サーバで: 非同期タスクのポーリング、ページ窓の分割と結合、タイムアウト）— R14・R15・R28
-- [ ] D3 Mac: chunking（fixture JSON: セクションのまとめ方・上限分割・見出し無し文書・表ヘッダ繰り返し・block_type・boxes）— R17・R18
-- [ ] D4 Mac: sparse（型番・条項番号が 1 語で残る、助詞が消える、同じ入力で同じ ID、tf 飽和の値）— R22
+- [x] D3 Mac: chunking（fixture JSON: セクションのまとめ方・上限分割・見出し無し文書・表ヘッダ繰り返し・block_type・boxes）— R17・R18
+- [x] D4 Mac: sparse（型番・条項番号が 1 語で残る、助詞が消える、同じ入力で同じ ID、tf 飽和の値）— R22
 - [ ] D5 Mac: contextualize（`FakeListChatModel` で: 出力の格納、失敗時のフォールバック、usage 合計、文書全文の上限）— R20・R21
 - [ ] D6 Mac: 図の説明（小さい画像の除外、無効時はキャプションのみ）— R19
 - [ ] D7 Mac: TEI クライアント（バッチ分割・再試行）
