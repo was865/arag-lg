@@ -3,6 +3,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from arag.db.engine import sqlalchemy_url
+from arag.db.models import SCHEMA, Base
 from arag.settings import Settings
 
 # this is the Alembic Config object, which provides
@@ -12,7 +14,7 @@ config = context.config
 # psycopg 3 ドライバを明示する。
 config.set_main_option(
     "sqlalchemy.url",
-    Settings().database_url.replace("postgresql://", "postgresql+psycopg://", 1),
+    sqlalchemy_url(Settings().database_url),
 )
 
 # Interpret the config file for Python logging.
@@ -24,12 +26,19 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def _include_name(name: str | None, type_: str, parent_names: object) -> bool:
+    # auth（Better Auth）と lg（LangGraph）は他者の所有なので比較対象から外す
+    if type_ == "schema":
+        return name == SCHEMA
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -49,6 +58,9 @@ def run_migrations_offline() -> None:
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
+        include_schemas=True,
+        include_name=_include_name,
+        version_table_schema=SCHEMA,
         dialect_opts={"paramstyle": "named"},
     )
 
@@ -70,7 +82,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        connection.exec_driver_sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}")
+        connection.commit()
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            include_name=_include_name,
+            version_table_schema=SCHEMA,
+        )
 
         with context.begin_transaction():
             context.run_migrations()

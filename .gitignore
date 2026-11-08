@@ -6,3 +6,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .tmp/
+
+# LocalStorage の既定 root（開発用）
+.data/

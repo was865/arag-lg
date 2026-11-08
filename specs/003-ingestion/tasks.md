@@ -3,12 +3,12 @@
 各タスクは失敗するテストを先に書く。（ ）は対応テスト・確認手段、末尾は要件番号。担当: **Mac** = この会話、**Win** = GPU 機の会話。
 
 ## A. 基盤
-- [ ] A1 Mac: 依存追加と licenses.md 追記（`make licenses` が通る）— design §9
-- [ ] A2 Mac: Alembic 0001（app スキーマ・全表・部分 UNIQUE）（integration: upgrade/downgrade 往復）
-- [ ] A3 Mac: `Principal` と dev ヘッダ認証、`ARAG_AUTH_MODE` 以外では無視（test_principal）— R1・R2
-- [ ] A4 Mac: 共通エラー応答 `{"error":{code,message}}`（test_errors）
-- [ ] A5 Mac: `LocalStorage`（put / open_range / delete_prefix、パス脱出の拒否）（test_storage）— R12
-- [ ] A6 Mac: `write_audit`（test_audit）— R36
+- [x] A1 Mac: 依存追加と licenses.md 追記（`make licenses` が通る）— design §9
+- [x] A2 Mac: Alembic 0001（app スキーマ・全表・部分 UNIQUE）（integration: upgrade/downgrade 往復）
+- [x] A3 Mac: `Principal` と dev ヘッダ認証、`ARAG_AUTH_MODE` 以外では無視（test_principal）— R1・R2
+- [x] A4 Mac: 共通エラー応答 `{"error":{code,message}}`（test_errors）
+- [x] A5 Mac: `LocalStorage`（put / open_range / delete_prefix、パス脱出の拒否）（test_storage）— R12
+- [x] A6 Mac: `write_audit`（test_audit）— R36
 
 ## B. KB・フォルダ・権限
 - [ ] B1 Mac: 権限の純関数（個人/全社 × owner/admin/member × read/write/purge の表駆動テスト）— R4〜R6・R34
