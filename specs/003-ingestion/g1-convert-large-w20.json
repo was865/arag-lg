@@ -1,0 +1,31 @@
+{
+  "options": {
+    "to_formats": [
+      "json"
+    ],
+    "image_export_mode": "embedded",
+    "do_ocr": true,
+    "do_table_structure": true
+  },
+  "page_window": 20,
+  "rows": [
+    {
+      "file": "large-72p.pdf",
+      "run": 1,
+      "pdf_pages": 72,
+      "page_window": 20,
+      "requests": 4,
+      "status": "success",
+      "elapsed_sec": 29.98,
+      "sec_per_page": 0.416,
+      "server_processing_sec": 28.41,
+      "pages": 72,
+      "json_bytes": 776699,
+      "pictures": 4,
+      "tables": 20,
+      "gpu_mem_before_mib": 14637,
+      "gpu_mem_peak_mib": 14637,
+      "errors": []
+    }
+  ]
+}

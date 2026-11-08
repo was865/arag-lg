@@ -18,12 +18,13 @@ from docling_bench.gpu import PeakSampler
 from docling_bench.scans import make_scanned_pdf
 from docling_bench.textmatch import char_accuracy, normalize
 
-# specs/003-ingestion G1 の計測条件
+# アプリ（api/src/arag/ingest/parser.py の DoclingServeParser）と同じ条件。
+# ocr_lang は送らない（サーバ既定 auto → RapidOCR。design.md §11）。
+# ja,en は RapidOCR が 1 言語のみのため失敗する
 CONVERT_OPTIONS: dict[str, Any] = {
-    "to_formats": ["json", "md"],
+    "to_formats": ["json"],
     "image_export_mode": "embedded",
     "do_ocr": True,
-    "ocr_lang": ["ja", "en"],
     "do_table_structure": True,
 }
 
@@ -40,36 +41,70 @@ def _md(result_json: dict[str, Any]) -> str:
     return str(result_json["document"].get("md_content") or "")
 
 
+def page_windows(n_pages: int, size: int) -> list[tuple[int, int]]:
+    """アプリのページ窓（ARAG_DOCLING_PAGE_WINDOW）と同じ 1 始まり・両端含む区間。"""
+    return [(s, min(s + size - 1, n_pages)) for s in range(1, n_pages + 1, size)]
+
+
+def _pdf_pages(path: Path) -> int:
+    import pypdfium2 as pdfium
+
+    return len(pdfium.PdfDocument(path))
+
+
 def cmd_convert(args: argparse.Namespace) -> dict[str, Any]:
     client = DoclingClient(args.url)
     options = {**CONVERT_OPTIONS, **({"ocr_preset": args.ocr_preset} if args.ocr_preset else {})}
     rows: list[dict[str, Any]] = []
     for path in args.files:
+        n_pages = _pdf_pages(path)
+        # 窓なしは 1 回で全ページ。窓ありはアプリと同じく順に送り、時間とサイズを合計する
+        windows = page_windows(n_pages, args.page_window) if args.page_window else [None]
         for run in range(args.repeat):
+            elapsed, server_sec, json_bytes, pages, pictures, tables = 0.0, 0.0, 0, 0, 0, 0
+            statuses: list[str] = []
+            errors: list[Any] = []
             with PeakSampler() as gpu:
-                r = client.convert_file(path, options)
-            body = r.json()
-            doc_json = body["document"].get("json_content") or {}
+                for window in windows:
+                    opts = {**options, **({"page_range": list(window)} if window else {})}
+                    r = client.convert_file(path, opts)
+                    elapsed += r.elapsed_sec
+                    statuses.append(r.status)
+                    if r.status != "success":
+                        errors.append(r.body.decode("utf-8", "replace")[:300])
+                        continue
+                    body = r.json()
+                    # 待ち時間はポーリング間隔（約 0.5 秒）に丸められるため、サーバ側の処理時間も残す
+                    server_sec += float(body.get("processing_time") or 0.0)
+                    doc_json = body["document"].get("json_content") or {}
+                    json_bytes += len(json.dumps(doc_json, ensure_ascii=False).encode("utf-8"))
+                    pages += len(doc_json.get("pages", {}))
+                    pictures += len(doc_json.get("pictures", []))
+                    tables += len(doc_json.get("tables", []))
+                    errors.extend(body.get("errors") or [])
             rows.append(
                 {
                     "file": path.name,
                     "run": run + 1,
-                    "status": r.status,
-                    "elapsed_sec": round(r.elapsed_sec, 2),
-                    "processing_time": body.get("processing_time"),
-                    "pages": len(doc_json.get("pages", {})),
-                    "json_bytes": len(json.dumps(doc_json, ensure_ascii=False).encode("utf-8")),
-                    "md_bytes": len(_md(body).encode("utf-8")),
-                    "pictures": len(doc_json.get("pictures", [])),
-                    "tables": len(doc_json.get("tables", [])),
+                    "pdf_pages": n_pages,
+                    "page_window": args.page_window,
+                    "requests": len(windows),
+                    "status": "success" if all(s == "success" for s in statuses) else ",".join(statuses),
+                    "elapsed_sec": round(elapsed, 2),
+                    "sec_per_page": round(elapsed / n_pages, 3),
+                    "server_processing_sec": round(server_sec, 2),
+                    "pages": pages,
+                    "json_bytes": json_bytes,
+                    "pictures": pictures,
+                    "tables": tables,
                     "gpu_mem_before_mib": gpu.before,
                     "gpu_mem_peak_mib": gpu.peak,
-                    "errors": body.get("errors"),
+                    "errors": errors,
                 }
             )
             print(json.dumps(rows[-1], ensure_ascii=False))
     client.close()
-    return {"options": options, "rows": rows}
+    return {"options": options, "page_window": args.page_window, "rows": rows}
 
 
 def cmd_make_scans(args: argparse.Namespace) -> dict[str, Any]:
@@ -127,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--url", required=True)
     c.add_argument("--ocr-preset", default=None)
     c.add_argument("--repeat", type=int, default=1)
+    c.add_argument(
+        "--page-window", type=int, default=0, help="0 = 一括。>0 でアプリと同じページ窓に分けて送る"
+    )
     c.add_argument("--out", type=Path, default=Path("results/convert.json"))
     c.add_argument("files", nargs="+", type=Path)
 
