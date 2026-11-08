@@ -174,7 +174,6 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 | sqlalchemy / alembic | 2.1.8 / 1.20.1 | MIT | https://pypi.org/project/SQLAlchemy/ |
 | uvicorn | 0.54.0 | BSD-3-Clause | https://pypi.org/project/uvicorn/ |
 | sse-starlette | 3.7.0 | BSD-3-Clause | https://pypi.org/project/sse-starlette/ |
-| arq（入庫ジョブキュー候補） | 0.28.0 | MIT | https://pypi.org/project/arq/ |
 | PostgreSQL | 17 系 | PostgreSQL License | https://www.postgresql.org/about/licence/ |
 | pip-licenses（CI） | 5.5.5 | MIT | https://pypi.org/project/pip-licenses/ |
 

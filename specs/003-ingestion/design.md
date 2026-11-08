@@ -5,8 +5,8 @@
 ```
                        ┌──────────── Mac（開発）/ アプリ用ノード（本番） ────────────┐
 ブラウザ → Next → api ─┤ FastAPI: KB・フォルダ・文書・アップロード・ジョブ・ごみ箱 API │
-                       │   └ enqueue ──▶ Redis（arq キュー / 進捗 pub-sub）           │
-                       │ worker（api と同じイメージ、`arq arag.ingest.worker.Settings`）│
+                       │   └ ジョブ行を INSERT（Postgres がキュー）/ 進捗は Redis pub-sub │
+                       │ worker（api と同じイメージ、`python -m arag.ingest.worker`）   │
                        │   ├ Postgres（app スキーマ）  ├ Qdrant  ├ ストレージ（ローカル）│
                        └───┼──────────────────────────────────────────────────────────┘
                            │ HTTP（すべて差し替え可能な外部サービス）
@@ -37,12 +37,23 @@
 | `ingest/embedder.py` | TEI `/embed` クライアント（バッチ・リトライ） |
 | `ingest/index.py` | Qdrant: コレクション作成・upsert・payload 同期・削除 |
 | `ingest/pipeline.py` | `run_ingest(job_id, deps)`: 段階の実行・進捗更新・取消確認。依存はすべて引数で注入 |
-| `ingest/worker.py` | arq 設定（再試行・起動時の再投入・GC の cron） |
+| `ingest/queue.py` | Postgres キュー（`FOR UPDATE SKIP LOCKED` で取得、`run_after` で遅延再試行、`heartbeat_at` で停止ワーカーの検出、`NOTIFY ingest_jobs` で即時起床） |
+| `ingest/worker.py` | ワーカー本体（並列数・ハートビート・定期 GC・graceful shutdown） |
 | `ingest/events.py` | 進捗の publish（worker）/ subscribe（API の SSE） |
 | `audit.py` | `write_audit(...)`（R36） |
 | `cli.py` | `python -m arag.cli reindex [--all|--content-hash]`（R41）、`ingest-dir`（E1 用） |
 
 ## 3. パイプライン
+
+### 3.0 ジョブキュー（Postgres）
+
+arq は redis-py < 6 に固定されており Redis 8 用クライアントと共存できないため、**ジョブキューは Postgres の `ingest_jobs` 自体**とする（追加ライブラリ不要）。
+
+- 投入: アップロードと同じトランザクションでジョブ行（`status=queued, run_after=now()`）を INSERT し、`NOTIFY ingest_jobs`。投入漏れが構造的に起きない。
+- 取得: `SELECT … WHERE status='queued' AND run_after<=now() ORDER BY run_after FOR UPDATE SKIP LOCKED LIMIT 1` → `status=running, locked_by, heartbeat_at=now()`。待機は `LISTEN ingest_jobs` + 5 秒ポーリング。
+- 再試行: 失敗時 `attempts+=1`、上限内なら `status=queued, run_after=now()+2^attempts*30s`（R24）。
+- 停止ワーカー: `heartbeat_at` を 15 秒ごとに更新。60 秒以上更新の無い running は、他ワーカーまたは起動時に queued へ戻す（R27）。
+- 取消: `cancel_requested=true` を段階の境目で確認（R26）。
 
 ### 3.1 段階
 
@@ -104,7 +115,7 @@
 |---|---|
 | `contents` | `parser`（`docling-serve@1.38.2` 等）, `chunker_version`, `embed_model`, `sparse_version`, `indexed_at` |
 | `chunks` | `boxes jsonb`（`[{page, bbox:[l,t,r,b]}]`）, `context text`, `context_source`（`llm` / `heading`） |
-| `ingest_jobs` | `attempts`, `cancel_requested bool`, `usage jsonb`, `started_at`, `finished_at`, `error_detail`（ログ用、API では返さない） |
+| `ingest_jobs` | `attempts`, `run_after`, `locked_by`, `heartbeat_at`, `cancel_requested bool`, `usage jsonb`, `started_at`, `finished_at`, `error_detail`（ログ用、API では返さない）。部分 index `(run_after) WHERE status = 'queued'` |
 | `knowledge_bases` | 部分 UNIQUE `(owner_user_id) WHERE kind='personal' AND deleted_at IS NULL`（R3） |
 | `folders` | 部分 UNIQUE `(kb_id, parent_id, name) WHERE deleted_at IS NULL`（root は `COALESCE(parent_id, '00000000-…')`） |
 | `audit_logs` | data-model §3.3 のとおり |
@@ -146,7 +157,7 @@
 
 ## 7. コンテナ
 
-- `compose.yaml`: `worker` サービス（api と同じイメージ、`arq arag.ingest.worker.WorkerSettings`）、`storage` 名前付きボリュームを api と worker で共有。profile `cpu` に `docling-serve-cpu`（:5001）を追加。
+- `compose.yaml`: `worker` サービス（api と同じイメージ、`python -m arag.ingest.worker`）、`storage` 名前付きボリュームを api と worker で共有。profile `cpu` に `docling-serve-cpu`（:5001）を追加。
 - `compose.gpu.yaml`: `docling-serve`（`ghcr.io/docling-project/docling-serve-cu130:v1.38.2`、:5001、GPU 予約）を追加。GPU 機のドライバは CUDA 13.4 対応で cu130 が動く想定（T で確認）。
 
 ## 8. テスト方針
@@ -162,7 +173,7 @@
 
 ## 9. 依存の追加（licenses.md に追記）
 
-`docling-core[chunking]`（MIT。transformers / tokenizers / huggingface-hub は Apache-2.0）、`sudachipy` + `sudachidict-core`（Apache-2.0）、`qdrant-client`（Apache-2.0）、`arq`（MIT）、`pypdf`（BSD-3、ページ数取得）、`langchain` / `langchain-openai` / `langchain-anthropic` / `langchain-deepseek`（MIT）、`sqlalchemy[asyncio]`（MIT）。コンテナ: `docling-serve`（MIT）。
+`docling-core[chunking]`（MIT。transformers / tokenizers / huggingface-hub は Apache-2.0）、`sudachipy` + `sudachidict-core`（Apache-2.0）、`qdrant-client`（Apache-2.0）、`pypdf`（BSD-3、ページ数取得）、`langchain` / `langchain-openai` / `langchain-anthropic` / `langchain-deepseek`（MIT）、`sqlalchemy[asyncio]`（MIT）。コンテナ: `docling-serve`（MIT）。
 
 ## 10. 未決事項（実装中に決めて本書へ反映）
 

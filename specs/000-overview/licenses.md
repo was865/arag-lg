@@ -13,7 +13,7 @@
 | fastapi / pydantic | Python | 0.162.2 / 2.14.3 | MIT | 2026-11-08 | https://pypi.org/project/fastapi/ |
 | sqlalchemy / alembic | Python | 2.1.8 / 1.20.1 | MIT | 2026-11-08 | https://pypi.org/project/SQLAlchemy/ |
 | uvicorn / sse-starlette | Python | 0.54.0 / 3.7.0 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/uvicorn/ |
-| redis-py / arq | Python | 8.1.0 / 0.28.0 | MIT | 2026-11-08 | https://pypi.org/project/redis/ |
+| redis-py | Python | 8.1.0 | MIT | 2026-11-08 | https://pypi.org/project/redis/ |
 | PyJWT | Python | 2.15.1 | MIT | 2026-11-08 | https://pypi.org/project/PyJWT/ |
 | opentelemetry-sdk | Python | 1.45.2 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/opentelemetry-sdk/ |
 | langfuse（SDK、任意） | Python | 5.2.0 | MIT | 2026-11-08 | https://pypi.org/project/langfuse/ |
@@ -26,6 +26,11 @@
 | server-only | npm | 0.0.1 | MIT | 2026-11-08 | https://www.npmjs.com/package/server-only |
 | caniuse-lite（Next の推移的依存・データ） | npm | — | CC-BY-4.0 | 2026-11-08 | https://www.npmjs.com/package/caniuse-lite |
 | Mailpit（開発用メール受信、P4 で導入予定） | コンテナ | latest | MIT | 2026-11-08 | https://github.com/axllent/mailpit |
+| docling-core[chunking] | Python | 2.106.0 | MIT | 2026-11-08 | https://pypi.org/project/docling-core/ |
+| transformers / tokenizers / huggingface-hub（docling-core[chunking] 経由。トークナイザのみ使用） | Python | 5.22.2 / 0.23.3 / — | Apache-2.0 | 2026-11-08 | https://pypi.org/project/transformers/ |
+| pypdf | Python | 7.0.0 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/pypdf/ |
+| python-multipart | Python | 0.0.33 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/python-multipart/ |
+| docling-serve（GPU 機 / CPU 版コンテナ） | コンテナ | v1.38.2 | MIT | 2026-11-08 | https://github.com/docling-project/docling-serve |
 | pip-licenses（CI） | Python | 5.5.5 | MIT | 2026-11-08 | https://pypi.org/project/pip-licenses/ |
 | next / react | npm | 16.4.5 / 19.3.1 | MIT | 2026-11-08 | https://github.com/vercel/next.js |
 | tailwindcss | npm | 4.3.5 | MIT | 2026-11-08 | https://www.npmjs.com/package/tailwindcss |
@@ -55,4 +60,5 @@
 | MinerU 4.x | MinerU Open Source License（Apache-2.0 + 規模閾値・使用表示義務） | 表示義務が製品に及ぶ | 2026-11-08 |
 | Infinity v3 | Infinity Restricted MIT 1.0 | 特定 25 事業者上での利用禁止（配備先を制約） | 2026-11-08 |
 | MinIO | AGPL-3.0 | Langfuse 用 S3 は SeaweedFS か既存 S3 を使う | 2026-11-08 |
+| arq | MIT | redis-py < 6 に固定され Redis 8 クライアントと共存不可。キューは Postgres で自作（specs/003-ingestion/design.md §3.0） | 2026-11-08 |
 | license-checker（npm） | BSD-3-Clause | 2019 年以降更新なし。`pnpm licenses` を使う | 2026-11-08 |

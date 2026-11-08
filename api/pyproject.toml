@@ -8,13 +8,23 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.1",
+    "docling-core[chunking]>=2.106.0",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.162",
     "httpx>=0.28.1",
+    "langchain>=1.4.9",
+    "langchain-anthropic>=1.7.10",
+    "langchain-deepseek>=1.1.1",
+    "langchain-openai>=1.7.4",
     "psycopg[binary]>=3.3.8",
     "pydantic-settings>=2.16.2",
+    "pypdf>=7.0.0",
+    "python-multipart>=0.0.33",
+    "qdrant-client>=1.20.0",
     "redis>=8.1.0",
-    "sqlalchemy>=2.1.8",
+    "sqlalchemy[asyncio]>=2.1.8",
     "structlog>=26.1.0",
+    "sudachidict-core>=20261015",
+    "sudachipy>=0.7.0",
 ]
 
 [build-system]

@@ -93,7 +93,7 @@ collection `chunks`（埋め込みモデルを切り替えるときは `chunks__
 |---|---|---|---|
 | `run:{run_id}:events` | Stream | SSE 中継（entry id = `Last-Event-ID`） | 完了後 1 時間 |
 | `run:{run_id}:cancel` | String | 取消フラグ | 1 時間 |
-| `ingest:*` | arq のキュー | 入庫ジョブ | — |
+| `ingest:job:{id}` | Pub/Sub | 入庫進捗の通知（キュー本体は Postgres の `ingest_jobs`） | — |
 | `rl:{scope}:{key}` | String/ZSet | レート制限 | 窓長 |
 
 ## 6. ファイルストレージ
