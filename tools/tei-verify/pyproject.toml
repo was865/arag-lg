@@ -1,0 +1,46 @@
+[project]
+name = "tei-verify"
+version = "0.1.0"
+description = "TEI の出力が参照実装（sentence-transformers / FlagEmbedding）と一致するかの検証ツール（開発専用）"
+authors = [
+    { name = "was865", email = "wangansen865@gmail.com" }
+]
+requires-python = ">=3.13"
+# api の依存には混ぜない。torch 等は検証専用（specs/002-tei-verification）
+dependencies = [
+    "flagembedding>=1.4.2",
+    "httpx>=0.28.1",
+    "numpy>=2.5.4",
+    "sentence-transformers>=6.2.0",
+    "torch>=2.15.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+# 参照実装は CPU・fp32 で計算する（数値の基準として最も素直なため）。CUDA 版 torch は入れない
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # 日本語の全角記号を許可
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
