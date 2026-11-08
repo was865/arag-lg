@@ -1,5 +1,5 @@
 import { ChatApp } from "@/components/chat/chat-app";
 
 export default function Home() {
-  return <ChatApp initialThreadId={null} />;
+  return <ChatApp initialRoute={{ view: "chat", threadId: null }} />;
 }

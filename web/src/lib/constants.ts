@@ -31,4 +31,4 @@ export const THEME_COLOR_DARK = "#16151a";
  *  受理する。後者は rag 側 dispatch が soffice で docx/xlsx/pptx へ正規化してから索引化する
  *  （rag/app/documents_service.py の OFFICE_CONVERT_MAP と整合させること）。 */
 export const ACCEPTED_FILE_TYPES =
-  ".pdf,.docx,.doc,.xlsx,.xls,.csv,.pptx,.ppt,.odt,.ods,.odp,.rtf,.txt,.md,.json,.png,.jpg,.jpeg";
+  ".pdf,.docx,.doc,.xlsx,.xls,.csv,.pptx,.ppt,.odt,.ods,.odp,.rtf,.txt,.md,.markdown,.html,.htm,.json,.png,.jpg,.jpeg";

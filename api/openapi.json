@@ -2501,6 +2501,7 @@
             }
           },
           {
+            "description": "カンマ区切りで複数可",
             "in": "query",
             "name": "status",
             "required": false,
@@ -2513,7 +2514,27 @@
                   "type": "null"
                 }
               ],
+              "description": "カンマ区切りで複数可",
               "title": "Status"
+            }
+          },
+          {
+            "description": "ファイル名の部分一致",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ファイル名の部分一致",
+              "title": "Q"
             }
           },
           {

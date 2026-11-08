@@ -9,6 +9,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { Sidebar } from "@/components/sidebar/sidebar";
+import { LibraryView } from "@/components/library/library-view";
+import { TrashView } from "@/components/library/trash-view";
+import { parseRoute, routePath, type Route } from "@/lib/routes";
 import { ThemeToggle } from "@/components/sidebar/theme-toggle";
 import { Composer } from "@/components/chat/composer";
 import { EmptyState } from "@/components/chat/empty-state";
@@ -46,20 +49,11 @@ const DEV_USER: AppUser = {
 const LOADING_MODEL: ModelOption = { id: "", label: "読み込み中…", tag: "", desc: "", available: false };
 const NO_MODEL: ModelOption = { id: "", label: "モデル未設定", tag: "", desc: "", available: false };
 
-function threadPath(id: string | null): string {
-  return id ? `/c/${encodeURIComponent(id)}` : "/";
-}
-
-function threadFromPath(pathname: string): string | null {
-  const m = pathname.match(/^\/c\/([^/]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
 function toSummary(t: ThreadOut): ThreadSummary {
   return { id: t.id, title: t.title, pinned: t.pinned, updated: relativeTime(new Date(t.updated_at)) };
 }
 
-export function ChatApp({ initialThreadId }: { initialThreadId: string | null }) {
+export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const { t } = useT();
   const push = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -70,7 +64,9 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
   const isWide = useMediaQuery("(min-width: 1181px)");
 
   const [threads, setThreads] = useState<ThreadOut[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(initialThreadId);
+  const [activeId, setActiveId] = useState<string | null>(initialRoute.view === "chat" ? initialRoute.threadId : null);
+  // 表示中の画面（チャット・文書ライブラリ・ごみ箱）。チャットのスレッドは activeId が持つ
+  const [page, setPage] = useState<Route>(initialRoute);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
@@ -105,7 +101,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
     onRunEnd: () => void refreshThreads(),
     onThreadCreated: (id) => {
       setActiveId((cur) => (cur === null ? id : cur));
-      if (threadFromPath(window.location.pathname) === null) window.history.replaceState(null, "", threadPath(id));
+      if (window.location.pathname === "/") window.history.replaceState(null, "", routePath({ view: "chat", threadId: id }));
       void refreshThreads();
     },
   });
@@ -162,7 +158,11 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
 
   // 戻る・進む
   useEffect(() => {
-    const onPop = () => setActiveId(threadFromPath(window.location.pathname));
+    const onPop = () => {
+      const r = parseRoute(window.location.pathname);
+      setPage(r);
+      if (r.view === "chat") setActiveId(r.threadId);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -185,7 +185,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
     setActiveCiteTurn(lastIdx < 0 ? 0 : lastIdx);
   }
   const citeTurn = turns[activeCiteTurn] ?? lastTurn;
-  const rightPanelShown = rightPanelOpen && phase !== "empty";
+  const rightPanelShown = rightPanelOpen && phase !== "empty" && page.view === "chat";
 
   // モバイルに切り替わったらサイドバーを閉じる
   const [wasMobile, setWasMobile] = useState(isMobile);
@@ -216,11 +216,36 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
   // ── 操作 ─────────────────────────────────────────────────────────────
   const selectThread = (id: string | null) => {
     setActiveId(id);
-    window.history.pushState(null, "", threadPath(id));
+    setPage({ view: "chat", threadId: id });
+    window.history.pushState(null, "", routePath({ view: "chat", threadId: id }));
     setRightPanelOpen(false);
     stickToBottom.current = true;
     setAwayFromBottom(false);
     if (isMobile) setSidebarCollapsed(true);
+  };
+
+  const openPage = (r: Route) => {
+    setPage(r);
+    window.history.pushState(null, "", routePath(r));
+    setRightPanelOpen(false);
+    if (isMobile) setSidebarCollapsed(true);
+  };
+
+  // ライブラリから「この KB に質問」: 検索範囲をその KB にして新しいスレッドへ
+  const askInKb = (kbId: string | null) => {
+    const kb = kbId ? kbs.find((k) => k.id === kbId) : undefined;
+    setScope(
+      kb
+        ? {
+            id: `kb:${kb.id}`,
+            label: kb.kind === "personal" ? t.chat.scopePersonalKb : kb.name,
+            iconName: kb.kind === "personal" ? "user" : "database",
+            sources: [],
+            kbId: kb.id,
+          }
+        : { id: "kb:all", label: t.chat.scopeAllKbs, iconName: "folders", desc: t.chat.scopeAllKbsDesc, sources: [], kbId: null },
+    );
+    selectThread(null);
   };
 
   const runBody = () => ({
@@ -428,7 +453,11 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed((c) => !c)}
             threads={threadList}
-            activeThreadId={activeId ?? ""}
+            activeThreadId={page.view === "chat" ? (activeId ?? "") : ""}
+            onOpenLibrary={(kbId) => openPage({ view: "library", kbId })}
+            onOpenTrash={() => openPage({ view: "trash" })}
+            activeKbId={page.view === "library" ? page.kbId : undefined}
+            trashActive={page.view === "trash"}
             onSelectThread={(id) => selectThread(id)}
             onNewChat={() => {
               selectThread(null);
@@ -464,6 +493,11 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
           ) : null
         }
       >
+        {page.view === "library" ? (
+          <LibraryView kbId={page.kbId} onAsk={askInKb} onOpenMenu={() => setSidebarCollapsed(false)} />
+        ) : page.view === "trash" ? (
+          <TrashView onOpenMenu={() => setSidebarCollapsed(false)} />
+        ) : (
         <main className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg">
           <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:gap-1 max-md:px-2.5">
             <button
@@ -592,6 +626,7 @@ export function ChatApp({ initialThreadId }: { initialThreadId: string | null })
             />
           </div>
         </main>
+        )}
       </AppShell>
       {confirmDialog}
     </>

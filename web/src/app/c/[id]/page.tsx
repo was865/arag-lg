@@ -3,7 +3,7 @@ import { ChatApp } from "@/components/chat/chat-app";
 
 async function Thread({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <ChatApp initialThreadId={id} />;
+  return <ChatApp initialRoute={{ view: "chat", threadId: id }} />;
 }
 
 // スレッド ID はリクエスト時に決まるので、殻（読み込み中）だけ先に返す

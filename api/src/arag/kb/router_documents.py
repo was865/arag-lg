@@ -228,26 +228,30 @@ async def list_documents(
     kb_id: uuid.UUID | None = None,
     folder_id: uuid.UUID | None = None,
     root_only: Annotated[bool, Query(description="true ならフォルダ外（ルート直下）だけ")] = False,
-    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    status_filter: Annotated[str | None, Query(alias="status", description="カンマ区切りで複数可")] = None,
+    q: Annotated[str | None, Query(max_length=200, description="ファイル名の部分一致")] = None,
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> DocumentPage:
-    q = _doc_query().where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal))
+    stmt = _doc_query().where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal))
     if kb_id is not None:
         await service.get_readable_kb(ctx.session, ctx.principal, kb_id)
-        q = q.where(Document.kb_id == kb_id)
+        stmt = stmt.where(Document.kb_id == kb_id)
     if folder_id is not None:
-        q = q.where(Document.folder_id == folder_id)
+        stmt = stmt.where(Document.folder_id == folder_id)
     elif root_only:
-        q = q.where(Document.folder_id.is_(None))
+        stmt = stmt.where(Document.folder_id.is_(None))
     if status_filter:
-        q = q.where(Content.status == status_filter)
+        stmt = stmt.where(Content.status.in_([s.strip() for s in status_filter.split(",") if s.strip()]))
+    if q and q.strip():
+        # LIKE の特殊文字は文字どおりに扱う
+        pattern = re.sub(r"([\\%_])", r"\\\1", q.strip())
+        stmt = stmt.where(Document.filename.ilike(f"%{pattern}%", escape="\\"))
     if cursor:
         ts, did = _decode_cursor(cursor)
-        q = q.where(or_(Document.created_at < ts, and_(Document.created_at == ts, Document.id < did)))
-    rows = (
-        await ctx.session.execute(q.order_by(Document.created_at.desc(), Document.id.desc()).limit(limit + 1))
-    ).all()
+        stmt = stmt.where(or_(Document.created_at < ts, and_(Document.created_at == ts, Document.id < did)))
+    stmt = stmt.order_by(Document.created_at.desc(), Document.id.desc()).limit(limit + 1)
+    rows = (await ctx.session.execute(stmt)).all()
     items = [_doc_out(ctx.principal, r) for r in rows[:limit]]
     next_cursor = _encode_cursor(rows[limit - 1][0]) if len(rows) > limit else None
     return DocumentPage(items=items, next_cursor=next_cursor)

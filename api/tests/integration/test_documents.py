@@ -60,6 +60,13 @@ async def test_list_filters_cursor_and_stats(client: httpx.AsyncClient) -> None:
     assert len(root) == 5
     queued = (await client.get(f"/v1/documents?kb_id={kb}&status=queued", headers=ALICE)).json()["items"]
     assert len(queued) == 6 and queued[0]["writable"] is True and queued[0]["job_id"]
+    # status はカンマ区切りで複数指定できる。q はファイル名の部分一致（大文字小文字・% _ はそのまま）
+    base = f"/v1/documents?kb_id={kb}"
+    assert len((await client.get(f"{base}&status=running,queued", headers=ALICE)).json()["items"]) == 6
+    assert (await client.get(f"{base}&status=error,cancelled", headers=ALICE)).json()["items"] == []
+    named = (await client.get(f"/v1/documents?kb_id={kb}&q=IN.T", headers=ALICE)).json()["items"]
+    assert [d["filename"] for d in named] == ["in.txt"]
+    assert (await client.get(f"/v1/documents?kb_id={kb}&q=%25", headers=ALICE)).json()["items"] == []
     stats = (await client.get("/v1/documents/stats", headers=ALICE)).json()
     assert stats["documents"] == 6 and stats["by_status"] == {"queued": 6}
     # 他人からは見えない

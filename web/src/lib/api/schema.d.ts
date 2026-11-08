@@ -1654,7 +1654,10 @@ export interface operations {
                 folder_id?: string | null;
                 /** @description true ならフォルダ外（ルート直下）だけ */
                 root_only?: boolean;
+                /** @description カンマ区切りで複数可 */
                 status?: string | null;
+                /** @description ファイル名の部分一致 */
+                q?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
