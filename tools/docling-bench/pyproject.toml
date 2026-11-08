@@ -1,0 +1,35 @@
+[project]
+name = "docling-bench"
+version = "0.1.0"
+description = "docling-serve の変換時間・GPU メモリ・日本語 OCR の文字一致率を測る開発専用ツール（specs/003-ingestion G1）"
+authors = [
+    { name = "was865", email = "wangansen865@gmail.com" }
+]
+requires-python = ">=3.13"
+# api の依存には混ぜない。pypdfium2 / pillow はスキャン相当 PDF の作成にだけ使う
+dependencies = [
+    "httpx>=0.28.1",
+    "pillow>=13.0.0",
+    "pypdfium2>=5.15.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # 日本語の全角記号を許可
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

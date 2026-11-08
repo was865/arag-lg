@@ -2,6 +2,7 @@
 #   docker compose -f compose.gpu.yaml up -d
 # Mac 側の .env で ARAG_TEI_EMBED_URL=http://<GPU機>:8081 / ARAG_TEI_RERANK_URL=http://<GPU機>:8082 を指定する。
 # イメージ 89-* は Ada Lovelace（RTX 40 系, sm_89）用。
+# docling-serve（解析、:5001）も同じファイルで起動する。Mac 側の .env で ARAG_DOCLING_URL=http://<GPU機>:5001
 # ruri（比較用）は profile で別起動: docker compose -f compose.gpu.yaml --profile ruri up -d
 name: arag-gpu
 
@@ -50,5 +51,14 @@ services:
     volumes: [tei-cache:/data]
     restart: unless-stopped
 
+  # 解析（specs/003-ingestion G1）。cu130 はドライバ CUDA 13.x 以上が必要（GPU 機は 13.4）
+  docling-serve:
+    <<: *gpu
+    image: ghcr.io/docling-project/docling-serve-cu130:v1.38.2
+    ports: ["5001:5001"]
+    volumes: [docling-cache:/opt/app-root/src/.cache]
+    restart: unless-stopped
+
 volumes:
   tei-cache:
+  docling-cache:
