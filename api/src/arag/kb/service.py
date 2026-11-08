@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.auth.principal import Principal
-from arag.db.models import Document, Folder, KnowledgeBase
+from arag.db.models import Chunk, Document, Folder, KnowledgeBase
 from arag.errors import ApiError, not_found
 from arag.kb import permissions as perm
 
@@ -246,3 +246,38 @@ async def restore_folder(session: AsyncSession, folder: Folder) -> set[str]:
     result = set(hashes)
     await _flush_or_conflict(session)
     return result
+
+
+# ---------------------------------------------------------------- 内容単位の可視性（ジョブ・進捗）
+
+
+async def visible_document_for_content(
+    session: AsyncSession, p: Principal, content_hash: str, *, write: bool = False
+) -> Document | None:
+    """利用者が見られる（write=True なら書ける）生存文書のうち最新の 1 件。R30。"""
+    readable = or_(
+        KnowledgeBase.kind == "org",
+        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == p.user_id),
+    )
+    writable = or_(
+        (KnowledgeBase.kind == "org") & (text("true") if p.is_admin else text("false")),
+        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == p.user_id),
+    )
+    doc: Document | None = await session.scalar(
+        select(Document)
+        .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+        .where(
+            Document.content_hash == content_hash,
+            Document.deleted_at.is_(None),
+            KnowledgeBase.deleted_at.is_(None),
+            writable if write else readable,
+        )
+        .order_by(Document.created_at.desc())
+        .limit(1)
+    )
+    return doc
+
+
+async def count_chunks(session: AsyncSession, content_hash: str) -> int:
+    n = await session.scalar(select(func.count(Chunk.id)).where(Chunk.content_hash == content_hash))
+    return int(n or 0)

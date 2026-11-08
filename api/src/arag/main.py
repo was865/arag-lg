@@ -4,13 +4,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from redis.asyncio import Redis
 
 from arag import health
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.errors import install_error_handlers
 from arag.health import Check
-from arag.kb import router_folders, router_kbs
-from arag.kb.sync import NoopPayloadSync, PayloadSync
+from arag.ingest.events import Publisher, RedisPublisher
+from arag.kb import router_folders, router_kbs, router_uploads
+from arag.kb.sync import PayloadSync
 from arag.logging import configure_logging
 from arag.middleware import RequestIdMiddleware
 from arag.settings import Settings
@@ -20,6 +22,7 @@ from arag.storage import LocalStorage
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
+    await app.state.redis.aclose()
     await app.state.engine.dispose()
 
 
@@ -27,6 +30,7 @@ def create_app(
     settings: Settings | None = None,
     checks: list[Check] | None = None,
     payload_sync: PayloadSync | None = None,
+    publisher: Publisher | None = None,
 ) -> FastAPI:
     """依存（設定・readiness チェック）を注入できるようにして、テストで外部サービスを不要にする。"""
     settings = settings or Settings()
@@ -38,10 +42,21 @@ def create_app(
     app.state.engine = make_engine(settings.database_url)
     app.state.sessionmaker = make_sessionmaker(app.state.engine)
     app.state.storage = LocalStorage(settings.storage_dir)
-    app.state.payload_sync = payload_sync or NoopPayloadSync()
+    if payload_sync is None:
+        from qdrant_client import AsyncQdrantClient
+
+        from arag.ingest.index import QdrantIndex, QdrantPayloadSync
+
+        index = QdrantIndex(AsyncQdrantClient(url=settings.qdrant_url), settings.qdrant_collection)
+        payload_sync = QdrantPayloadSync(index, app.state.sessionmaker)
+    app.state.payload_sync = payload_sync
+    # from_url は接続しない（初回コマンド時に接続）
+    app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    app.state.publisher = publisher or RedisPublisher(app.state.redis)
     install_error_handlers(app)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(router_kbs.router)
     app.include_router(router_folders.router)
+    app.include_router(router_uploads.router)
     return app

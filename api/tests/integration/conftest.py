@@ -1,9 +1,10 @@
 """結合テスト用の DB（compose の postgres に `arag_test` を作り、Alembic で head まで上げる）。"""
 
+import contextlib
 import os
 import subprocess
 import uuid
-from collections.abc import AsyncIterator, Iterable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -82,15 +83,39 @@ def payload_sync() -> RecordingSync:
 
 
 @pytest.fixture
-async def client(
-    engine: AsyncEngine, database_url: str, tmp_path: Path, payload_sync: RecordingSync
-) -> AsyncIterator[httpx.AsyncClient]:
-    settings = Settings(database_url=database_url, storage_dir=str(tmp_path / "storage"), auth_mode="dev")
-    app = create_app(settings=settings, checks=[], payload_sync=payload_sync)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
-    await app.state.engine.dispose()
+def storage_root(tmp_path: Path) -> str:
+    return str(tmp_path / "storage")
+
+
+@pytest.fixture
+async def make_client(
+    engine: AsyncEngine, database_url: str, storage_root: str, payload_sync: RecordingSync
+) -> AsyncIterator[Callable[..., Awaitable[httpx.AsyncClient]]]:
+    """設定を変えたクライアントを作る（終了時に片付ける）。"""
+    stack = contextlib.AsyncExitStack()
+
+    async def make(**overrides: object) -> httpx.AsyncClient:
+        settings = Settings(
+            database_url=database_url,
+            storage_dir=storage_root,
+            auth_mode="dev",
+            **overrides,  # type: ignore[arg-type]
+        )
+        app = create_app(settings=settings, checks=[], payload_sync=payload_sync)
+        c = await stack.enter_async_context(
+            httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", timeout=30)
+        )
+        stack.push_async_callback(app.state.engine.dispose)
+        stack.push_async_callback(app.state.redis.aclose)
+        return c
+
+    async with stack:
+        yield make
+
+
+@pytest.fixture
+async def client(make_client: Callable[..., Awaitable[httpx.AsyncClient]]) -> httpx.AsyncClient:
+    return await make_client()
 
 
 def as_user(user_id: str, role: str = "member") -> dict[str, str]:

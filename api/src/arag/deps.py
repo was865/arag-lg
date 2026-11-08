@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import CurrentPrincipal, Principal
+from arag.ingest.events import Publisher
 from arag.kb.sync import PayloadSync
 from arag.settings import Settings
 from arag.storage import Storage
@@ -44,6 +45,7 @@ class Ctx:
     request_id: str | None
     ip: str | None
     payload_sync: PayloadSync
+    publisher: Publisher
 
     async def audit(self, event: AuditEvent) -> None:
         await write_audit(
@@ -62,6 +64,7 @@ async def get_ctx(
         request_id=request_id_of(request),
         ip=request.client.host if request.client else None,
         payload_sync=request.app.state.payload_sync,
+        publisher=request.app.state.publisher,
     )
 
 

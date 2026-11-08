@@ -17,10 +17,10 @@
 - [x] B4 Mac: フォルダ API（同名 409・循環移動 400・削除の再帰・復元で祖先も復活）— R32・R33
 
 ## C. アップロード
-- [ ] C1 Mac: 形式判定と上限（415 / 413）— R11
-- [ ] C2 Mac: 内容ハッシュ dedup（queued / skipped / duplicate）— R7・R8
-- [ ] C3 Mac: 並行初回アップロードで原本・ジョブが 1 回（integration）— R9
-- [ ] C4 Mac: 相対パス → フォルダ自動作成 — R10
+- [x] C1 Mac: 形式判定と上限（415 / 413）— R11
+- [x] C2 Mac: 内容ハッシュ dedup（queued / skipped / duplicate）— R7・R8
+- [x] C3 Mac: 並行初回アップロードで原本・ジョブが 1 回（integration）— R9
+- [x] C4 Mac: 相対パス → フォルダ自動作成 — R10
 
 ## D. パイプライン部品（純関数・偽依存）
 - [x] D1 Mac: `PlainTextParser`（TXT / JSON / CSV / MD）— R16
@@ -33,13 +33,13 @@
 - [x] D8 Mac: Qdrant index（コレクション作成の冪等性、upsert、`sync_payload` で削除文書が外れる）（integration）— R23
 
 ## E. パイプラインとワーカー
-- [ ] E1 Mac: `run_ingest` の段階遷移と progress（偽依存）— R13
-- [ ] E2 Mac: 冪等な再実行（前回のチャンク・点が残らない）— R25
-- [ ] E3 Mac: 取消（段階の境目で止まり cancelled）・再試行（attempts リセット）— R26
-- [ ] E4 Mac: 自動再試行と error 確定、利用者向けメッセージとログ詳細の分離 — R24
-- [ ] E5 Mac: 起動時の途中ジョブ再投入 — R27
-- [ ] E6 Mac: 進捗 SSE（購読→現状→差分の順、権限外ジョブを返さない、全終端で閉じる）— R29・R30
-- [ ] E7 Mac: GC（保持期間超過・ref_count 0 の実体削除）（integration）— R35
+- [x] E1 Mac: `run_ingest` の段階遷移と progress（偽依存）— R13
+- [x] E2 Mac: 冪等な再実行（前回のチャンク・点が残らない）— R25
+- [x] E3 Mac: 取消（段階の境目で止まり cancelled）・再試行（attempts リセット）— R26
+- [x] E4 Mac: 自動再試行と error 確定、利用者向けメッセージとログ詳細の分離 — R24
+- [x] E5 Mac: 起動時の途中ジョブ再投入 — R27
+- [x] E6 Mac: 進捗 SSE（購読→現状→差分の順、権限外ジョブを返さない、全終端で閉じる）— R29・R30
+- [x] E7 Mac: GC（保持期間超過・ref_count 0 の実体削除）（integration）— R35
 
 ## F. 文書 API
 - [ ] F1 Mac: 一覧（フォルダ・状態・カーソル、書込可否）・統計 — R31

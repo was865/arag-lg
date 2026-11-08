@@ -38,6 +38,10 @@ def _hash_filter(content_hash: str) -> models.Filter:
     )
 
 
+def _is_missing(e: UnexpectedResponse) -> bool:
+    return e.status_code == 404
+
+
 class QdrantIndex:
     def __init__(self, client: AsyncQdrantClient, alias: str = "chunks") -> None:
         self.client = client
@@ -104,22 +108,38 @@ class QdrantIndex:
                 wait=True,
             )
 
+    # コレクション未作成（初回入庫前）なら消す・数える・更新する対象も無い
     async def delete_content(self, content_hash: str) -> None:
-        await self.client.delete(
-            self.alias, points_selector=models.FilterSelector(filter=_hash_filter(content_hash)), wait=True
-        )
+        try:
+            await self.client.delete(
+                self.alias,
+                points_selector=models.FilterSelector(filter=_hash_filter(content_hash)),
+                wait=True,
+            )
+        except UnexpectedResponse as e:
+            if not _is_missing(e):
+                raise
 
     async def count(self, content_hash: str) -> int:
-        res = await self.client.count(self.alias, count_filter=_hash_filter(content_hash), exact=True)
+        try:
+            res = await self.client.count(self.alias, count_filter=_hash_filter(content_hash), exact=True)
+        except UnexpectedResponse as e:
+            if not _is_missing(e):
+                raise
+            return 0
         return res.count
 
     async def set_refs(self, content_hash: str, document_ids: list[str], kb_ids: list[str]) -> None:
-        await self.client.set_payload(
-            self.alias,
-            payload={"document_ids": document_ids, "kb_ids": kb_ids},
-            points=_hash_filter(content_hash),
-            wait=True,
-        )
+        try:
+            await self.client.set_payload(
+                self.alias,
+                payload={"document_ids": document_ids, "kb_ids": kb_ids},
+                points=_hash_filter(content_hash),
+                wait=True,
+            )
+        except UnexpectedResponse as e:
+            if not _is_missing(e):
+                raise
 
 
 async def live_refs(session: AsyncSession, content_hash: str) -> tuple[list[str], list[str]]:

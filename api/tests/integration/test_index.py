@@ -88,3 +88,10 @@ async def test_sync_payload_drops_trashed_and_archived(
     await sync.sync([H])
     p = await payload()
     assert p["document_ids"] == [] and p["kb_ids"] == []
+
+
+async def test_missing_collection_is_noop(qdrant_index: QdrantIndex) -> None:
+    # 初回入庫前（コレクション未作成）でも掃除・照合は失敗しない
+    await qdrant_index.delete_content(H)
+    await qdrant_index.set_refs(H, [], [])
+    assert await qdrant_index.count(H) == 0
