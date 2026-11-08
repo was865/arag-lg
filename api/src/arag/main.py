@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 
 from arag import health
@@ -11,7 +12,9 @@ from arag.db.engine import make_engine, make_sessionmaker
 from arag.errors import install_error_handlers
 from arag.health import Check
 from arag.ingest.events import Publisher, RedisPublisher
-from arag.kb import router_folders, router_kbs, router_uploads
+from arag.ingest.index import QdrantIndex, QdrantPayloadSync
+from arag.ingest.pipeline import Index
+from arag.kb import router_documents, router_folders, router_kbs, router_uploads
 from arag.kb.sync import PayloadSync
 from arag.logging import configure_logging
 from arag.middleware import RequestIdMiddleware
@@ -23,6 +26,9 @@ from arag.storage import LocalStorage
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
     await app.state.redis.aclose()
+    client = getattr(app.state.index, "client", None)
+    if client is not None:
+        await client.close()
     await app.state.engine.dispose()
 
 
@@ -31,6 +37,7 @@ def create_app(
     checks: list[Check] | None = None,
     payload_sync: PayloadSync | None = None,
     publisher: Publisher | None = None,
+    index: Index | None = None,
 ) -> FastAPI:
     """依存（設定・readiness チェック）を注入できるようにして、テストで外部サービスを不要にする。"""
     settings = settings or Settings()
@@ -42,13 +49,12 @@ def create_app(
     app.state.engine = make_engine(settings.database_url)
     app.state.sessionmaker = make_sessionmaker(app.state.engine)
     app.state.storage = LocalStorage(settings.storage_dir)
+    # Qdrant クライアントも作るだけでは接続しない
+    app.state.index = index or QdrantIndex(
+        AsyncQdrantClient(url=settings.qdrant_url), settings.qdrant_collection
+    )
     if payload_sync is None:
-        from qdrant_client import AsyncQdrantClient
-
-        from arag.ingest.index import QdrantIndex, QdrantPayloadSync
-
-        index = QdrantIndex(AsyncQdrantClient(url=settings.qdrant_url), settings.qdrant_collection)
-        payload_sync = QdrantPayloadSync(index, app.state.sessionmaker)
+        payload_sync = QdrantPayloadSync(app.state.index, app.state.sessionmaker)
     app.state.payload_sync = payload_sync
     # from_url は接続しない（初回コマンド時に接続）
     app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
@@ -59,4 +65,5 @@ def create_app(
     app.include_router(router_kbs.router)
     app.include_router(router_folders.router)
     app.include_router(router_uploads.router)
+    app.include_router(router_documents.router)
     return app

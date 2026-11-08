@@ -89,19 +89,23 @@ def storage_root(tmp_path: Path) -> str:
 
 @pytest.fixture
 async def make_client(
-    engine: AsyncEngine, database_url: str, storage_root: str, payload_sync: RecordingSync
+    engine: AsyncEngine,
+    database_url: str,
+    storage_root: str,
+    payload_sync: RecordingSync,
 ) -> AsyncIterator[Callable[..., Awaitable[httpx.AsyncClient]]]:
     """設定を変えたクライアントを作る（終了時に片付ける）。"""
     stack = contextlib.AsyncExitStack()
 
-    async def make(**overrides: object) -> httpx.AsyncClient:
+    async def make(index: "QdrantIndex | None" = None, **overrides: object) -> httpx.AsyncClient:
         settings = Settings(
             database_url=database_url,
             storage_dir=storage_root,
             auth_mode="dev",
             **overrides,  # type: ignore[arg-type]
         )
-        app = create_app(settings=settings, checks=[], payload_sync=payload_sync)
+        # index を渡すと API も同じ索引を使う（完全削除で点が消えることを確かめる）
+        app = create_app(settings=settings, checks=[], payload_sync=payload_sync, index=index)
         c = await stack.enter_async_context(
             httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", timeout=30)
         )

@@ -56,13 +56,14 @@ async def purge_expired(session: AsyncSession, now: datetime, retention: timedel
     }
 
 
-async def collect_orphans(session: AsyncSession, storage: Storage, index: Index) -> list[str]:
+async def collect_orphans(
+    session: AsyncSession, storage: Storage, index: Index, only: list[str] | None = None
+) -> list[str]:
     """どの文書からも参照されない内容の原本・成果物・チャンク・点を消す（R35）。"""
-    orphans = list(
-        await session.scalars(
-            select(Content.content_hash).where(~exists().where(Document.content_hash == Content.content_hash))
-        )
-    )
+    q = select(Content.content_hash).where(~exists().where(Document.content_hash == Content.content_hash))
+    if only is not None:
+        q = q.where(Content.content_hash.in_(only))
+    orphans = list(await session.scalars(q))
     for h in orphans:
         await index.delete_content(h)
         await storage.delete_prefix(content_prefix(h))

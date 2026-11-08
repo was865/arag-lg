@@ -80,3 +80,13 @@ def test_readyz_runs_checks_concurrently() -> None:
     res = client.get("/readyz")
     assert res.status_code == 200
     assert time.perf_counter() - started < 0.6
+
+
+def test_build_checks_includes_docling_skipped_when_unset() -> None:
+    # R40: docling-serve の疎通。未設定なら skipped（run=None）
+    from arag.health import build_checks
+
+    checks = {c.name: c for c in build_checks(Settings(docling_url=""))}
+    assert "docling" in checks and checks["docling"].run is None
+    checks = {c.name: c for c in build_checks(Settings(docling_url="http://docling:5001"))}
+    assert checks["docling"].run is not None

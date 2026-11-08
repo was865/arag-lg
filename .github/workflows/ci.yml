@@ -25,6 +25,9 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
+      - name: 結合テスト用の infra（postgres・qdrant・redis）
+        run: docker compose up -d --wait --wait-timeout 120 postgres qdrant redis
+      # integration マーカーのテストも含めて全件。infra に繋がらない環境では skip される
       - run: uv run pytest -q
       - name: scripts のテスト
         run: uv run pytest -q -p no:cacheprovider --rootdir ../scripts ../scripts

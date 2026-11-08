@@ -115,13 +115,15 @@ def _redis_check(url: str) -> Callable[[], Awaitable[bool]]:
 
 
 def build_checks(settings: Settings) -> list[Check]:
-    def tei(name: str, base: str) -> Check:
+    def http(name: str, base: str) -> Check:
+        # TEI・docling-serve とも /health。未設定なら skipped
         return Check(name, _http_check(base.rstrip("/") + "/health") if base else None)
 
     return [
         Check("postgres", _postgres_check(settings.database_url)),
         Check("qdrant", _http_check(settings.qdrant_url.rstrip("/") + "/readyz")),
         Check("redis", _redis_check(settings.redis_url)),
-        tei("tei_embed", settings.tei_embed_url),
-        tei("tei_rerank", settings.tei_rerank_url),
+        http("tei_embed", settings.tei_embed_url),
+        http("tei_rerank", settings.tei_rerank_url),
+        http("docling", settings.docling_url),  # R40
     ]

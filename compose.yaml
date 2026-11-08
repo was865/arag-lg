@@ -1,6 +1,7 @@
 # ARag 開発・CI 用の構成（specs/001-p0-skeleton/design.md）。
 #   docker compose up -d                 … postgres / qdrant / redis / api / web
-#   docker compose --profile cpu up -d   … 上記 + TEI（CPU・小モデル。amd64 のみ。疎通は api の /readyz で確認）
+#   docker compose --profile cpu up -d   … 上記 + TEI（CPU・小モデル。amd64 のみ）+ docling-serve（CPU）
+# 入庫ワーカー（worker）は ARAG_TEI_EMBED_URL が必要。未設定なら説明を出して終了する。
 # Mac では TEI を動かさず、GPU 機（compose.gpu.yaml）を ARAG_TEI_*_URL で参照する。
 # ホスト側ポートは旧版 a-rag（5432/6333/6379/8000/3000）と同時に動かせるようずらしている。
 name: arag
@@ -43,17 +44,35 @@ services:
 
   api:
     build: ./api
-    environment:
+    environment: &api-env
       ARAG_DATABASE_URL: postgresql://arag:arag@postgres:5432/arag
       ARAG_QDRANT_URL: http://qdrant:6333
       ARAG_REDIS_URL: redis://redis:6379/0
       ARAG_TEI_EMBED_URL: ${ARAG_TEI_EMBED_URL:-}
       ARAG_TEI_RERANK_URL: ${ARAG_TEI_RERANK_URL:-}
+      ARAG_DOCLING_URL: ${ARAG_DOCLING_URL:-}
+      ARAG_AUTH_MODE: ${ARAG_AUTH_MODE:-dev}
+      ARAG_CONTEXT_MODEL: ${ARAG_CONTEXT_MODEL:-}
+      ARAG_VLM_MODEL: ${ARAG_VLM_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     ports: ["${API_PORT:-8100}:8000"]
+    volumes: [storage:/data/storage]
     depends_on:
       postgres: { condition: service_healthy }
       qdrant: { condition: service_healthy }
       redis: { condition: service_healthy }
+
+  worker:
+    build: ./api
+    command: ["python", "-m", "arag.ingest.worker"]
+    environment: *api-env
+    volumes: [storage:/data/storage, hf-cache:/data/hf]
+    healthcheck: { disable: true }
+    restart: on-failure:3
+    depends_on:
+      api: { condition: service_healthy }  # マイグレーション済みを待つ
 
   web:
     build: ./web
@@ -79,7 +98,14 @@ services:
     ports: ["8082:80"]
     volumes: [tei-cache:/data]
 
+  docling:
+    profiles: ["cpu"]
+    image: ghcr.io/docling-project/docling-serve-cpu:v1.38.2
+    ports: ["${DOCLING_PORT:-5001}:5001"]
+
 volumes:
   pgdata:
   qdrant:
   tei-cache:
+  storage:
+  hf-cache:
