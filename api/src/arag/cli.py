@@ -1,6 +1,6 @@
 """運用コマンド（R41・E1）。
 
-python -m arag.cli reindex [--all | --content-hash H ...] [--dry-run]
+python -m arag.cli reindex [--all | --content-hash H ... | --heading-context] [--dry-run]
 python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin]
 python -m arag.cli gc [--retention-days N]
 python -m arag.cli sync-payload
@@ -19,7 +19,7 @@ from qdrant_client import AsyncQdrantClient
 from sqlalchemy import or_, select
 
 from arag.db.engine import make_engine, make_sessionmaker
-from arag.db.models import Content, IngestJob
+from arag.db.models import Chunk, Content, IngestJob
 from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
 from arag.ingest.gc import run_gc
@@ -30,8 +30,14 @@ from arag.settings import Settings
 from arag.storage import LocalStorage
 
 
-async def reindex(settings: Settings, *, all_: bool, hashes: list[str], dry_run: bool) -> int:
-    """版の変わった内容を再投入する。保存済み docling.json を使うので再解析はしない。"""
+async def reindex(
+    settings: Settings, *, all_: bool, hashes: list[str], dry_run: bool, heading_context: bool = False
+) -> int:
+    """版の変わった内容を再投入する。保存済み docling.json を使うので再解析はしない。
+
+    heading_context=True のときは、LLM の文脈が付かず見出しだけの子チャンクを持つ内容を対象にする
+    （文脈付与モデルの障害・残高切れの後で付け直す）。
+    """
     engine = make_engine(settings.database_url)
     sm = make_sessionmaker(engine)
     try:
@@ -39,6 +45,12 @@ async def reindex(settings: Settings, *, all_: bool, hashes: list[str], dry_run:
             q = select(Content).where(Content.status.in_(["ready", "error"]))
             if hashes:
                 q = q.where(Content.content_hash.in_(hashes))
+            elif heading_context:
+                q = q.where(
+                    Content.content_hash.in_(
+                        select(Chunk.content_hash).where(Chunk.context_source == "heading").distinct()
+                    )
+                )
             elif not all_:
                 q = q.where(
                     or_(
@@ -193,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--all", action="store_true", help="版に関係なく全件")
     r.add_argument("--content-hash", action="append", default=[], help="対象の内容ハッシュ（複数可）")
     r.add_argument("--dry-run", action="store_true")
+    r.add_argument("--heading-context", action="store_true", help="LLM の文脈が付かなかった内容だけ")
     d = sub.add_parser("ingest-dir", help="ディレクトリ内のファイルを API 経由で入庫し、完了まで待つ")
     d.add_argument("directory", type=Path)
     d.add_argument("--kb", required=True, help="入庫先 KB の ID")
@@ -210,7 +223,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "gc":
         return asyncio.run(gc(Settings(), retention_days=args.retention_days))
     if args.cmd == "reindex":
-        return asyncio.run(reindex(Settings(), all_=args.all, hashes=args.content_hash, dry_run=args.dry_run))
+        return asyncio.run(
+            reindex(
+                Settings(),
+                all_=args.all,
+                hashes=args.content_hash,
+                dry_run=args.dry_run,
+                heading_context=args.heading_context,
+            )
+        )
     return asyncio.run(
         ingest_dir(
             args.directory,

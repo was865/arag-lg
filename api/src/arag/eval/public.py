@@ -229,10 +229,14 @@ def build_translated(
 _LANG = {"en": "英語", "ja": "日本語"}
 
 
-def _translate(cases: list[dict[str, Any]], to: str, model_name: str) -> dict[str, str]:
-    from langchain.chat_models import init_chat_model
+def _translate(cases: list[dict[str, Any]], to: str, cfg: dict[str, Any]) -> dict[str, str]:
+    from arag.ingest.worker import chat_model
 
-    model = init_chat_model(model_name)
+    model = chat_model(
+        cfg.get("model", "deepseek:deepseek-v4-pro"),
+        base_url=cfg.get("base_url", ""),
+        kwargs=cfg.get("model_kwargs") or {},
+    )
     out: dict[str, str] = {}
     for i in range(0, len(cases), 25):
         part = {c["id"]: c["query"] for c in cases[i : i + 25]}
@@ -255,7 +259,7 @@ def _prepare_translated(root: Path, cfg: dict[str, Any], suite: str, cache: Path
     tr = json.loads(tr_path.read_text(encoding="utf-8")) if tr_path.exists() else {}
     todo = [c for c in base["cases"] if c["id"] not in tr]
     if todo:
-        tr |= _translate(todo, cfg["to"], cfg.get("model", "deepseek:deepseek-v4-pro"))
+        tr |= _translate(todo, cfg["to"], cfg)
         tr_path.write_text(json.dumps(tr, ensure_ascii=False, indent=1), encoding="utf-8")
     golden = build_translated(base, tr, suite=suite, to=cfg["to"])
     (cache / "golden.yaml").write_text(

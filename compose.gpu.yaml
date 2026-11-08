@@ -51,6 +51,24 @@ services:
     volumes: [tei-cache:/data]
     restart: unless-stopped
 
+  # 文脈付与の LLM（開発・評価用、specs/004-retrieval report §5）。profile で別起動:
+  #   docker compose -f compose.gpu.yaml --profile llm up -d
+  # WSL2 では --gpu-memory-utilization が KV を負に見積もるので KV の量を直接指定する
+  vllm:
+    <<: *gpu
+    profiles: [llm]
+    image: vllm/vllm-openai:v0.32.0
+    command:
+      - "--model=Qwen/Qwen3-8B-AWQ"
+      - "--served-model-name=qwen3-8b"
+      - "--max-model-len=16384"
+      - "--kv-cache-memory-bytes=2600M"
+      - "--enable-prefix-caching"
+    ports: ["8090:8000"]
+    ipc: host
+    volumes: [hf-cache:/root/.cache/huggingface]
+    restart: unless-stopped
+
   # 解析（specs/003-ingestion G1）。cu130 はドライバ CUDA 13.x 以上が必要（GPU 機は 13.4）
   docling-serve:
     <<: *gpu
@@ -62,3 +80,4 @@ services:
 volumes:
   tei-cache:
   docling-cache:
+  hf-cache:

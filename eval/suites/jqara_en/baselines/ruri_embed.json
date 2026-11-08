@@ -1,0 +1,15 @@
+{
+  "suite": "jqara_en",
+  "variant": "ruri_embed",
+  "aggregate": {
+    "recall_at_5": 0.319,
+    "recall_at_k": 0.4384,
+    "precision_at_k": 0.391,
+    "mrr": 0.7878,
+    "ndcg_at_k": 0.5644,
+    "n": 100,
+    "fact_coverage": 0.91,
+    "p50_ms": 156.1809,
+    "p95_ms": 194.239
+  }
+}

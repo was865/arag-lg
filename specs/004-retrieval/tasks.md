@@ -33,7 +33,8 @@
 ## D. 実データでの比較（Mac + Win）
 
 - [x] D1 E1: 既定設定で `agentic_rag_demo` をゲート付きで実行
-- [ ] D2 E2・E2a: 4 題集 × variant の比較表を作成、既定値を決めて `decisions.md` と本書 §7 に反映
-  - 中間: rerank モデル以外は確定。文脈の比較と日英をまたぐ題集は DeepSeek の残高補充後（report.md §5）
+- [x] D2 E2・E2a: 4 題集 × variant の比較表を作成、既定値を決めて `decisions.md` と本書 §7 に反映
+  - 文脈は GPU 機の Qwen3-8B で付け直して比較（report.md §5）。rerank は ruri-v3-reranker-310m に決定
 - [x] D3 E3: 所要時間の測定（p50 / p95）、必要なら `candidate_k` を調整
-- [ ] D4 結果を `specs/004-retrieval/report.md` にまとめる（中間報告あり）
+- [x] D4 結果を `specs/004-retrieval/report.md` にまとめる
+- [ ] D5 rerank の既定を ruri-v3-reranker-310m に切り替える: `compose.gpu.yaml` の既定 reranker、`eval/variants.yaml` の対応、基準値の保存し直し。SciFact の p50 超過に備えて rerank 入力の文字数上限を検討

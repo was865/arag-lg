@@ -51,6 +51,31 @@ async def test_reindex_requeues_changed_versions_without_reparse(
     assert await run_ingest(uuid.UUID(job_id), deps) == "ready"
 
 
+async def test_reindex_heading_context_only(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+    database_url: str,
+) -> None:
+    """LLM の文脈が付かなかった（見出しだけの）子チャンクを持つ内容だけを再投入する。"""
+    kb = await _personal(client, ALICE)
+    job_id = (await _upload(client, kb, [("a.md", MD.encode())])).json()["items"][0]["job_id"]
+    await run_ingest(uuid.UUID(job_id), make_deps(sessionmaker, storage_root, qdrant_index))
+    settings = Settings(database_url=database_url, embed_model="fake-embed")
+    async with sessionmaker() as s:
+        await s.execute(text("UPDATE app.chunks SET context_source = 'llm'"))
+        await s.commit()
+    await reindex(settings, all_=False, hashes=[], dry_run=False, heading_context=True)
+    async with sessionmaker() as s:
+        assert await s.scalar(text("SELECT status FROM app.ingest_jobs")) == "ready"
+        await s.execute(text("UPDATE app.chunks SET context_source = 'heading' WHERE ordinal = 0"))
+        await s.commit()
+    await reindex(settings, all_=False, hashes=[], dry_run=False, heading_context=True)
+    async with sessionmaker() as s:
+        assert await s.scalar(text("SELECT status FROM app.ingest_jobs")) == "queued"
+
+
 async def test_gc_command_with_zero_retention(
     client: httpx.AsyncClient,
     sessionmaker: async_sessionmaker[AsyncSession],

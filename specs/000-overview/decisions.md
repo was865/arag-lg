@@ -199,15 +199,17 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 - アプリは推論先を環境変数（`TEI_EMBED_URL` / `TEI_RERANK_URL`）で受け取り、どの機械で動いているかを意識しない。
 - 追加確認: **psycopg 3（LGPL-3.0）**は langgraph-checkpoint-postgres の必須依存。改変せずライブラリとして使う限り商用に制約はない（LGPL は「個別判断」の対象としてここで許可）。
 
-## 13. 検索の既定値（P2、2026-11-08。根拠は `specs/004-retrieval/report.md`）
+## 13. 検索の既定値（P2、2026-11-09。根拠は `specs/004-retrieval/report.md`）
 
 | 項目 | 既定 | 根拠 |
 |---|---|---|
-| 融合 | RRF k=60・重み dense:sparse = 1:1 | 重み 2 倍・DBSF との差は nDCG ±0.004 以内 |
-| rerank | 有効、入力は文脈 + 本文 | 外すと nDCG −0.045（SciFact）/ −0.115（JQaRA）。本文のみは −0.028 / −0.010 |
-| rerank モデル | **当面 bge-reranker-v2-m3**（ruri-v3-reranker-310m を推奨候補として保留） | ruri は JQaRA +0.127・SciFact +0.014。日英をまたぐ題集の確認と、長い英語文書での p50 超過（452 ms）の扱いを決めてから切り替える。切り替えは URL の変更だけ |
-| 埋め込み | bge-m3（変更しない） | rerank 後の差は ±0.005〜0.022。変更は全量再索引が要り、日英をまたぐ検索が未検証 |
-| 英語ステミング | 無効 | 差 ±0.001 |
-| candidate_k | 50 | 既定で E3（p50 ≤ 300 ms・p95 ≤ 800 ms）を満たす |
+| 融合 | RRF k=60・重み dense:sparse = 1:1 | 重み 2 倍・DBSF との差は nDCG ±0.003 以内 |
+| rerank | 有効、入力は文脈 + 本文 | 外すと nDCG −0.042（SciFact）/ −0.115（JQaRA）/ −0.10〜−0.25（日英をまたぐ）。本文のみは −0.019 / −0.005 |
+| rerank モデル | **ruri-v3-reranker-310m**（Apache-2.0。切り替え作業は 004 tasks D5） | bge-reranker-v2-m3 より 4 題集すべてで上（JQaRA +0.131・SciFact +0.018・jqara_en +0.119・scifact_ja +0.053）。SciFact だけ p50 323 ms で E3 を超えるので rerank 入力の文字数上限で抑える |
+| 埋め込み | bge-m3（ruri-v3-310m は候補） | rerank 後の差は単一言語 ±0.005、日英をまたぐと最大 +0.039（ruri_both）。全量再索引が要るので実文書の題集でも確かめてから決める |
+| 英語ステミング | 無効 | SciFact −0.018 |
+| candidate_k | 50 | E3（p50 ≤ 300 ms・p95 ≤ 800 ms）をほぼ満たす |
 | 日本語の公開データ | hotchpotch/JQaRA test（CC-BY-SA 4.0、評価のみ・配布しない） | MIRACL ja より取得が軽く、紛らわしい負例を含む |
-| 文脈の有無・英語文書の文脈の言語 | 未決 | DeepSeek の残高切れで公開データの文脈が欠けたため再測定が必要 |
+| 日英をまたぐ評価 | JQaRA・SciFact の質問を LLM で訳した題集（`jqara_en`・`scifact_ja`） | 文書は元の KB を共有。訳はキャッシュして固定 |
+| 文脈の有無 | 有効。英語文書にも日本語の文脈を付ける | 効果は −0.003〜+0.013 と小さいが下がる題集はなく、日本語の質問 → 英語文書（scifact_ja）で +0.013 |
+| 文脈付与モデル（開発・評価） | GPU 機の vLLM + Qwen3-8B-AWQ（Apache-2.0、思考無効、OpenAI 互換で `ARAG_CONTEXT_BASE_URL`） | 失敗 0・約 540 件/分。文の具体性は DeepSeek より低いが検索指標に差が出ない。本番の既定は P3 の回答評価と合わせて決める |

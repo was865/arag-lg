@@ -12,6 +12,7 @@ import signal
 import socket
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import psycopg
 import structlog
@@ -136,10 +137,14 @@ class Worker:
                 await asyncio.gather(*self.running, return_exceptions=True)
 
 
-def _chat_model(name: str):  # type: ignore[no-untyped-def]
+def chat_model(name: str, *, base_url: str = "", kwargs: dict[str, Any] | None = None):  # type: ignore[no-untyped-def]
     from langchain.chat_models import init_chat_model
 
-    return init_chat_model(name)
+    extra: dict[str, Any] = dict(kwargs or {})
+    if base_url:
+        # 自前サーバは鍵を見ないが、クライアントは空の鍵を受け付けない
+        extra |= {"base_url": base_url, "api_key": os.environ.get("ARAG_CONTEXT_API_KEY", "EMPTY")}
+    return init_chat_model(name, **extra)
 
 
 def build_deps(settings: Settings) -> IngestDeps:
@@ -150,12 +155,17 @@ def build_deps(settings: Settings) -> IngestDeps:
     contextualizer: Contextualizer = HeadingContextualizer()
     if settings.context_model:
         contextualizer = LlmContextualizer(
-            _chat_model(settings.context_model),
+            chat_model(
+                settings.context_model,
+                base_url=settings.context_base_url,
+                kwargs=settings.context_model_kwargs,
+            ),
             model_name=settings.context_model,
             concurrency=settings.context_concurrency,
+            max_document_tokens=settings.context_max_document_tokens,
         )
     describer: FigureDescriber | None = (
-        LlmFigureDescriber(_chat_model(settings.vlm_model)) if settings.vlm_model else None
+        LlmFigureDescriber(chat_model(settings.vlm_model)) if settings.vlm_model else None
     )
     tokenizer = load_tokenizer(settings.embed_tokenizer, settings.chunk_max_tokens)
     return IngestDeps(

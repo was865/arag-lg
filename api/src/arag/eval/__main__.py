@@ -24,7 +24,7 @@ from arag.db.models import KnowledgeBase
 from arag.eval.dataset import Case, GoldenSuite, load_suite
 from arag.eval.report import compare_table, diff_baseline, gate_failures, to_markdown
 from arag.eval.runner import run_suite
-from arag.eval.variants import build_collection, load_variants, search_deps
+from arag.eval.variants import build_collection, collection_drift, kb_chunk_ids, load_variants, search_deps
 from arag.search.schemas import SearchHit, SearchRequest
 from arag.search.service import search
 from arag.settings import Settings
@@ -155,6 +155,21 @@ async def cmd_run(args: argparse.Namespace, settings: Settings) -> int:
     results: list[dict[str, Any]] = []
     failed = False
     try:
+        # 別コレクションの variant は DB の子チャンクと一致するか確かめる
+        # （再索引で子チャンク ID が変わると誤計測になる）
+        async with sm() as s:
+            ids = await kb_chunk_ids(s, kb)
+        for name in args.variant:
+            v = variants[name]
+            if v.own_collection:
+                missing, stale = await collection_drift(
+                    client, v.collection(settings.qdrant_collection), kb, ids
+                )
+                if missing or stale:
+                    raise SystemExit(
+                        f"{name}: コレクションが古い（欠け {missing}・古い点 {stale}）。"
+                        f"先に index --suite {suite.kb_suite or args.suite} --variant {name}"
+                    )
         for name in args.variant:
             v = variants[name]
             deps = search_deps(v, models, settings, client)

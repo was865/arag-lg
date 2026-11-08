@@ -2,13 +2,13 @@
   "suite": "beir_scifact",
   "variant": "ruri_both",
   "aggregate": {
-    "recall_at_5": 0.9023,
-    "recall_at_k": 0.9323,
-    "precision_at_k": 0.105,
-    "mrr": 0.8182,
-    "ndcg_at_k": 0.8435,
+    "recall_at_5": 0.9103,
+    "recall_at_k": 0.9387,
+    "precision_at_k": 0.106,
+    "mrr": 0.8192,
+    "ndcg_at_k": 0.845,
     "n": 300,
-    "p50_ms": 459.5715,
-    "p95_ms": 518.2786
+    "p50_ms": 324.9736,
+    "p95_ms": 365.792
   }
 }

@@ -1,0 +1,15 @@
+{
+  "suite": "jqara_en",
+  "variant": "keyword_only",
+  "aggregate": {
+    "recall_at_5": 0.0987,
+    "recall_at_k": 0.1049,
+    "precision_at_k": 0.095,
+    "mrr": 0.4315,
+    "ndcg_at_k": 0.1793,
+    "n": 100,
+    "fact_coverage": 0.5,
+    "p50_ms": 77.5904,
+    "p95_ms": 140.6643
+  }
+}

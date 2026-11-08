@@ -1,0 +1,14 @@
+{
+  "suite": "scifact_ja",
+  "variant": "no_rerank",
+  "aggregate": {
+    "recall_at_5": 0.7479,
+    "recall_at_k": 0.8077,
+    "precision_at_k": 0.091,
+    "mrr": 0.6547,
+    "ndcg_at_k": 0.6864,
+    "n": 300,
+    "p50_ms": 30.8887,
+    "p95_ms": 41.4565
+  }
+}

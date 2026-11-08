@@ -1,12 +1,14 @@
 """比較条件（variant）と、variant 用の別コレクション作成（specs/004-retrieval R21・R22）。"""
 
 import os
+import uuid
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
 import yaml
 from qdrant_client import AsyncQdrantClient
+from qdrant_client import models as qm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -190,3 +192,25 @@ async def build_collection(
             )
             total += len(part)
     return total
+
+
+async def collection_drift(
+    client: AsyncQdrantClient, collection: str, kb_id: str, chunk_ids: set[uuid.UUID]
+) -> tuple[int, int]:
+    """(DB にあるがコレクションに無い点の数, コレクションにあるが DB に無い古い点の数)。KB の点だけを見る。"""
+    flt = qm.Filter(must=[qm.FieldCondition(key="kb_ids", match=qm.MatchAny(any=[kb_id]))])
+    seen: set[uuid.UUID] = set()
+    offset = None
+    while True:
+        points, offset = await client.scroll(
+            collection, scroll_filter=flt, limit=1000, offset=offset, with_payload=False, with_vectors=False
+        )
+        seen |= {uuid.UUID(str(p.id)) for p in points}
+        if offset is None:
+            break
+    return len(chunk_ids - seen), len(seen - chunk_ids)
+
+
+async def kb_chunk_ids(session: AsyncSession, kb_id: str) -> set[uuid.UUID]:
+    hashes = select(Document.content_hash).where(Document.kb_id == kb_id, Document.deleted_at.is_(None))
+    return set(await session.scalars(select(Chunk.id).where(Chunk.content_hash.in_(hashes))))

@@ -1,6 +1,6 @@
 """環境変数（ARAG_*）から読む設定。"""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     embed_batch_size: int = 32
     context_model: str = ""
     context_concurrency: int = 8
+    # 自前の OpenAI 互換サーバ（vLLM 等）。context_model は "openai:<served-model-name>" にする
+    context_base_url: str = ""
+    # init_chat_model への追加引数（JSON）。例: {"temperature": 0, "extra_body": {...}}
+    context_model_kwargs: dict[str, Any] = {}
+    # 全文を渡す上限（超えたら該当 ±2 セクション）。文脈長の短い自前モデルでは下げる
+    context_max_document_tokens: int = 60_000
     vlm_model: str = ""
     sudachi_mode: Literal["A", "B", "C"] = "B"
     bm25_avgdl: float = 200.0

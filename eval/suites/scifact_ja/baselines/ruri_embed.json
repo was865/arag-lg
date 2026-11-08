@@ -1,0 +1,14 @@
+{
+  "suite": "scifact_ja",
+  "variant": "ruri_embed",
+  "aggregate": {
+    "recall_at_5": 0.8681,
+    "recall_at_k": 0.8971,
+    "precision_at_k": 0.1013,
+    "mrr": 0.7641,
+    "ndcg_at_k": 0.7928,
+    "n": 300,
+    "p50_ms": 242.6806,
+    "p95_ms": 268.8342
+  }
+}
