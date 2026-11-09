@@ -1,30 +1,33 @@
 "use client";
 
-/** 文書ライブラリ（チャットと同格の画面）。KB の文書一覧・アップロード・解析の進み具合・名前変更・削除。
+/** 文書ライブラリ（チャットと同格の画面）。KB の文書一覧・フォルダ・アップロード・解析の進み具合・名前変更・移動・削除。
  *
- * - 画面のどこにドロップしても、開いている KB（「すべて」なら個人 KB）へ送る。
+ * - 画面のどこにドロップしても、開いている KB のフォルダ（「すべて」なら個人 KB）へ送る。
+ * - KB を開いているときはフォルダをたどれる。名前・状態で絞り込むと KB 全体から探す。
+ * - 文書はフォルダ行・パンくずへドラッグするか、メニューの「移動」で移せる。
  * - 解析の進み具合はアップロードキューに出し、終わったら一覧と件数を取り直す。
- * - 削除はごみ箱へ移すだけ（戻せる）なので確認は出さず、トーストで知らせる。
+ * - 文書の削除はごみ箱へ移すだけ（戻せる）なので確認は出さず、トーストで知らせる。
+ *   フォルダは中身ごと移るので確認を出す。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "@/components/icons";
-import {
-  DocumentsUploadQueue,
-  DropOverlay,
-} from "@/components/uploads/uploads";
+import { Icon, type IconName } from "@/components/icons";
+import { DocumentsUploadQueue, DropOverlay } from "@/components/uploads/uploads";
 import { useToast } from "@/components/feedback/toast-provider";
+import { MoveDialog } from "@/components/library/move-dialog";
+import { useConfirm } from "@/hooks/use-confirm";
 import { refreshKbs, useKbs } from "@/hooks/use-kbs";
 import { useUploadQueue } from "@/hooks/use-upload-queue";
 import { ApiError } from "@/lib/chat/api";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { getFileMeta } from "@/lib/file-types";
-import { libraryApi, originalUrl, type DocumentOut } from "@/lib/library/api";
+import { libraryApi, originalUrl, type DocumentOut, type FolderOut } from "@/lib/library/api";
+import { breadcrumb, childFolders } from "@/lib/library/folders";
 import {
   docStatus,
+  filterStatuses,
   formatBytes,
   formatDate,
   kbLabel,
-  filterStatuses,
   uploadTarget,
   type StatusFilter,
   type StatusTone,
@@ -32,6 +35,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const PAGE = 100;
+/** ライブラリ内のドラッグ（文書の移動）。OS からのファイルのドロップと区別する。 */
+const DOC_MIME = "application/x-arag-document";
 
 const TONE: Record<StatusTone, string> = {
   ok: "text-muted",
@@ -40,103 +45,125 @@ const TONE: Record<StatusTone, string> = {
   muted: "text-muted-2",
 };
 
+const ROW_GRID =
+  "grid grid-cols-[minmax(0,1fr)_120px_70px_80px_64px_32px] items-center gap-3 max-md:grid-cols-[minmax(0,1fr)_32px] max-md:gap-2";
+
+type Stats = { documents: number; total_bytes: number; by_status: Record<string, number> };
+
+const errorMessage = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
+
 export interface LibraryViewProps {
   /** 表示する KB（null = アクセスできるすべての文書）。 */
   kbId: string | null;
+  /** 開いているフォルダ（null = KB のルート）。 */
+  folderId: string | null;
+  /** フォルダを開く（null = KB のルートへ）。 */
+  onOpenFolder: (folderId: string | null) => void;
   /** この KB を検索範囲にしてチャットへ戻る。 */
   onAsk: (kbId: string | null) => void;
   /** モバイル: サイドバーを開く。 */
   onOpenMenu: () => void;
 }
 
-export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
+export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenMenu }: LibraryViewProps) {
   const push = useToast();
+  const { confirm, dialog } = useConfirm();
   const { kbs } = useKbs();
   const kb = kbId ? (kbs.find((k) => k.id === kbId) ?? null) : null;
   const target = uploadTarget(kbs, kbId);
-  const kbNames = useMemo(
-    () => new Map(kbs.map((k) => [k.id, kbLabel(k)])),
-    [kbs],
-  );
+  const canEditFolders = Boolean(kb?.canWrite && kb.status !== "archived");
+  const kbNames = useMemo(() => new Map(kbs.map((k) => [k.id, kbLabel(k)])), [kbs]);
 
   const [docs, setDocs] = useState<DocumentOut[] | null>(null);
+  const [folders, setFolders] = useState<FolderOut[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [stats, setStats] = useState<{
-    documents: number;
-    total_bytes: number;
-    by_status: Record<string, number>;
-  } | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [renaming, setRenaming] = useState<{
-    id: string;
-    value: string;
-  } | null>(null);
+  const [renaming, setRenaming] = useState<{ kind: "doc" | "folder"; id: string; value: string } | null>(null);
+  const [creating, setCreating] = useState<string | null>(null);
+  const [moving, setMoving] = useState<DocumentOut | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [dropOn, setDropOn] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
 
   // 名前の絞り込みは入力が落ち着いてからサーバーに問い合わせる（全件が対象）
-  const [search, setSearch] = useState("");
   useEffect(() => {
     const t = window.setTimeout(() => setSearch(query.trim()), 250);
     return () => window.clearTimeout(t);
   }, [query]);
+
+  // フォルダをたどるのは KB を開いていて、絞り込んでいないときだけ
+  const browsing = Boolean(kbId) && !search && filter === "all";
   const listQuery = useMemo(
-    () => ({ kbId, status: filterStatuses(filter), q: search, limit: PAGE }),
-    [kbId, filter, search],
+    () => ({
+      kbId,
+      folderId: browsing ? folderId : undefined,
+      status: filterStatuses(filter),
+      q: search,
+      limit: PAGE,
+    }),
+    [kbId, folderId, browsing, filter, search],
   );
 
   const reload = useCallback(async () => {
     try {
-      const [page, st] = await Promise.all([
+      const [page, st, fs] = await Promise.all([
         libraryApi.documents(listQuery),
         libraryApi.stats(kbId),
+        kbId ? libraryApi.folders(kbId) : Promise.resolve([]),
       ]);
       setDocs(page.items);
       setCursor(page.next_cursor);
       setStats(st);
+      setFolders(fs);
     } catch (e) {
       setDocs((d) => d ?? []);
-      push(
-        e instanceof ApiError ? e.message : "文書の一覧を取得できませんでした",
-        "error",
-      );
+      push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
     }
   }, [kbId, listQuery, push]);
 
-  // KB を切り替えたら読み直す（前の KB の一覧は見せない）
+  // KB を切り替えたら絞り込みを戻し、フォルダを移ったら前の一覧は見せない
   const [shownKb, setShownKb] = useState<string | null | undefined>(undefined);
-  if (shownKb !== kbId) {
+  const [shownFolder, setShownFolder] = useState<string | null | undefined>(undefined);
+  if (shownKb !== kbId || shownFolder !== folderId) {
+    if (shownKb !== kbId) {
+      setStats(null);
+      setFolders([]);
+      setQuery("");
+      setSearch("");
+      setFilter("all");
+    }
     setShownKb(kbId);
+    setShownFolder(folderId);
     setDocs(null);
-    setStats(null);
     setCursor(null);
-    setQuery("");
-    setSearch("");
-    setFilter("all");
+    setCreating(null);
+    setRenaming(null);
   }
   useEffect(() => {
     // 取得は非同期で、結果は then の中で反映する
     let alive = true;
-    Promise.all([libraryApi.documents(listQuery), libraryApi.stats(kbId)])
-      .then(([page, st]) => {
+    Promise.all([
+      libraryApi.documents(listQuery),
+      libraryApi.stats(kbId),
+      kbId ? libraryApi.folders(kbId) : Promise.resolve([]),
+    ])
+      .then(([page, st, fs]) => {
         if (!alive) return;
         setDocs(page.items);
         setCursor(page.next_cursor);
         setStats(st);
+        setFolders(fs);
       })
       .catch((e: unknown) => {
         if (!alive) return;
         setDocs([]);
-        push(
-          e instanceof ApiError
-            ? e.message
-            : "文書の一覧を取得できませんでした",
-          "error",
-        );
+        push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
       });
     return () => {
       alive = false;
@@ -171,44 +198,39 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
       push("このナレッジベースには追加できません（閲覧のみ）", "error");
       return;
     }
-    queue.add(target.id, files);
+    // 開いている KB に送るときだけ、開いているフォルダへ入れる
+    queue.add(target.id, files, target.id === kbId ? folderId : null);
     // 送信直後の「待機中」を一覧にも出す
     window.setTimeout(() => void reload(), 1200);
   };
 
-  const remove = async (d: DocumentOut) => {
+  // ── 文書の操作 ─────────────────────────────────────────────────────
+  const removeDoc = async (d: DocumentOut) => {
     setDocs((all) => all?.filter((x) => x.id !== d.id) ?? null);
     try {
       await libraryApi.remove(d.id);
       push(`「${d.filename}」をごみ箱に移しました`, "success");
       void refreshKbs();
-      void libraryApi.stats(kbId).then(setStats, () => {});
+      void reload();
     } catch (e) {
       void reload();
-      push(e instanceof ApiError ? e.message : "削除できませんでした", "error");
+      push(errorMessage(e, "削除できませんでした"), "error");
     }
   };
 
-  const commitRename = async () => {
-    if (!renaming) return;
-    const { id, value } = renaming;
-    const name = value.trim();
-    setRenaming(null);
-    const before = docs?.find((x) => x.id === id);
-    if (!before || !name || name === before.filename) return;
-    setDocs(
-      (all) =>
-        all?.map((x) => (x.id === id ? { ...x, filename: name } : x)) ?? null,
-    );
+  const moveDoc = async (docId: string, to: string | null) => {
+    const d = docs?.find((x) => x.id === docId);
+    if (!d || d.folder_id === to) return;
+    // いまの一覧（このフォルダ）から外れるなら先に消す
+    if (browsing) setDocs((all) => all?.filter((x) => x.id !== docId) ?? null);
     try {
-      await libraryApi.rename(id, name);
+      await libraryApi.moveDocuments([docId], to);
+      const name = to ? (folders.find((f) => f.id === to)?.name ?? "フォルダ") : kbLabel(kb);
+      push(`「${d.filename}」を「${name}」に移しました`, "success");
     } catch (e) {
-      setDocs((all) => all?.map((x) => (x.id === id ? before : x)) ?? null);
-      push(
-        e instanceof ApiError ? e.message : "名前を変更できませんでした",
-        "error",
-      );
+      push(errorMessage(e, "移動できませんでした"), "error");
     }
+    void reload();
   };
 
   const retry = async (d: DocumentOut) => {
@@ -218,30 +240,87 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
       push(`「${d.filename}」を解析し直します`, "info");
       void reload();
     } catch (e) {
-      push(
-        e instanceof ApiError ? e.message : "再実行できませんでした",
-        "error",
-      );
+      push(errorMessage(e, "再実行できませんでした"), "error");
+    }
+  };
+
+  // ── フォルダの操作 ───────────────────────────────────────────────────
+  const createFolder = async () => {
+    const name = creating?.trim();
+    setCreating(null);
+    if (!name || !kbId) return;
+    try {
+      const f = await libraryApi.createFolder(kbId, name, folderId);
+      setFolders((all) => [...all, f]);
+    } catch (e) {
+      push(errorMessage(e, "フォルダを作れませんでした"), "error");
+    }
+  };
+
+  const removeFolder = async (f: FolderOut) => {
+    const ok = await confirm({
+      title: `フォルダ「${f.name}」をごみ箱に移しますか？`,
+      description: "中のフォルダと文書もまとめて移ります。ごみ箱から元に戻せます。",
+      confirmLabel: "ごみ箱に移す",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await libraryApi.removeFolder(f.id);
+      push(`フォルダ「${f.name}」をごみ箱に移しました`, "success");
+      void refreshKbs();
+      void reload();
+    } catch (e) {
+      push(errorMessage(e, "削除できませんでした"), "error");
+    }
+  };
+
+  const commitRename = async () => {
+    if (!renaming) return;
+    const { kind, id, value } = renaming;
+    const name = value.trim();
+    setRenaming(null);
+    if (kind === "folder") {
+      const before = folders.find((x) => x.id === id);
+      if (!before || !name || name === before.name) return;
+      setFolders((all) => all.map((x) => (x.id === id ? { ...x, name } : x)));
+      try {
+        await libraryApi.renameFolder(id, name);
+      } catch (e) {
+        setFolders((all) => all.map((x) => (x.id === id ? before : x)));
+        push(errorMessage(e, "名前を変更できませんでした"), "error");
+      }
+      return;
+    }
+    const before = docs?.find((x) => x.id === id);
+    if (!before || !name || name === before.filename) return;
+    setDocs((all) => all?.map((x) => (x.id === id ? { ...x, filename: name } : x)) ?? null);
+    try {
+      await libraryApi.rename(id, name);
+    } catch (e) {
+      setDocs((all) => all?.map((x) => (x.id === id ? before : x)) ?? null);
+      push(errorMessage(e, "名前を変更できませんでした"), "error");
     }
   };
 
   // 処理中の文書がある間は一覧を時々取り直す（キュー外＝別の人や以前のアップロード分も追う）
-  const hasBusy =
-    docs?.some((d) => docStatus(d.status).tone === "busy") ?? false;
+  const hasBusy = docs?.some((d) => docStatus(d.status).tone === "busy") ?? false;
   useEffect(() => {
     if (!hasBusy) return;
     const t = window.setInterval(() => void reload(), 5000);
     return () => window.clearInterval(t);
   }, [hasBusy, reload]);
 
-  const visible = docs ?? [];
+  const subfolders = browsing ? childFolders(folders, folderId) : [];
+  const crumbs = kbId ? breadcrumb(folders, folderId) : [];
+  const here = crumbs.at(-1) ?? null;
   const busyCount = Object.entries(stats?.by_status ?? {})
     .filter(([s]) => docStatus(s).tone === "busy")
     .reduce((n, [, c]) => n + c, 0);
-  const errorCount =
-    (stats?.by_status.error ?? 0) + (stats?.by_status.cancelled ?? 0);
+  const errorCount = (stats?.by_status.error ?? 0) + (stats?.by_status.cancelled ?? 0);
+  const listEmpty = docs !== null && docs.length === 0 && subfolders.length === 0 && creating === null;
 
-  // 画面全体をドロップ先にする
+  // 画面全体を OS からのファイルのドロップ先にする
   const dragProps = {
     onDragEnter: (e: React.DragEvent) => {
       if (!e.dataTransfer.types.includes("Files")) return;
@@ -256,12 +335,35 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
       if (dragDepth.current === 0) setDragging(false);
     },
     onDrop: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
       e.preventDefault();
       dragDepth.current = 0;
       setDragging(false);
       startUpload(e.dataTransfer.files);
     },
   };
+
+  // フォルダ行・パンくずを文書の移動先にする
+  const dropTarget = (key: string, to: string | null) =>
+    canEditFolders
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            if (!e.dataTransfer.types.includes(DOC_MIME)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDropOn(key);
+          },
+          onDragLeave: () => setDropOn((k) => (k === key ? null : k)),
+          onDrop: (e: React.DragEvent) => {
+            const id = e.dataTransfer.getData(DOC_MIME);
+            if (!id) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setDropOn(null);
+            void moveDoc(id, to);
+          },
+        }
+      : {};
 
   return (
     <main
@@ -277,31 +379,79 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
         >
           <Icon name="menu" size={15} />
         </button>
-        <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <h1 className="m-0 truncate text-[13.5px] font-semibold text-fg">
-            {kbLabel(kb)}
-          </h1>
-          {stats && (
-            <span className="shrink-0 font-mono text-[11px] text-muted max-md:hidden">
-              {stats.documents.toLocaleString("ja-JP")} 件 ·{" "}
-              {formatBytes(stats.total_bytes)}
+        <nav aria-label="場所" className="flex min-w-0 flex-1 items-center gap-0.5 text-[13.5px]">
+          {crumbs.length === 0 ? (
+            <h1 className="m-0 truncate text-[13.5px] font-semibold text-fg">{kbLabel(kb)}</h1>
+          ) : (
+            <>
+              <button
+                onClick={() => onOpenFolder(null)}
+                {...dropTarget("crumb:root", null)}
+                className={cn(
+                  "min-w-0 shrink truncate rounded-md px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:max-w-[80px]",
+                  dropOn === "crumb:root" && "bg-accent-soft text-accent",
+                )}
+              >
+                {kbLabel(kb)}
+              </button>
+              {crumbs.map((f, i) => {
+                const last = i === crumbs.length - 1;
+                return (
+                  <span key={f.id} className="flex min-w-0 items-center gap-0.5">
+                    <Icon name="chevronRight" size={12} className="shrink-0 text-muted-2" />
+                    {last ? (
+                      <h1 className="m-0 truncate px-1.5 text-[13.5px] font-semibold text-fg">{f.name}</h1>
+                    ) : (
+                      <button
+                        onClick={() => onOpenFolder(f.id)}
+                        {...dropTarget(`crumb:${f.id}`, f.id)}
+                        className={cn(
+                          "min-w-0 truncate rounded-md px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:hidden",
+                          dropOn === `crumb:${f.id}` && "bg-accent-soft text-accent",
+                        )}
+                      >
+                        {f.name}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </>
+          )}
+          {stats && crumbs.length === 0 && (
+            <span className="ml-2 shrink-0 font-mono text-[11px] text-muted max-md:hidden">
+              {stats.documents.toLocaleString("ja-JP")} 件 · {formatBytes(stats.total_bytes)}
             </span>
           )}
           {kb && !kb.canWrite && (
-            <span className="shrink-0 rounded-full border-[0.5px] border-divider-strong px-1.5 py-px text-[10px] font-semibold text-muted">
+            <span className="ml-2 shrink-0 rounded-full border-[0.5px] border-divider-strong px-1.5 py-px text-[10px] font-semibold text-muted">
               閲覧のみ
             </span>
           )}
-        </div>
+        </nav>
         <button
           onClick={() => onAsk(kbId)}
+          title={kb ? "このナレッジベースに質問" : "質問する"}
           className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
         >
           <Icon name="chat" size={13} />
-          <span className="max-md:hidden">
-            {kb ? "このナレッジベースに質問" : "質問する"}
-          </span>
+          <span className="max-lg:hidden">{kb ? "このナレッジベースに質問" : "質問する"}</span>
         </button>
+        {canEditFolders && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setSearch("");
+              setFilter("all");
+              setCreating("");
+            }}
+            title="新しいフォルダ"
+            className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
+          >
+            <Icon name="folder" size={13} />
+            <span className="max-md:hidden">フォルダ</span>
+          </button>
+        )}
         {target && (
           <button
             onClick={() => fileRef.current?.click()}
@@ -330,14 +480,16 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="文書名で絞り込む"
+            placeholder="文書名で探す"
             className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
           />
+          {query && (
+            <button onClick={() => setQuery("")} aria-label="検索語を消す" className="text-muted hover:text-fg">
+              <Icon name="close" size={12} />
+            </button>
+          )}
         </label>
-        <div
-          role="tablist"
-          className="flex shrink-0 rounded-lg bg-surface-2 p-0.5"
-        >
+        <div role="tablist" className="flex shrink-0 rounded-lg bg-surface-2 p-0.5">
           {(
             [
               ["all", "すべて", null],
@@ -352,19 +504,12 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
               onClick={() => setFilter(key)}
               className={cn(
                 "inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium",
-                filter === key
-                  ? "bg-surface text-fg shadow-e1"
-                  : "text-muted hover:text-fg",
+                filter === key ? "bg-surface text-fg shadow-e1" : "text-muted hover:text-fg",
               )}
             >
               {label}
               {n ? (
-                <span
-                  className={cn(
-                    "font-mono text-[10.5px]",
-                    key === "error" ? "text-danger" : "text-accent",
-                  )}
-                >
+                <span className={cn("font-mono text-[10.5px]", key === "error" ? "text-danger" : "text-accent")}>
                   {n}
                 </span>
               ) : null}
@@ -385,14 +530,16 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
           <div className="grid h-40 place-items-center">
             <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
           </div>
-        ) : docs.length === 0 && !search && filter === "all" ? (
-          <EmptyLibrary
-            canUpload={Boolean(target)}
-            onPick={() => fileRef.current?.click()}
-          />
+        ) : listEmpty && browsing && !folderId ? (
+          <EmptyLibrary canUpload={Boolean(target)} onPick={() => fileRef.current?.click()} />
         ) : (
           <div className="mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_120px_70px_80px_64px_32px] items-center gap-3 border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+            <div
+              className={cn(
+                ROW_GRID,
+                "border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden",
+              )}
+            >
               <span>名前</span>
               <span>状態</span>
               <span className="text-right">ページ</span>
@@ -400,45 +547,137 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
               <span className="text-right">追加日</span>
               <span />
             </div>
-            {visible.length === 0 && (
-              <div className="py-10 text-center text-[13px] text-muted">
-                条件に合う文書はありません
+            {!browsing && kbId && (search || filter !== "all") && (
+              <div className="px-2 pb-1 pt-2 text-[11.5px] text-muted">
+                {kbLabel(kb)} 全体から探しています
               </div>
             )}
-            {visible.map((d) => {
+
+            {creating !== null && (
+              <div className={cn(ROW_GRID, "rounded-lg px-2 py-2")}>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <FolderIcon />
+                  <input
+                    autoFocus
+                    value={creating}
+                    placeholder="フォルダ名"
+                    onChange={(e) => setCreating(e.target.value)}
+                    onBlur={() => void createFolder()}
+                    onKeyDown={(e) => {
+                      if (e.nativeEvent.isComposing) return;
+                      if (e.key === "Enter") void createFolder();
+                      if (e.key === "Escape") setCreating(null);
+                    }}
+                    className="w-full max-w-[360px] rounded-md border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-[13px] text-fg outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {subfolders.map((f) => (
+              <div
+                key={f.id}
+                {...dropTarget(`folder:${f.id}`, f.id)}
+                className={cn(
+                  ROW_GRID,
+                  "group/row rounded-lg px-2 py-2 hover:bg-surface-2",
+                  dropOn === `folder:${f.id}` && "bg-accent-soft outline outline-1 outline-accent",
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <FolderIcon />
+                  {renaming?.kind === "folder" && renaming.id === f.id ? (
+                    <RenameInput
+                      value={renaming.value}
+                      onChange={(value) => setRenaming({ ...renaming, value })}
+                      onCommit={() => void commitRename()}
+                      onCancel={() => setRenaming(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => onOpenFolder(f.id)}
+                      title={f.name}
+                      className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-fg hover:text-accent"
+                    >
+                      {f.name}
+                      <span className="ml-2 hidden font-normal text-muted max-md:inline">
+                        {f.document_count} 件
+                      </span>
+                    </button>
+                  )}
+                </div>
+                <span className="text-[12px] text-muted max-md:hidden">{f.document_count} 件</span>
+                <span className="max-md:hidden" />
+                <span className="max-md:hidden" />
+                <span className="text-right font-mono text-[11.5px] text-muted max-md:hidden">
+                  {formatDate(f.created_at)}
+                </span>
+                {canEditFolders ? (
+                  <RowMenu
+                    open={menuFor === f.id}
+                    onToggle={(o) => setMenuFor(o ? f.id : null)}
+                    items={[
+                      { label: "開く", icon: "folder", onClick: () => onOpenFolder(f.id) },
+                      {
+                        label: "名前を変更",
+                        icon: "pencil",
+                        onClick: () => setRenaming({ kind: "folder", id: f.id, value: f.name }),
+                      },
+                      { label: "ごみ箱へ移動", icon: "trash", danger: true, onClick: () => void removeFolder(f) },
+                    ]}
+                  />
+                ) : (
+                  <span />
+                )}
+              </div>
+            ))}
+
+            {listEmpty && (
+              <div className="py-10 text-center text-[13px] text-muted">
+                {browsing ? (
+                  <>
+                    このフォルダは空です
+                    {target && (
+                      <span className="mt-1 block text-[12px] text-muted-2">
+                        ファイルをドロップすると「{here?.name}」に追加します
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  "条件に合う文書はありません"
+                )}
+              </div>
+            )}
+
+            {docs.map((d) => {
               const meta = getFileMeta(d.filename);
               const st = docStatus(d.status);
               const busy = st.tone === "busy";
+              const movable = d.writable && canEditFolders;
               return (
                 <div
                   key={d.id}
-                  className="group/row grid grid-cols-[minmax(0,1fr)_120px_70px_80px_64px_32px] items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2 max-md:grid-cols-[minmax(0,1fr)_32px] max-md:gap-2"
+                  draggable={movable && renaming?.id !== d.id}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(DOC_MIME, d.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  className={cn(ROW_GRID, "group/row rounded-lg px-2 py-2 hover:bg-surface-2")}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                      style={{
-                        color: meta.color,
-                        background: `color-mix(in srgb, ${meta.color} 12%, transparent)`,
-                      }}
+                      style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
                     >
                       <Icon name={meta.iconName} size={15} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      {renaming?.id === d.id ? (
-                        <input
-                          autoFocus
+                      {renaming?.kind === "doc" && renaming.id === d.id ? (
+                        <RenameInput
                           value={renaming.value}
-                          onChange={(e) =>
-                            setRenaming({ id: d.id, value: e.target.value })
-                          }
-                          onBlur={() => void commitRename()}
-                          onKeyDown={(e) => {
-                            if (e.nativeEvent.isComposing) return;
-                            if (e.key === "Enter") void commitRename();
-                            if (e.key === "Escape") setRenaming(null);
-                          }}
-                          className="w-full rounded-md border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-[13px] text-fg outline-none"
+                          onChange={(value) => setRenaming({ ...renaming, value })}
+                          onCommit={() => void commitRename()}
+                          onCancel={() => setRenaming(null)}
                         />
                       ) : (
                         <a
@@ -446,46 +685,41 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
                           target="_blank"
                           rel="noopener"
                           title={d.filename}
+                          draggable={false}
                           className="block truncate text-[13px] font-medium text-fg no-underline hover:text-accent"
                         >
                           {d.filename}
                         </a>
                       )}
                       <div className="flex items-center gap-1.5 truncate text-[11px] text-muted">
-                        {!kbId && (
-                          <span className="truncate">
-                            {kbNames.get(d.kb_id) ?? ""}
+                        {!kbId && <span className="truncate">{kbNames.get(d.kb_id) ?? ""}</span>}
+                        {kbId && !browsing && d.folder_id && (
+                          <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                            <Icon name="folder" size={10} />
+                            {breadcrumb(folders, d.folder_id)
+                              .map((x) => x.name)
+                              .join(" / ")}
                           </span>
                         )}
-                        <span
-                          className={cn("hidden max-md:inline", TONE[st.tone])}
-                        >
-                          {!kbId && "· "}{st.label}
+                        <span className={cn("hidden max-md:inline", TONE[st.tone])}>
+                          {(!kbId || (!browsing && d.folder_id)) && "· "}
+                          {st.label}
                         </span>
-                        <span className="hidden max-md:inline">
-                          · {formatDate(d.created_at)}
-                        </span>
+                        <span className="hidden max-md:inline">· {formatDate(d.created_at)}</span>
                         {d.status === "ready" && d.chunk_count > 0 && (
                           <span className="max-md:hidden">
-                            {!kbId && "· "}
+                            {(!kbId || (!browsing && d.folder_id)) && "· "}
                             {d.chunk_count.toLocaleString("ja-JP")} チャンク
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 text-[12px] max-md:hidden",
-                      TONE[st.tone],
-                    )}
-                  >
+                  <span className={cn("inline-flex items-center gap-1.5 text-[12px] max-md:hidden", TONE[st.tone])}>
                     {busy && (
                       <span className="h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
                     )}
-                    {st.tone === "ok" && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#3c9a5f]" />
-                    )}
+                    {st.tone === "ok" && <span className="h-1.5 w-1.5 rounded-full bg-[#3c9a5f]" />}
                     {st.label}
                     {st.tone === "danger" && d.writable && d.job_id && (
                       <button
@@ -512,8 +746,7 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
                       {
                         label: "原本を開く",
                         icon: "external",
-                        onClick: () =>
-                          window.open(originalUrl(d.id), "_blank", "noopener"),
+                        onClick: () => window.open(originalUrl(d.id), "_blank", "noopener"),
                       },
                       {
                         label: "ダウンロード",
@@ -530,14 +763,16 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
                             {
                               label: "名前を変更",
                               icon: "pencil" as const,
-                              onClick: () =>
-                                setRenaming({ id: d.id, value: d.filename }),
+                              onClick: () => setRenaming({ kind: "doc", id: d.id, value: d.filename }),
                             },
+                            ...(movable
+                              ? [{ label: "移動…", icon: "folder" as const, onClick: () => setMoving(d) }]
+                              : []),
                             {
                               label: "ごみ箱へ移動",
                               icon: "trash" as const,
                               danger: true,
-                              onClick: () => void remove(d),
+                              onClick: () => void removeDoc(d),
                             },
                           ]
                         : []),
@@ -560,26 +795,68 @@ export function LibraryView({ kbId, onAsk, onOpenMenu }: LibraryViewProps) {
           </div>
         )}
       </div>
+      {moving && (
+        <MoveDialog
+          title={`「${moving.filename}」の移動先`}
+          folders={folders}
+          current={moving.folder_id}
+          rootLabel={kbLabel(kb)}
+          onCancel={() => setMoving(null)}
+          onPick={(to) => {
+            const id = moving.id;
+            setMoving(null);
+            void moveDoc(id, to);
+          }}
+        />
+      )}
+      {dialog}
     </main>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
+      <Icon name="folder" size={15} />
+    </span>
+  );
+}
+
+function RenameInput({
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <input
+      autoFocus
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onCommit}
+      onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing) return;
+        if (e.key === "Enter") onCommit();
+        if (e.key === "Escape") onCancel();
+      }}
+      className="w-full rounded-md border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-[13px] text-fg outline-none"
+    />
   );
 }
 
 interface MenuItem {
   label: string;
-  icon: "external" | "download" | "pencil" | "trash";
+  icon: IconName;
   onClick: () => void;
   danger?: boolean;
 }
 
-function RowMenu({
-  open,
-  onToggle,
-  items,
-}: {
-  open: boolean;
-  onToggle: (open: boolean) => void;
-  items: MenuItem[];
-}) {
+function RowMenu({ open, onToggle, items }: { open: boolean; onToggle: (open: boolean) => void; items: MenuItem[] }) {
   return (
     <span className="relative justify-self-end">
       <button
@@ -587,8 +864,7 @@ function RowMenu({
         onClick={() => onToggle(!open)}
         className={cn(
           "grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg",
-          !open &&
-            "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100",
+          !open && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100",
         )}
       >
         <Icon name="more" size={15} />
@@ -610,9 +886,7 @@ function RowMenu({
                 }}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-medium",
-                  it.danger
-                    ? "text-danger hover:bg-danger-soft"
-                    : "text-fg hover:bg-divider",
+                  it.danger ? "text-danger hover:bg-danger-soft" : "text-fg hover:bg-divider",
                 )}
               >
                 <Icon name={it.icon} size={13} />
@@ -626,13 +900,7 @@ function RowMenu({
   );
 }
 
-function EmptyLibrary({
-  canUpload,
-  onPick,
-}: {
-  canUpload: boolean;
-  onPick: () => void;
-}) {
+function EmptyLibrary({ canUpload, onPick }: { canUpload: boolean; onPick: () => void }) {
   return (
     <div className="grid place-items-center px-6 py-16">
       <button
@@ -645,9 +913,7 @@ function EmptyLibrary({
           <Icon name="database" size={20} />
         </span>
         <span className="text-[15px] font-semibold text-fg">
-          {canUpload
-            ? "文書を追加して、質問に使いましょう"
-            : "このナレッジベースにはまだ文書がありません"}
+          {canUpload ? "文書を追加して、質問に使いましょう" : "このナレッジベースにはまだ文書がありません"}
         </span>
         {canUpload && (
           <span className="text-[12.5px] leading-[1.6] text-muted">

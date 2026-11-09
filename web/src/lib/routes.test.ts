@@ -7,6 +7,7 @@ describe("routes", () => {
     expect(parseRoute("/c/t%201")).toEqual({ view: "chat", threadId: "t 1" });
     expect(parseRoute("/library")).toEqual({ view: "library", kbId: null });
     expect(parseRoute("/library/kb1")).toEqual({ view: "library", kbId: "kb1" });
+    expect(parseRoute("/library/kb1/f1")).toEqual({ view: "library", kbId: "kb1", folderId: "f1" });
     expect(parseRoute("/trash")).toEqual({ view: "trash" });
     expect(parseRoute("/unknown")).toEqual({ view: "chat", threadId: null });
   });
@@ -17,6 +18,7 @@ describe("routes", () => {
       { view: "chat", threadId: "a/b" },
       { view: "library", kbId: null },
       { view: "library", kbId: "k" },
+      { view: "library", kbId: "k", folderId: "f" },
       { view: "trash" },
     ];
     for (const r of all) expect(parseRoute(routePath(r))).toEqual(r);

@@ -7,6 +7,7 @@ type S = components["schemas"];
 export type DocumentOut = S["DocumentOut"];
 export type TrashItem = S["TrashItem"];
 export type UploadResult = S["UploadResult"];
+export type FolderOut = S["FolderOut"];
 
 const client = createClient<paths>({ baseUrl: "/api" });
 
@@ -17,6 +18,8 @@ function fail(status: number, error: unknown): never {
 
 export interface DocumentQuery {
   kbId: string | null;
+  /** フォルダの中だけ。null ならルート直下だけ（root_only）、undefined なら KB 全体。 */
+  folderId?: string | null;
   status?: string | null;
   /** ファイル名の部分一致。 */
   q?: string | null;
@@ -30,6 +33,8 @@ export const libraryApi = {
       params: {
         query: {
           kb_id: q.kbId ?? undefined,
+          folder_id: q.folderId ?? undefined,
+          root_only: q.folderId === null ? true : undefined,
           status: q.status ?? undefined,
           q: q.q || undefined,
           cursor: q.cursor ?? undefined,
@@ -79,6 +84,43 @@ export const libraryApi = {
     if (!data) fail(response.status, error);
     return data;
   },
+  async folders(kbId: string) {
+    const { data, error, response } = await client.GET("/v1/kbs/{kb_id}/folders", {
+      params: { path: { kb_id: kbId } },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  async createFolder(kbId: string, name: string, parentId: string | null) {
+    const { data, error, response } = await client.POST("/v1/kbs/{kb_id}/folders", {
+      params: { path: { kb_id: kbId } },
+      body: { name, parent_id: parentId },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  async renameFolder(id: string, name: string) {
+    const { data, error, response } = await client.PATCH("/v1/folders/{folder_id}", {
+      params: { path: { folder_id: id } },
+      body: { name },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  async removeFolder(id: string) {
+    const { error, response } = await client.DELETE("/v1/folders/{folder_id}", {
+      params: { path: { folder_id: id } },
+    });
+    if (!response.ok) fail(response.status, error);
+  },
+  /** 文書をフォルダへ移す（folderId = null ならルート直下）。 */
+  async moveDocuments(ids: string[], folderId: string | null) {
+    const { data, error, response } = await client.POST("/v1/documents/bulk-move", {
+      body: { ids, folder_id: folderId },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
   async retryJob(jobId: string) {
     const { error, response } = await client.POST("/v1/jobs/{job_id}/retry", { params: { path: { job_id: jobId } } });
     if (!response.ok) fail(response.status, error);
@@ -91,6 +133,7 @@ export function uploadFile(
   file: File,
   onProgress: (ratio: number) => void,
   signal?: AbortSignal,
+  folderId?: string | null,
 ): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -111,6 +154,7 @@ export function uploadFile(
     signal?.addEventListener("abort", () => xhr.abort());
     const form = new FormData();
     form.append("files", file, file.name);
+    if (folderId) form.append("folder_id", folderId);
     xhr.send(form);
   });
 }

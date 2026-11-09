@@ -494,7 +494,13 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         }
       >
         {page.view === "library" ? (
-          <LibraryView kbId={page.kbId} onAsk={askInKb} onOpenMenu={() => setSidebarCollapsed(false)} />
+          <LibraryView
+            kbId={page.kbId}
+            folderId={page.folderId ?? null}
+            onOpenFolder={(folderId) => openPage({ view: "library", kbId: page.kbId, folderId })}
+            onAsk={askInKb}
+            onOpenMenu={() => setSidebarCollapsed(false)}
+          />
         ) : page.view === "trash" ? (
           <TrashView onOpenMenu={() => setSidebarCollapsed(false)} />
         ) : (

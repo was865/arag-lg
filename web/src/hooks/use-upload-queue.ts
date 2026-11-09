@@ -24,6 +24,7 @@ const CONCURRENCY = 3;
 interface Pending {
   file: File;
   kbId: string;
+  folderId: string | null;
   abort: AbortController;
 }
 
@@ -55,6 +56,7 @@ export function useUploadQueue({ onSettled }: { onSettled?: () => void } = {}) {
           src.file,
           (r) => patch(id, (f) => ({ ...f, progress: Math.round(r * 100) })),
           src.abort.signal,
+          src.folderId,
         )
           .then((res) => {
             const item = res.items[0];
@@ -77,12 +79,17 @@ export function useUploadQueue({ onSettled }: { onSettled?: () => void } = {}) {
   }, [patch]);
   const pump = useCallback(() => pumpRef.current(), []);
 
-  /** ファイルを KB に送る。 */
+  /** ファイルを KB（のフォルダ）に送る。 */
   const add = useCallback(
-    (kbId: string, list: File[]) => {
+    (kbId: string, list: File[], folderId: string | null = null) => {
       const staged = list.map((file) => {
         const id = uid("up_");
-        sources.current.set(id, { file, kbId, abort: new AbortController() });
+        sources.current.set(id, {
+          file,
+          kbId,
+          folderId,
+          abort: new AbortController(),
+        });
         waiting.current.push(id);
         return {
           id,
