@@ -7,7 +7,7 @@
  * - 文書の管理画面・設定・認証は P4 で移植する。
  */
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { LibraryView } from "@/components/library/library-view";
@@ -32,6 +32,8 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { useConversations, NEW_THREAD } from "@/hooks/use-conversations";
 import { useKbs } from "@/hooks/use-kbs";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { HelpModal } from "@/components/help/help-modal";
+import { WelcomeGuide } from "@/components/onboarding/welcome-guide";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useAgentCfg } from "@/hooks/use-agent-cfg";
 import { useTweaks } from "@/hooks/use-tweaks";
@@ -39,7 +41,8 @@ import { usePanelWidth } from "@/components/workspace/use-panel-width";
 import { chatApi, type ThreadOut } from "@/lib/chat/api";
 import { MODEL_STORAGE_KEY } from "@/lib/constants";
 import { agentCfgPayload } from "@/lib/agent-settings";
-import { shortcutAction } from "@/lib/shortcuts";
+import { guideKey, shouldShowGuide } from "@/lib/onboarding";
+import { isEditable, shortcutAction } from "@/lib/shortcuts";
 import type { FeedbackRating, FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { AppUser, ModelOption, ScopeValue, Source, ThreadSummary, Turn } from "@/lib/types";
 import { cn, relativeTime } from "@/lib/utils";
@@ -76,6 +79,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const sessionUser = session?.user;
   const user = useMemo(() => (sessionUser ? toAppUser(sessionUser) : DEV_USER), [sessionUser]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const router = useRouter();
 
   // メール確認リンクから戻ってきたとき（?verified=1 / ?error=...）に知らせて、URL から消す
@@ -99,6 +103,25 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const [activeId, setActiveId] = useState<string | null>(initialRoute.view === "chat" ? initialRoute.threadId : null);
   // 表示中の画面（チャット・文書ライブラリ・ごみ箱）。チャットのスレッドは activeId が持つ
   const [page, setPage] = useState<Route>(initialRoute);
+  // 初回ガイド（specs/015 R5）: ログインした利用者がこの端末でまだ見ていなければ 1 回だけ出す
+  const guideUserId = sessionUser?.id ?? null;
+  const guideSeen = useSyncExternalStore(
+    noopSubscribe,
+    () => readGuideSeen(guideUserId),
+    () => "1",
+  );
+  const [guideState, setGuideState] = useState<"auto" | "open" | "closed">("auto");
+  const guideOpen =
+    guideState === "open" ||
+    (guideState === "auto" && page.view === "chat" && shouldShowGuide({ userId: guideUserId, seen: guideSeen }));
+  const closeGuide = () => {
+    if (guideUserId) {
+      try {
+        localStorage.setItem(guideKey(guideUserId), "1");
+      } catch {}
+    }
+    setGuideState("closed");
+  };
   /** ライブラリの上に重ねる文書ビューア。開くときに同じ URL の履歴を 1 つ積み、戻るボタンで閉じる。 */
   const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -466,11 +489,12 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     onKeyRef.current = (e) => {
+      if (settingsOpen || helpOpen || guideOpen) return; // ダイアログの中ではキーを奪わない
       if (e.key === "Escape" && rightPanelOpen) {
         setRightPanelOpen(false);
         return;
       }
-      const action = shortcutAction(e, { running });
+      const action = shortcutAction(e, { running, editing: isEditable(e.target) });
       if (!action) return;
       e.preventDefault();
       if (action === "new-thread") {
@@ -478,6 +502,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         setComposerValue("");
       } else if (action === "toggle-sidebar") setSidebarCollapsed((c) => !c);
       else if (action === "open-settings") setSettingsOpen(true);
+      else if (action === "open-help") setHelpOpen(true);
       else stopRun();
     };
   });
@@ -530,6 +555,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             user={user}
             onSignOut={sessionUser ? () => void signOut() : undefined}
             onOpenSettings={() => setSettingsOpen(true)}
+            onOpenHelp={() => setHelpOpen(true)}
             onOpenAdmin={
               sessionUser?.role === "owner" || sessionUser?.role === "admin"
                 ? () => router.push("/admin/members")
@@ -716,6 +742,16 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         </div>
       </AppShell>
       {confirmDialog}
+      {helpOpen && (
+        <HelpModal
+          onClose={() => setHelpOpen(false)}
+          onReplayTour={() => {
+            setHelpOpen(false);
+            setGuideState("open");
+          }}
+        />
+      )}
+      {guideOpen && <WelcomeGuide name={sessionUser?.name} onClose={closeGuide} />}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showAccount={Boolean(sessionUser)} />}
       {shareOpen && activeThread && (
         <ShareDialog
@@ -738,4 +774,14 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
       )}
     </>
   );
+}
+
+const noopSubscribe = () => () => {};
+function readGuideSeen(userId: string | null): string | null {
+  if (!userId) return "1";
+  try {
+    return localStorage.getItem(guideKey(userId));
+  } catch {
+    return "1";
+  }
 }
