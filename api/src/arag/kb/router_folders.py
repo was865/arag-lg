@@ -33,19 +33,19 @@ async def _writable_folder(ctx: CtxDep, folder_id: uuid.UUID, *, trashed: bool) 
     folder = await service.get_folder(ctx.session, folder_id)
     if folder is None or (folder.deleted_at is not None) != trashed:
         raise not_found()
-    await service.get_writable_kb(ctx.session, ctx.principal, folder.kb_id)
+    await service.get_writable_kb(ctx.session, ctx.access, folder.kb_id)
     return folder
 
 
 @router.get("/v1/kbs/{kb_id}/folders", response_model=list[FolderOut])
 async def list_folders(kb_id: uuid.UUID, ctx: CtxDep) -> list[FolderOut]:
-    await service.get_readable_kb(ctx.session, ctx.principal, kb_id)
+    await service.get_readable_kb(ctx.session, ctx.access, kb_id)
     return [_out(f, n) for f, n in await service.list_folders(ctx.session, kb_id)]
 
 
 @router.post("/v1/kbs/{kb_id}/folders", response_model=FolderOut, status_code=status.HTTP_201_CREATED)
 async def create_folder(kb_id: uuid.UUID, body: FolderCreate, ctx: CtxDep) -> FolderOut:
-    await service.get_writable_kb(ctx.session, ctx.principal, kb_id)
+    await service.get_writable_kb(ctx.session, ctx.access, kb_id)
     folder = await service.create_folder(ctx.session, kb_id, body.name, body.parent_id)
     await ctx.session.commit()
     await ctx.session.refresh(folder)
@@ -87,7 +87,7 @@ async def trash_folder(folder_id: uuid.UUID, ctx: CtxDep) -> Response:
 async def restore_folder(folder_id: uuid.UUID, ctx: CtxDep) -> FolderOut:
     folder = await _writable_folder(ctx, folder_id, trashed=True)
     kb = await service.get_kb_any(ctx.session, folder.kb_id)
-    assert kb is not None and perm.can_write(ctx.principal, kb)
+    assert kb is not None and perm.can_write(ctx.access, kb)
     try:
         hashes = await service.restore_folder(ctx.session, folder)
     except IntegrityError as e:
@@ -107,10 +107,10 @@ async def purge_folder(request: Request, folder_id: uuid.UUID, ctx: CtxDep) -> R
     if folder is None or folder.deleted_at is None:
         raise not_found()
     kb = await service.get_kb_any(ctx.session, folder.kb_id)
-    if kb is None or not perm.can_see_ignoring_trash(ctx.principal, kb):
+    if kb is None or not perm.can_see_ignoring_trash(ctx.access, kb):
         raise not_found()
     ids, docs = await service.folder_purge_plan(ctx.session, folder)
-    if not perm.can_purge_folder(ctx.principal, kb, folder, docs, service.utcnow()):
+    if not perm.can_purge_folder(ctx.access, kb, folder, docs, service.utcnow()):
         raise ApiError(403, "forbidden", "完全削除できるのは、削除から 24 時間以内の本人か管理者だけです")
     hashes = await delete_documents(ctx.session, [d.id for d in docs])
     # 子から順に消す（parent_id の参照を残さない）

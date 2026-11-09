@@ -2,12 +2,14 @@
 
 from dataclasses import dataclass
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.auth.principal import Principal
 from arag.db.models import Document, KnowledgeBase
+from arag.kb.access import load_access
 from arag.kb.permissions import can_read
+from arag.kb.service import readable_kb_clause
 from arag.search.schemas import SearchRequest
 
 
@@ -23,16 +25,12 @@ class Scope:
 
 
 async def resolve_scope(session: AsyncSession, p: Principal, req: SearchRequest) -> Scope:
+    # 共有 KB は共有リストに当たるものだけ（specs/024）。エージェントからも呼ぶので、ここで役割を読む
+    a = await load_access(session, p)
     rows = await session.scalars(
-        select(KnowledgeBase).where(
-            KnowledgeBase.deleted_at.is_(None),
-            or_(
-                KnowledgeBase.kind == "org",
-                and_(KnowledgeBase.kind == "personal", KnowledgeBase.owner_user_id == p.user_id),
-            ),
-        )
+        select(KnowledgeBase).where(KnowledgeBase.deleted_at.is_(None), readable_kb_clause(a))
     )
-    readable = [kb for kb in rows if can_read(p, kb)]
+    readable = [kb for kb in rows if can_read(a, kb)]
     if req.kb_ids is not None:
         # 明示した KB はアーカイブ済みでも対象（旧版と同じ）。見えない ID は黙って除く
         wanted = {str(k) for k in req.kb_ids}

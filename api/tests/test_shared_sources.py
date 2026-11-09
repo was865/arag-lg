@@ -25,7 +25,7 @@ def test_same_document_cited_twice_is_distinguishable() -> None:
     }
     out = [x.model_dump() for x in shared_sources(cmap, SOURCES)]
     assert out == [
-        {"n": 1, "title": "規程.pdf", "heading": "第3条", "page": 4},
-        {"n": 2, "title": "規程.pdf", "heading": None, "page": 9},
-        {"n": 3, "title": "台帳.md", "heading": None, "page": None},
+        {"n": 1, "title": "規程.pdf", "heading": "第3条", "page": 4, "restricted": False},
+        {"n": 2, "title": "規程.pdf", "heading": None, "page": 9, "restricted": False},
+        {"n": 3, "title": "台帳.md", "heading": None, "page": None, "restricted": False},
     ]

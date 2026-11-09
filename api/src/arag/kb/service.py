@@ -3,16 +3,17 @@
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from arag.auth.principal import Principal
 from arag.db.models import Chunk, Document, Folder, KnowledgeBase
 from arag.errors import ApiError, not_found
 from arag.kb import permissions as perm
+from arag.kb.access import Access
 
 PERSONAL_KB_NAME = "個人の知識ベース"
 
@@ -41,7 +42,25 @@ async def ensure_personal_kb(session: AsyncSession, user_id: str) -> None:
     await session.execute(stmt)
 
 
-async def list_kbs(session: AsyncSession, p: Principal) -> list[tuple[KnowledgeBase, int]]:
+def readable_kb_clause(a: Access) -> Any:
+    """読める KB（個人 KB の持ち主か、共有リストに当たる共有 KB）。ごみ箱は呼ぶ側で除く。"""
+    return or_(
+        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == a.user_id),
+        (KnowledgeBase.kind == "org") & KnowledgeBase.id.in_(a.readable_org_kb_ids),
+    )
+
+
+def writable_kb_clause(a: Access) -> Any:
+    return or_(
+        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == a.user_id),
+        (KnowledgeBase.kind == "org") & KnowledgeBase.id.in_(a.org_kb_ids_at_least("editor")),
+    )
+
+
+async def list_kbs(
+    session: AsyncSession, a: Access, *, manageable: bool = False
+) -> list[tuple[KnowledgeBase, int]]:
+    """読める KB。manageable なら、admin には読めない共有 KB も足す（共有リストの管理のため）。"""
     doc_count = (
         select(func.count(Document.id))
         .where(Document.kb_id == KnowledgeBase.id, Document.deleted_at.is_(None))
@@ -51,10 +70,9 @@ async def list_kbs(session: AsyncSession, p: Principal) -> list[tuple[KnowledgeB
         select(KnowledgeBase, doc_count)
         .where(
             KnowledgeBase.deleted_at.is_(None),
-            or_(
-                KnowledgeBase.kind == "org",
-                (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == p.user_id),
-            ),
+            or_(readable_kb_clause(a), KnowledgeBase.kind == "org")
+            if manageable and a.is_admin
+            else readable_kb_clause(a),
         )
         .order_by(KnowledgeBase.kind.desc(), KnowledgeBase.created_at)  # personal → org
     )
@@ -65,16 +83,16 @@ async def get_kb_any(session: AsyncSession, kb_id: uuid.UUID) -> KnowledgeBase |
     return await session.get(KnowledgeBase, kb_id)
 
 
-async def get_readable_kb(session: AsyncSession, p: Principal, kb_id: uuid.UUID) -> KnowledgeBase:
+async def get_readable_kb(session: AsyncSession, a: Access, kb_id: uuid.UUID) -> KnowledgeBase:
     kb = await session.get(KnowledgeBase, kb_id)
-    if kb is None or not perm.can_read(p, kb):
+    if kb is None or not perm.can_read(a, kb):
         raise not_found()
     return kb
 
 
-async def get_writable_kb(session: AsyncSession, p: Principal, kb_id: uuid.UUID) -> KnowledgeBase:
-    kb = await get_readable_kb(session, p, kb_id)
-    if not perm.can_write(p, kb):
+async def get_writable_kb(session: AsyncSession, a: Access, kb_id: uuid.UUID) -> KnowledgeBase:
+    kb = await get_readable_kb(session, a, kb_id)
+    if not perm.can_write(a, kb):
         raise ApiError(403, "forbidden", "この知識ベースを変更する権限がありません")
     return kb
 
@@ -269,17 +287,9 @@ async def restore_folder(session: AsyncSession, folder: Folder) -> set[str]:
 
 
 async def visible_document_for_content(
-    session: AsyncSession, p: Principal, content_hash: str, *, write: bool = False
+    session: AsyncSession, a: Access, content_hash: str, *, write: bool = False
 ) -> Document | None:
     """利用者が見られる（write=True なら書ける）生存文書のうち最新の 1 件。R30。"""
-    readable = or_(
-        KnowledgeBase.kind == "org",
-        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == p.user_id),
-    )
-    writable = or_(
-        (KnowledgeBase.kind == "org") & (text("true") if p.is_admin else text("false")),
-        (KnowledgeBase.kind == "personal") & (KnowledgeBase.owner_user_id == p.user_id),
-    )
     doc: Document | None = await session.scalar(
         select(Document)
         .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
@@ -287,7 +297,7 @@ async def visible_document_for_content(
             Document.content_hash == content_hash,
             Document.deleted_at.is_(None),
             KnowledgeBase.deleted_at.is_(None),
-            writable if write else readable,
+            writable_kb_clause(a) if write else readable_kb_clause(a),
         )
         .order_by(Document.created_at.desc())
         .limit(1)

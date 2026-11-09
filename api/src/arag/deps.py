@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import CurrentPrincipal, Principal
 from arag.ingest.events import Publisher
+from arag.kb.access import Access, load_access
 from arag.kb.sync import PayloadSync
 from arag.settings import Settings
 from arag.storage import Storage
@@ -62,6 +63,8 @@ class Ctx:
 
     principal: Principal
     session: AsyncSession
+    # 共有 KB の役割（specs/024）。要求ごとに 1 回だけ読む
+    access: Access
     request_id: str | None
     ip: str | None
     payload_sync: PayloadSync
@@ -81,6 +84,7 @@ async def get_ctx(
     return Ctx(
         principal=principal,
         session=session,
+        access=await load_access(session, principal),
         request_id=request_id_of(request),
         ip=client_ip(request, get_settings(request).forward_secret.get_secret_value()),
         payload_sync=request.app.state.payload_sync,

@@ -54,7 +54,7 @@ def _ts_nullable() -> Mapped[datetime | None]:
 
 
 class KnowledgeBase(Base):
-    """KB。kind: personal（所有者のみ）/ org（全社。書込は admin）。"""
+    """KB。kind: personal（所有者のみ）/ org（共有。誰が何をできるかは kb_shares。specs/024）。"""
 
     __tablename__ = "knowledge_bases"
     __table_args__ = (
@@ -73,6 +73,45 @@ class KnowledgeBase(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     deleted_at: Mapped[datetime | None] = _ts_nullable()
     deleted_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = _now()
+
+
+class Department(Base):
+    """部門（specs/024 R1）。入れ子にしない。"""
+
+    __tablename__ = "departments"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    created_at: Mapped[datetime] = _now()
+
+
+class DepartmentMember(Base):
+    """部門のメンバー。role: member / manager（部門管理者）。"""
+
+    __tablename__ = "department_members"
+
+    department_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("departments.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="member")
+
+
+class KbShare(Base):
+    """共有 KB の共有リストの 1 行（specs/024 R4・R5）。subject_id は everyone なら空文字。"""
+
+    __tablename__ = "kb_shares"
+    __table_args__ = (UniqueConstraint("kb_id", "subject_type", "subject_id"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    kb_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    subject_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[datetime] = _now()
 
 

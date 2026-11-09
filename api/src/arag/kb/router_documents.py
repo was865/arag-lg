@@ -13,7 +13,6 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.audit import AuditEvent
-from arag.auth.principal import Principal
 from arag.db.models import (
     Chunk,
     Citation,
@@ -30,6 +29,7 @@ from arag.errors import ApiError, not_found
 from arag.ingest.gc import collect_orphans, delete_documents
 from arag.kb import permissions as perm
 from arag.kb import service
+from arag.kb.access import Access
 from arag.kb.schemas import Name
 from arag.settings import Settings
 from arag.storage import Storage, StorageError, content_prefix
@@ -160,14 +160,8 @@ class TrashItem(BaseModel):
 # ---------------------------------------------------------------- 共通
 
 
-def _readable_kb_filter(p: Principal) -> Any:
-    return and_(
-        KnowledgeBase.deleted_at.is_(None),
-        or_(
-            KnowledgeBase.kind == "org",
-            and_(KnowledgeBase.kind == "personal", KnowledgeBase.owner_user_id == p.user_id),
-        ),
-    )
+def _readable_kb_filter(a: Access) -> Any:
+    return and_(KnowledgeBase.deleted_at.is_(None), service.readable_kb_clause(a))
 
 
 def _latest_job_id(content_hash: Any) -> Any:
@@ -198,7 +192,7 @@ def _doc_query() -> Select[Any]:
     )
 
 
-def _doc_out(p: Principal, row: Any) -> DocumentOut:
+def _doc_out(p: Access, row: Any) -> DocumentOut:
     doc, content, kb, chunks, job_id = row
     return DocumentOut(
         id=doc.id,
@@ -234,7 +228,7 @@ async def _readable_doc(ctx: CtxDep, doc_id: uuid.UUID) -> tuple[Document, Knowl
     doc = await ctx.session.get(Document, doc_id)
     if doc is None or doc.deleted_at is not None:
         raise not_found()
-    kb = await service.get_readable_kb(ctx.session, ctx.principal, doc.kb_id)
+    kb = await service.get_readable_kb(ctx.session, ctx.access, doc.kb_id)
     return doc, kb
 
 
@@ -244,13 +238,13 @@ async def _writable_doc(
     doc = await ctx.session.get(Document, doc_id)
     if doc is None or (doc.deleted_at is not None) != trashed:
         raise not_found()
-    kb = await service.get_writable_kb(ctx.session, ctx.principal, doc.kb_id)
+    kb = await service.get_writable_kb(ctx.session, ctx.access, doc.kb_id)
     return doc, kb
 
 
 async def _one_out(ctx: CtxDep, doc_id: uuid.UUID) -> DocumentOut:
     row = (await ctx.session.execute(_doc_query().where(Document.id == doc_id))).one()
-    return _doc_out(ctx.principal, row)
+    return _doc_out(ctx.access, row)
 
 
 # ---------------------------------------------------------------- 一覧・統計（R31）
@@ -267,9 +261,9 @@ async def list_documents(
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> DocumentPage:
-    stmt = _doc_query().where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal))
+    stmt = _doc_query().where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.access))
     if kb_id is not None:
-        await service.get_readable_kb(ctx.session, ctx.principal, kb_id)
+        await service.get_readable_kb(ctx.session, ctx.access, kb_id)
         stmt = stmt.where(Document.kb_id == kb_id)
     if folder_id is not None:
         stmt = stmt.where(Document.folder_id == folder_id)
@@ -286,7 +280,7 @@ async def list_documents(
         stmt = stmt.where(or_(Document.created_at < ts, and_(Document.created_at == ts, Document.id < did)))
     stmt = stmt.order_by(Document.created_at.desc(), Document.id.desc()).limit(limit + 1)
     rows = (await ctx.session.execute(stmt)).all()
-    items = [_doc_out(ctx.principal, r) for r in rows[:limit]]
+    items = [_doc_out(ctx.access, r) for r in rows[:limit]]
     next_cursor = _encode_cursor(rows[limit - 1][0]) if len(rows) > limit else None
     return DocumentPage(items=items, next_cursor=next_cursor)
 
@@ -297,7 +291,7 @@ async def document_stats(ctx: CtxDep, kb_id: uuid.UUID | None = None) -> Documen
         select(Content.status, func.count(Document.id), func.coalesce(func.sum(Content.size), 0))
         .join(Content, Content.content_hash == Document.content_hash)
         .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
-        .where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal))
+        .where(Document.deleted_at.is_(None), _readable_kb_filter(ctx.access))
         .group_by(Content.status)
     )
     if kb_id is not None:
@@ -321,8 +315,8 @@ async def document_overview(ctx: CtxDep, kb_id: uuid.UUID | None = None) -> Docu
     引用の回数は全員の回答を数えるが、出す文書は読めるものだけ。
     """
     if kb_id is not None:
-        await service.get_readable_kb(ctx.session, ctx.principal, kb_id)
-    scope = [Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal)]
+        await service.get_readable_kb(ctx.session, ctx.access, kb_id)
+    scope = [Document.deleted_at.is_(None), _readable_kb_filter(ctx.access)]
     if kb_id is not None:
         scope.append(Document.kb_id == kb_id)
     s = ctx.session
@@ -366,7 +360,7 @@ async def document_overview(ctx: CtxDep, kb_id: uuid.UUID | None = None) -> Docu
             .limit(OVERVIEW_LIST)
         )
     ).all()
-    p = ctx.principal
+    p = ctx.access
     return DocumentOverview(
         documents=sum(by_status.values()),
         total_bytes=sum(b for _, b in by_ext.values()),
@@ -462,9 +456,9 @@ async def purge_document(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> Re
         raise not_found()
     kb = await service.get_kb_any(ctx.session, doc.kb_id)
     assert kb is not None
-    if not perm.can_see_ignoring_trash(ctx.principal, kb):
+    if not perm.can_see_ignoring_trash(ctx.access, kb):
         raise not_found()
-    if not perm.can_purge(ctx.principal, kb, doc, service.utcnow()):
+    if not perm.can_purge(ctx.access, kb, doc, service.utcnow()):
         raise ApiError(403, "forbidden", "完全削除できるのは、削除から 24 時間以内の本人か管理者だけです")
     h = doc.content_hash
     await delete_documents(ctx.session, [doc.id])
@@ -674,12 +668,16 @@ async def trash(request: Request, ctx: CtxDep) -> list[TrashItem]:
     settings: Settings = request.app.state.settings
     retention = timedelta(days=settings.trash_retention_days)
     now = service.utcnow()
-    p = ctx.principal
-    writable_kb = or_(
+    p = ctx.access
+    writable_kb = service.writable_kb_clause(p)
+    # ごみ箱の KB を戻せる人: 個人 KB の持ち主と、共有 KB の管理者・admin（specs/024）
+    managed_kb = or_(
         and_(KnowledgeBase.kind == "personal", KnowledgeBase.owner_user_id == p.user_id),
         and_(
             KnowledgeBase.kind == "org",
-            KnowledgeBase.id.is_not(None) if p.is_admin else KnowledgeBase.id.is_(None),
+            KnowledgeBase.id.is_not(None)
+            if p.is_admin
+            else KnowledgeBase.id.in_(p.org_kb_ids_at_least("manager")),
         ),
     )
 
@@ -688,7 +686,7 @@ async def trash(request: Request, ctx: CtxDep) -> list[TrashItem]:
 
     items: list[TrashItem] = []
     kbs = await ctx.session.scalars(
-        select(KnowledgeBase).where(KnowledgeBase.deleted_at.is_not(None), writable_kb)
+        select(KnowledgeBase).where(KnowledgeBase.deleted_at.is_not(None), managed_kb)
     )
     for kb in kbs:
         assert kb.deleted_at is not None
@@ -721,7 +719,7 @@ async def trash(request: Request, ctx: CtxDep) -> list[TrashItem]:
     for f, kb in folders:
         assert f.deleted_at is not None
         # 完全削除できるか（配下の文書も同じ規則で確かめる）
-        if p.is_admin and perm.can_write_ignoring_trash(p, kb):
+        if perm.can_write_ignoring_trash(p, kb) and perm.purge_any_time(p, kb):
             purgeable = True
         else:
             sub = await service.subtree_ids(ctx.session, f.id)

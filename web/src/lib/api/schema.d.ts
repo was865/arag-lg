@@ -194,6 +194,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{user_id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * User Access
+         * @description その人が見られる共有 KB と、どの行から来たか（admin だけ）。
+         */
+        get: operations["user_access_v1_admin_users__user_id__access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Departments
+         * @description 部門の一覧（共有リストで選ぶため、ログインしていれば誰でも見られる）。
+         */
+        get: operations["list_departments_v1_departments_get"];
+        put?: never;
+        /** Create Department */
+        post: operations["create_department_v1_departments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/departments/{dept_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Department
+         * @description 部門を消す。その部門を指す共有リストの行も消える（監査に残す）。
+         */
+        delete: operations["delete_department_v1_departments__dept_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Department */
+        patch: operations["rename_department_v1_departments__dept_id__patch"];
+        trace?: never;
+    };
+    "/v1/departments/{dept_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Department Members */
+        get: operations["list_department_members_v1_departments__dept_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/departments/{dept_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Department Member */
+        put: operations["put_department_member_v1_departments__dept_id__members__user_id__put"];
+        post?: never;
+        /** Delete Department Member */
+        delete: operations["delete_department_member_v1_departments__dept_id__members__user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents": {
         parameters: {
             query?: never;
@@ -595,7 +692,10 @@ export interface paths {
         /** List Kbs */
         get: operations["list_kbs_v1_kbs_get"];
         put?: never;
-        /** Create Kb */
+        /**
+         * Create Kb
+         * @description admin は誰向けにも、部門管理者は自分の部門向けに作れる（specs/024 R9）。
+         */
         post: operations["create_kb_v1_kbs_post"];
         delete?: never;
         options?: never;
@@ -667,6 +767,30 @@ export interface paths {
         put?: never;
         /** Restore Kb */
         post: operations["restore_kb_v1_kbs__kb_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/kbs/{kb_id}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shares
+         * @description 共有リスト。読める人（誰に見えているかを知るため）と、管理できる人が見られる。
+         */
+        get: operations["get_shares_v1_kbs__kb_id__shares_get"];
+        /**
+         * Put Shares
+         * @description 共有リストを丸ごと置き換える（全員は閲覧だけ・管理が 1 行以上）。差分を監査に残す。
+         */
+        put: operations["put_shares_v1_kbs__kb_id__shares_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -961,6 +1085,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccessReason */
+        AccessReason: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "viewer" | "editor" | "manager";
+            /** Subject Id */
+            subject_id: string;
+            /**
+             * Subject Type
+             * @enum {string}
+             */
+            subject_type: "everyone" | "department" | "user";
+        };
         /** ActiveRunOut */
         ActiveRunOut: {
             /**
@@ -1218,6 +1357,47 @@ export interface components {
             /** Questions */
             questions: number;
         };
+        /** DepartmentIn */
+        DepartmentIn: {
+            /** Name */
+            name: string;
+        };
+        /** DepartmentOut */
+        DepartmentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Member Count */
+            member_count: number;
+            /**
+             * My Role
+             * @description 自分の役割（入っていなければ null）
+             */
+            my_role?: ("member" | "manager") | null;
+            /** Name */
+            name: string;
+        };
+        /** DeptMemberIn */
+        DeptMemberIn: {
+            /**
+             * Role
+             * @default member
+             * @enum {string}
+             */
+            role: "member" | "manager";
+        };
+        /** DeptMemberOut */
+        DeptMemberOut: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "member" | "manager";
+            /** User Id */
+            user_id: string;
+        };
         /** DocumentOut */
         DocumentOut: {
             /** Chunk Count */
@@ -1465,11 +1645,22 @@ export interface components {
         };
         /** KbCreate */
         KbCreate: {
+            /**
+             * Department Id
+             * @description 部門向けに作る（既定の共有を「その部門: 閲覧」にする）。部門管理者は必須
+             */
+            department_id?: string | null;
             /** Name */
             name: string;
         };
         /** KbOut */
         KbOut: {
+            /**
+             * Can Manage
+             * @description 共有リスト・名前・アーカイブ・削除を変えられるか
+             * @default false
+             */
+            can_manage: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1489,6 +1680,17 @@ export interface components {
             kind: "personal" | "org";
             /** Name */
             name: string;
+            /**
+             * Role
+             * @description 自分の役割（specs/024）。読めない KB（admin の管理用一覧）は null
+             */
+            role?: ("viewer" | "editor" | "manager") | null;
+            /**
+             * Shared With Everyone
+             * @description 共有リストに「全員」があるか
+             * @default false
+             */
+            shared_with_everyone: boolean;
             /**
              * Status
              * @enum {string}
@@ -1975,6 +2177,40 @@ export interface components {
             /** Token Len */
             token_len: number;
         };
+        /** ShareIn */
+        ShareIn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "viewer" | "editor" | "manager";
+            /**
+             * Subject Id
+             * @description 部門の id か user_id。全員なら空
+             * @default
+             */
+            subject_id: string;
+            /**
+             * Subject Type
+             * @enum {string}
+             */
+            subject_type: "everyone" | "department" | "user";
+        };
+        /** ShareOut */
+        ShareOut: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "viewer" | "editor" | "manager";
+            /** Subject Id */
+            subject_id: string;
+            /**
+             * Subject Type
+             * @enum {string}
+             */
+            subject_type: "everyone" | "department" | "user";
+        };
         /** SharedMessage */
         SharedMessage: {
             /** Answer */
@@ -2002,6 +2238,11 @@ export interface components {
             n: number;
             /** Page */
             page?: number | null;
+            /**
+             * Restricted
+             * @default false
+             */
+            restricted: boolean;
             /** Title */
             title: string;
         };
@@ -2019,6 +2260,25 @@ export interface components {
              * @enum {string}
              */
             visibility: "private" | "org" | "public";
+        };
+        /** SharesIn */
+        SharesIn: {
+            /** Shares */
+            shares: components["schemas"]["ShareIn"][];
+        };
+        /** SharesOut */
+        SharesOut: {
+            /** Can Manage */
+            can_manage: boolean;
+            /**
+             * Department Members
+             * @description 共有リストにある部門の user_id
+             */
+            department_members: {
+                [key: string]: string[];
+            };
+            /** Shares */
+            shares: components["schemas"]["ShareOut"][];
         };
         /** SourceSection */
         SourceSection: {
@@ -2310,6 +2570,23 @@ export interface components {
         UploadResult: {
             /** Items */
             items: components["schemas"]["UploadItem"][];
+        };
+        /** UserKbAccess */
+        UserKbAccess: {
+            /**
+             * Kb Id
+             * Format: uuid
+             */
+            kb_id: string;
+            /** Kb Name */
+            kb_name: string;
+            /** Reasons */
+            reasons: components["schemas"]["AccessReason"][];
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "viewer" | "editor" | "manager";
         };
         /** ValidationError */
         ValidationError: {
@@ -2748,6 +3025,251 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CheckOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    user_access_v1_admin_users__user_id__access_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserKbAccess"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_departments_v1_departments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"][];
+                };
+            };
+        };
+    };
+    create_department_v1_departments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_department_v1_departments__dept_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_department_v1_departments__dept_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_department_members_v1_departments__dept_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeptMemberOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_department_member_v1_departments__dept_id__members__user_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeptMemberIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeptMemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_department_member_v1_departments__dept_id__members__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3561,7 +4083,10 @@ export interface operations {
     };
     list_kbs_v1_kbs_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true なら admin には読めない共有 KB も返す（共有リストの管理用） */
+                manageable?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3575,6 +4100,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KbOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3791,6 +4325,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KbOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shares_v1_kbs__kb_id__shares_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kb_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_shares_v1_kbs__kb_id__shares_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kb_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharesOut"];
                 };
             };
             /** @description Validation Error */

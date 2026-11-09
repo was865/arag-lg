@@ -16,7 +16,7 @@ from arag.health import Check
 from arag.ingest.events import Publisher, RedisPublisher
 from arag.ingest.index import QdrantIndex, QdrantPayloadSync
 from arag.ingest.pipeline import Index
-from arag.kb import router_documents, router_folders, router_kbs, router_uploads
+from arag.kb import router_access, router_documents, router_folders, router_kbs, router_uploads
 from arag.kb.sync import PayloadSync
 from arag.logging import configure_logging, get_logger
 from arag.middleware import RequestIdMiddleware
@@ -73,6 +73,7 @@ def create_app(
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(router_kbs.router)
+    app.include_router(router_access.router)
     app.include_router(router_folders.router)
     app.include_router(router_uploads.router)
     app.include_router(router_documents.router)

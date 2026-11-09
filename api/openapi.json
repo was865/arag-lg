@@ -1,6 +1,39 @@
 {
   "components": {
     "schemas": {
+      "AccessReason": {
+        "properties": {
+          "role": {
+            "enum": [
+              "viewer",
+              "editor",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "enum": [
+              "everyone",
+              "department",
+              "user"
+            ],
+            "title": "Subject Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_type",
+          "subject_id",
+          "role"
+        ],
+        "title": "AccessReason",
+        "type": "object"
+      },
       "ActiveRunOut": {
         "properties": {
           "message_id": {
@@ -717,6 +750,96 @@
         "title": "Daily",
         "type": "object"
       },
+      "DepartmentIn": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DepartmentIn",
+        "type": "object"
+      },
+      "DepartmentOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "member",
+                  "manager"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "自分の役割（入っていなければ null）",
+            "title": "My Role"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "member_count"
+        ],
+        "title": "DepartmentOut",
+        "type": "object"
+      },
+      "DeptMemberIn": {
+        "properties": {
+          "role": {
+            "default": "member",
+            "enum": [
+              "member",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "title": "DeptMemberIn",
+        "type": "object"
+      },
+      "DeptMemberOut": {
+        "properties": {
+          "role": {
+            "enum": [
+              "member",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "role"
+        ],
+        "title": "DeptMemberOut",
+        "type": "object"
+      },
       "DocumentOut": {
         "properties": {
           "chunk_count": {
@@ -1368,6 +1491,19 @@
       },
       "KbCreate": {
         "properties": {
+          "department_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "部門向けに作る（既定の共有を「その部門: 閲覧」にする）。部門管理者は必須",
+            "title": "Department Id"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1381,6 +1517,12 @@
       },
       "KbOut": {
         "properties": {
+          "can_manage": {
+            "default": false,
+            "description": "共有リスト・名前・アーカイブ・削除を変えられるか",
+            "title": "Can Manage",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1406,6 +1548,29 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "viewer",
+                  "editor",
+                  "manager"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "自分の役割（specs/024）。読めない KB（admin の管理用一覧）は null",
+            "title": "Role"
+          },
+          "shared_with_everyone": {
+            "default": false,
+            "description": "共有リストに「全員」があるか",
+            "title": "Shared With Everyone",
+            "type": "boolean"
           },
           "status": {
             "enum": [
@@ -2796,6 +2961,74 @@
         "title": "SectionOut",
         "type": "object"
       },
+      "ShareIn": {
+        "properties": {
+          "role": {
+            "enum": [
+              "viewer",
+              "editor",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "subject_id": {
+            "default": "",
+            "description": "部門の id か user_id。全員なら空",
+            "maxLength": 64,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "enum": [
+              "everyone",
+              "department",
+              "user"
+            ],
+            "title": "Subject Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_type",
+          "role"
+        ],
+        "title": "ShareIn",
+        "type": "object"
+      },
+      "ShareOut": {
+        "properties": {
+          "role": {
+            "enum": [
+              "viewer",
+              "editor",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "enum": [
+              "everyone",
+              "department",
+              "user"
+            ],
+            "title": "Subject Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_type",
+          "subject_id",
+          "role"
+        ],
+        "title": "ShareOut",
+        "type": "object"
+      },
       "SharedMessage": {
         "properties": {
           "answer": {
@@ -2861,6 +3094,11 @@
             ],
             "title": "Page"
           },
+          "restricted": {
+            "default": false,
+            "title": "Restricted",
+            "type": "boolean"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -2903,6 +3141,55 @@
           "messages"
         ],
         "title": "SharedThreadOut",
+        "type": "object"
+      },
+      "SharesIn": {
+        "properties": {
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/ShareIn"
+            },
+            "title": "Shares",
+            "type": "array"
+          }
+        },
+        "required": [
+          "shares"
+        ],
+        "title": "SharesIn",
+        "type": "object"
+      },
+      "SharesOut": {
+        "properties": {
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
+          "department_members": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "共有リストにある部門の user_id",
+            "title": "Department Members",
+            "type": "object"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/ShareOut"
+            },
+            "title": "Shares",
+            "type": "array"
+          }
+        },
+        "required": [
+          "shares",
+          "department_members",
+          "can_manage"
+        ],
+        "title": "SharesOut",
         "type": "object"
       },
       "SourceSection": {
@@ -3628,6 +3915,43 @@
         "title": "UploadResult",
         "type": "object"
       },
+      "UserKbAccess": {
+        "properties": {
+          "kb_id": {
+            "format": "uuid",
+            "title": "Kb Id",
+            "type": "string"
+          },
+          "kb_name": {
+            "title": "Kb Name",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AccessReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "editor",
+              "manager"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kb_id",
+          "kb_name",
+          "role",
+          "reasons"
+        ],
+        "title": "UserKbAccess",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -4291,6 +4615,364 @@
         "summary": "Check Model",
         "tags": [
           "llm-admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{user_id}/access": {
+      "get": {
+        "description": "その人が見られる共有 KB と、どの行から来たか（admin だけ）。",
+        "operationId": "user_access_v1_admin_users__user_id__access_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserKbAccess"
+                  },
+                  "title": "Response User Access V1 Admin Users  User Id  Access Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "User Access",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/v1/departments": {
+      "get": {
+        "description": "部門の一覧（共有リストで選ぶため、ログインしていれば誰でも見られる）。",
+        "operationId": "list_departments_v1_departments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DepartmentOut"
+                  },
+                  "title": "Response List Departments V1 Departments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Departments",
+        "tags": [
+          "access"
+        ]
+      },
+      "post": {
+        "operationId": "create_department_v1_departments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Department",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/v1/departments/{dept_id}": {
+      "delete": {
+        "description": "部門を消す。その部門を指す共有リストの行も消える（監査に残す）。",
+        "operationId": "delete_department_v1_departments__dept_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dept Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Department",
+        "tags": [
+          "access"
+        ]
+      },
+      "patch": {
+        "operationId": "rename_department_v1_departments__dept_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dept Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename Department",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/v1/departments/{dept_id}/members": {
+      "get": {
+        "operationId": "list_department_members_v1_departments__dept_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dept Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeptMemberOut"
+                  },
+                  "title": "Response List Department Members V1 Departments  Dept Id  Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Department Members",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/v1/departments/{dept_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "delete_department_member_v1_departments__dept_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dept Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Department Member",
+        "tags": [
+          "access"
+        ]
+      },
+      "put": {
+        "operationId": "put_department_member_v1_departments__dept_id__members__user_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dept Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeptMemberIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeptMemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Department Member",
+        "tags": [
+          "access"
         ]
       }
     },
@@ -5561,6 +6243,20 @@
     "/v1/kbs": {
       "get": {
         "operationId": "list_kbs_v1_kbs_get",
+        "parameters": [
+          {
+            "description": "true なら admin には読めない共有 KB も返す（共有リストの管理用）",
+            "in": "query",
+            "name": "manageable",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "true なら admin には読めない共有 KB も返す（共有リストの管理用）",
+              "title": "Manageable",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -5575,6 +6271,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Kbs",
@@ -5583,6 +6289,7 @@
         ]
       },
       "post": {
+        "description": "admin は誰向けにも、部門管理者は自分の部門向けに作れる（specs/024 R9）。",
         "operationId": "create_kb_v1_kbs_post",
         "requestBody": {
           "content": {
@@ -5890,6 +6597,102 @@
         "summary": "Restore Kb",
         "tags": [
           "kbs"
+        ]
+      }
+    },
+    "/v1/kbs/{kb_id}/shares": {
+      "get": {
+        "description": "共有リスト。読める人（誰に見えているかを知るため）と、管理できる人が見られる。",
+        "operationId": "get_shares_v1_kbs__kb_id__shares_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kb_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Kb Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Shares",
+        "tags": [
+          "access"
+        ]
+      },
+      "put": {
+        "description": "共有リストを丸ごと置き換える（全員は閲覧だけ・管理が 1 行以上）。差分を監査に残す。",
+        "operationId": "put_shares_v1_kbs__kb_id__shares_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kb_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Kb Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Shares",
+        "tags": [
+          "access"
         ]
       }
     },

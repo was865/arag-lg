@@ -79,14 +79,12 @@ async def _visible_job(ctx: CtxDep, job_id: uuid.UUID, *, write: bool) -> tuple[
     job = await ctx.session.get(IngestJob, job_id)
     if job is None:
         raise not_found()
-    doc = await service.visible_document_for_content(ctx.session, ctx.principal, job.content_hash)
+    doc = await service.visible_document_for_content(ctx.session, ctx.access, job.content_hash)
     if doc is None:
         raise not_found()
     if (
         write
-        and await service.visible_document_for_content(
-            ctx.session, ctx.principal, job.content_hash, write=True
-        )
+        and await service.visible_document_for_content(ctx.session, ctx.access, job.content_hash, write=True)
         is None
     ):
         raise ApiError(403, "forbidden", "このジョブを操作する権限がありません")
@@ -103,7 +101,7 @@ async def upload(
     folder_id: Annotated[uuid.UUID | None, Form()] = None,
 ) -> UploadResult:
     settings: Settings = request.app.state.settings
-    await service.get_writable_kb(ctx.session, ctx.principal, kb_id)
+    await service.get_writable_kb(ctx.session, ctx.access, kb_id)
     if not ctx.principal.email_verified:
         raise ApiError(403, "email_not_verified", "メールアドレスの確認が必要です")
     if not files or len(files) > MAX_FILES:

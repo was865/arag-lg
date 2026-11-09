@@ -111,7 +111,10 @@ async def test_shared_access_by_visibility(
                 "query": "MX-17 は止めますか",
                 "answer": "夜間まで運転できます [1]",
                 "created_at": body["messages"][0]["created_at"],
-                "sources": [{"n": 1, "title": "点検台帳.pdf", "heading": "判定", "page": None}],
+                # doc-1 は DB に無い文書なので、見る人は読めない扱いで伏せる（specs/024 R16）
+                "sources": [
+                    {"n": 1, "title": "閲覧できない資料", "heading": None, "page": None, "restricted": True}
+                ],
                 "has_image": False,
             }
         ],

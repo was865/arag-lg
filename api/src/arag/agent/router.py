@@ -30,9 +30,11 @@ from arag.agent.stream import EventSink, read_events, request_cancel, stream_exi
 from arag.agent.thread_search import Match, search_threads
 from arag.audit import AuditEvent
 from arag.auth.principal import CurrentPrincipal, OptionalPrincipal, Principal
-from arag.db.models import Message, MessageFeedback, Run, Thread
+from arag.db.models import Document, KnowledgeBase, Message, MessageFeedback, Run, Thread
 from arag.deps import CtxDep, get_session
 from arag.errors import ApiError, not_found
+from arag.kb.access import load_access
+from arag.kb.service import readable_kb_clause
 from arag.settings import Settings
 from arag.storage import Storage
 
@@ -554,6 +556,11 @@ class SharedSource(BaseModel):
     # 同じ文書の別の箇所を見分けるための見出しとページ（本文は出さない）
     heading: str | None = None
     page: int | None = None
+    # 見る人が読めない文書（specs/024 R16）。文書名・見出し・ページは伏せる
+    restricted: bool = False
+
+
+RESTRICTED_TITLE = "閲覧できない資料"
 
 
 class SharedMessage(BaseModel):
@@ -573,8 +580,13 @@ class SharedThreadOut(BaseModel):
     messages: list[SharedMessage]
 
 
-def shared_sources(citation_map: dict[str, Any], sources: list[dict[str, Any]]) -> list[SharedSource]:
-    """引用番号 → 文書名と箇所（見出し・ページ。番号順）。出典が見つからない番号は除く。"""
+def shared_sources(
+    citation_map: dict[str, Any], sources: list[dict[str, Any]], readable: set[str] | None = None
+) -> list[SharedSource]:
+    """引用番号 → 文書名と箇所（見出し・ページ。番号順）。出典が見つからない番号は除く。
+
+    readable を渡すと、そこに無い文書は文書名・見出し・ページを伏せる（specs/024 R16）。
+    """
     titles = {str(x.get("id")): str(x.get("title", "")) for x in sources}
     sections: dict[str, dict[str, Any]] = {
         str(sec.get("id")): sec for x in sources for sec in (x.get("sections") or []) if isinstance(sec, dict)
@@ -586,6 +598,9 @@ def shared_sources(citation_map: dict[str, Any], sources: list[dict[str, Any]]) 
         title = titles.get(str(ref.get("source_id")))
         if title is None:
             continue
+        if readable is not None and str(ref.get("source_id")) not in readable:
+            out.append(SharedSource(n=int(key), title=RESTRICTED_TITLE, restricted=True))
+            continue
         sec = sections.get(str(ref.get("section_id")), {})
         heading = str(sec.get("heading") or "").strip() or None
         page = sec.get("page")
@@ -595,6 +610,32 @@ def shared_sources(citation_map: dict[str, Any], sources: list[dict[str, Any]]) 
             )
         )
     return sorted(out, key=lambda x: x.n)
+
+
+async def _readable_documents(s: AsyncSession, p: Principal | None, msgs: list[Message]) -> set[str]:
+    """引用された文書のうち、見る人が今読めるもの。ログインしていなければ「全員」に共有された KB だけ。"""
+    ids: set[uuid.UUID] = set()
+    for m in msgs:
+        for ref in (m.citation_map or {}).values():
+            if isinstance(ref, dict):
+                try:
+                    ids.add(uuid.UUID(str(ref.get("source_id"))))
+                except ValueError:
+                    continue
+    if not ids:
+        return set()
+    a = await load_access(s, p or Principal(user_id=""))
+    rows = await s.scalars(
+        select(Document.id)
+        .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+        .where(
+            Document.id.in_(ids),
+            Document.deleted_at.is_(None),
+            KnowledgeBase.deleted_at.is_(None),
+            readable_kb_clause(a),
+        )
+    )
+    return {str(d) for d in rows}
 
 
 @router.get("/v1/shared/{token}", response_model=SharedThreadOut)
@@ -609,11 +650,14 @@ async def get_shared_thread(token: str, p: OptionalPrincipal, s: Session) -> Sha
         raise not_found("共有されたスレッドが見つかりません")
     if t.visibility == "org" and p is None:
         raise ApiError(401, "unauthenticated", "このスレッドを見るにはログインが必要です")
-    msgs = await s.scalars(
-        select(Message)
-        .where(Message.thread_id == t.id, Message.status.in_(("completed", "cancelled")))
-        .order_by(Message.ordinal)
+    msgs = list(
+        await s.scalars(
+            select(Message)
+            .where(Message.thread_id == t.id, Message.status.in_(("completed", "cancelled")))
+            .order_by(Message.ordinal)
+        )
     )
+    readable = await _readable_documents(s, p, msgs)
     return SharedThreadOut(
         title=t.title,
         visibility=t.visibility,  # type: ignore[arg-type]
@@ -622,7 +666,7 @@ async def get_shared_thread(token: str, p: OptionalPrincipal, s: Session) -> Sha
                 query=m.query,
                 answer=m.answer_text,
                 created_at=m.created_at,
-                sources=shared_sources(m.citation_map, m.sources),
+                sources=shared_sources(m.citation_map, m.sources, readable),
                 has_image=_image_out(m.request) is not None,
             )
             for m in msgs
