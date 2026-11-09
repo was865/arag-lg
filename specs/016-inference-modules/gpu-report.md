@@ -65,3 +65,37 @@ Qwen2.5-VL-7B-Instruct-AWQ（既定）と Qwen3-VL-8B-Instruct-FP8（比較）�
 2. **24 GB を超えても OOM にならず、WDDM が他コンテナの割り当てを VRAM から追い出す**。エラーにならない代わりに、追い出された側（今回は Qwen3-8B、docling）が遅くなる。`nvidia-smi` の合計だけでは分からないので、Windows のカウンタ `\GPU Process Memory(*)\Dedicated Usage` で見る必要がある。
 3. GPU 機では Sunshine（ゲーム配信のホスト）が 1.4〜4.5 GB、dwm（画面）が 1.3〜1.4 GB を使っている。VLM と Qwen3-8B の同時常駐を本番相当で回すなら、これらを止めるか、入庫（VLM）と会話（Qwen3-8B）の時間を分けるのが安全。
 4. Qwen3-VL-8B-FP8 で 16384 トークンにするには KV が 2.25 GiB 以上要る。今の同居構成では余地がないため 8192 にした。図の説明は 1 枚 500 トークン前後なので 8192 で足りる。
+
+## 単モデル（Qwen3-8B を止め、Qwen3-VL-8B-FP8 だけを常駐）
+
+会話と図の説明を Qwen3-VL 1 つで兼ねる案の試験。vllm（Qwen3-8B、:8090）を停止し、TEI（:8081・:8084）と docling-serve（:5001）は稼働したまま、文脈長と KV を大きくして起動した。
+
+```
+VLM_HF_MODEL=Qwen/Qwen3-VL-8B-Instruct-FP8 VLM_SERVED_NAME=qwen3-vl VLM_MAX_LEN=32768 VLM_KV_BYTES=6G VLM_GPU_UTIL=0.6 \
+  docker compose -f compose.gpu.yaml --profile vlm up -d vllm-vl
+```
+
+| 試行 | 条件 | 結果 | 起動前 → 起動後（GPU 全体） |
+|---|---|---|---|
+| E | 32768 トークン、KV 6G、利用率チェック 0.6 | **初回で起動**（16384 や KV 4G/3G への引き下げは不要） | 2,961 → 20,932 MiB（空き 3,207 MiB） |
+
+- 起動ログ: `Model loading took 10.13 GiB`、`GPU KV cache size: 43,680 tokens, Maximum concurrency for 32,768 tokens per request: 1.33x`。`/v1/models` → `qwen3-vl`（max_model_len 32768）。
+- 起動前の 2,961 MiB は、Qwen3-8B 停止直後に TEI と docling の割り当てが VRAM から追い出されたままだったため（使うと戻る）。
+- 300 トークン生成（日本語、`min_tokens=300`）: **3.51〜3.52 秒**（約 85 トークン/秒、3 回とも同じ）。同居時の Qwen3-8B-AWQ（2.3 秒）より遅い。
+- TEI: 埋め込み 11 ms・rerank 21 ms（初回のみ 0.16〜0.20 秒）。
+- docling: 文書 04（4 ページ）の変換が 6.83 秒 → 4.76 秒。G1 計測時（g1-gpu.md、2.06 秒）の 2 倍以上かかる。
+
+変換後の常駐（`\GPU Process Memory(*)\Dedicated Usage`）:
+
+| プロセス | 専用 VRAM |
+|---|---|
+| vllm-vl（Qwen3-VL、重み 10.1 GiB + KV 6 GiB + CUDA graph 等） | 17,853 MiB |
+| docling-serve | 2,136 MiB（**変換で VRAM に戻った**） |
+| tei-embed | 1,554 MiB |
+| tei-rerank-ruri | 582 MiB（1,042 MiB から一部追い出し） |
+| Sunshine（ゲーム配信のホスト。WSL 外） | **7,849 MiB** |
+| dwm（画面） | 1,128 MiB |
+| GPU 全体 | 23,931 MiB / 24,564 MiB（空き 約 0.2 GB）、共有 756 MiB |
+
+- Qwen3-8B を止めて空いた約 8 GB は、ほぼ KV の拡大（1.5G → 6G）と Sunshine の増加（4.5 → 7.8 GB）で埋まった。Sunshine は配信中に大きく増えるため、同居させる限り VRAM の余裕は読めない。
+- 結果として GPU は再び満杯で、TEI rerank の一部が追い出され、docling は遅い。単モデル構成で余裕を持たせるなら、KV を 3〜4G に下げる（32768 で 1 並列なら 4.5 GiB で足りる。3G なら 16384）か、Sunshine を止める。
