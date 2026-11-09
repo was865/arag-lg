@@ -114,7 +114,8 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
             )
         text = result.text if isinstance(result, ToolMessage) else ""
         n = len(_MATERIAL.findall(text))
-        clock.done(f"資料 {n} 件" if n else "完了", {"result": text[:2000]})
+        summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
+        clock.done(summary, {"result": text[:2000]})
         return result
 
 

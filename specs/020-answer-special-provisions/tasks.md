@@ -5,3 +5,4 @@
 - [x] T3 harukaze_mix の回答評価（2 回）で確かめ、結果を report.md に残す
 - [x] T4 表の断片を表の行に戻す（`merge_sheet_fragments`・`_append_row`、チャンク分割 v4）と x02 の再分割 — R3
 - [x] T5 system prompt に一部の集計の決まりを足し、回答評価で確かめる — R3
+- [x] T6 計算の道具 calculate（`agent/calc.py`・ツール・UI の印・system prompt）と回答評価 — R4

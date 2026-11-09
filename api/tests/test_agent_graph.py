@@ -65,7 +65,7 @@ async def test_step_budget_forces_final_answer_without_tools() -> None:
     c = ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3))
     state, _ = await run(agent, c, "q")
     assert state["messages"][-1].text == "まとめ[1]"
-    assert model.tool_counts == [5, 5, 0]  # 3 回目はツールなし
+    assert model.tool_counts == [6, 6, 0]  # 3 回目はツールなし
     assert "最終回答" in model.calls[2][0].text
 
 

@@ -70,6 +70,12 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
       <path d="M6.2 14h3.6M6.5 7.2h3M8 5.7v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </>
   ),
+  calculate: (
+    <>
+      <rect x="3" y="1.5" width="10" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <path d="M5.5 4.5h5M5.5 8h1M9.5 8h1M5.5 11h1M9.5 11h1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </>
+  ),
   rewrite_query: <path d="M3 8h7M7 5l-3 3 3 3M13 4v8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
   vector_search: (
     <>

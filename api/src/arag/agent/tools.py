@@ -4,6 +4,7 @@ from typing import Any
 
 from langchain.tools import ToolRuntime, tool
 
+from arag.agent.calc import CalcError, evaluate
 from arag.agent.context import RunContext
 from arag.agent.ops import op_get_outline, op_keyword_search, op_list_documents, op_read_section, op_search
 
@@ -70,7 +71,21 @@ async def read_section(section: str, runtime: Runtime) -> str:
     return await op_read_section(runtime.context, section)
 
 
-TOOLS = [search, keyword_search, list_documents, get_outline, read_section]
+@tool
+async def calculate(expression: str) -> str:
+    """数の計算をする。資料の値の合計・差・平均・割合などは、暗算せずに必ずこれで計算してから答える。
+
+    Args:
+        expression: 計算式。数・+ - * / ( ) と sum・avg・min・max・round・abs が使える
+            （例 "30 + 25 + 80"、"(1200 - 950) / 950 * 100"、"round(avg(3, 4, 8), 1)"）
+    """
+    try:
+        return f"{expression} = {evaluate(expression)}"
+    except CalcError as e:
+        return f"計算できませんでした: {e}"
+
+
+TOOLS = [search, keyword_search, list_documents, get_outline, read_section, calculate]
 
 LABELS = {
     "search": ("資料を検索", "検索しています"),
@@ -78,4 +93,5 @@ LABELS = {
     "list_documents": ("文書の一覧", "文書を確認しています"),
     "get_outline": ("章立てを見る", "章立てを確認しています"),
     "read_section": ("章を読む", "本文を読んでいます"),
+    "calculate": ("計算", "計算しています"),
 }

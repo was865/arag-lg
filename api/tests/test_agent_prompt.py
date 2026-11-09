@@ -12,4 +12,4 @@ def test_system_prompt_prefers_special_provisions() -> None:
 def test_system_prompt_sums_matching_rows_only() -> None:
     """表の一部の行を集計するときは、表の合計行を使わず自分で足す（harukaze_mix hm22）。"""
     p = load_prompt("agent_system")
-    assert "「合計」行" in p
+    assert "「合計」行" in p and "calculate" in p
