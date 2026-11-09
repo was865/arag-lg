@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { proxy, upstreamUrl } from "./proxy";
+import { clientIp, forwardHeaders, proxy, upstreamUrl } from "./proxy";
 
 const opts = (fetchImpl: typeof fetch) => ({ baseUrl: "http://api:8000/", devUserId: "u1", devRole: "member", fetchImpl });
 
@@ -113,5 +113,30 @@ describe("proxy", () => {
     const get = new Request("http://web/api/v1/kbs", { headers: { origin: "http://evil.example" } });
     expect((await proxy(get, ["kbs"], o)).status).toBe(200);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("利用者の IP を、共有の合言葉があるときだけ上流へ伝える", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}"));
+    const req = new Request("http://web/api/v1/kbs", { headers: { "x-forwarded-for": "203.0.113.7, 10.0.0.2" } });
+    await proxy(req, ["kbs"], { ...opts(fetchImpl as unknown as typeof fetch), forwardSecret: "s3cret" });
+    const h = new Headers((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].headers);
+    expect(h.get("x-arag-client-ip")).toBe("203.0.113.7");
+    expect(h.get("x-arag-forward-token")).toBe("s3cret");
+    // 合言葉が無ければ送らない（ブラウザが付けた見出しも通さない）
+    const req2 = new Request("http://web/api/v1/kbs", {
+      headers: { "x-forwarded-for": "203.0.113.7", "x-arag-client-ip": "1.2.3.4" },
+    });
+    await proxy(req2, ["kbs"], opts(fetchImpl as unknown as typeof fetch));
+    const h2 = new Headers((fetchImpl.mock.calls[1] as unknown as [string, RequestInit])[1].headers);
+    expect(h2.get("x-arag-client-ip")).toBeNull();
+  });
+});
+
+describe("clientIp", () => {
+  it("X-Forwarded-For の先頭、無ければ X-Real-IP", () => {
+    expect(clientIp(new Headers({ "x-forwarded-for": " 198.51.100.1 , 10.0.0.1" }))).toBe("198.51.100.1");
+    expect(clientIp(new Headers({ "x-real-ip": "::1" }))).toBe("::1");
+    expect(clientIp(new Headers())).toBeNull();
+    expect(forwardHeaders(new Headers({ "x-real-ip": "::1" }), "")).toEqual({});
   });
 });

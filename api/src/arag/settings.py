@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     utility_model: str = ""
     # 画面で登録する API キーの暗号化鍵（Fernet。カンマ区切りで入れ替え。specs/013-llm-keys）
     secret_key: SecretStr = SecretStr("")
+    # Web の中継と共有する合言葉。合うときだけ利用者の IP（X-ARag-Client-IP）を監査ログに使う
+    forward_secret: SecretStr = SecretStr("")
     run_concurrency: int = 8
     run_heartbeat_sec: float = 10.0
     run_stale_sec: float = 60.0

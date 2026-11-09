@@ -1,5 +1,7 @@
 """ルーターが使う共通の依存関数。"""
 
+import hmac
+import ipaddress
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Annotated
@@ -36,6 +38,24 @@ def request_id_of(request: Request) -> str | None:
     return rid
 
 
+def client_ip(request: Request, forward_secret: str) -> str | None:
+    """監査ログに残す IP。Web の中継が合言葉付きで伝えた利用者の IP を優先する。
+
+    合言葉が無い・合わない・形が IP でないときは、接続元（ふつうは Web のコンテナ）を使う。
+    """
+    peer = request.client.host if request.client else None
+    if not forward_secret:
+        return peer
+    token = request.headers.get("x-arag-forward-token", "")
+    claimed = request.headers.get("x-arag-client-ip", "").strip()
+    if not claimed or not hmac.compare_digest(token.encode(), forward_secret.encode()):
+        return peer
+    try:
+        return str(ipaddress.ip_address(claimed))
+    except ValueError:
+        return peer
+
+
 @dataclass(frozen=True, slots=True)
 class Ctx:
     """ルーターで毎回使う組（利用者・DB・監査用の要求情報）。"""
@@ -62,7 +82,7 @@ async def get_ctx(
         principal=principal,
         session=session,
         request_id=request_id_of(request),
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request, get_settings(request).forward_secret.get_secret_value()),
         payload_sync=request.app.state.payload_sync,
         publisher=request.app.state.publisher,
     )

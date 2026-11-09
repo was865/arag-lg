@@ -72,6 +72,8 @@ services:
       ARAG_UTILITY_MODEL: ${ARAG_UTILITY_MODEL:-}
       # 管理画面で登録する API キーの暗号化鍵（specs/013-llm-keys）
       ARAG_SECRET_KEY: ${ARAG_SECRET_KEY:-}
+      # Web の中継と共有する合言葉（監査ログに利用者の IP を残す）
+      ARAG_FORWARD_SECRET: ${ARAG_FORWARD_SECRET:-}
       ARAG_RUN_CONCURRENCY: ${ARAG_RUN_CONCURRENCY:-8}
       ARAG_RATE_LIMIT_RUNS_PER_MIN: ${ARAG_RATE_LIMIT_RUNS_PER_MIN:-20}
       ARAG_MONTHLY_TOKEN_LIMIT: ${ARAG_MONTHLY_TOKEN_LIMIT:-0}
@@ -107,6 +109,7 @@ services:
     build: ./web
     environment:
       API_BASE_URL: http://api:8000
+      ARAG_FORWARD_SECRET: ${ARAG_FORWARD_SECRET:-}
       # Better Auth（specs/006-auth）。BETTER_AUTH_URL はブラウザから見た URL
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3100}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?.env に BETTER_AUTH_SECRET を設定してください}

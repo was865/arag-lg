@@ -31,7 +31,22 @@ export interface ProxyOptions {
   devRole?: string;
   /** GET・HEAD 以外で受け付ける Origin。未指定なら検査しない。 */
   allowedOrigins?: string[];
+  /** API と共有する合言葉。あれば利用者の IP を見出しで伝える（監査ログ用）。 */
+  forwardSecret?: string;
   fetchImpl?: typeof fetch;
+}
+
+/** 利用者の IP（Next が付ける X-Forwarded-For の先頭、無ければ X-Real-IP）。 */
+export function clientIp(h: Headers): string | null {
+  const first = h.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return first || h.get("x-real-ip")?.trim() || null;
+}
+
+/** API に利用者の IP を伝える見出し。API は合言葉が合うときだけ信じる。 */
+export function forwardHeaders(h: Headers, secret: string | undefined): Record<string, string> {
+  const ip = clientIp(h);
+  if (!secret || !ip) return {};
+  return { "x-arag-client-ip": ip, "x-arag-forward-token": secret };
 }
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -69,6 +84,7 @@ export async function proxy(request: Request, path: string[], opts: ProxyOptions
     headers.set("x-dev-user-id", opts.devUserId);
     if (opts.devRole) headers.set("x-dev-role", opts.devRole);
   }
+  for (const [k, v] of Object.entries(forwardHeaders(request.headers, opts.forwardSecret))) headers.set(k, v);
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const init: RequestInit & { duplex?: "half" } = {
