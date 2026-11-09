@@ -1,0 +1,70 @@
+/** 監査ログの表示（specs/011-audit-log R5）。 */
+import { ROLE_LABEL, type Role } from "@/lib/admin/members";
+import { VISIBILITY_OPTIONS } from "@/lib/share";
+
+export const ACTION_LABEL: Record<string, string> = {
+  "document.delete": "文書をごみ箱へ",
+  "document.restore": "文書を元に戻す",
+  "document.purge": "文書を完全に削除",
+  "folder.delete": "フォルダをごみ箱へ",
+  "folder.restore": "フォルダを元に戻す",
+  "kb.create": "ナレッジベースを作成",
+  "kb.delete": "ナレッジベースを削除",
+  "kb.restore": "ナレッジベースを元に戻す",
+  "gc.purge": "期限切れの完全削除",
+  "thread.share": "スレッドの公開範囲を変更",
+  "chat.run": "質問",
+  "member.invite": "メンバーを招待",
+  "member.role": "役割を変更",
+  "member.ban": "メンバーを停止",
+  "member.unban": "メンバーを再開",
+  "member.resend_invite": "招待を再送",
+};
+
+/** 絞り込みの選択肢（前方一致で API に渡す）。 */
+export const ACTION_GROUPS: { value: string; label: string }[] = [
+  { value: "", label: "すべての操作" },
+  { value: "document.", label: "文書" },
+  { value: "folder.", label: "フォルダ" },
+  { value: "kb.", label: "ナレッジベース" },
+  { value: "member.", label: "メンバー管理" },
+  { value: "thread.", label: "共有" },
+  { value: "chat.", label: "質問" },
+];
+
+export function actionLabel(action: string): string {
+  return ACTION_LABEL[action] ?? action;
+}
+
+const role = (r: unknown) => ROLE_LABEL[r as Role] ?? String(r);
+
+export function describeTarget(row: {
+  resource_type: string | null;
+  resource_id: string | null;
+  detail: Record<string, unknown> | null | undefined;
+}): string {
+  const d = row.detail ?? {};
+  const base =
+    typeof d.email === "string"
+      ? d.email
+      : row.resource_type || row.resource_id
+        ? [row.resource_type, row.resource_id].filter(Boolean).join(" ")
+        : "";
+  const notes: string[] = [];
+  if (d.from !== undefined && d.to !== undefined) notes.push(`${role(d.from)} → ${role(d.to)}`);
+  else if (d.role !== undefined) notes.push(role(d.role));
+  if (typeof d.visibility === "string") {
+    notes.push(VISIBILITY_OPTIONS.find((o) => o.id === d.visibility)?.label ?? d.visibility);
+  }
+  if (!base && !notes.length) return "—";
+  return notes.length ? `${base}（${notes.join("・")}）` : base;
+}
+
+/** 日付の入力（YYYY-MM-DD）を API の from・to（to はその翌日 0 時の手前まで）にする。 */
+export function toRangeQuery(from: string, to: string): { from?: string; to?: string } {
+  const day = (s: string, plus = 0) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y!, (m ?? 1) - 1, (d ?? 1) + plus).toISOString();
+  };
+  return { from: from ? day(from) : undefined, to: to ? day(to, 1) : undefined };
+}

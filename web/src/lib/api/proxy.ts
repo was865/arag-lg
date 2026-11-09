@@ -41,7 +41,16 @@ export function upstreamUrl(baseUrl: string, path: string[], search: string): st
   return `${baseUrl.replace(/\/$/, "")}/v1/${safe}${search}`;
 }
 
+/** ブラウザから書かせない API（監査ログはサーバ間でだけ書く。specs/011-audit-log R4）。 */
+function isServerOnlyWrite(method: string, path: string[]): boolean {
+  const p = path.filter(Boolean).map((x) => x.toLowerCase());
+  return !SAFE_METHODS.has(method) && p[0] === "admin" && p[1] === "audit";
+}
+
 export async function proxy(request: Request, path: string[], opts: ProxyOptions): Promise<Response> {
+  if (isServerOnlyWrite(request.method, path)) {
+    return Response.json({ error: { code: "forbidden", message: "この操作はできません" } }, { status: 403 });
+  }
   const origin = request.headers.get("origin");
   if (!SAFE_METHODS.has(request.method) && origin && opts.allowedOrigins && !opts.allowedOrigins.includes(origin)) {
     return Response.json({ error: { code: "forbidden_origin", message: "許可されていない送信元です" } }, { status: 403 });

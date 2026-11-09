@@ -1,6 +1,7 @@
 import "server-only";
 
 /** 管理 API の共通部品（specs/010-admin-members）。 */
+import { serverApiHeaders } from "@/lib/api/proxy-env";
 import { authBaseUrl, getAuth } from "@/lib/auth/server";
 
 export type AdminSession = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>["api"]["getSession"]>>>;
@@ -33,7 +34,26 @@ export function fromAuthError(e: unknown, fallback: string): Response {
   return apiError(status >= 400 && status < 600 ? status : 500, "admin_failed", fallback);
 }
 
-export function logAdmin(session: AdminSession, action: string, detail: Record<string, unknown>): void {
-  // 監査ログ画面は別 spec。ここではサーバのログに残す（R8）
-  console.info(`[admin] ${JSON.stringify({ actor: session.user.id, action, ...detail, at: new Date().toISOString() })}`);
+/** 管理操作を監査ログに書く（R8・specs/011-audit-log R3）。失敗しても操作自体は止めない。 */
+export async function logAdmin(
+  request: Request,
+  session: AdminSession,
+  action: string,
+  target: string,
+  detail: Record<string, unknown> = {},
+): Promise<void> {
+  const base = (process.env.API_BASE_URL ?? "http://localhost:8100").replace(/\/$/, "");
+  try {
+    const headers = await serverApiHeaders(request.headers);
+    headers.set("content-type", "application/json");
+    const res = await fetch(`${base}/v1/admin/audit`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ action, resource_id: target, detail }),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(String(res.status));
+  } catch (e) {
+    console.error(`[admin] 監査ログに書けませんでした: ${JSON.stringify({ actor: session.user.id, action, target })}`, e);
+  }
 }

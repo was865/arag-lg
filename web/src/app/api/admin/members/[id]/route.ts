@@ -39,17 +39,17 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
   try {
     if (body?.resendInvite) {
       await auth.api.requestPasswordReset({ body: { email: target.email, redirectTo: "/reset-password?invite=1" } });
-      logAdmin(session, "member.resend_invite", { target: id });
+      await logAdmin(request, session, "member.resend_invite", id, { email: target.email });
     } else if (action.kind === "role") {
       await auth.api.setRole({ headers: request.headers, body: { userId: id, role: action.role as "admin" | "member" } });
-      logAdmin(session, "member.role", { target: id, role: action.role });
+      await logAdmin(request, session, "member.role", id, { email: target.email, from: target.role, to: action.role });
     } else if (action.kind === "ban") {
       // 停止はセッションもすべて失効させる（R6）
       await auth.api.banUser({ headers: request.headers, body: { userId: id, banReason: "管理者が停止" } });
-      logAdmin(session, "member.ban", { target: id });
+      await logAdmin(request, session, "member.ban", id, { email: target.email });
     } else {
       await auth.api.unbanUser({ headers: request.headers, body: { userId: id } });
-      logAdmin(session, "member.unban", { target: id });
+      await logAdmin(request, session, "member.unban", id, { email: target.email });
     }
     return Response.json({ ok: true });
   } catch (e) {

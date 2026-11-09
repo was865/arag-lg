@@ -4,6 +4,16 @@ import { proxy, upstreamUrl } from "./proxy";
 const opts = (fetchImpl: typeof fetch) => ({ baseUrl: "http://api:8000/", devUserId: "u1", devRole: "member", fetchImpl });
 
 describe("proxy", () => {
+  it("監査ログへの書き込みはブラウザから通さない（読み取りは通す）", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}"));
+    const post = new Request("http://web/api/v1/admin/audit", { method: "POST", body: "{}" });
+    expect((await proxy(post, ["admin", "audit"], opts(fetchImpl as unknown as typeof fetch))).status).toBe(403);
+    expect((await proxy(post.clone(), ["Admin", "audit", ""], opts(fetchImpl as unknown as typeof fetch))).status).toBe(403);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const get = new Request("http://web/api/v1/admin/audit?action=member.");
+    expect((await proxy(get, ["admin", "audit"], opts(fetchImpl as unknown as typeof fetch))).status).toBe(200);
+  });
+
   it("パスとクエリを上流の /v1 に写す", () => {
     expect(upstreamUrl("http://api:8000/", ["threads", "a b"], "?limit=5")).toBe("http://api:8000/v1/threads/a%20b?limit=5");
   });

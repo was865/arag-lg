@@ -76,7 +76,7 @@ export async function POST(request: Request): Promise<Response> {
       await auth.api.setRole({ headers: request.headers, body: { userId: created.user.id, role: role as "admin" } });
     }
     await auth.api.requestPasswordReset({ body: { email, redirectTo: "/reset-password?invite=1" } });
-    logAdmin(session, "member.invite", { target: created.user.id, role });
+    await logAdmin(request, session, "member.invite", created.user.id, { email, role });
     return Response.json({ id: created.user.id }, { status: 201 });
   } catch (e) {
     return fromAuthError(e, "招待できませんでした");

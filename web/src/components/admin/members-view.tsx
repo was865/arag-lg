@@ -1,8 +1,8 @@
 "use client";
 
 /** メンバー管理（specs/010-admin-members）。一覧・招待・役割の変更・停止と再開。 */
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AdminHeader } from "@/components/admin/admin-header";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -110,15 +110,7 @@ export function MembersView() {
 
   return (
     <div className="grid h-dvh grid-rows-[auto_auto_1fr] bg-bg">
-      <header className="flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider px-[18px] max-md:px-2.5">
-        <Link
-          href="/"
-          aria-label="チャットへ戻る"
-          className="grid h-[34px] w-[34px] place-items-center rounded-lg text-fg no-underline hover:bg-divider"
-        >
-          <Icon name="chevronLeft" size={16} />
-        </Link>
-        <h1 className="m-0 flex-1 truncate text-[14px] font-semibold text-fg">メンバー</h1>
+      <AdminHeader current="members">
         {data && <span className="font-mono text-[11px] text-muted max-md:hidden">{data.items.length} 人</span>}
         <button
           onClick={() => setInviting(true)}
@@ -127,7 +119,7 @@ export function MembersView() {
           <Icon name="plus" size={13} />
           招待
         </button>
-      </header>
+      </AdminHeader>
 
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
         <label className="mx-auto flex h-8 max-w-[1000px] items-center gap-2 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent">
