@@ -55,6 +55,7 @@ export const chat = {
   copyTitle: "コピー",
   downloadMarkdownTitle: ".md をダウンロード",
   downloadHtmlTitle: "HTML ページとして書き出す",
+  exportFailed: "書き出しに失敗しました",
   exportedAt: "ARag により生成",
   reportKicker: "ARAG レポート",
   regenerateTitle: "再生成",

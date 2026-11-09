@@ -46,6 +46,7 @@ import { isEditable, shortcutAction } from "@/lib/shortcuts";
 import type { FeedbackRating, FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { AppUser, ModelOption, ScopeValue, Source, ThreadSummary, Turn } from "@/lib/types";
 import { cn, relativeTime } from "@/lib/utils";
+import { answerHtml, answerMarkdown, exportFileBase } from "@/lib/chat/export";
 import { checkImageFile, imageFromUrl, shrinkImage, type QueryImage } from "@/lib/query-image";
 import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspace-stats";
 import { useT } from "@/i18n/context";
@@ -430,16 +431,29 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     }
   };
 
+  const saveFile = (name: string, text: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  // 質問・回答・出典の一覧をまとめて書き出す（lib/chat/export）
   const downloadAnswer = (idx: number) => {
     const turn = turns[idx];
     if (!turn?.answer) return;
-    const base = (turn.query || "answer").trim().slice(0, 40).replace(/[\\/:*?"<>|]/g, "_") || "answer";
-    const url = URL.createObjectURL(new Blob([turn.answer], { type: "text/markdown;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${base}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    saveFile(`${exportFileBase(turn.query)}.md`, answerMarkdown(turn), "text/markdown;charset=utf-8");
+  };
+  const downloadAnswerHtml = async (idx: number) => {
+    const turn = turns[idx];
+    if (!turn?.answer) return;
+    try {
+      const { renderMarkdown } = await import("@/lib/chat/export-render");
+      saveFile(`${exportFileBase(turn.query)}.html`, answerHtml(turn, renderMarkdown), "text/html;charset=utf-8");
+    } catch {
+      push(t.chat.exportFailed, "error");
+    }
   };
 
   const applyFeedback = async (idx: number, fb: TurnFeedback) => {
@@ -723,7 +737,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                     citationStyle={tweaks.citationStyle}
                     onCopy={copyAnswer}
                     onDownload={downloadAnswer}
-                    onDownloadHtml={downloadAnswer}
+                    onDownloadHtml={(idx) => void downloadAnswerHtml(idx)}
                     onRegenerate={(idx) => rerun(idx)}
                     onEdit={running ? undefined : (idx, text) => rerun(idx, text)}
                     onOpenSources={openSourcesForTurn}

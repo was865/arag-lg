@@ -67,9 +67,10 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
   }, [highlightSectionId, activeSourceId]);
 
   const active = sources.find((s) => s.id === activeSourceId) || sources[0];
-  // ハイライト中セクション → 先頭セクションの順でページを決定（0-based を PDF の 1-based へ）。
+  // ハイライト中セクション → 先頭セクションの順でページを決定。
   const hlSec = active?.sections.find((s) => s.id === highlightSectionId);
-  const pdfPage = ((hlSec?.page ?? active?.sections[0]?.page ?? 0) | 0) + 1;
+  // docling のページ番号は 1 始まりなのでそのまま使う（以前は +1 して 1 ページ後ろ・最終ページなら範囲外を開いていた）
+  const pdfPage = Math.max(1, (hlSec?.page ?? active?.sections[0]?.page ?? 1) | 0);
   // 原本タブは全形式で常設。ラベルはファイル種別で変わる（原本/スプレッドシート/原本PDF変換）。
   const originalLabel = originalTabLabel(active?.title || active?.path || "", t);
   const effectiveMode: ViewMode = viewMode;
