@@ -97,6 +97,12 @@ def test_normalize_markers() -> None:
     # 小さいモデルは = を落として [n1] と書くこともある
     assert normalize_markers("A[n1]B[n 2]C[N3]D[n＝4]") == "A[1]B[2]C[3]D[4]"
     assert normalize_markers("[n]と[nx1]") == "[n]と[nx1]"
+    # 角括弧なしで資料タグの属性をそのまま書くこともある（「（資料 n="1"）」「資料 n="2" に記載」）
+    assert normalize_markers('必要です（資料 n="1"）。') == "必要です[1]。"
+    assert normalize_markers('資料 n="2" に記載されています。') == "[2] に記載されています。"
+    assert normalize_markers('A(資料 n=3)B<資料 n="4">C 資料n＝“5”') == "A[3]B[4]C [5]"
+    # 「資料」「n」だけの普通の文は触らない
+    assert normalize_markers("資料の n 番目、資料 n 件") == "資料の n 番目、資料 n 件"
     assert normalize_markers("[リンク](http://x) [1]") == "[リンク](http://x) [1]"
     assert normalize_markers("[1-50]") == "[1-50]"  # 長すぎる範囲は触らない
 

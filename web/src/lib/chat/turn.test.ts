@@ -158,6 +158,8 @@ describe("liveCitations（生成中の番号）", () => {
   it("まだ出典の無い番号・書きかけの記号は出さない", () => {
     expect(liveCitations("A[9]B[1", map).answer).toBe("AB");
     expect(liveCitations("A[n1]と【2】", map).answer).toBe("A[1]と[2]");
+    expect(liveCitations('必要です（資料 n="1"）。資料 n="2" に記載', map).answer).toBe("必要です[1]。[2] に記載");
+    expect(liveCitations('必要です（資料 n="', map).answer).toBe("必要です");
   });
 
   it("Markdown のリンクは触らない", () => {

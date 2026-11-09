@@ -85,11 +85,14 @@ export function toCitationMap(m: ApiCitationMap | undefined | null): CitationMap
 
 const MARK_RE = /\[(\d+)\](?!\()/g;
 const ATTR_RE = /\[\s*(?:資料\s*)?[nN]\s*[=＝]?\s*["']?([0-9０-９]+)["']?\s*\]/g;
+// 角括弧なしで属性をそのまま書く形（「（資料 n="1"）」「資料 n="2" に記載」）。サーバの _BARE と同じ
+const TAG = String.raw`(?:<\s*)?資料\s*[nN]\s*[=＝]\s*["'“”]?([0-9０-９]+)["'“”]?(?:\s*>)?`;
+const BARE_RE = new RegExp(String.raw`[（(]\s*${TAG}\s*[）)]|${TAG}`, "g");
 const FULLWIDTH_RE = /[【［]\s*([0-9０-９]+)\s*[】］]|\[\s*([０-９]+)\s*\]/g;
 const GROUP_RE = /\[\s*(\d+(?:\s*[,，、]\s*\d+)+)\s*\](?!\()/g;
 const REPEAT_RE = /\[(\d+)\](?:\[\1\](?!\())+/g;
 // 末尾の書きかけの記号（"[1" や "[n="）。次の差分で閉じるまで出さない
-const PARTIAL_RE = /[[【［][^\]】］\n]{0,12}$/;
+const PARTIAL_RE = /[[【［][^\]】］\n]{0,12}$|[（(]?<?\s*資料\s*[nN]\s*[=＝]?\s*["'“”]?[0-9０-９]*$/;
 
 const toNum = (s: string) => Number(s.normalize("NFKC"));
 
@@ -98,6 +101,7 @@ export function liveCitations(raw: string, map: CitationMap): { answer: string; 
   let text = raw.replace(PARTIAL_RE, "");
   text = text
     .replace(ATTR_RE, (_m, d: string) => `[${toNum(d)}]`)
+    .replace(BARE_RE, (_m, a?: string, b?: string) => `[${toNum((a ?? b)!)}]`)
     .replace(FULLWIDTH_RE, (_m, a?: string, b?: string) => `[${toNum((a ?? b)!)}]`)
     .replace(GROUP_RE, (_m, inner: string) =>
       inner

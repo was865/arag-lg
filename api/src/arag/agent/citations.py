@@ -190,6 +190,9 @@ _MARK = re.compile(r"\[(\d+)\](?!\()")
 # 小さいモデルは資料タグ <資料 n="1"> をまねて [n=1]・[n1]・[資料 n="1"] と書くことがある
 # = を落とした [n1] や全角の ＝ も受ける
 _ATTR = re.compile(r"\[\s*(?:資料\s*)?[nN]\s*[=＝]?\s*[\"']?([0-9０-９]+)[\"']?\s*\]")
+# 角括弧なしで属性をそのまま書く形（「（資料 n="1"）」「資料 n="2" に記載」「<資料 n=3>」）。= は必須
+_TAG = r"(?:<\s*)?資料\s*[nN]\s*[=＝]\s*[\"'“”]?([0-9０-９]+)[\"'“”]?(?:\s*>)?"
+_BARE = re.compile(rf"[（(]\s*{_TAG}\s*[）)]|{_TAG}")
 
 
 def _num(s: str) -> int:
@@ -215,6 +218,7 @@ def _expand(m: re.Match[str]) -> str:
 def normalize_markers(text: str) -> str:
     """【1】［1］[１] [n=1] → [1]、[1,2] [1、2] → [1][2]、[1-3] → [1][2][3]。Markdown のリンクは触らない。"""
     text = _ATTR.sub(lambda m: f"[{_num(m.group(1))}]", text)
+    text = _BARE.sub(lambda m: f"[{_num(m.group(1) or m.group(2))}]", text)
     text = _FULLWIDTH.sub(lambda m: f"[{_num(m.group(1))}]", text)
     text = _SINGLE_FW.sub(lambda m: f"[{_num(m.group(1))}]", text)
     return _GROUP.sub(_expand, text)
