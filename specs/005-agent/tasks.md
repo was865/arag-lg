@@ -37,5 +37,5 @@
 ## E. 評価
 
 - [x] E1 Mac: `python -m arag.eval answer`（引用再現率・精度・事実網羅・ツール数・トークン・時間・回答不能率）— R33
-- [ ] E2 Mac: 評価者（忠実度）と人手ラベルの一致確認（2026-11-09 利用者の判断で保留。忠実度は参考値のまま）
+- [x] E2 Mac: 評価者（忠実度）とラベルの一致確認（2026-11-09。ラベルは利用者の依頼で Claude が付けた。Qwen3-8B の評価者は無根拠の再現率 0.33 で門禁には使わない。report.md §4）
 - [x] E3 Mac+Win: `agentic_rag_demo_ext` で旧版基準と比較、`grade_threshold`・`verify` の既定を決めて report.md に（閾値の値振りは未実施、report.md §3）

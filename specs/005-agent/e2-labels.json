@@ -1,0 +1,656 @@
+{
+ "note": "E2 のラベル（2026-11-09）。利用者の依頼で Claude（claude-opus-5-5）が人手の代わりに付けた。判断の根拠は評価者に見せた資料（引用箇所）だけ。answer_label は評価者の主張の分け方に依らないので、別の評価者の確認にもそのまま使える。",
+ "judge": "qwen3-8b",
+ "suite": "agentic_rag_demo_ext",
+ "cases": [
+  {
+   "id": "ext01-fact",
+   "query": "MX-17の振動値はいくつですか？",
+   "answer": "MX-17の振動値は **0.91** です [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "MX-17の振動値は0.91",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext09-fact",
+   "query": "冷却ラインCL-2で温度上昇と同時に発生した異常は何ですか？",
+   "answer": "冷却ラインCL-2で温度上昇と同時に発生した異常は、流量低下です。この異常は、T2温度上昇センサーとF1流量低下センサーの同時発生によって検知されました。この状況では、V-12バイパス弁の固着を第一候補として点検することが推奨されています [1]。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "冷却ラインCL-2で温度上昇と同時に発生した異常は、流量低下です。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この異常は、T2温度上昇センサーとF1流量低下センサーの同時発生によって検知されました。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この状況では、V-12バイパス弁の固着を第一候補として点検することが推奨されています。",
+     "label": "unsupported",
+     "judge": "unsupported",
+     "note": "V-12 の話は引用した 1. 事象概要 に無い（文書の図面節にはある）"
+    }
+   ]
+  },
+  {
+   "id": "ext10-fact",
+   "query": "センサーT2の測定値は何℃でしたか？",
+   "answer": "センサーT2の測定値は **86.4℃** でした [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "センサーT2の測定値は86.4℃でした",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext12-exact_id",
+   "query": "V-12が固着している場合、交換前に閉じるバイパスの識別子は何ですか？",
+   "answer": "V-12が固着している場合、交換前に閉じるバイパスの識別子は **BT-3** です。これは、V-12を交換する際の手順として記載されています [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "V-12が固着している場合、交換前に閉じるバイパスの識別子は BT-3 です。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext13-multi_hop",
+   "query": "T2が86.4℃、F1が42 L/minを示したとき、点検の第一候補となる部品は何ですか？",
+   "answer": "T2が86.4℃、F1が42 L/minを示したとき、点検の第一候補となる部品は **V-12バイパス弁** です。この状態は、温度上昇と流量低下が同時に出た場合に、V-12バイパス弁の固着を第一候補として点検するとしています [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "T2が86.4℃、F1が42 L/minを示したとき、点検の第一候補となる部品は V-12バイパス弁です。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この状態は、温度上昇と流量低下が同時に出た場合に、V-12バイパス弁の固着を第一候補として点検するとしています。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext14-paraphrase",
+   "query": "V-12が動かなくなっていたとき、入れ替える前に遮断しておくべき経路は何ですか？",
+   "answer": "V-12が動かなくなっていたとき、入れ替える前に遮断しておくべき経路は **BT-3バイパス** です。これは、V-12が固着している場合、BT-3バイパスを閉じたうえでV-12を交換する必要があるとされています [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "V-12が動かなくなっていたとき、入れ替える前に遮断しておくべき経路は BT-3バイパスです。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "これは、V-12が固着している場合、BT-3バイパスを閉じたうえでV-12を交換する必要があるとされています。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext18-fact",
+   "query": "通常時、初年度費用はどのくらいを目安としていますか？",
+   "answer": "通常時における初年度費用の目安は **80万円以下** とされています。これは、緊急保守の場合は **95万円まで許容** されることが明記されています [1]。\n\nまた、ベンダーの見積もりでは、AlphaGate X2 は緊急保守枠の95万円以内で納期も要求仕様を満たしており、BetaEdge Mini は費用が安価ですが納期を満たさず、GammaVision Cloud はログ保管条件とローカル推論要件を満たしていないとされています [2]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "通常時における初年度費用の目安は80万円以下とされています。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "緊急保守の場合は95万円まで許容されることが明記されています。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "AlphaGate X2は緊急保守枠の95万円以内で納期も要求仕様を満たしており",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "BetaEdge Miniは費用が安価ですが納期を満たさず",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "GammaVision Cloudはログ保管条件とローカル推論要件を満たしていないとされています",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext20-exact_id",
+   "query": "エッジAIゲートウェイの緊急購買要求の申請番号を教えてください。",
+   "answer": "エッジAIゲートウェイの緊急購買要求の申請番号は **PR-2026-0519** です [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "エッジAIゲートウェイの緊急購買要求の申請番号は PR-2026-0519 です",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext21-multi_hop",
+   "query": "通常は初年度費用80万円以下が目安ですが、緊急保守の場合はいくらまで許容されますか？",
+   "answer": "緊急保守の場合は、初年度費用の許容額が95万円までとされています [1]。\n\nこの情報は、設備保全AI PoC向けエッジ推論機器の要求仕様文書（PR-2026-0519）に記載されています [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "緊急保守の場合は、初年度費用の許容額が95万円までとされています",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この情報は、設備保全AI PoC向けエッジ推論機器の要求仕様文書（PR-2026-0519）に記載されています",
+     "label": "not_a_claim",
+     "judge": "supported",
+     "note": "出典の言及なので主張に数えない"
+    }
+   ]
+  },
+  {
+   "id": "ext23-english",
+   "query": "What is the delivery deadline in the urgent purchase request for the edge AI gateway?",
+   "answer": "The delivery deadline for the urgent purchase request for the edge AI gateway is **June 7, 2026** [1]. This deadline is specified in the \"Must Requirements\" section of the document \"Urgent Purchase Request: Edge AI Gateway\" [1]. \n\nIf the delivery is after this date, it will not meet the requirement for the AI PoC (Proof of Concept) to start on time [1].",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "The delivery deadline for the urgent purchase request for the edge AI gateway is June 7, 2026.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "This deadline is specified in the 'Must Requirements' section of the document 'Urgent Purchase Request: Edge AI Gateway'.",
+     "label": "not_a_claim",
+     "judge": "supported",
+     "note": "出典の言及なので主張に数えない"
+    },
+    {
+     "text": "If the delivery is after this date, it will not meet the requirement for the AI PoC (Proof of Concept) to start on time.",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext24-english",
+   "query": "Which department submitted the urgent purchase request for the edge AI gateway?",
+   "answer": "The urgent purchase request for the edge AI gateway was submitted by the **Maintenance Department** (保全部). This is indicated in the document with the application number PR-2026-0519 and the applicant listed as the Maintenance Department [1].",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "The urgent purchase request for the edge AI gateway was submitted by the Maintenance Department.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "This is indicated in the document with the application number PR-2026-0519 and the applicant listed as the Maintenance Department.",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext26-fact",
+   "query": "外部クラウドへ送信する場合に必須となる条件は何ですか？",
+   "answer": "外部クラウドへ送信する場合に必須となる条件は以下の通りです：\n\n- **国内リージョンでの保存**：データは日本国内のリージョンに保存する必要があります。\n- **暗号化の実施**：送信データは暗号化されていなければなりません。\n- **監査ログの保存期間**：監査ログは少なくとも180日間保存される必要があります。\n\nまた、画像データをクラウドに送信しないローカル推論モードを持つ機器は、情報システム部の簡易確認で導入可能です [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "国内リージョンでの保存：データは日本国内のリージョンに保存する必要があります。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "暗号化の実施：送信データは暗号化されていなければなりません。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "監査ログの保存期間：監査ログは少なくとも180日間保存される必要があります。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "画像データをクラウドに送信しないローカル推論モードを持つ機器は、情報システム部の簡易確認で導入可能です",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext31-english",
+   "query": "What data is classified as factory confidential information?",
+   "answer": "Factory confidential information includes the following data:\n\n- **Image data**\n- **Equipment logs**\n- **Abnormal detection results**\n\nThese data are classified as factory confidential information and must be handled with specific security measures. When sending this data to external cloud services, the following requirements are mandatory:\n\n- Use the **domestic region**\n- **Encryption** must be applied\n- **Audit logs must be retained for at least 180 days**\n\nAdditionally, devices with **local inference mode** that do not send image data to the cloud can be introduced with a simple confirmation from the **Information Systems Department** [1].",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "Factory confidential information includes image data.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Factory confidential information includes equipment logs.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Factory confidential information includes abnormal detection results.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Factory confidential information must be handled with specific security measures.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "When sending data to external cloud services, the domestic region must be used.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Encryption must be applied when sending data to external cloud services.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Audit logs must be retained for at least 180 days when sending data to external cloud services.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "Devices with local inference mode that do not send image data to the cloud can be introduced with a simple confirmation from the Information Systems Department.",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext32-english",
+   "query": "What security certification must vendors have?",
+   "answer": "ベンダーが保有しなければならないセキュリティ認証は **ISO 27001または同等の認証** です。これは「外部機器・クラウド接続セキュリティ規程」[1]に記載されています。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "ベンダーが保有しなければならないセキュリティ認証は ISO 27001または同等の認証です。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "これは「外部機器・クラウド接続セキュリティ規程」[1]に記載されています。",
+     "label": "not_a_claim",
+     "judge": "supported",
+     "note": "出典の言及なので主張に数えない"
+    }
+   ]
+  },
+  {
+   "id": "ext37-multi_hop",
+   "query": "最も初年度費用が安い候補は、注記でどの要件を満たさないとされていますか？",
+   "answer": "最も初年度費用が安い候補は **BetaEdge Mini** で、初年度費用が **74万円** と示されています [1]。しかし、この候補は **納期を満たさない** とされています [1]。\n\nしたがって、最も初年度費用が安い候補が注記で満たさないとされている要件は **納期** です [1]。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "最も初年度費用が安い候補は BetaEdge Mini で、初年度費用が 74万円 と示されています",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "最安は GammaVision Cloud（68万円）で、表と矛盾"
+    },
+    {
+     "text": "この候補は納期を満たさない とされています",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "したがって、最も初年度費用が安い候補が注記で満たさないとされている要件は 納期 です",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "最安の候補を取り違えた結論"
+    }
+   ]
+  },
+  {
+   "id": "ext42-fact",
+   "query": "RED routeでP2 chatterが発生した場合、dedupe windowを何秒から何秒へ一時変更しますか？",
+   "answer": "RED routeでP2 chatterが発生した場合、dedupe windowを60秒から180秒へ一時変更します。[1]",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "RED routeでP2 chatterが発生した場合、dedupe windowを60秒から180秒へ一時変更します。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext43-fact",
+   "query": "RED routeのP2 chatterに対する恒久対応は何ですか？",
+   "answer": "RED routeにおけるP2 chatterに対する恒久対応は、イベントIDのidempotency keyを注文ID + 明細IDに変更することです [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "RED routeにおけるP2 chatterに対する恒久対応は、イベントIDのidempotency keyを注文ID + 明細IDに変更することです",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext48-english",
+   "query": "What is the first check when P2 chatter occurs on the RED route?",
+   "answer": "The first check when P2 chatter occurs on the RED route is to confirm the Kafka consumer lag. This is outlined in the document [1].",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "The first check when P2 chatter occurs on the RED route is to confirm the Kafka consumer lag.",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "This is outlined in the document [1].",
+     "label": "not_a_claim",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext50-fact",
+   "query": "高リスク顧客にAI回答を提示する場合、v1.4基本ルールで部長承認は必要ですか？",
+   "answer": "はい、高リスク顧客にAI回答を提示する場合、v1.4基本ルールでは部長承認が必要です。これは、AI回答を顧客へ提示する際の基本ルールとして定められており、高リスク顧客への提示ではさらに部長承認が求められるためです [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "高リスク顧客にAI回答を提示する場合、v1.4基本ルールでは部長承認が必要です。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "これは、AI回答を顧客へ提示する際の基本ルールとして定められており、高リスク顧客への提示ではさらに部長承認が求められるためです",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext53-multi_hop",
+   "query": "2026年5月20日にカスタマーサクセス部が低リスク顧客向けFAQ回答を提示する場合、部長承認は省略できますか？",
+   "answer": "2026年5月20日にカスタマーサクセス部が低リスク顧客向けFAQ回答を提示する場合、部長承認は省略できます。ただし、担当者レビュー、根拠資料確認、180日保存は省略できません [1]。\n\nこの規定は、2026年5月10日から2026年6月10日まで有効です [1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "2026年5月20日にカスタマーサクセス部が低リスク顧客向けFAQ回答を提示する場合、部長承認は省略できます。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この規定は、2026年5月10日から2026年6月10日まで有効です",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext54-paraphrase",
+   "query": "通常業務で、AIが作成した回答を顧客に開示する前に実施すべき確認と、その確認記録を保管しておく期間は何ですか？",
+   "answer": "通常業務において、AIが作成した回答を顧客に開示する前に実施すべき確認事項と、その確認記録の保管期間は以下の通りです：\n\n### 確認事項\n1. **担当者レビュー**：AIが作成した回答を担当者が確認し、適切であることを確認する必要があります。\n2. **根拠資料確認**：回答の根拠となる資料を確認し、正確性を確保する必要があります。\n3. **部長承認（高リスク顧客向け）**：高リスク顧客への回答の場合は、部長の承認が必要です。\n4. **記録保管**：確認された記録は **180日間** 保管しておく必要があります。\n\n### 例外ケース\n- **低リスク顧客向けFAQ回答**：2026年5月10日から2026年6月10日まで、カスタマーサクセス部の低リスク顧客向けFAQ回答については、部長承認を省略することが可能です。ただし、担当者レビュー、根拠資料確認、記録保管は省略できません [1]。\n\nこれらの確認と保管期間は、文書「10-exception-latest-rule-conflict.pdf」の「1. v1.4 基本ルール」および「2. 例外メモ EX-44」に記載されています [2][1]。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "通常業務において、AIが作成した回答を顧客に開示する前に実施すべき確認事項と、その確認記録の保管期間は以下の通りです。",
+     "label": "not_a_claim",
+     "judge": "not_a_claim"
+    },
+    {
+     "text": "担当者レビュー：AIが作成した回答を担当者が確認し、適切であることを確認する必要があります。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "根拠資料確認：回答の根拠となる資料を確認し、正確性を確保する必要があります。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "部長承認（高リスク顧客向け）：高リスク顧客への回答の場合は、部長の承認が必要です。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "記録保管：確認された記録は 180日間 保管しておく必要があります。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "低リスク顧客向けFAQ回答：2026年5月10日から2026年6月10日まで、カスタマーサクセス部の低リスク顧客向けFAQ回答については、部長承認を省略することが可能です。ただし、担当者レビュー、根拠資料確認、記録保管は省略できません [1]。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "これらの確認と保管期間は、文書「10-exception-latest-rule-conflict.pdf」の「1. v1.4 基本ルール」および「2. 例外メモ EX-44」に記載されています [2][1]。",
+     "label": "supported",
+     "judge": "not_a_claim"
+    }
+   ]
+  },
+  {
+   "id": "ext56-english",
+   "query": "After the exception period expires, whose approvals are needed to extend exception memo EX-44?",
+   "answer": "After the exception period for exception memo EX-44 expires, approvals from the CISO and the Legal Department are needed to extend it [1].",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "After the exception period for exception memo EX-44 expires, approvals from the CISO and the Legal Department are needed to extend it",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext59-cross_doc",
+   "query": "納期2026-06-07までと初年度費用の条件（目安80万円、緊急保守95万円まで許容）だけに注目した場合、見積比較の候補のうち両方を満たすものはどれですか。",
+   "answer": "納期2026-06-07までと初年度費用の条件（目安80万円、緊急保守95万円まで許容）を満たす見積比較の候補は **AlphaGate X2** です。\n\n- **AlphaGate X2** は、初年度費用が92万円（緊急保守枠の95万円以内）であり、納期も2026-06-05で要求仕様を満たしています [1]。  \n- また、ログ保管条件（国内リージョン / 365日）とローカル推論モードも満たしています [1]。\n\nしたがって、条件をすべて満たすのは **AlphaGate X2** です。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "納期2026-06-07までと初年度費用の条件（目安80万円、緊急保守95万円まで許容）を満たす見積比較の候補は **AlphaGate X2** です。",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "GammaVision Cloud（68万円・2026-06-04）も両方を満たすので、AlphaGate X2 だけとするのは表と矛盾"
+    },
+    {
+     "text": "AlphaGate X2は緊急保守枠の95万円以内であり、納期も要求仕様を満たす。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "BetaEdge Mini は費用が安いが納期を満たさない。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "GammaVision Cloudはログ保管条件とローカル推論要件 を満たさない。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext63-cross_doc",
+   "query": "冷却ラインCL-2異常報告の温度センサーT2の値と、運用略語集で「shadow ack」の意味をそれぞれ答えてください。",
+   "answer": "冷却ラインCL-2の温度センサーT2の値は **86.4℃** であり、閾値 **80.0℃** を超えており、異常と判断されています [1]。\n\n「shadow ack」の意味については、運用略語集に直接該当する記述が見つかりませんでした。そのため、具体的な意味は不明です。運用略語集を再確認するか、関連する文書を検索して確認することをお勧めします。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "冷却ラインCL-2の温度センサーT2の値は **86.4℃** であり、閾値 **80.0℃** を超えており、異常と判断されています",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "「shadow ack」の意味については、運用略語集に直接該当する記述が見つかりませんでした。そのため、具体的な意味は不明です。運用略語集を再確認するか、関連する文書を検索して確認することをお勧めします",
+     "label": "not_a_claim",
+     "judge": "not_a_claim",
+     "note": "「見つかりませんでした」は案内。答えていないが資料と矛盾はしない"
+    }
+   ]
+  },
+  {
+   "id": "ext64-cross_doc",
+   "query": "月次設備点検台帳でMX-14に付された注記コードと、AI回答の顧客提示ルール例外メモEX-44で部長承認を省略できる終了日を答えてください。",
+   "answer": "MX-14に付された注記コードは **N7** です [1]。\n\nAI回答の顧客提示ルール例外メモEX-44で部長承認を省略できる終了日は **2026-05-15** です [2]。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "MX-14に付された注記コードは **N7** です",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "AI回答の顧客提示ルール例外メモEX-44で部長承認を省略できる終了日は **2026-05-15** です",
+     "label": "unsupported",
+     "judge": "unsupported",
+     "note": "2026-05-15 はどの資料にも無い（正しくは 2026-06-10）"
+    }
+   ]
+  },
+  {
+   "id": "ext65-negative",
+   "query": "第2工場の冷却ラインCL-2で、V-12交換後の試運転時に必要な温度センサーT2の校正基準は何ですか。",
+   "answer": "第2工場の冷却ラインCL-2で、V-12交換後の試運転時に必要な温度センサーT2の校正基準は、以下の通りです：\n\n- **T2温度上昇センサーの校正基準**：80.0℃を閾値として、86.4℃で異常と判定されます（[1]）。\n- **F1流量低下センサーの校正基準**：55 L/minを閾値として、42 L/minで異常と判定されます（[1]）。\n\nこれらのセンサーが同時に異常を検出する場合、V-12バイパス弁の固着を第一候補として点検する必要があります（[2][3]）。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "T2温度上昇センサーの校正基準は80.0℃を閾値として、86.4℃で異常と判定される",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "80.0℃ は異常判定の閾値で、V-12 交換後の試運転の校正基準ではない"
+    },
+    {
+     "text": "F1流量低下センサーの校正基準は55 L/minを閾値として、42 L/minで異常と判定される",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "同上（F1 の閾値を校正基準と言い換えている）"
+    },
+    {
+     "text": "T2温度上昇とF1流量低下が同時に異常を検出する場合、V-12バイパス弁の固着を第一候補として点検する必要があります",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext66-negative",
+   "query": "エッジAIゲートウェイ AlphaGate X2の消費電力は何ワットですか。",
+   "answer": "エッジAIゲートウェイ AlphaGate X2 の消費電力は明記されていません。ただし、初年度費用が92万円であり、納期は2026年6月5日となっています [1]。また、ログ保管は日本国内リージョンで365日行われ、ローカル推論機能は備わっています [1]。これらの情報は見積資料に基づいています。具体的な消費電力値については、さらに詳細な技術仕様書や製品データシートを参照する必要があります。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "エッジAIゲートウェイ AlphaGate X2 の消費電力は明記されていません",
+     "label": "not_a_claim",
+     "judge": "supported",
+     "note": "「明記されていません」は該当なしの案内"
+    },
+    {
+     "text": "初年度費用が92万円であり、納期は2026年6月5日となっています",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "ログ保管は日本国内リージョンで365日行われ、ローカル推論機能は備わっています",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "これらの情報は見積資料に基づいています",
+     "label": "not_a_claim",
+     "judge": "not_a_claim"
+    },
+    {
+     "text": "具体的な消費電力値については、さらに詳細な技術仕様書や製品データシートを参照する必要があります",
+     "label": "not_a_claim",
+     "judge": "not_a_claim"
+    }
+   ]
+  },
+  {
+   "id": "ext67-fact",
+   "query": "AI回答の顧客提示ルールで、高リスク顧客向けFAQ回答の部長承認は省略できますか。",
+   "answer": "高リスク顧客向けFAQ回答の部長承認は省略できません。これは、基本ルールに従うと、AI回答を顧客へ提示する際には担当者レビュー、根拠資料確認、レビュー記録180日保存を必須とし、高リスク顧客への提示では部長承認も必要とされています [1]。\n\nただし、例外メモ EX-44 には、特定の期間内（2026年5月10日から2026年6月10日まで）に、カスタマーサクセス部の低リスク顧客向けFAQ回答に限り、部長承認を省略できるという記載があります [2]。この例外は高リスク顧客には適用されません。",
+   "answer_label": "clean",
+   "claims": [
+    {
+     "text": "高リスク顧客向けFAQ回答の部長承認は省略できません。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "例外メモ EX-44には、特定の期間内に低リスク顧客向けFAQ回答に限り部長承認を省略できる記載がある。",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "この例外は高リスク顧客には適用されません。",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext68-negative",
+   "query": "RED routeのP2 chatterが発生した場合、Kafka consumer lagが1000を超えていたときのエスカレーション先はどこですか。",
+   "answer": "RED routeのP2 chatterが発生した場合、Kafka consumer lagが1000を超えていたときのエスカレーション先は、Kafka consumer lagの確認後、dedupe windowを60秒から180秒へ一時変更する手順が記載されている[1]。この変更後も10分以内に再発する場合、shadow ackを有効化し、顧客通知を一時停止する[1]。恒久対応として、イベントIDのidempotency keyを注文ID + 明細IDに変更することである[1]。",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "RED routeのP2 chatterが発生した場合、Kafka consumer lagが1000を超えていたときのエスカレーション先は、Kafka consumer lagの確認後、dedupe windowを60秒から180秒へ一時変更する手順が記載されている",
+     "label": "unsupported",
+     "judge": "supported",
+     "note": "資料に lag 1000 超やエスカレーション先の記述は無く、一次対応の手順をエスカレーション先として答えている"
+    },
+    {
+     "text": "この変更後も10分以内に再発する場合、shadow ackを有効化し、顧客通知を一時停止する",
+     "label": "supported",
+     "judge": "supported"
+    },
+    {
+     "text": "恒久対応として、イベントIDのidempotency keyを注文ID + 明細IDに変更することである",
+     "label": "supported",
+     "judge": "supported"
+    }
+   ]
+  },
+  {
+   "id": "ext69-negative",
+   "query": "月次設備点検台帳でMX-11の次回点検予定日はいつですか。",
+   "answer": "月次設備点検台帳において、MX-11の次回点検予定日は「通常点検」と記載されており、具体的な日付は明記されていません。[1]",
+   "answer_label": "has_unsupported",
+   "claims": [
+    {
+     "text": "月次設備点検台帳において、MX-11の次回点検予定日は「通常点検」と記載されており、具体的な日付は明記されていません。",
+     "label": "unsupported",
+     "judge": "unsupported",
+     "note": "「通常点検」は補足欄の値で、次回点検予定日ではない"
+    }
+   ]
+  }
+ ]
+}
