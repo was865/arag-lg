@@ -75,7 +75,7 @@
 | スレッド一覧（更新順・日付グループ）・新規・切替 | MVP | `sidebar/*`, `api/threads` |
 | 名前変更・ピン留め・削除 | MVP | `threads/[id]` PATCH/DELETE, `thread-item.tsx` |
 | サイドバー折りたたみ（レール表示）・モバイル下部シート | MVP | `sidebar-rail.tsx`, `app-shell.tsx` |
-| スレッド検索 | 後続 | （旧版に無し） |
+| スレッド検索（題名・質問・回答の本文） | 済（specs/022） | （旧版に無し） |
 
 ## 4. 知識ベース・文書
 
