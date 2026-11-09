@@ -4,12 +4,12 @@
   "aggregate": {
     "recall_at_5": 1.0,
     "recall_at_k": 1.0,
-    "precision_at_k": 0.1897,
-    "mrr": 0.9846,
-    "ndcg_at_k": 0.9886,
-    "n": 65,
-    "fact_coverage": 0.9615,
-    "p50_ms": 24408.0921,
-    "p95_ms": 24513.3425
+    "precision_at_k": 0.1901,
+    "mrr": 1.0,
+    "ndcg_at_k": 1.0,
+    "n": 64,
+    "fact_coverage": 0.9841,
+    "p50_ms": 82.5544,
+    "p95_ms": 100.4863
   }
 }
