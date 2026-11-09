@@ -25,6 +25,13 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
+      # compose.yaml は BETTER_AUTH_SECRET を必須にしている（起動しないサービスも含めてファイル全体を検証する）。
+      # CI では実行ごとに使い捨ての値を作る（リポジトリにも秘密にも置かない）
+      - name: CI 用の使い捨ての BETTER_AUTH_SECRET
+        run: |
+          v=$(openssl rand -hex 32)
+          echo "::add-mask::$v"
+          echo "BETTER_AUTH_SECRET=$v" >> "$GITHUB_ENV"
       - name: 結合テスト用の infra（postgres・qdrant・redis）
         run: docker compose up -d --wait --wait-timeout 120 postgres qdrant redis
       # integration マーカーのテストも含めて全件。infra に繋がらない環境では skip される
@@ -85,6 +92,13 @@ jobs:
       ARAG_TEI_RERANK_URL: http://tei-rerank:80
     steps:
       - uses: actions/checkout@v5
+      # compose.yaml は BETTER_AUTH_SECRET を必須にしている（起動しないサービスも含めてファイル全体を検証する）。
+      # CI では実行ごとに使い捨ての値を作る（リポジトリにも秘密にも置かない）
+      - name: CI 用の使い捨ての BETTER_AUTH_SECRET
+        run: |
+          v=$(openssl rand -hex 32)
+          echo "::add-mask::$v"
+          echo "BETTER_AUTH_SECRET=$v" >> "$GITHUB_ENV"
       - run: docker compose --profile cpu up -d --build --wait --wait-timeout 300 postgres qdrant redis api web
       - run: docker compose --profile cpu up -d tei-embed tei-rerank
       - name: /readyz が 200 になるまで待つ（TEI のモデル取得を含む）
@@ -96,8 +110,9 @@ jobs:
           done
           cat /tmp/ready.json; exit 1
       - run: curl -fsS http://localhost:3100/api/healthz
-      - name: トップページに API 状態が出る
-        run: curl -fsS http://localhost:3100/ | grep -q '正常'
+      # ログインが必要になったので、未ログインのトップはログイン画面へ移る。画面が描画されることを確かめる
+      - name: ログイン画面が表示される
+        run: curl -fsSL http://localhost:3100/ | grep -q 'ログイン'
       - name: Valkey へ差し替えても起動する
         run: |
           docker compose rm -sf redis
