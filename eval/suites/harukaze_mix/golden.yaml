@@ -1,5 +1,5 @@
 # 形式混在・多ターンの題集（specs/018-eval-corpus-mix）。資料は eval/assets/harukaze_mix/build.py で作る。
-# 候補（未確定）: 利用者が 1 問ずつ確認して確定するまで閾値は置かない（R5）。
+# 2026-11-09 確定（69 問）。利用者の依頼で Claude が 1 問ずつ確認し、hm45 の key_facts を締めた（R5）。
 # tags: 言語（ja / en / cross）と種類（docx / xlsx / pptx / pdf / scan / en-doc / table / version / similar / multi / noans / multiturn）
 suite: harukaze_mix
 files_dir: eval/assets/harukaze_mix/docs
@@ -311,7 +311,7 @@ cases:
   tags: [ja, scan]
   relevant_documents: [s02-支払条件変更のお知らせ_走査.pdf]
   key_facts:
-  - any: [11月締め, 11月]
+  - any: [11月締め, 2026年11月]
 - id: hm46-scan
   query: 支払条件変更について問い合わせるときの連絡先は？
   tags: [ja, scan]

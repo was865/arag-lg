@@ -1,0 +1,15 @@
+{
+  "suite": "harukaze_mix",
+  "variant": "default",
+  "aggregate": {
+    "recall_at_5": 1.0,
+    "recall_at_k": 1.0,
+    "precision_at_k": 0.1797,
+    "mrr": 0.9557,
+    "ndcg_at_k": 0.9671,
+    "n": 64,
+    "fact_coverage": 0.9766,
+    "p50_ms": 199.3994,
+    "p95_ms": 231.5304
+  }
+}
