@@ -31,7 +31,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AccountModal({ onClose }: { onClose: () => void }) {
+/** 設定パネルの「アカウント」タブ（specs/014-settings R1）。 */
+export function AccountPanel() {
   const push = useToast();
   const { data, refetch } = authClient.useSession();
   const user = data?.user;
@@ -53,10 +54,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     authClient.listSessions().then(({ data }) => setSessions((data ?? []) as SessionRow[]));
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const saveName = async () => {
     const v = name.trim();
@@ -106,28 +104,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
   const others = sessions?.filter((s) => s.token !== currentToken).length ?? 0;
 
   return (
-    <div
-      className="fixed inset-0 z-[230] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 max-md:items-end max-md:p-0"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="アカウント"
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[86vh] w-[520px] max-w-full animate-pop-in flex-col overflow-hidden rounded-[16px] border-[0.5px] border-divider-strong bg-surface shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0]"
-      >
-        <header className="flex items-center gap-2 border-b-[0.5px] border-divider px-5 py-3.5">
-          <h2 className="m-0 flex-1 text-[15px] font-bold text-fg">アカウント</h2>
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
-          >
-            <Icon name="close" size={13} />
-          </button>
-        </header>
-        <div className="min-h-0 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+    <div>
           <Section title="プロフィール">
             <div className="text-[12.5px] text-muted">
               {user?.email}
@@ -245,8 +222,6 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
           </Section>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
  *
  * ⌘N はブラウザの新規ウィンドウに取られて止められないので、新規スレッドは ⇧⌘O（一般的なチャット UI と同じ）。
  */
-export type ShortcutAction = "new-thread" | "toggle-sidebar" | "stop";
+export type ShortcutAction = "new-thread" | "toggle-sidebar" | "stop" | "open-settings";
 
 type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "isComposing">;
 
@@ -14,6 +14,7 @@ export function shortcutAction(e: KeyLike, { running }: { running: boolean }): S
   if (e.shiftKey && key === "o") return "new-thread";
   if (!e.shiftKey && key === "b") return "toggle-sidebar";
   if (!e.shiftKey && key === "backspace" && running) return "stop";
+  if (!e.shiftKey && key === ",") return "open-settings";
   return null;
 }
 
@@ -21,4 +22,5 @@ export function shortcutAction(e: KeyLike, { running }: { running: boolean }): S
 export const SHORTCUT_LABEL = {
   newThread: "⇧⌘O",
   stop: "⌘⌫",
+  settings: "⌘,",
 } as const;

@@ -1,0 +1,77 @@
+/** 回答の設定（specs/014-settings R3・R4）。範囲は API の AgentCfg.clamped と合わせる。 */
+
+export interface AgentSettings {
+  top_k: number;
+  per_document: number;
+  candidate_k: number;
+  max_steps: number;
+  max_retrieve_retries: number;
+  parallel_tools: number;
+  grade_threshold: number;
+  require_citations: boolean;
+  admit_unknown: boolean;
+}
+
+/** API（api/src/arag/agent/config.py）の既定値。 */
+export const AGENT_DEFAULTS: AgentSettings = {
+  top_k: 6,
+  per_document: 3,
+  candidate_k: 30,
+  max_steps: 12,
+  max_retrieve_retries: 1,
+  parallel_tools: 3,
+  grade_threshold: 0.3,
+  require_citations: true,
+  admit_unknown: true,
+};
+
+type NumKey = { [K in keyof AgentSettings]: AgentSettings[K] extends number ? K : never }[keyof AgentSettings];
+type BoolKey = { [K in keyof AgentSettings]: AgentSettings[K] extends boolean ? K : never }[keyof AgentSettings];
+
+export type AgentField =
+  | { kind: "number"; key: NumKey; label: string; hint: string; min: number; max: number; step: number; advanced?: boolean }
+  | { kind: "bool"; key: BoolKey; label: string; hint: string; advanced?: boolean };
+
+export const AGENT_FIELDS: AgentField[] = [
+  { kind: "number", key: "top_k", label: "回答に使う資料の数", hint: "検索して回答に渡す箇所の数。増やすと網羅的になるが遅くなる。", min: 1, max: 20, step: 1 },
+  { kind: "number", key: "per_document", label: "1 つの文書から使う上限", hint: "同じ文書ばかりにならないようにする。0 は無制限。", min: 0, max: 20, step: 1 },
+  { kind: "number", key: "max_steps", label: "最大ステップ数", hint: "検索や読み込みを繰り返せる回数の上限。", min: 5, max: 20, step: 1 },
+  { kind: "number", key: "max_retrieve_retries", label: "再検索の回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
+  { kind: "bool", key: "require_citations", label: "出典を必ず付ける", hint: "回答の各内容に出典番号を付けさせる。" },
+  { kind: "bool", key: "admit_unknown", label: "分からないときはそう答える", hint: "資料に無いことは推測せず「見つからない」と答える。" },
+  { kind: "number", key: "candidate_k", label: "候補の数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
+  { kind: "number", key: "parallel_tools", label: "同時に実行する検索の数", hint: "", min: 1, max: 8, step: 1, advanced: true },
+  { kind: "number", key: "grade_threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
+];
+
+const num = (v: unknown, lo: number, hi: number, d: number, round = true) =>
+  typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, round ? Math.round(v) : v)) : d;
+const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+
+export function clampAgentCfg(raw: unknown): AgentSettings {
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const d = AGENT_DEFAULTS;
+  const top_k = num(o.top_k, 1, 20, d.top_k);
+  return {
+    top_k,
+    per_document: num(o.per_document, 0, 20, d.per_document),
+    candidate_k: Math.max(num(o.candidate_k, 1, 50, d.candidate_k), top_k),
+    max_steps: num(o.max_steps, 5, 20, d.max_steps),
+    max_retrieve_retries: num(o.max_retrieve_retries, 0, 2, d.max_retrieve_retries),
+    parallel_tools: num(o.parallel_tools, 1, 8, d.parallel_tools),
+    grade_threshold: Math.round(num(o.grade_threshold, 0, 1, d.grade_threshold, false) * 100) / 100,
+    require_citations: bool(o.require_citations, d.require_citations),
+    admit_unknown: bool(o.admit_unknown, d.admit_unknown),
+  };
+}
+
+/** 送る値: 既定から変えた項目だけ。何も変えていなければ null（サーバの既定に従う）。 */
+export function agentCfgPayload(cfg: AgentSettings): Partial<AgentSettings> | null {
+  const out: Partial<AgentSettings> = {};
+  for (const k of Object.keys(AGENT_DEFAULTS) as (keyof AgentSettings)[]) {
+    if (cfg[k] !== AGENT_DEFAULTS[k]) (out as Record<string, unknown>)[k] = cfg[k];
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+export const changedCount = (cfg: AgentSettings) => Object.keys(agentCfgPayload(cfg) ?? {}).length;

@@ -337,32 +337,6 @@ export interface Toast {
   kind: ToastKind;
 }
 
-// ── Agent behavior config (persisted, sent per chat request) ────────────────
-export interface AgentCfg {
-  /** エージェントが取れる最大のツール呼出し回数 */
-  maxSteps: number;
-  /** 同時に走らせるツール数 */
-  parallelTools: number;
-  /** 回答中の各事実に引用を付けることを強制 */
-  requireCitations: boolean;
-  /** 未知の場合に「わからない」と返す */
-  admitUnknown: boolean;
-  /** リランク後に回答へ渡す最終チャンク数 */
-  topK: number;
-  /** ベクトル/BM25 検索それぞれの候補プール件数（リランク対象） */
-  candidateK: number;
-  /** grade で関連資料が不足のときに再検索する最大回数（0=無効） */
-  maxRetrieveRetries: number;
-  /** grade のリランクスコア閾値（0–1）。これ以上を関連、近傍のみ LLM 判定 */
-  gradeThreshold: number;
-  /** 根拠検証で未裏付けがあったとき訂正再生成する最大回数（0=無効, 上限1） */
-  maxRevisions: number;
-  /** 生成後の根拠検証フェーズを有効にするか */
-  verify: boolean;
-  /** 決定論的テキスト PRF 多ホップ検索（rag 側）を有効にするか（既定 false） */
-  multiHop: boolean;
-}
-
 // ── Tweaks (persisted display preferences) ──────────────────────────────────
 export type ToolView = "card" | "timeline" | "log";
 export type Density = "compact" | "comfy";

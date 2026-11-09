@@ -16,6 +16,11 @@ describe("shortcutAction", () => {
     expect(shortcutAction(key("Backspace", { metaKey: true }), { running: false })).toBeNull();
   });
 
+  it("⌘,（Ctrl+,）で設定を開く", () => {
+    expect(shortcutAction(key(",", { metaKey: true }), { running: false })).toBe("open-settings");
+    expect(shortcutAction(key(",", { ctrlKey: true }), { running: true })).toBe("open-settings");
+  });
+
   it("修飾キーなし・IME 変換中は何もしない", () => {
     expect(shortcutAction(key("b"), { running: false })).toBeNull();
     expect(shortcutAction(key("b", { metaKey: true, isComposing: true }), { running: false })).toBeNull();

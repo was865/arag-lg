@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/icons";
 import { useT } from "@/i18n/context";
+import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import type { AppUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -172,7 +173,7 @@ function UserMenu({ open, anchorRef, onClose, user, dark, onOpenSettings, onOpen
           </span>
           <span className="min-w-0 flex-1">{t.sidebar.settings}</span>
           <span className="text-[11px] text-muted-2">
-            <kbd className="border-0 bg-transparent p-0 text-muted-2">⌘K</kbd>
+            <kbd className="border-0 bg-transparent p-0 text-muted-2">{SHORTCUT_LABEL.settings}</kbd>
           </span>
         </button>
       )}

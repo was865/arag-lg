@@ -18,7 +18,6 @@ import { Icon } from "@/components/icons";
 import type { DocumentOut } from "@/lib/library/api";
 import { kbLabel } from "@/lib/library/view";
 import { parseRoute, routePath, type Route } from "@/lib/routes";
-import { AccountModal } from "@/components/auth/account-modal";
 import { UnverifiedBanner } from "@/components/auth/unverified-banner";
 import { authClient } from "@/lib/auth/client";
 import { toAppUser } from "@/lib/auth/user";
@@ -33,10 +32,13 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { useConversations, NEW_THREAD } from "@/hooks/use-conversations";
 import { useKbs } from "@/hooks/use-kbs";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { SettingsModal } from "@/components/settings/settings-modal";
+import { useAgentCfg } from "@/hooks/use-agent-cfg";
 import { useTweaks } from "@/hooks/use-tweaks";
 import { usePanelWidth } from "@/components/workspace/use-panel-width";
 import { chatApi, type ThreadOut } from "@/lib/chat/api";
 import { MODEL_STORAGE_KEY } from "@/lib/constants";
+import { agentCfgPayload } from "@/lib/agent-settings";
 import { shortcutAction } from "@/lib/shortcuts";
 import type { FeedbackRating, FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { AppUser, ModelOption, ScopeValue, Source, ThreadSummary, Turn } from "@/lib/types";
@@ -68,11 +70,12 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const push = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { tweaks, setTweak } = useTweaks();
+  const { cfg: agentCfg } = useAgentCfg();
   const { kbs } = useKbs();
   const { data: session } = authClient.useSession();
   const sessionUser = session?.user;
   const user = useMemo(() => (sessionUser ? toAppUser(sessionUser) : DEV_USER), [sessionUser]);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const router = useRouter();
 
   // メール確認リンクから戻ってきたとき（?verified=1 / ?error=...）に知らせて、URL から消す
@@ -304,6 +307,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     kb_ids: scope.kbId ? [scope.kbId] : null,
     document_ids: scope.documentIds?.length ? scope.documentIds : null,
     include_archived: Boolean(scope.includeArchived),
+    // 既定から変えた回答の設定だけ（specs/014-settings R4）
+    agent_cfg: agentCfgPayload(agentCfg),
   });
 
   const startRun = (query: string) => {
@@ -472,6 +477,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         selectThread(null);
         setComposerValue("");
       } else if (action === "toggle-sidebar") setSidebarCollapsed((c) => !c);
+      else if (action === "open-settings") setSettingsOpen(true);
       else stopRun();
     };
   });
@@ -523,7 +529,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             dark={tweaks.dark}
             user={user}
             onSignOut={sessionUser ? () => void signOut() : undefined}
-            onOpenSettings={sessionUser ? () => setAccountOpen(true) : undefined}
+            onOpenSettings={() => setSettingsOpen(true)}
             onOpenAdmin={
               sessionUser?.role === "owner" || sessionUser?.role === "admin"
                 ? () => router.push("/admin/members")
@@ -710,7 +716,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         </div>
       </AppShell>
       {confirmDialog}
-      {accountOpen && <AccountModal onClose={() => setAccountOpen(false)} />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showAccount={Boolean(sessionUser)} />}
       {shareOpen && activeThread && (
         <ShareDialog
           thread={activeThread}
