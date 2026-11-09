@@ -63,6 +63,8 @@ interface Props {
   recentQueries?: string[];
   /** 「最近」候補の選択（入力欄へ投入）。recentQueries とセットで指定。 */
   onPickRecent?: (query: string) => void;
+  /** 変わるたびに入力欄へフォーカスする（ライブラリから「質問」で戻ったときなど）。0 は何もしない。 */
+  focusKey?: number;
 }
 
 export function Composer({
@@ -87,6 +89,7 @@ export function Composer({
   quickInserts,
   recentQueries = [],
   onPickRecent,
+  focusKey = 0,
 }: Props) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -119,6 +122,10 @@ export function Composer({
     ro.observe(ta);
     return () => ro.disconnect();
   }, [value]);
+
+  useEffect(() => {
+    if (focusKey) taRef.current?.focus();
+  }, [focusKey]);
 
   const { pending, canSubmit } = composerSubmitState({ value, attachments, running });
   const toolBtn = "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-2 text-[12px] font-medium text-muted hover:bg-divider hover:text-fg max-md:h-8";

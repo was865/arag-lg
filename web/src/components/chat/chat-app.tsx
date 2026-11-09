@@ -99,6 +99,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   /** ライブラリの上に重ねる文書ビューア。開くときに同じ URL の履歴を 1 つ積み、戻るボタンで閉じる。 */
   const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [composerFocus, setComposerFocus] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
@@ -279,6 +280,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         : { id: "kb:all", label: t.chat.scopeAllKbs, iconName: "folders", desc: t.chat.scopeAllKbsDesc, sources: [], kbId: null },
     );
     selectThread(null);
+    setComposerFocus((n) => n + 1);
   };
 
   const openDocument = (d: DocumentOut) => {
@@ -294,6 +296,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     setScope({ id: `doc:${d.id}`, label: d.filename, iconName: "doc", sources: [], kbId: d.kb_id, documentIds: [d.id] });
     setViewerDoc(null);
     selectThread(null);
+    setComposerFocus((n) => n + 1);
   };
 
   const runBody = () => ({
@@ -690,6 +693,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               }}
               running={running}
               scope={scope}
+              focusKey={composerFocus}
               onChangeScope={(s) => {
                 setScope(s);
                 push(interpolate(t.feedback.scopeChanged, { label: s.label }), "info");
