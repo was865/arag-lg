@@ -51,4 +51,45 @@ describe("parseSectionBody", () => {
       { kind: "text", text: "一次対応の説明" },
     ]);
   });
+
+  it("Markdown の表（docling の出力）を表にする", () => {
+    const body = [
+      "表1: 点検表A（1/2）",
+      "",
+      "| 設備ID   |   振動 | 補足       |",
+      "|--------|------|----------|",
+      "| MX-17  | 0.91 | 軸受け交換が必要 |",
+      "| MX-21  | 0.49 | a \\| b <x> & c |",
+      "",
+      "続きの本文",
+    ].join("\n");
+    expect(parseSectionBody(body)).toEqual([
+      { kind: "text", text: "表1: 点検表A（1/2）" },
+      {
+        kind: "table",
+        html:
+          "<table><thead><tr><th>設備ID</th><th>振動</th><th>補足</th></tr></thead><tbody>" +
+          "<tr><td>MX-17</td><td>0.91</td><td>軸受け交換が必要</td></tr>" +
+          "<tr><td>MX-21</td><td>0.49</td><td>a | b &lt;x&gt; &amp; c</td></tr>" +
+          "</tbody></table>",
+      },
+      { kind: "text", text: "続きの本文" },
+    ]);
+  });
+
+  it("区切り行の無い | 始まりの行は表にしない", () => {
+    expect(parseSectionBody("| ただの引用 |\n| 次の行 |")).toEqual([
+      { kind: "text", text: "| ただの引用 |\n| 次の行 |" },
+    ]);
+  });
+
+  it("途中で切れた表（抜粋の上限）も、そろった行までを表にする", () => {
+    const body = "| A | B |\n|---|:-:|\n| 1 | 2 |\n| 3 | 4";
+    expect(parseSectionBody(body)).toEqual([
+      {
+        kind: "table",
+        html: "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></tbody></table>",
+      },
+    ]);
+  });
 });
