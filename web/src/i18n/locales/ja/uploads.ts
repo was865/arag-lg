@@ -16,7 +16,6 @@ export const uploads = {
   readyDetailPlain: "{type} · {size} · 準備完了",
   durationSuffix: "{n}秒",
   skippedStatus: "未対応の形式のためスキップ",
-  duplicateSkippedStatus: "既に存在するためスキップ",
   errorFallback: "エラー",
   retryButton: "再試行",
 
@@ -42,14 +41,4 @@ export const uploads = {
   queueSkipped: "{n}スキップ",
   clearAll: "クリア",
   hideAll: "すべて非表示",
-
-  // toasts from use-uploads
-  toastIndexed: "「{name}」を索引化しました",
-  toastIndexFailed: "索引化に失敗しました",
-  toastCancelBlocked: "処理中のため取り消せません",
-  toastCancelFailed: "取り消しに失敗しました",
-  toastUploadFailed: "アップロードに失敗しました",
-  toastNetworkError: "ネットワークエラー",
-  toastRetryFailed: "再試行に失敗しました",
-  toastSkipped: "未対応の形式 {n}件をスキップしました",
 };

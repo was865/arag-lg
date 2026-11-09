@@ -36,17 +36,8 @@ export const sidebar = {
   addToProject: "プロジェクトに追加",
   delete: "削除",
 
-  // 产品切换器
-  productKnowledge: "ナレッジ",
-  productKnowledgeDesc: "ナレッジ検索と回答",
-  productAgents: "業務エージェント",
-  productAgentsDesc: "業務システムを操作",
-  switchProduct: "プロダクト切替",
-  productCurrent: "使用中",
-
   // user menu
   settings: "設定",
-  orgAdmin: "会社管理",
   adminConsole: "管理コンソール",
   adminConsoleHint: "メンバーの招待・役割・停止",
   lightMode: "ライトモード",

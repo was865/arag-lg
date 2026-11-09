@@ -7,7 +7,6 @@ export const chat = {
   greetingSuffix: " さん",
   metaIndexed: " 件の文書を検索できます",
   metaConnected: " 個のナレッジベース",
-  metaLastSync: "最終更新 ",
   leadText: "社内の文書を調べて、出典付きで答えます。質問を入力するか、下のヒントから選んでください。",
 
   // messages
@@ -56,8 +55,6 @@ export const chat = {
   downloadMarkdownTitle: ".md をダウンロード",
   downloadHtmlTitle: "HTML ページとして書き出す",
   exportFailed: "書き出しに失敗しました",
-  exportedAt: "ARag により生成",
-  reportKicker: "ARAG レポート",
   regenerateTitle: "再生成",
   feedbackUpTitle: "良い回答",
   feedbackDownTitle: "悪い回答",
@@ -77,7 +74,6 @@ export const chat = {
   editSubmit: "送信",
   editCancel: "キャンセル",
   editHint: "編集して送信すると、この質問から先の会話を作り直します。",
-  noAnswerNoSources: "社内の資料に該当する記述が見つかりませんでした",
   noAnswerUncited: "資料から根拠を示せませんでした",
   noAnswerUncitedHint: "。この回答には出典が付いていないので、内容は資料で確かめてください。",
   reconnecting: "接続し直しています…",
@@ -85,13 +81,6 @@ export const chat = {
   // answer-markdown
   imageLoadError: "［画像を読み込めませんでした{alt}］",
   openCitation: "引用 {n} を開く",
-
-  // skill-picker
-  skillTitle: "スキル",
-  skillHeader: "スキルを選択",
-  skillNone: "通常の対話",
-  skillNoneDesc: "スキルを使わず通常どおり回答する",
-  skillClear: "スキルを解除",
 
   // scope-picker
   scopeHeader: "検索範囲",
@@ -102,13 +91,9 @@ export const chat = {
   scopePresets: "プリセット",
   scopeFilesOnly: "添付ファイルのみ",
   scopeFilesOnlyDesc: "このスレッドにアップロードしたファイルだけ",
-  scopeCustom: "カスタム",
   scopeIncludeArchived: "アーカイブも検索",
   scopeArchivedBadge: "アーカイブ済み",
   noFilesUploaded: "ファイルがアップロードされていません",
-  customSourcesLabel: "{n}ソース",
-  customSourcesSelected: "{n}個のソースを選択中",
-  applyScope: "適用",
 
   // tool-steps
   statusRunning: "実行中",
@@ -129,7 +114,6 @@ export const chat = {
   sectionUsedTokens: "使用トークン",
   sectionOutput: "出力",
   sectionDraft: "訂正前の回答",
-  sectionUnsupported: "未裏付けの主張",
   sectionRevised: "訂正後の回答",
   sectionVerifyDetails: "検証詳細",
   verifyVerdictSupported: "裏付けあり",
@@ -142,5 +126,4 @@ export const chat = {
   allGrounded: "全主張が出典で裏付け済み",
   noCheckableClaims: "検証対象の事実主張はありません",
   moreItems: "… 他 {n} 件",
-  stepCancelled: "キャンセルされました",
 };
