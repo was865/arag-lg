@@ -464,6 +464,25 @@ async def outline(doc_id: uuid.UUID, ctx: CtxDep) -> list[OutlineSection]:
     return [OutlineSection(**_outline(r)) for r in rows]
 
 
+@router.get("/v1/documents/{doc_id}/sections", response_model=list[SectionOut])
+async def sections(
+    doc_id: uuid.UUID,
+    ctx: CtxDep,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[SectionOut]:
+    """章を順に本文つきで返す（文書ビューアの整形表示、specs/007-document-viewer R10）。"""
+    doc, _ = await _readable_doc(ctx, doc_id)
+    rows = await ctx.session.execute(
+        select(Section, _section_counts())
+        .where(Section.content_hash == doc.content_hash)
+        .order_by(Section.ordinal)
+        .offset(offset)
+        .limit(limit)
+    )
+    return [SectionOut(**_outline(r), text=r[0].text) for r in rows]
+
+
 @router.get("/v1/documents/{doc_id}/sections/{section_id}", response_model=SectionOut)
 async def section(doc_id: uuid.UUID, section_id: uuid.UUID, ctx: CtxDep) -> SectionOut:
     doc, _ = await _readable_doc(ctx, doc_id)

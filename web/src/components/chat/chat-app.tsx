@@ -12,6 +12,9 @@ import { AppShell } from "@/components/shell/app-shell";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { LibraryView } from "@/components/library/library-view";
 import { TrashView } from "@/components/library/trash-view";
+import { DocumentViewer } from "@/components/library/document-viewer";
+import type { DocumentOut } from "@/lib/library/api";
+import { kbLabel } from "@/lib/library/view";
 import { parseRoute, routePath, type Route } from "@/lib/routes";
 import { AccountModal } from "@/components/auth/account-modal";
 import { UnverifiedBanner } from "@/components/auth/unverified-banner";
@@ -91,6 +94,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const [activeId, setActiveId] = useState<string | null>(initialRoute.view === "chat" ? initialRoute.threadId : null);
   // 表示中の画面（チャット・文書ライブラリ・ごみ箱）。チャットのスレッドは activeId が持つ
   const [page, setPage] = useState<Route>(initialRoute);
+  /** ライブラリの上に重ねる文書ビューア。開くときに同じ URL の履歴を 1 つ積み、戻るボタンで閉じる。 */
+  const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
@@ -185,6 +190,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     const onPop = () => {
       const r = parseRoute(window.location.pathname);
       setPage(r);
+      setViewerDoc(null);
       if (r.view === "chat") setActiveId(r.threadId);
     };
     window.addEventListener("popstate", onPop);
@@ -272,9 +278,25 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     selectThread(null);
   };
 
+  const openDocument = (d: DocumentOut) => {
+    setViewerDoc(d);
+    window.history.pushState({ viewer: d.id }, "", window.location.pathname);
+  };
+  const closeDocument = () => {
+    if ((window.history.state as { viewer?: string } | null)?.viewer) window.history.back();
+    else setViewerDoc(null);
+  };
+  // 文書ビューアから「この文書に質問」: 検索範囲をその文書だけにして新しいスレッドへ
+  const askInDocument = (d: DocumentOut) => {
+    setScope({ id: `doc:${d.id}`, label: d.filename, iconName: "doc", sources: [], kbId: d.kb_id, documentIds: [d.id] });
+    setViewerDoc(null);
+    selectThread(null);
+  };
+
   const runBody = () => ({
     model_id: modelId,
     kb_ids: scope.kbId ? [scope.kbId] : null,
+    document_ids: scope.documentIds?.length ? scope.documentIds : null,
     include_archived: Boolean(scope.includeArchived),
   });
 
@@ -527,6 +549,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             folderId={page.folderId ?? null}
             onOpenFolder={(folderId) => openPage({ view: "library", kbId: page.kbId, folderId })}
             onAsk={askInKb}
+            onOpenDocument={openDocument}
             onOpenMenu={() => setSidebarCollapsed(false)}
           />
         ) : page.view === "trash" ? (
@@ -665,6 +688,18 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
       </AppShell>
       {confirmDialog}
       {accountOpen && <AccountModal onClose={() => setAccountOpen(false)} />}
+      {viewerDoc && (
+        <DocumentViewer
+          key={viewerDoc.id}
+          doc={viewerDoc}
+          kbName={(() => {
+            const kb = kbs.find((k) => k.id === viewerDoc.kb_id);
+            return kb ? kbLabel(kb) : "";
+          })()}
+          onClose={closeDocument}
+          onAsk={askInDocument}
+        />
+      )}
     </>
   );
 }

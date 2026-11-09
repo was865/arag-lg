@@ -199,6 +199,12 @@ async def test_previews(
     assert all(s["chunk_count"] >= 1 for s in outline)
     sec = (await client.get(f"/v1/documents/{doc}/sections/{outline[1]['id']}", headers=ALICE)).json()
     assert "MX-17" in sec["text"]
+    secs = (await client.get(f"/v1/documents/{doc}/sections", headers=ALICE)).json()
+    assert [x["id"] for x in secs] == [x["id"] for x in outline] and "MX-17" in secs[1]["text"]
+    page = (await client.get(f"/v1/documents/{doc}/sections?offset=1&limit=1", headers=ALICE)).json()
+    assert [x["id"] for x in page] == [outline[1]["id"]]
+    assert (await client.get(f"/v1/documents/{doc}/sections?limit=101", headers=ALICE)).status_code == 422
+    assert (await client.get(f"/v1/documents/{doc}/sections", headers=BOB)).status_code == 404
     chunks = (await client.get(f"/v1/documents/{doc}/chunks", headers=ALICE)).json()
     assert chunks[0]["context"].startswith("規程 >") and chunks[0]["section_id"] == outline[0]["id"]
     for bad in ["..%2Fdocling.json", ".hidden", "x"]:

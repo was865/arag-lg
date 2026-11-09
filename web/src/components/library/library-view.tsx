@@ -61,11 +61,13 @@ export interface LibraryViewProps {
   onOpenFolder: (folderId: string | null) => void;
   /** この KB を検索範囲にしてチャットへ戻る。 */
   onAsk: (kbId: string | null) => void;
+  /** 文書ビューアを開く。 */
+  onOpenDocument: (doc: DocumentOut) => void;
   /** モバイル: サイドバーを開く。 */
   onOpenMenu: () => void;
 }
 
-export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenMenu }: LibraryViewProps) {
+export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocument, onOpenMenu }: LibraryViewProps) {
   const push = useToast();
   const { confirm, dialog } = useConfirm();
   const { kbs } = useKbs();
@@ -680,16 +682,13 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenMenu }:
                           onCancel={() => setRenaming(null)}
                         />
                       ) : (
-                        <a
-                          href={originalUrl(d.id)}
-                          target="_blank"
-                          rel="noopener"
+                        <button
+                          onClick={() => onOpenDocument(d)}
                           title={d.filename}
-                          draggable={false}
-                          className="block truncate text-[13px] font-medium text-fg no-underline hover:text-accent"
+                          className="block max-w-full truncate text-left text-[13px] font-medium text-fg hover:text-accent"
                         >
                           {d.filename}
-                        </a>
+                        </button>
                       )}
                       <div className="flex items-center gap-1.5 truncate text-[11px] text-muted">
                         {!kbId && <span className="truncate">{kbNames.get(d.kb_id) ?? ""}</span>}

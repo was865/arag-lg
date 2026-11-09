@@ -78,7 +78,7 @@ const TEXT_PREVIEW_KINDS: Record<string, TextPreviewKind> = {
   json: "json",
   jsonl: "jsonl", ndjson: "jsonl",
   txt: "text", log: "text", csv: "text", tsv: "text",
-  yaml: "text", yml: "text", xml: "text",
+  yaml: "text", yml: "text", xml: "text", html: "text", htm: "text",
 };
 
 // 文書をブラウザ上で整形表示できるテキスト系種別を拡張子で判定する。非対象は null。

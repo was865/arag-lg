@@ -174,6 +174,8 @@ export interface ScopeValue {
   kbId?: string | null;
   /** 既定 undefined=false。true のとき archived KB も retrieve の include_archived に反映される。 */
   includeArchived?: boolean;
+  /** 特定の文書だけに絞る（文書ビューアの「この文書に質問」）。retrieve の document_ids に反映される。 */
+  documentIds?: string[];
 }
 
 export interface SourceConnector {

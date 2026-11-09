@@ -8,6 +8,8 @@ export type DocumentOut = S["DocumentOut"];
 export type TrashItem = S["TrashItem"];
 export type UploadResult = S["UploadResult"];
 export type FolderOut = S["FolderOut"];
+export type OutlineSection = S["OutlineSection"];
+export type SectionOut = S["SectionOut"];
 
 const client = createClient<paths>({ baseUrl: "/api" });
 
@@ -117,6 +119,26 @@ export const libraryApi = {
   async moveDocuments(ids: string[], folderId: string | null) {
     const { data, error, response } = await client.POST("/v1/documents/bulk-move", {
       body: { ids, folder_id: folderId },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  async document(id: string) {
+    const { data, error, response } = await client.GET("/v1/documents/{doc_id}", { params: { path: { doc_id: id } } });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  async outline(id: string) {
+    const { data, error, response } = await client.GET("/v1/documents/{doc_id}/outline", {
+      params: { path: { doc_id: id } },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  /** 章を本文つきで順に（R4: 50 件ずつ）。 */
+  async sections(id: string, offset: number, limit = 50) {
+    const { data, error, response } = await client.GET("/v1/documents/{doc_id}/sections", {
+      params: { path: { doc_id: id }, query: { offset, limit } },
     });
     if (!data) fail(response.status, error);
     return data;

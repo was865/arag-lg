@@ -3200,6 +3200,77 @@
         ]
       }
     },
+    "/v1/documents/{doc_id}/sections": {
+      "get": {
+        "description": "章を順に本文つきで返す（文書ビューアの整形表示、specs/007-document-viewer R10）。",
+        "operationId": "sections_v1_documents__doc_id__sections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SectionOut"
+                  },
+                  "title": "Response Sections V1 Documents  Doc Id  Sections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sections",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/v1/documents/{doc_id}/sections/{section_id}": {
       "get": {
         "operationId": "section_v1_documents__doc_id__sections__section_id__get",

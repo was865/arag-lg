@@ -43,6 +43,7 @@ test("getTextPreviewKind: 種別を拡張子で判定（大小無視）", () => 
     ["conf.yaml", "text"],
     ["conf.yml", "text"],
     ["feed.xml", "text"],
+    ["page.html", "text"],
   ];
   for (const [name, kind] of cases) {
     expect(getTextPreviewKind(name), name).toBe(kind);
