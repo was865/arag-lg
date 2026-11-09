@@ -230,3 +230,27 @@ async def test_uncited_answer_is_no_relevant_sources(
     # モデル自身の説明を残し、理由だけ付ける
     assert done["no_answer_reason"] == "no_relevant_sources"
     assert done["answer"] == "資料からは見つかりませんでした。"
+    # 検索しただけの資料を出典として並べない
+    assert done["citation_map"] == {} and done["sources"] == []
+
+
+async def test_citations_renumbered_in_answer_order(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    """検索した順の番号 [3][2] を、回答に出た順の [1][2] に振り直し、引用した箇所だけを残す。"""
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="MX-17"), AIMessage(content="停止する[3]。点検は[2][3]。"))
+    )
+    search = FakeSearch("一つ目", "二つ目", "三つ目")
+    deps = make_deps(sessionmaker, redis, model, search)
+    _, run = await start(sessionmaker, "MX-17 は？")
+    await execute_run(deps, run.id)
+    done = (await events(redis, run.id))[-1]
+    assert done["answer"] == "停止する[1]。点検は[2][1]。"
+    by_section = {sec["id"]: sec for src in done["sources"] for sec in src["sections"]}
+    assert set(done["citation_map"]) == {"1", "2"} and len(by_section) == 2
+    assert by_section[done["citation_map"]["1"]["section_id"]]["body"] == "三つ目"
+    assert by_section[done["citation_map"]["2"]["section_id"]]["body"] == "二つ目"
+    async with sessionmaker() as s:
+        cites = list(await s.scalars(select(Citation).where(Citation.message_id == run.message_id)))
+        assert sorted((c.ordinal, c.snippet) for c in cites) == [(1, "三つ目"), (2, "二つ目")]

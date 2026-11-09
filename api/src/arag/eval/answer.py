@@ -66,7 +66,7 @@ class CaseResult:
 
 
 def _cited_refs(completed: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
-    """回答に実際に書かれた番号の引用（引用が無いと API は参考として全資料を返すので、番号で絞る）。"""
+    """回答に実際に書かれた番号の引用（API は引用した箇所だけを返すが、古い記録にも備えて番号で絞る）。"""
     used = {m for m in re.findall(r"\[(\d+)\]", completed.get("answer", ""))}
     cmap = completed.get("citation_map", {})
     return sorted(((n, r) for n, r in cmap.items() if n in used), key=lambda kv: int(kv[0]))

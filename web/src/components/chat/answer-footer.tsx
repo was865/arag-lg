@@ -7,6 +7,16 @@ import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
 import { FeedbackPopover } from "@/components/chat/feedback-popover";
 
+/** 出典チップの文言。引用した箇所の数と、その文書の数（同じ文書の別箇所を [1][2] と引くことがあるため）。 */
+export function sourcesChipLabel(sources: Source[], t: { sourcesChip: string; sourcesChipDocs: string }): string | null {
+  const passages = sources.reduce((n, s) => n + s.sections.length, 0);
+  if (passages === 0) return null;
+  const docs = sources.length;
+  return (docs === passages ? t.sourcesChip : t.sourcesChipDocs)
+    .replace("{n}", String(passages))
+    .replace("{docs}", String(docs));
+}
+
 interface Props {
   tokens: number;
   durationMs: number;
@@ -32,6 +42,7 @@ const btnCls = "grid h-7 w-7 place-items-center rounded-md border-0 bg-transpare
 
 export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, onDownloadHtml, onRegenerate, onOpenSources, sourcesActive, onFeedback, onFeedbackDetail, feedback, feedbackDisabled }: Props) {
   const { t } = useT();
+  const sourcesLabel = sourcesChipLabel(sources, t.chat);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   function handleDown() {
@@ -56,6 +67,7 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
           </svg>
           {tokens >= 1000 ? `${(tokens / 1000).toFixed(1).replace(/\.0$/, "")}k` : tokens} tokens
         </span>
+        {sourcesLabel && (
         <button
           type="button"
           onClick={onOpenSources}
@@ -73,8 +85,9 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
             <path d="M3 5.25v8h8" stroke="currentColor" strokeWidth="1.35" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M7 6.25h3.75M7 8.5h3.75" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
-          {sources.length} sources
+          {sourcesLabel}
         </button>
+        )}
       </div>
       <div className="flex gap-0.5 max-md:ml-auto">
         <button className={btnCls} title={t.chat.copyTitle} onClick={onCopy}>

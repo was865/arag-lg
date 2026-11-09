@@ -94,31 +94,37 @@ class CitationRegistry:
             ),
         )
 
-    def sources(self, only: set[int] | None = None) -> tuple[dict[int, dict[str, str]], list[dict[str, Any]]]:
-        """引用番号 → 出典の対応と、文書ごとにまとめた出典（右パネル用）。"""
-        cmap: dict[int, dict[str, str]] = {}
-        docs: dict[uuid.UUID, dict[str, Any]] = {}
-        for n, c in self._items.items():
-            if only is not None and n not in only:
-                continue
-            cmap[n] = {"source_id": str(c.document_id), "section_id": str(c.item_id)}
-            src = docs.setdefault(
-                c.document_id,
-                {"id": str(c.document_id), "title": c.document_name, "sections": [], "score": None},
-            )
-            src["sections"].append(
-                {
-                    "id": str(c.item_id),
-                    "n": n,
-                    "heading": c.heading_path,
-                    "body": c.text[:SNIPPET_MAX],
-                    "block_type": c.block_type,
-                    "page": c.page,
-                }
-            )
-            if c.score is not None and (src["score"] is None or c.score > src["score"]):
-                src["score"] = c.score
-        return cmap, list(docs.values())
+    def sources(self) -> tuple[dict[int, dict[str, str]], list[dict[str, Any]]]:
+        """登録済みの全資料（回答の生成中に右パネルを先に用意するため。番号は登録順）。"""
+        return group_sources(self._items)
+
+
+def group_sources(items: dict[int, Cited]) -> tuple[dict[int, dict[str, str]], list[dict[str, Any]]]:
+    """引用番号 → 出典の対応と、文書ごとにまとめた出典（右パネル用）。
+
+    文書は items の順（= 最初に出た番号の順）、文書内の箇所も番号順に並ぶ。
+    """
+    cmap: dict[int, dict[str, str]] = {}
+    docs: dict[uuid.UUID, dict[str, Any]] = {}
+    for n, c in sorted(items.items()):
+        cmap[n] = {"source_id": str(c.document_id), "section_id": str(c.item_id)}
+        src = docs.setdefault(
+            c.document_id,
+            {"id": str(c.document_id), "title": c.document_name, "sections": [], "score": None},
+        )
+        src["sections"].append(
+            {
+                "id": str(c.item_id),
+                "n": n,
+                "heading": c.heading_path,
+                "body": c.text[:SNIPPET_MAX],
+                "block_type": c.block_type,
+                "page": c.page,
+            }
+        )
+        if c.score is not None and (src["score"] is None or c.score > src["score"]):
+            src["score"] = c.score
+    return cmap, list(docs.values())
 
 
 def _attr(v: str) -> str:
@@ -187,3 +193,37 @@ def cited_numbers(text: str) -> list[int]:
 
 def strip_unknown(text: str, valid: set[int]) -> str:
     return _MARK.sub(lambda m: m.group(0) if int(m.group(1)) in valid else "", text)
+
+
+# 同じ番号が続けて並んだもの（[1][1]）。Markdown のリンクは触らない
+_REPEAT = re.compile(r"\[(\d+)\](?:\[\1\](?!\())+")
+
+
+@dataclass(frozen=True, slots=True)
+class FinalCitations:
+    """回答を確定したときの引用。番号は回答に出た順に 1 から振り直してある。"""
+
+    answer: str
+    cmap: dict[int, dict[str, str]]
+    sources: list[dict[str, Any]]
+    items: dict[int, Cited]
+
+
+def finalize_citations(text: str, registry: CitationRegistry) -> FinalCitations:
+    """回答の引用を確定する。
+
+    - 記号を [n] にそろえ、登録の無い番号は消す。
+    - 検索した順の番号を、回答に最初に出た順に 1, 2, 3… へ振り直す（読み手には連番だけが見える）。
+    - 出典は実際に引用した箇所だけ。引用が無ければ出典も無し（検索しただけの資料は並べない）。
+    """
+    text = strip_unknown(normalize_markers(text), set(registry.numbers()))
+    renum = {old: i for i, old in enumerate(cited_numbers(text), start=1)}
+    text = _MARK.sub(lambda m: f"[{renum[int(m.group(1))]}]", text)
+    text = _REPEAT.sub(lambda m: f"[{m.group(1)}]", text)
+    items: dict[int, Cited] = {}
+    for old, new in renum.items():
+        c = registry.get(old)
+        if c is not None:
+            items[new] = c
+    cmap, sources = group_sources(items)
+    return FinalCitations(answer=text, cmap=cmap, sources=sources, items=items)

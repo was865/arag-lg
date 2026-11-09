@@ -22,7 +22,7 @@ from redis.asyncio import Redis
 from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.citations import CitationRegistry, cited_numbers, normalize_markers, strip_unknown
+from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_numbers, finalize_citations
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
 from arag.agent.graph import build_agent
@@ -105,9 +105,14 @@ def _uuids(v: list[str] | None) -> list[uuid.UUID] | None:
     return None if v is None else [uuid.UUID(x) for x in v]
 
 
-def _sources_event(reg: CitationRegistry, only: set[int] | None = None) -> dict[str, Any]:
-    cmap, sources = reg.sources(only)
+def _sources_event(reg: CitationRegistry) -> dict[str, Any]:
+    """生成中の出典（登録した全資料・登録順の番号）。確定時は _final_sources で置き換える。"""
+    cmap, sources = reg.sources()
     return {"citation_map": {str(k): v for k, v in cmap.items()}, "sources": sources}
+
+
+def _final_sources(fin: FinalCitations) -> dict[str, Any]:
+    return {"citation_map": {str(k): v for k, v in fin.cmap.items()}, "sources": fin.sources}
 
 
 async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> None:
@@ -218,7 +223,9 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
             log.exception("run_failed", run_id=str(run_id))
             status, code, err = "failed", "generation_failed", f"{type(e).__name__}: {e}"[:500]
 
-    answer = strip_unknown(normalize_markers(turn.answer), set(ctx.registry.numbers()))
+    # 引用を確定する（回答に出た順に振り直し、引用した箇所だけを出典にする）
+    fin = finalize_citations(turn.answer, ctx.registry)
+    answer = fin.answer
     reason: str | None = None
     if status == "completed":
         reason = _classify(answer, ctx)
@@ -227,8 +234,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     elif status == "failed":
         reason = "generation_failed"
         answer = answer or NO_ANSWER_TEXT["generation_failed"]
-    cited = set(cited_numbers(answer))
-    src = _sources_event(ctx.registry, cited or None)
+    src = _final_sources(fin)
     await asyncio.shield(
         _persist(
             deps,
@@ -244,6 +250,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
             reason,
             turn,
             src,
+            fin.items,
             ctx,
             checkpoint_id,
         )
@@ -345,6 +352,7 @@ async def _persist(
     reason: str | None,
     turn: _Turn,
     src: dict[str, Any],
+    cited: dict[int, Cited],
     ctx: RunContext,
     checkpoint_id: str | None,
 ) -> None:
@@ -374,14 +382,11 @@ async def _persist(
             )
         )
         await s.flush()
-        for n_str in src["citation_map"]:
-            c = ctx.registry.get(int(n_str))
-            if c is None:
-                continue
+        for n, c in cited.items():
             s.add(
                 Citation(
                     message_id=message_id,
-                    ordinal=int(n_str),
+                    ordinal=n,
                     document_id=c.document_id,
                     chunk_id=c.item_id if c.block_type != "section" else None,
                     section_id=c.section_id,

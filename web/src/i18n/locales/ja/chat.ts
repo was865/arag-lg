@@ -49,6 +49,9 @@ export const chat = {
 
   // answer-footer
   sourcesTitle: "このターンの一次資料を表示",
+  // 回答で引用した箇所の数（{docs} は文書の数）
+  sourcesChip: "出典 {n} 件",
+  sourcesChipDocs: "出典 {n} 件（{docs} 文書）",
   copyTitle: "コピー",
   downloadMarkdownTitle: ".md をダウンロード",
   downloadHtmlTitle: "HTML ページとして書き出す",

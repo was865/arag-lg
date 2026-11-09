@@ -5,6 +5,7 @@ import uuid
 from arag.agent.citations import (
     CitationRegistry,
     cited_numbers,
+    finalize_citations,
     format_material,
     normalize_markers,
     strip_unknown,
@@ -76,8 +77,6 @@ def test_sources_group_by_document_and_filter() -> None:
     assert [s["id"] for s in sources] == [str(D1), str(D2)]
     assert [sec["n"] for sec in sources[0]["sections"]] == [1, 3]
     assert sources[0]["title"] == "規程.pdf" and sources[0]["sections"][0]["page"] == 3
-    cmap2, sources2 = r.sources({2})
-    assert list(cmap2) == [2] and [s["id"] for s in sources2] == [str(D2)]
 
 
 def test_format_material_isolates_content() -> None:
@@ -102,3 +101,51 @@ def test_cited_and_strip_unknown() -> None:
     text = "A[2]B[1][2]C[7]"
     assert cited_numbers(text) == [2, 1, 7]
     assert strip_unknown(text, {1, 2}) == "A[2]B[1][2]C"
+
+
+def _registry(n: int) -> tuple[CitationRegistry, list[uuid.UUID]]:
+    """D1 のチャンク 1・3、D2 のチャンク 2、D1 のチャンク 4… の順に n 件登録する。"""
+    r = CitationRegistry()
+    chunks = [uuid.uuid4() for _ in range(n)]
+    for i, c in enumerate(chunks):
+        r.add_hit(hit(D2 if i % 2 else D1, c, name="手順書.pdf" if i % 2 else "規程.pdf"))
+    return r, chunks
+
+
+def test_finalize_renumbers_by_first_appearance() -> None:
+    """検索した順ではなく、回答に出た順に 1 から振り直す（[5][2] → [1][2]）。"""
+    r, chunks = _registry(6)
+    fin = finalize_citations("停止する[5]。点検は[2]と[5]に従う。", r)
+    assert fin.answer == "停止する[1]。点検は[2]と[1]に従う。"
+    assert fin.cmap == {
+        1: {"source_id": str(D1), "section_id": str(chunks[4])},
+        2: {"source_id": str(D2), "section_id": str(chunks[1])},
+    }
+    assert sorted(fin.items) == [1, 2] and fin.items[1].item_id == chunks[4]
+
+
+def test_finalize_lists_only_cited_passages_grouped_by_document() -> None:
+    r, chunks = _registry(5)
+    fin = finalize_citations("A[3]B[1]C[2]", r)
+    # 文書は最初に引用した順、文書内の箇所は番号順
+    assert [s["id"] for s in fin.sources] == [str(D1), str(D2)]
+    assert [(sec["n"], sec["id"]) for sec in fin.sources[0]["sections"]] == [
+        (1, str(chunks[2])),
+        (2, str(chunks[0])),
+    ]
+    assert [sec["n"] for sec in fin.sources[1]["sections"]] == [3]
+
+
+def test_finalize_without_citations_lists_nothing() -> None:
+    """引用の無い回答に、検索しただけの資料を出典として並べない。"""
+    r, _ = _registry(4)
+    fin = finalize_citations("資料からは見つかりませんでした。", r)
+    assert fin.answer == "資料からは見つかりませんでした。"
+    assert fin.cmap == {} and fin.sources == [] and fin.items == {}
+
+
+def test_finalize_drops_unknown_and_merges_repeats() -> None:
+    r, _ = _registry(2)
+    fin = finalize_citations("A【2】[2]B[9]C[1, 1]D[リンク](http://x)", r)
+    assert fin.answer == "A[1]BC[2]D[リンク](http://x)"
+    assert list(fin.cmap) == [1, 2]
