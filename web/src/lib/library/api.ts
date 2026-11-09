@@ -143,6 +143,12 @@ export const libraryApi = {
     if (!data) fail(response.status, error);
     return data;
   },
+  /** まとめてごみ箱へ（1 回 500 件まで。1 件でも書けなければ全体が失敗する）。 */
+  async removeDocuments(ids: string[]) {
+    const { data, error, response } = await client.POST("/v1/documents/bulk-delete", { body: { ids } });
+    if (!data) fail(response.status, error);
+    return data;
+  },
   async retryJob(jobId: string) {
     const { error, response } = await client.POST("/v1/jobs/{job_id}/retry", { params: { path: { job_id: jobId } } });
     if (!response.ok) fail(response.status, error);

@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 export interface MoveDialogProps {
   title: string;
   folders: FolderOut[];
-  /** いまの場所（null = ルート直下）。 */
-  current: string | null;
+  /** いまの場所（null = ルート直下、undefined = 決まっていない＝どこでも選べる）。 */
+  current?: string | null;
   rootLabel: string;
   onPick: (folderId: string | null) => void;
   onCancel: () => void;

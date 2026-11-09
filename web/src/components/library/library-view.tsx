@@ -21,6 +21,7 @@ import { ApiError } from "@/lib/chat/api";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, originalUrl, type DocumentOut, type FolderOut } from "@/lib/library/api";
+import { chunk, selectRange, toggleId } from "@/lib/library/selection";
 import { breadcrumb, childFolders } from "@/lib/library/folders";
 import {
   docStatus,
@@ -90,6 +91,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [dropOn, setDropOn] = useState<string | null>(null);
+  // 複数選択（specs/009-library-bulk）
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [anchor, setAnchor] = useState<string | null>(null);
+  const [bulkMoving, setBulkMoving] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
 
@@ -132,6 +139,14 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   // KB を切り替えたら絞り込みを戻し、フォルダを移ったら前の一覧は見せない
   const [shownKb, setShownKb] = useState<string | null | undefined>(undefined);
   const [shownFolder, setShownFolder] = useState<string | null | undefined>(undefined);
+  const selKey = `${kbId}|${folderId}|${filter}|${search}`;
+  const [shownSelKey, setShownSelKey] = useState(selKey);
+  if (shownSelKey !== selKey) {
+    setShownSelKey(selKey);
+    setSelecting(false);
+    setSelected(new Set());
+    setAnchor(null);
+  }
   if (shownKb !== kbId || shownFolder !== folderId) {
     if (shownKb !== kbId) {
       setStats(null);
@@ -245,6 +260,72 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       push(errorMessage(e, "再実行できませんでした"), "error");
     }
   };
+
+  // ── まとめて操作 ─────────────────────────────────────────────────────
+  const endSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+    setAnchor(null);
+  };
+
+  const pickRow = (id: string, shift: boolean) => {
+    setSelecting(true);
+    setSelected((sel) =>
+      shift ? selectRange(sel, docs?.map((x) => x.id) ?? [], anchor, id) : toggleId(sel, id),
+    );
+    setAnchor(id);
+  };
+
+  const removeSelected = async () => {
+    const ids = [...selected];
+    const ok = await confirm({
+      title: `${ids.length} 件の文書をごみ箱に移しますか？`,
+      description: "検索の対象から外れます。ごみ箱から元に戻せます。",
+      confirmLabel: "ごみ箱に移す",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    try {
+      for (const part of chunk(ids, 500)) await libraryApi.removeDocuments(part);
+      push(`${ids.length} 件をごみ箱に移しました`, "success");
+      endSelection();
+      void refreshKbs();
+    } catch (e) {
+      push(errorMessage(e, "ごみ箱に移せませんでした"), "error");
+    } finally {
+      setBulkBusy(false);
+      void reload();
+    }
+  };
+
+  const moveSelected = async (to: string | null) => {
+    const ids = [...selected];
+    setBulkBusy(true);
+    try {
+      for (const part of chunk(ids, 500)) await libraryApi.moveDocuments(part, to);
+      const name = to ? (folders.find((f) => f.id === to)?.name ?? "フォルダ") : kbLabel(kb);
+      push(`${ids.length} 件を「${name}」に移しました`, "success");
+      endSelection();
+    } catch (e) {
+      push(errorMessage(e, "移動できませんでした"), "error");
+    } finally {
+      setBulkBusy(false);
+      void reload();
+    }
+  };
+
+  useEffect(() => {
+    if (!selecting) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector("[role=dialog]")) return;
+      setSelecting(false);
+      setSelected(new Set());
+      setAnchor(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selecting]);
 
   // ── フォルダの操作 ───────────────────────────────────────────────────
   const createFolder = async () => {
@@ -369,7 +450,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
 
   return (
     <main
-      className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] overflow-hidden bg-bg"
+      className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] overflow-hidden bg-bg"
       {...dragProps}
     >
       <DropOverlay visible={dragging && Boolean(target)} />
@@ -431,6 +512,20 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             </span>
           )}
         </nav>
+        {docs && docs.length > 0 && (
+          <button
+            onClick={() => (selecting ? endSelection() : setSelecting(true))}
+            aria-pressed={selecting}
+            title="複数の文書を選ぶ"
+            className={cn(
+              "inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] px-2.5 text-[12px] font-medium",
+              selecting ? "border-accent bg-accent-soft text-accent" : "border-divider-strong text-fg hover:bg-divider",
+            )}
+          >
+            <Icon name="check" size={13} />
+            <span className="max-md:hidden">{selecting ? "選択をやめる" : "選択"}</span>
+          </button>
+        )}
         <button
           onClick={() => onAsk(kbId)}
           title={kb ? "このナレッジベースに質問" : "質問する"}
@@ -535,7 +630,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
         ) : listEmpty && !search && filter === "all" && !folderId ? (
           <EmptyLibrary canUpload={Boolean(target)} onPick={() => fileRef.current?.click()} />
         ) : (
-          <div className="mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2">
+          <div className={cn("mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2", selecting && "pb-24")}>
             <div
               className={cn(
                 ROW_GRID,
@@ -656,23 +751,59 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               const st = docStatus(d.status);
               const busy = st.tone === "busy";
               const movable = d.writable && canEditFolders;
+              const checked = selected.has(d.id);
               return (
                 <div
                   key={d.id}
-                  draggable={movable && renaming?.id !== d.id}
+                  aria-selected={selecting ? checked : undefined}
+                  onClick={(e) => {
+                    if (!selecting) return;
+                    if ((e.target as HTMLElement).closest("[data-row-menu]")) return;
+                    e.preventDefault();
+                    pickRow(d.id, e.shiftKey);
+                  }}
+                  draggable={!selecting && movable && renaming?.id !== d.id}
                   onDragStart={(e) => {
                     e.dataTransfer.setData(DOC_MIME, d.id);
                     e.dataTransfer.effectAllowed = "move";
                   }}
-                  className={cn(ROW_GRID, "group/row rounded-lg px-2 py-2 hover:bg-surface-2")}
+                  className={cn(
+                    ROW_GRID,
+                    "group/row rounded-lg px-2 py-2",
+                    selecting && "cursor-pointer select-none",
+                    checked ? "bg-accent-soft" : "hover:bg-surface-2",
+                  )}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                      style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={checked}
+                      aria-label={`「${d.filename}」を選ぶ`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        pickRow(d.id, e.shiftKey);
+                      }}
+                      className="group/check relative grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+                      style={
+                        selecting
+                          ? undefined
+                          : { color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }
+                      }
                     >
-                      <Icon name={meta.iconName} size={15} />
-                    </span>
+                      {selecting ? (
+                        <CheckBox checked={checked} />
+                      ) : (
+                        <>
+                          <span className="group-hover/row:hidden max-md:!block">
+                            <Icon name={meta.iconName} size={15} />
+                          </span>
+                          <span className="hidden group-hover/row:block max-md:!hidden">
+                            <CheckBox checked={false} />
+                          </span>
+                        </>
+                      )}
+                    </button>
                     <div className="min-w-0 flex-1">
                       {renaming?.kind === "doc" && renaming.id === d.id ? (
                         <RenameInput
@@ -683,7 +814,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                         />
                       ) : (
                         <button
-                          onClick={() => onOpenDocument(d)}
+                          onClick={() => !selecting && onOpenDocument(d)}
                           title={d.filename}
                           className="block max-w-full truncate text-left text-[13px] font-medium text-fg hover:text-accent"
                         >
@@ -808,6 +939,32 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           }}
         />
       )}
+      {selecting && docs && (
+        <BulkBar
+          count={selected.size}
+          total={docs.length}
+          busy={bulkBusy}
+          canMove={Boolean(kbId) && canEditFolders && [...selected].every((id) => docs.find((x) => x.id === id)?.writable)}
+          canRemove={selected.size > 0 && [...selected].every((id) => docs.find((x) => x.id === id)?.writable)}
+          onSelectAll={() => setSelected(new Set(docs.map((x) => x.id)))}
+          onMove={() => setBulkMoving(true)}
+          onRemove={() => void removeSelected()}
+          onClear={endSelection}
+        />
+      )}
+      {bulkMoving && (
+        <MoveDialog
+          title={`${selected.size} 件の移動先`}
+          folders={folders}
+          current={browsing ? folderId : undefined}
+          rootLabel={kbLabel(kb)}
+          onCancel={() => setBulkMoving(false)}
+          onPick={(to) => {
+            setBulkMoving(false);
+            void moveSelected(to);
+          }}
+        />
+      )}
       {dialog}
     </main>
   );
@@ -857,7 +1014,7 @@ interface MenuItem {
 
 function RowMenu({ open, onToggle, items }: { open: boolean; onToggle: (open: boolean) => void; items: MenuItem[] }) {
   return (
-    <span className="relative justify-self-end">
+    <span data-row-menu className="relative justify-self-end">
       <button
         aria-label="操作メニュー"
         onClick={() => onToggle(!open)}
@@ -922,6 +1079,72 @@ function EmptyLibrary({ canUpload, onPick }: { canUpload: boolean; onPick: () =>
           </span>
         )}
       </button>
+    </div>
+  );
+}
+
+function CheckBox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid h-[18px] w-[18px] place-items-center rounded-[5px] border-[1.5px]",
+        checked ? "border-accent bg-accent text-white" : "border-divider-strong bg-surface text-transparent",
+      )}
+    >
+      <Icon name="check" size={11} />
+    </span>
+  );
+}
+
+function BulkBar({
+  count,
+  total,
+  busy,
+  canMove,
+  canRemove,
+  onSelectAll,
+  onMove,
+  onRemove,
+  onClear,
+}: {
+  count: number;
+  total: number;
+  busy: boolean;
+  canMove: boolean;
+  canRemove: boolean;
+  onSelectAll: () => void;
+  onMove: () => void;
+  onRemove: () => void;
+  onClear: () => void;
+}) {
+  const btn =
+    "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12.5px] font-medium disabled:cursor-not-allowed disabled:opacity-45";
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex justify-center px-3 pb-[max(14px,env(safe-area-inset-bottom))]">
+      <div
+        role="toolbar"
+        aria-label="選択した文書の操作"
+        className="pointer-events-auto flex max-w-full animate-pop-in items-center gap-1 rounded-[14px] border-[0.5px] border-divider-strong bg-surface p-1.5 pl-3.5 shadow-e3"
+      >
+        <span className="mr-1 shrink-0 whitespace-nowrap text-[12.5px] font-semibold text-fg">
+          {count} 件を選択
+        </span>
+        <button onClick={onSelectAll} disabled={busy || count === total} className={cn(btn, "text-fg-2 hover:bg-divider max-md:hidden")}>
+          すべて選択
+        </button>
+        <button onClick={onMove} disabled={busy || count === 0 || !canMove} className={cn(btn, "text-fg hover:bg-divider")}>
+          <Icon name="folder" size={13} />
+          移動
+        </button>
+        <button onClick={onRemove} disabled={busy || !canRemove} className={cn(btn, "text-danger hover:bg-danger-soft")}>
+          <Icon name="trash" size={13} />
+          ごみ箱へ
+        </button>
+        <button onClick={onClear} aria-label="選択を解除" className={cn(btn, "w-8 justify-center px-0 text-muted hover:bg-divider hover:text-fg")}>
+          <Icon name="close" size={13} />
+        </button>
+      </div>
     </div>
   );
 }
