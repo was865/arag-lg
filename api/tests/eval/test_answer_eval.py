@@ -124,10 +124,12 @@ class FakeApi:
     def __init__(self, events: list[tuple[str, dict[str, Any]]]) -> None:
         self.events = events
         self.bodies: list[dict[str, Any]] = []
+        self.threads: list[str | None] = []
 
-    async def start(self, body: dict[str, Any]) -> str:
+    async def start(self, body: dict[str, Any], thread_id: str | None = None) -> tuple[str, str]:
         self.bodies.append(body)
-        return "r1"
+        self.threads.append(thread_id)
+        return f"r{len(self.bodies)}", "t1"
 
     async def stream(self, run_id: str) -> Any:
         for e in self.events:
@@ -182,6 +184,27 @@ async def test_run_case_failed_run_counts_as_zero() -> None:
     r = await run_case(api, Case(id="q", query="x", relevant_documents=["a.pdf"]), kb_id="k", model_id=None)
     assert r.status == "failed" and r.error == "失敗"
     assert r.citation_recall == 0.0 and r.faithfulness is None
+
+
+async def test_run_case_asks_previous_turns_in_same_thread() -> None:
+    # 続けて尋ねる題（specs/018 R4）: 前の質問を同じスレッドで順に尋ね、最後の質問だけを採点する
+    api = FakeApi([("run.completed", COMPLETED)])
+    case = Case(
+        id="m", query="その前の値は？", turns=["MX-17 は？", "単位は？"], key_facts=[KeyFact(any=["0.91"])]
+    )
+    r = await run_case(api, case, kb_id="kb1", model_id=None)
+    assert [b["query"] for b in api.bodies] == ["MX-17 は？", "単位は？", "その前の値は？"]
+    assert api.threads == [None, "t1", "t1"]
+    assert all(b["kb_ids"] == ["kb1"] for b in api.bodies)
+    assert r.status == "completed" and r.query == "その前の値は？"
+
+
+async def test_run_case_fails_when_previous_turn_fails() -> None:
+    api = FakeApi([("run.failed", {"type": "run.failed", "code": "x", "message": "失敗"})])
+    case = Case(id="m", query="続き", turns=["最初"], relevant_documents=["a.pdf"])
+    r = await run_case(api, case, kb_id="k", model_id=None)
+    assert r.status == "failed" and r.error is not None and "前の質問" in r.error
+    assert len(api.bodies) == 1
 
 
 def _result(**kw: Any) -> CaseResult:

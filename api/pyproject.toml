@@ -37,6 +37,12 @@ requires = ["uv_build>=0.13.6,<0.14.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
+assets = [
+    "openpyxl>=3.1.5",
+    "python-docx>=1.2.0",
+    "python-pptx>=1.0.2",
+    "reportlab>=5.1.0",
+]
 dev = [
     "mypy>=2.4.1",
     "pytest>=9.2.0",

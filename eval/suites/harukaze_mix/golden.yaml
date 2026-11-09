@@ -1,0 +1,477 @@
+# 形式混在・多ターンの題集（specs/018-eval-corpus-mix）。資料は eval/assets/harukaze_mix/build.py で作る。
+# 候補（未確定）: 利用者が 1 問ずつ確認して確定するまで閾値は置かない（R5）。
+# tags: 言語（ja / en / cross）と種類（docx / xlsx / pptx / pdf / scan / en-doc / table / version / similar / multi / noans / multiturn）
+suite: harukaze_mix
+files_dir: eval/assets/harukaze_mix/docs
+documents:
+- d01-仕様書_HP-300.pdf
+- d02-仕様書_HP-320.pdf
+- e01-Penang-HP-300-overhaul-procedure.docx
+- e02-Aster-Seals-SK-300-datasheet.pdf
+- p01-月次報告_2026-09.pptx
+- p02-工場紹介_浜松第二工場.pptx
+- p03-新人安全教育.pptx
+- s01-月次点検票_PM-04_走査.pdf
+- s02-支払条件変更のお知らせ_走査.pdf
+- w01-設備保全規程.docx
+- w02-HP-300分解手順書_第2版.docx
+- w03-HP-300分解手順書_第3版.docx
+- w04-品質会議議事録_2026-09.docx
+- x01-部品台帳.xlsx
+- x02-保守記録_2026-09.xlsx
+- x03-価格表_2026下期.xlsx
+thresholds: {}
+cases:
+# ── Word ──
+- id: hm01-docx
+  query: 設備保全規程では、点検の記録を何年間保存することになっていますか？
+  tags: [ja, docx]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: [5年]
+- id: hm02-docx
+  query: 浜松第二工場の保全課長は誰ですか？
+  tags: [ja, docx]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: [高梨]
+- id: hm03-docx
+  query: 点検の判定が「要注意」だったとき、何日以内に再点検しなければなりませんか？
+  tags: [ja, docx]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: [7日]
+- id: hm04-docx
+  query: クリーンルーム内の設備の月次点検は、どのくらいの頻度で行いますか？
+  tags: [ja, docx, version]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: [2週間]
+- id: hm05-docx
+  query: 点検で異常を見つけたとき、保全課の内線番号は何番に連絡しますか？
+  tags: [ja, docx, version]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: ['2417']
+- id: hm06-docx
+  query: 9月の品質会議で、シールキットの在庫補充は誰がいつまでに行うと決まりましたか？
+  tags: [ja, docx, table]
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: [佐伯]
+  - any: [2026年10月31日, 10月31日]
+- id: hm07-docx
+  query: 8月の出荷検査の不良率はいくつでしたか？
+  tags: [ja, docx]
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: ['0.8']
+- id: hm08-docx
+  query: 次回の品質会議はいつですか？
+  tags: [ja, docx]
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: [2026年10月16日, 10月16日]
+# ── 新旧の版 ──
+- id: hm09-version
+  query: HP-300 のケーシングボルトの締付トルクはいくつですか？
+  tags: [ja, docx, version]
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: ['52']
+- id: hm10-version
+  query: HP-300 分解手順書の第2版では、締付トルクはいくつでしたか？
+  tags: [ja, docx, version]
+  relevant_documents: [w02-HP-300分解手順書_第2版.docx]
+  key_facts:
+  - any: ['45']
+- id: hm11-version
+  query: HP-300 の分解・組立作業の所要時間の目安は？
+  tags: [ja, docx, version]
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [75分, 75 分]
+- id: hm12-version
+  query: HP-300 を組み立てるとき、軸受に使うグリスは何ですか？
+  tags: [ja, docx, version]
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [KG-5]
+- id: hm13-version
+  query: 手順書第3版では、カップリングの芯出しの許容値はいくつですか？
+  tags: [ja, docx, version]
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: ['0.05']
+- id: hm14-version
+  query: HP-300 分解手順書は第2版から第3版で何が変わりましたか？
+  tags: [ja, docx, version]
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: ['52']
+  - any: [KG-5]
+  - any: [Oリング]
+# ── Excel ──
+- id: hm15-xlsx
+  query: 部品 P-2010 の在庫はいくつありますか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: ['22']
+- id: hm16-xlsx
+  query: シールキット SK-300 の単価はいくらですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: ['18,400', '18400']
+- id: hm17-xlsx
+  query: 部品台帳で、在庫が発注点を下回っている部品はどれですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: [P-1042, SK-300]
+  - any: [P-2011, 6309ZZ]
+- id: hm18-xlsx
+  query: 部品 P-1042 の仕入先とリードタイムを教えてください。
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: [Aster Seals]
+  - any: [21日, '21']
+- id: hm19-xlsx
+  query: 羽根車 IM-320 の仕入先はどこですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: [白砂鋳造]
+- id: hm20-xlsx
+  query: メカニカルシール MS-30 はどの機種に使えますか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: [HP-300]
+  - any: [HP-320]
+- id: hm21-xlsx
+  query: 9月の保守記録で、停止時間が最も長かった作業は何ですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x02-保守記録_2026-09.xlsx]
+  key_facts:
+  - any: [XR-9, X線検査装置]
+  - any: ['240']
+- id: hm22-xlsx
+  query: 9月に冷却水ポンプ PM-04 が保守で止まった時間は合計何分ですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x02-保守記録_2026-09.xlsx]
+  key_facts:
+  - any: ['135']
+- id: hm23-xlsx
+  query: 9月の保守記録に載っている停止時間の合計は何分ですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x02-保守記録_2026-09.xlsx]
+  key_facts:
+  - any: ['600']
+- id: hm24-xlsx
+  query: X線検査装置 XR-9 は何年に導入されましたか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x02-保守記録_2026-09.xlsx]
+  key_facts:
+  - any: ['2024']
+- id: hm25-xlsx
+  query: HP-320 の標準価格はいくらですか？
+  tags: [ja, xlsx, table]
+  relevant_documents: [x03-価格表_2026下期.xlsx]
+  key_facts:
+  - any: ['1,490,000', '1490000', 149万]
+- id: hm26-xlsx
+  query: HP-300 を12台まとめて注文すると、どれだけ割引されますか？
+  tags: [ja, xlsx]
+  relevant_documents: [x03-価格表_2026下期.xlsx]
+  key_facts:
+  - any: [8%]
+- id: hm27-xlsx
+  query: HP-300 シール更新パックにも数量割引は使えますか？
+  tags: [ja, xlsx]
+  relevant_documents: [x03-価格表_2026下期.xlsx]
+  key_facts:
+  - any: [対象外, 使えません, 適用されません, 適用外]
+- id: hm28-xlsx
+  query: 今の標準価格表はいつからいつまで有効ですか？
+  tags: [ja, xlsx]
+  relevant_documents: [x03-価格表_2026下期.xlsx]
+  key_facts:
+  - any: [2026年10月1日]
+  - any: [2027年3月31日]
+# ── PowerPoint ──
+- id: hm29-pptx
+  query: 9月の第二工場の生産台数と計画比を教えてください。
+  tags: [ja, pptx]
+  relevant_documents: [p01-月次報告_2026-09.pptx]
+  key_facts:
+  - any: ['1,284', '1284']
+  - any: [97%]
+- id: hm30-pptx
+  query: 9月に設備が止まった要因で、最も時間が長かったのは何ですか？
+  tags: [ja, pptx]
+  relevant_documents: [p01-月次報告_2026-09.pptx]
+  key_facts:
+  - any: [金型]
+- id: hm31-pptx
+  query: 第二工場の無災害の連続日数は何日ですか？
+  tags: [ja, pptx]
+  relevant_documents: [p01-月次報告_2026-09.pptx]
+  key_facts:
+  - any: ['412']
+- id: hm32-pptx
+  query: 組立ライン1号の自動化率はどのくらいですか？
+  tags: [ja, pptx]
+  relevant_documents: [p02-工場紹介_浜松第二工場.pptx]
+  key_facts:
+  - any: [68%]
+- id: hm33-pptx
+  query: 第二工場のクリーンルームの清浄度クラスは？
+  tags: [ja, pptx]
+  relevant_documents: [p02-工場紹介_浜松第二工場.pptx]
+  key_facts:
+  - any: ['10,000', '10000', 1万, クラス7, クラス 7]
+- id: hm34-pptx
+  query: 火災や地震のときの集合場所はどこですか？
+  tags: [ja, pptx]
+  relevant_documents: [p03-新人安全教育.pptx]
+  key_facts:
+  - any: [南駐車場]
+- id: hm35-pptx
+  query: 非常停止ボタンはどんな色と形ですか？
+  tags: [ja, pptx]
+  relevant_documents: [p03-新人安全教育.pptx]
+  key_facts:
+  - any: [赤]
+  - any: [きのこ, キノコ]
+- id: hm36-pptx
+  query: 新人安全教育で挙げられている禁止事項を教えてください。
+  tags: [ja, pptx]
+  relevant_documents: [p03-新人安全教育.pptx]
+  key_facts:
+  - any: [ロックアウト]
+  - any: [フォークリフト]
+  - any: [安全装置]
+# ── 似た仕様書 ──
+- id: hm37-similar
+  query: HP-300 の電動機出力は何 kW ですか？
+  tags: [ja, pdf, similar]
+  relevant_documents: [d01-仕様書_HP-300.pdf]
+  key_facts:
+  - any: ['5.5']
+- id: hm38-similar
+  query: HP-320 の質量は？
+  tags: [ja, pdf, similar]
+  relevant_documents: [d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: ['94']
+- id: hm39-similar
+  query: 液温 70℃ の用途には HP-300 と HP-320 のどちらを選ぶべきですか？
+  tags: [ja, pdf, similar, multi]
+  relevant_documents: [d01-仕様書_HP-300.pdf, d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: [HP-320]
+- id: hm40-similar
+  query: HP-300 と HP-320 の全揚程を比べてください。
+  tags: [ja, pdf, similar, multi]
+  relevant_documents: [d01-仕様書_HP-300.pdf, d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: ['42']
+  - any: ['45']
+# ── 走査 PDF ──
+- id: hm41-scan
+  query: PM-04 の9月12日の点検で「要注意」だった項目と、その測定値は？
+  tags: [ja, scan]
+  relevant_documents: [s01-月次点検票_PM-04_走査.pdf]
+  key_facts:
+  - any: [軸受温度, 軸受]
+  - any: ['61']
+- id: hm42-scan
+  query: PM-04 の9月12日の点検を行ったのは誰ですか？
+  tags: [ja, scan]
+  relevant_documents: [s01-月次点検票_PM-04_走査.pdf]
+  key_facts:
+  - any: [小野寺]
+- id: hm43-scan
+  query: 9月2日の点検で PM-04 の軸受温度はいくつでしたか？
+  tags: [ja, scan]
+  relevant_documents: [s01-月次点検票_PM-04_走査.pdf]
+  key_facts:
+  - any: ['64']
+- id: hm44-scan
+  query: 支払条件の変更後、支払サイトは何日になりますか？
+  tags: [ja, scan]
+  relevant_documents: [s02-支払条件変更のお知らせ_走査.pdf]
+  key_facts:
+  - any: [45日, '45']
+- id: hm45-scan
+  query: 協力会社への支払条件の変更は、いつから適用されますか？
+  tags: [ja, scan]
+  relevant_documents: [s02-支払条件変更のお知らせ_走査.pdf]
+  key_facts:
+  - any: [11月締め, 11月]
+- id: hm46-scan
+  query: 支払条件変更について問い合わせるときの連絡先は？
+  tags: [ja, scan]
+  relevant_documents: [s02-支払条件変更のお知らせ_走査.pdf]
+  key_facts:
+  - any: [佐伯]
+  - any: ['2230']
+# ── 英語資料・日英をまたぐ ──
+- id: hm47-en
+  query: What humidity limit applies when overhauling an HP-300 pump at the Penang plant?
+  tags: [en, en-doc]
+  relevant_documents: [e01-Penang-HP-300-overhaul-procedure.docx]
+  key_facts:
+  - any: [70%]
+- id: hm48-cross
+  query: ペナン工場でポンプを分解したとき、作業の記録にはどの様式を使いますか？
+  tags: [cross, en-doc]
+  relevant_documents: [e01-Penang-HP-300-overhaul-procedure.docx]
+  key_facts:
+  - any: [PN-QF-12]
+- id: hm49-en
+  query: What is the shelf life of the SK-300 seal kit?
+  tags: [en, en-doc]
+  relevant_documents: [e02-Aster-Seals-SK-300-datasheet.pdf]
+  key_facts:
+  - any: [24 months, 24か月, 24ヶ月, two years, 2 years]
+- id: hm50-cross
+  query: シールキット SK-300 のOリングの材質は何ですか？
+  tags: [cross, en-doc]
+  relevant_documents: [e02-Aster-Seals-SK-300-datasheet.pdf]
+  key_facts:
+  - any: [FKM, フッ素ゴム, fluoroelastomer]
+- id: hm51-cross
+  query: Under the equipment maintenance regulation, how long must inspection records be kept?
+  tags: [cross, docx]
+  relevant_documents: [w01-設備保全規程.docx]
+  key_facts:
+  - any: [5 years, five years, 5年]
+- id: hm52-cross
+  query: How many units did the Hamamatsu No.2 plant produce in September 2026?
+  tags: [cross, pptx]
+  relevant_documents: [p01-月次報告_2026-09.pptx]
+  key_facts:
+  - any: ['1,284', '1284']
+# ── 複数の資料をまたぐ ──
+- id: hm53-multi
+  query: 8月に HP-300 のシール漏れは何件起きて、その対策で締付トルクはいくつに変わりましたか？
+  tags: [ja, multi, docx]
+  relevant_documents: [w04-品質会議議事録_2026-09.docx, w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [7件, 7 件]
+  - any: ['52']
+- id: hm54-multi
+  query: SK-300 の最小発注数量と、部品台帳での現在の在庫数を教えてください。
+  tags: [cross, multi, xlsx, en-doc]
+  relevant_documents: [e02-Aster-Seals-SK-300-datasheet.pdf, x01-部品台帳.xlsx]
+  key_facts:
+  - any: [5キット, 5 キット, 5 kits, 5個, 5セット, 5つ, 最小発注数量は5]
+  - any: [6キット, 6 キット, 6個, 6セット, 6つ, 在庫は6, 在庫数は6]
+- id: hm55-multi
+  query: PM-04 の軸受交換はいつ行われ、そのとき設備は何分止まりましたか？
+  tags: [ja, multi, scan, xlsx]
+  relevant_documents: [s01-月次点検票_PM-04_走査.pdf, x02-保守記録_2026-09.xlsx]
+  key_facts:
+  - any: [2026年9月19日, 9月19日]
+  - any: ['80']
+# ── 資料に答えがない ──
+- id: hm56-noans
+  query: HP-350 の最大吐出量はいくつですか？
+  tags: [ja, noans]
+  expect_no_answer: true
+- id: hm57-noans
+  query: ペナン工場の9月の生産台数は？
+  tags: [ja, noans]
+  expect_no_answer: true
+- id: hm58-noans
+  query: 10月の出荷検査の不良率はいくつでしたか？
+  tags: [ja, noans]
+  expect_no_answer: true
+- id: hm59-noans
+  query: クリーンルーム空調機 CR-02 の製造元はどこですか？
+  tags: [ja, noans]
+  expect_no_answer: true
+- id: hm60-noans
+  query: What is the email address of the Aster Seals sales contact?
+  tags: [en, noans]
+  expect_no_answer: true
+# ── 続けて尋ねる ──
+- id: hm61-turn
+  turns: [HP-300 の締付トルクはいくつですか？]
+  query: 旧版ではいくつでしたか？
+  rewritten: HP-300 分解手順書 第2版 の締付トルク
+  tags: [ja, multiturn, version]
+  relevant_documents: [w02-HP-300分解手順書_第2版.docx]
+  key_facts:
+  - any: ['45']
+- id: hm62-turn
+  turns: [部品 P-1042 の仕入先はどこですか？]
+  query: そこのリードタイムは？
+  rewritten: 仕入先 Aster Seals のリードタイム
+  tags: [ja, multiturn, xlsx]
+  relevant_documents: [x01-部品台帳.xlsx]
+  key_facts:
+  - any: [21日, '21']
+- id: hm63-turn
+  turns: [PM-04 の9月12日の点検で「要注意」だった項目は？]
+  query: その値は？前回の点検ではいくつでしたか？
+  rewritten: PM-04 軸受温度 9月12日 と 9月2日 の値
+  tags: [ja, multiturn, scan]
+  relevant_documents: [s01-月次点検票_PM-04_走査.pdf]
+  key_facts:
+  - any: ['61']
+  - any: ['64']
+- id: hm64-turn
+  turns: [HP-300 の使用液温の範囲は？]
+  query: HP-320 ではどうですか？
+  rewritten: HP-320 の使用液温の範囲
+  tags: [ja, multiturn, similar]
+  relevant_documents: [d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: ['80']
+- id: hm65-turn
+  turns: [9月の品質会議の決定事項を教えてください。]
+  query: 1番目の項目の担当者と期限は？
+  rewritten: 品質会議 決定事項 組立ラインの締付トルク基準 担当 期限
+  tags: [ja, multiturn, docx, table]
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: [江口]
+  - any: [2026年10月15日, 10月15日]
+- id: hm66-turn
+  turns: [ペナン工場でポンプを分解するときの湿度の条件は？]
+  query: その条件を満たしていないときはどうすればいいですか？
+  rewritten: Penang humidity above 70% dehumidifier before opening the casing
+  tags: [cross, multiturn, en-doc]
+  relevant_documents: [e01-Penang-HP-300-overhaul-procedure.docx]
+  key_facts:
+  - any: [除湿, dehumidifier]
+  - any: [30分, 30 分, 30 minutes]
+- id: hm67-turn
+  turns: [新人安全教育の保護具について教えてください。]
+  query: クリーンルームではどうなりますか？
+  rewritten: クリーンルームで着用する保護具
+  tags: [ja, multiturn, pptx]
+  relevant_documents: [p03-新人安全教育.pptx]
+  key_facts:
+  - any: [防塵服]
+- id: hm68-turn
+  turns: [HP-300 の標準価格はいくらですか？]
+  query: 10台以上まとめて買うとどうなりますか？
+  rewritten: 同一機種 10台以上 まとめて注文 割引
+  tags: [ja, multiturn, xlsx]
+  relevant_documents: [x03-価格表_2026下期.xlsx]
+  key_facts:
+  - any: [8%]
+- id: hm69-turn
+  turns: [協力会社への支払条件変更のお知らせには何が書いてありますか？]
+  query: 手形での支払いは今後も使えますか？
+  rewritten: 支払条件変更 手形での支払い 廃止
+  tags: [ja, multiturn, scan]
+  relevant_documents: [s02-支払条件変更のお知らせ_走査.pdf]
+  key_facts:
+  - any: [廃止, 使えません, 使用できません]

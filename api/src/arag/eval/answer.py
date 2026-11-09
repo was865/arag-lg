@@ -30,7 +30,9 @@ Judge = Callable[[str, str, list[dict[str, Any]]], Awaitable[list[dict[str, Any]
 
 
 class RunApi(Protocol):
-    async def start(self, body: dict[str, Any]) -> str: ...
+    async def start(self, body: dict[str, Any], thread_id: str | None = None) -> tuple[str, str]:
+        """run を始めて (run_id, thread_id) を返す。thread_id を渡すとそのスレッドの続きとして尋ねる。"""
+        ...
 
     def stream(self, run_id: str) -> AsyncIterator[tuple[str, dict[str, Any]]]: ...
 
@@ -287,18 +289,33 @@ def to_markdown(result: dict[str, Any]) -> str:
 async def run_case(
     api: RunApi, case: Case, *, kb_id: str, model_id: str | None, judge: Judge | None = None
 ) -> CaseResult:
-    run_id = await api.start(
-        {"query": case.query, "kb_ids": [kb_id], "model_id": model_id, "include_archived": False}
-    )
-    steps: dict[str, dict[str, Any]] = {}
-    end: tuple[str, dict[str, Any]] = ("run.failed", {"message": "ストリームが途中で終わりました"})
-    async for event, data in api.stream(run_id):
-        if event == "step":
-            steps[data["step"]["id"]] = data["step"]
-        elif event in TERMINAL:
-            end = (event, data)
+    def body(query: str) -> dict[str, Any]:
+        return {"query": query, "kb_ids": [kb_id], "model_id": model_id, "include_archived": False}
+
+    async def ask(query: str, thread_id: str | None) -> tuple[str, dict[str, Any], dict[str, Any], str]:
+        run_id, tid = await api.start(body(query), thread_id)
+        steps: dict[str, dict[str, Any]] = {}
+        end: tuple[str, dict[str, Any]] = ("run.failed", {"message": "ストリームが途中で終わりました"})
+        async for ev, d in api.stream(run_id):
+            if ev == "step":
+                steps[d["step"]["id"]] = d["step"]
+            elif ev in TERMINAL:
+                end = (ev, d)
+                break
+        return end[0], end[1], steps, tid
+
+    # 続けて尋ねる題: 前の質問を同じスレッドで順に尋ねてから最後の質問を採点する
+    thread_id: str | None = None
+    event: str
+    data: dict[str, Any]
+    steps: dict[str, dict[str, Any]]
+    for i, turn in enumerate(case.turns, start=1):
+        ev, d, _, thread_id = await ask(turn, thread_id)
+        if ev != "run.completed":
+            event, data, steps = ev, {"message": f"前の質問 {i} が終わりませんでした: {d.get('message')}"}, {}
             break
-    event, data = end
+    else:
+        event, data, steps, _ = await ask(case.query, thread_id)
     traj = trajectory(list(steps.values()))
     facts = [f.any for f in case.key_facts]
     if event != "run.completed":
@@ -361,16 +378,18 @@ class HttpRunApi:
     def __init__(self, client: httpx.AsyncClient) -> None:
         self.client = client
 
-    async def start(self, body: dict[str, Any]) -> str:
+    async def start(self, body: dict[str, Any], thread_id: str | None = None) -> tuple[str, str]:
+        url = f"/v1/threads/{thread_id}/runs" if thread_id else "/v1/runs"
         for _ in range(20):
-            res = await self.client.post("/v1/runs", json=body)
+            res = await self.client.post(url, json=body)
             if res.status_code != 429:
                 break
             # 回数制限（ARAG_RATE_LIMIT_RUNS_PER_MIN）にかかったら待って出し直す
             await asyncio.sleep(float(res.headers.get("retry-after") or 10))
         if res.status_code >= 400:
             raise RuntimeError(f"run を開始できません: {res.status_code} {res.text[:200]}")
-        return str(res.json()["run_id"])
+        out = res.json()
+        return str(out["run_id"]), str(out["thread_id"])
 
     async def stream(self, run_id: str) -> AsyncIterator[tuple[str, dict[str, Any]]]:
         async with self.client.stream("GET", f"/v1/runs/{run_id}/stream", timeout=None) as res:
