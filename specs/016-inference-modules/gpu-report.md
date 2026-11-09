@@ -99,3 +99,18 @@ VLM_HF_MODEL=Qwen/Qwen3-VL-8B-Instruct-FP8 VLM_SERVED_NAME=qwen3-vl VLM_MAX_LEN=
 
 - Qwen3-8B を止めて空いた約 8 GB は、ほぼ KV の拡大（1.5G → 6G）と Sunshine の増加（4.5 → 7.8 GB）で埋まった。Sunshine は配信中に大きく増えるため、同居させる限り VRAM の余裕は読めない。
 - 結果として GPU は再び満杯で、TEI rerank の一部が追い出され、docling は遅い。単モデル構成で余裕を持たせるなら、KV を 3〜4G に下げる（32768 で 1 並列なら 4.5 GiB で足りる。3G なら 16384）か、Sunshine を止める。
+
+### 単モデルの速度低下と KV 縮小（再計測）
+
+KV 6G で起動直後は 300 トークン 3.5 秒（約 85 トークン/秒）だったが、その後 Mac から約 32 トークン/秒と報告があった。GPU 機で再計測すると同じく遅かった。
+
+| 時点 | 条件 | 300 トークン（2 回） | GPU 全体（専用） |
+|---|---|---|---|
+| 縮小前 | 32768、KV 6G（起動から約 1 時間後） | 8.80 秒 / 8.70 秒（約 34 トークン/秒） | 23,694 MiB（空き 454 MiB） |
+| F | 32768、`VLM_KV_BYTES=4500M` | 起動失敗: `4.5 GiB KV cache is needed, which is larger than the available KV cache memory (4.39 GiB)`（4500M は 4.19 GiB。M は MiB 単位） | — |
+| G | 32768、`VLM_KV_BYTES=4700M` | **3.57 秒 / 3.55 秒**（約 85 トークン/秒に回復） | 22,221 MiB（空き 約 1.9 GB） |
+
+- G の起動ログ: `GPU KV cache size: 33,408 tokens, Maximum concurrency for 32,768 tokens per request: 1.02x`（32768 の要求を 1 本だけ受けられる）。
+- G のプロセス別（`\GPU Process Memory(*)\Dedicated Usage`）: vllm-vl 16,528 MiB、WSL のほかの割り当て（TEI・docling）1,472 / 1,426 / 978 MiB、dwm 1,214 MiB、Sunshine 14,864 MiB。
+- **Sunshine のカウンタ値は常駐量ではない**。vllm-vl が止まっている間（F の後）も GPU 全体の専用使用量は 5.7 GB しかなかったのに、Sunshine は 14.9 GB と表示されていた。プロセス別カウンタは追い出された分も含む確保量とみられる。実際に VRAM に載っている量は GPU 全体の値（`\GPU Adapter Memory(*)\Dedicated Usage` か `nvidia-smi`）で見る。
+- 遅くなった原因は、GPU 全体が 24 GB に張り付き（空き 0.45 GB）、vllm-vl の割り当ての一部が追い出されたためとみられる。Sunshine（ユーザーのリモートデスクトップ）の使用量は配信の状況で変わり、止められないため、空きを 1.5〜2 GB 残す設定（KV 4700M）にした。配信の負荷が増えれば再び遅くなりうる。
