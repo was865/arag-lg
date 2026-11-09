@@ -3,8 +3,11 @@
 ORM に依存しない純関数。トークナイザは引数で受け取る（テストは文字数で数える偽物）。
 """
 
+import re
+import unicodedata
+from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import groupby
+from itertools import groupby, pairwise
 from typing import Any, Literal
 
 from docling_core.transforms.chunker.base import BaseChunk
@@ -17,10 +20,15 @@ from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
 from docling_core.transforms.serializer.base import BaseDocSerializer
 from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
+from docling_core.types.doc.common.content_layer import ContentLayer
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.items.table.table import TableItem
+from docling_core.types.doc.items.text import SectionHeaderItem, TextItem
+from docling_core.types.doc.labels import DocItemLabel
 
-CHUNKER_VERSION = "hybrid-md-v2"  # v2: ページをまたぐ表の続きを結合
+# v2: ページをまたぐ表の続きを結合
+# v3: 1 か所にしか出ないページヘッダを本文に戻す・続けて並ぶ同じ深さの見出しを 1 段ずつ入れ子にする
+CHUNKER_VERSION = "hybrid-md-v3"
 HEADING_SEP = " > "
 
 BlockType = Literal["text", "table", "figure", "code", "formula", "list"]
@@ -131,6 +139,72 @@ def _continues(a: TableItem, b: TableItem) -> bool:
     return not any(c.column_header for c in b.data.table_cells)
 
 
+# ページ番号だけのヘッダ（「1 / 2」「- 3 -」「Page 4」「5 ページ」など）
+_PAGE_NO = re.compile(
+    r"^[\s\-–—]*(?:p\.?|page|ページ)?\s*\d+\s*(?:(?:/|of)\s*\d+)?\s*(?:ページ|頁)?[\s\-–—]*$", re.I
+)
+
+
+def _norm(text: str) -> str:
+    """繰り返しの判定用。数字（ページ番号など）と空白を除いて比べる。"""
+    return re.sub(r"[\d\s]+", "", unicodedata.normalize("NFKC", text)).lower()
+
+
+def keep_unique_page_headers(doc: DoclingDocument) -> DoclingDocument:
+    """1 か所にしか出ないページヘッダを本文に戻した複製を返す（元の文書は変えない）。
+
+    docling は 1 枚目の上部（日付・宛先・差出人）をページヘッダとして本文から外すことがある。
+    本当のヘッダ（社名・文書番号など）は各ページに繰り返し出るので、数字を除いて同じ文が
+    2 ページ以上に出るものとページ番号だけのものは今までどおり外す。
+    """
+    heads = [
+        item
+        for item, _ in doc.iterate_items(included_content_layers={ContentLayer.FURNITURE})
+        if isinstance(item, TextItem) and item.label == DocItemLabel.PAGE_HEADER and item.text.strip()
+    ]
+    if not heads:
+        return doc
+    pages: dict[str, set[int]] = defaultdict(set)
+    for h in heads:
+        pages[_norm(h.text)].update(p.page_no for p in h.prov)
+    keep = {h.self_ref for h in heads if len(pages[_norm(h.text)]) <= 1 and not _PAGE_NO.match(h.text)}
+    if not keep:
+        return doc
+    out = doc.model_copy(deep=True)
+    for item, _ in out.iterate_items(included_content_layers={ContentLayer.FURNITURE}):
+        if isinstance(item, TextItem) and item.self_ref in keep:
+            item.label = DocItemLabel.TEXT
+            item.content_layer = ContentLayer.BODY
+    return out
+
+
+def nest_stacked_headings(doc: DoclingDocument) -> DoclingDocument:
+    """同じ深さの見出しが本文を挟まずに続くとき、後の見出しを 1 段深くした複製を返す。
+
+    PDF の見出しは docling がすべて同じ深さにするため、表題の上の小見出しと表題、
+    帳票の表題と部署名などが続くと、後の見出しが前の見出しを置き換えて消してしまう。
+    1 段ずつ深くして、どちらも見出しパスに残す（例: 「月次点検票 > 保全課」）。
+    """
+    items = [item for item, _ in doc.iterate_items()]
+    if not any(
+        isinstance(a, SectionHeaderItem) and isinstance(b, SectionHeaderItem) and a.level == b.level
+        for a, b in pairwise(items)
+    ):
+        return doc
+    out = doc.model_copy(deep=True)
+    prev: SectionHeaderItem | None = None
+    prev_orig = 0
+    for item, _ in out.iterate_items():
+        if not isinstance(item, SectionHeaderItem):
+            prev = None
+            continue
+        orig = item.level
+        if prev is not None and orig == prev_orig:
+            item.level = min(prev.level + 1, 100)
+        prev, prev_orig = item, orig
+    return out
+
+
 def chunk_document(
     doc: DoclingDocument,
     tokenizer: BaseTokenizer,
@@ -147,6 +221,7 @@ def chunk_document(
         serializer_provider=_MarkdownTableProvider(),
     )
     pieces: list[_Piece] = []
+    doc = nest_stacked_headings(keep_unique_page_headers(doc))
     if page_unit == "page":
         doc = merge_continued_tables(doc)
     # スライド・シートは 1 枚ずつ分けて切る（merge_peers が枚をまたいで結合しないように）

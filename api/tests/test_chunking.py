@@ -1,8 +1,10 @@
 """チャンク化（specs/003-ingestion D3・R17・R18）。"""
 
+from docling_core.types.doc import ContentLayer, DocItemLabel, DoclingDocument, Size
+
 from arag.ingest.chunking import chunk_document, merge_continued_tables
 
-from .docling_fixtures import CharTokenizer, cross_page_table_doc, headingless_doc, regulation_doc
+from .docling_fixtures import CharTokenizer, cross_page_table_doc, headingless_doc, prov, regulation_doc
 
 
 def test_sections_follow_heading_level_2() -> None:
@@ -107,3 +109,50 @@ def test_real_docling_output_cross_page_table() -> None:
     assert [ln.split("|")[1].strip() for ln in lines[2:]] == ["MX-11", "MX-14", "MX-17", "MX-21", "MX-25"]
     headings = [s.heading_path for s in r.sections][1:]
     assert headings == ["月次設備点検台帳", "1. 判定ルール", "2. 点検表 A", "最終判断の補足"]
+
+
+def _letter_doc() -> DoclingDocument:
+    """走査した通知文。1 枚目の上部（日付・宛先）を docling がページヘッダとして本文から外す形。"""
+    doc = DoclingDocument(name="通知")
+    for p in (1, 2):
+        doc.add_page(page_no=p, size=Size(width=600, height=800))
+    fur = ContentLayer.FURNITURE
+    doc.add_text(DocItemLabel.PAGE_HEADER, "2026年10月1日", prov=prov(1), content_layer=fur)
+    doc.add_text(DocItemLabel.PAGE_HEADER, "協力会社各位", prov=prov(1), content_layer=fur)
+    doc.add_text(DocItemLabel.PAGE_HEADER, "社外秘", prov=prov(1), content_layer=fur)
+    doc.add_text(DocItemLabel.PAGE_HEADER, "1 / 2", prov=prov(1), content_layer=fur)
+    doc.add_heading("支払条件変更のお知らせ", level=1, prov=prov(1))
+    doc.add_text(DocItemLabel.TEXT, "支払サイトを 45 日に短縮します。", prov=prov(1))
+    doc.add_text(DocItemLabel.PAGE_HEADER, "社外秘", prov=prov(2), content_layer=fur)
+    doc.add_text(DocItemLabel.PAGE_HEADER, "2 / 2", prov=prov(2), content_layer=fur)
+    doc.add_text(DocItemLabel.TEXT, "手形での支払いは廃止します。", prov=prov(2))
+    return doc
+
+
+def test_single_page_headers_are_kept_as_text() -> None:
+    # 1 か所にしか出ないページヘッダ（日付・宛先）は本文として残す。
+    # どのページにも出るもの（社外秘）とページ番号は今までどおり外す
+    res = chunk_document(_letter_doc(), CharTokenizer(max_tokens=200))
+    body = "\n".join(c.text for c in res.chunks)
+    assert "2026年10月1日" in body and "協力会社各位" in body
+    assert "社外秘" not in body
+    assert "1 / 2" not in body and "2 / 2" not in body
+    # 元の順序（見出しより前）を保つ
+    assert body.index("協力会社各位") < body.index("支払サイト")
+
+
+def test_stacked_headings_keep_the_first_as_title() -> None:
+    # 同じ深さの見出しが本文を挟まず続くとき（走査した帳票の表題と部署名、PDF の小見出しと表題など）、
+    # 後の見出しで前の見出しが消えないよう、後のものを 1 段深くして両方を見出しパスに残す
+    doc = DoclingDocument(name="点検票")
+    doc.add_page(page_no=1, size=Size(width=600, height=800))
+    doc.add_heading("月次点検票（様式 MR-7）", level=1, prov=prov(1))
+    doc.add_heading("浜松第二工場 保全課", level=1, prov=prov(1))
+    doc.add_text(DocItemLabel.TEXT, "点検者: 小野寺 健", prov=prov(1))
+    res = chunk_document(doc, CharTokenizer(max_tokens=200))
+    assert [c.heading_path for c in res.chunks] == ["月次点検票（様式 MR-7） > 浜松第二工場 保全課"]
+    # 本文を挟んだ後の同じ深さの見出しは、今までどおり前の見出しを置き換える
+    doc.add_heading("判定", level=1, prov=prov(1))
+    doc.add_text(DocItemLabel.TEXT, "軸受温度は要注意。", prov=prov(1))
+    res = chunk_document(doc, CharTokenizer(max_tokens=200))
+    assert res.chunks[-1].heading_path == "判定"
