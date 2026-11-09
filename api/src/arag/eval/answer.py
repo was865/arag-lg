@@ -60,6 +60,9 @@ class CaseResult:
     error: str | None = None
     judge_error: str | None = None
     facts_matched: list[bool] = field(default_factory=list)
+    # 評価者の判定（主張ごと）と、評価者に見せた資料。人手ラベルとの一致確認（E2）に使う
+    claims: list[dict[str, Any]] = field(default_factory=list)
+    judge_sources: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ── 純関数 ──────────────────────────────────────────────────────────────
@@ -318,11 +321,13 @@ async def run_case(
         matched = [no_answer or declines(answer)]
     faith: float | None = None
     unsupported: list[str] = []
+    claims: list[dict[str, Any]] = []
     judge_error = None
     sources = cited_sources(data)
     if judge is not None and answer.strip():
         try:
-            faith, unsupported = faithfulness_from_claims(await judge(case.query, answer, sources))
+            claims = await judge(case.query, answer, sources)
+            faith, unsupported = faithfulness_from_claims(claims)
         except Exception as e:
             judge_error = f"{type(e).__name__}: {e}"[:300]
     return CaseResult(
@@ -344,6 +349,8 @@ async def run_case(
         no_answer_reason=data.get("no_answer_reason"),
         judge_error=judge_error,
         facts_matched=matched,
+        claims=claims,
+        judge_sources=sources if judge is not None else [],
         **traj,
     )
 

@@ -170,6 +170,9 @@ async def test_run_case_collects_metrics() -> None:
     assert r.citation_recall == 1.0 and r.citation_precision == 0.5
     assert r.fact_coverage == 0.5
     assert r.faithfulness == 1.0
+    # 人手ラベル（E2）と突き合わせるため、評価者の判定と見せた資料を全部残す
+    assert r.claims == [{"text": "停止", "verdict": "supported"}]
+    assert [x["n"] for x in r.judge_sources] == [1, 2]
     assert r.tool_calls == 1 and r.tokens == 1200 and r.duration_ms == 4000
     assert r.no_answer is False
 
