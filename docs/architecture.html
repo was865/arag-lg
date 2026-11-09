@@ -1,0 +1,378 @@
+<title>ARag 当前架构</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版式：单栏阅读页，三张图各占一节；配色取自 ARag 设计系统（陶土橙 accent） */
+:root {
+  --bg: #faf8f3; --bg-2: #f4f1ea; --surface: #ffffff; --surface-2: #fbf9f4;
+  --fg: #1f1b16; --fg-2: #2e2a23; --muted: #6f6860;
+  --line: rgba(31,27,22,0.14); --line-soft: rgba(31,27,22,0.08);
+  --accent: #c4613f; --accent-soft: rgba(217,119,87,0.13);
+  --ingest: #2f8a66; --ingest-soft: rgba(63,167,126,0.14);
+  --ask: #3d6fc9; --ask-soft: rgba(61,126,230,0.12);
+  --cloud: #7a5fd0; --cloud-soft: rgba(139,111,224,0.13);
+  --sans: "Inter", -apple-system, "PingFang SC", "Microsoft YaHei", "Hiragino Sans", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16151a; --bg-2: #1b1a20; --surface: #1f1e24; --surface-2: #25232b;
+  --fg: #eeeae0; --fg-2: #dad5c9; --muted: #9a958e;
+  --line: rgba(255,255,255,0.16); --line-soft: rgba(255,255,255,0.08);
+  --accent: #e08a6a; --accent-soft: rgba(217,119,87,0.18);
+  --ingest: #5cc49b; --ingest-soft: rgba(63,167,126,0.2);
+  --ask: #7aa6f0; --ask-soft: rgba(61,126,230,0.2);
+  --cloud: #a891f0; --cloud-soft: rgba(139,111,224,0.2);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #16151a; --bg-2: #1b1a20; --surface: #1f1e24; --surface-2: #25232b;
+  --fg: #eeeae0; --fg-2: #dad5c9; --muted: #9a958e;
+  --line: rgba(255,255,255,0.16); --line-soft: rgba(255,255,255,0.08);
+  --accent: #e08a6a; --accent-soft: rgba(217,119,87,0.18);
+  --ingest: #5cc49b; --ingest-soft: rgba(63,167,126,0.2);
+  --ask: #7aa6f0; --ask-soft: rgba(61,126,230,0.2);
+  --cloud: #a891f0; --cloud-soft: rgba(139,111,224,0.2);
+  color-scheme: dark; }
+
+body { background: var(--bg); color: var(--fg-2); font-family: var(--sans); font-size: 15px; line-height: 1.7; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 44px; }
+h1 { font-size: 26px; line-height: 1.3; color: var(--fg); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 18px; line-height: 1.4; color: var(--fg); margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { display: grid; gap: 10px; }
+.lede p { color: var(--muted); }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+section { display: grid; gap: 14px; min-width: 0; }
+
+.qa { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.qa > div { background: var(--surface); border: 0.5px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.qa h3 { margin: 0; font-size: 15px; color: var(--fg); }
+.qa p { font-size: 14px; }
+.verdict { font-weight: 700; color: var(--accent); }
+
+.fig { overflow-x: auto; background: var(--surface); border: 0.5px solid var(--line); border-radius: 14px; padding: 12px; }
+.fig svg { display: block; min-width: 820px; width: 100%; height: auto; font-family: var(--sans); }
+.cap { font-size: 13px; color: var(--muted); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.tbl { overflow-x: auto; border: 0.5px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 0.5px solid var(--line-soft); vertical-align: top; }
+th { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--fg); font-weight: 600; white-space: nowrap; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--bg-2); padding: 1px 5px; border-radius: 5px; }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.p-ui { background: var(--accent-soft); color: var(--accent); }
+.p-env { background: var(--bg-2); color: var(--muted); }
+
+/* SVG 部品 */
+.g-box { fill: var(--bg-2); stroke: var(--line); }
+.g-title { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+.n { fill: var(--surface); stroke: var(--line); }
+.n-ingest { fill: var(--ingest-soft); stroke: var(--ingest); }
+.n-ask { fill: var(--ask-soft); stroke: var(--ask); }
+.n-both { fill: var(--accent-soft); stroke: var(--accent); }
+.n-cloud { fill: var(--cloud-soft); stroke: var(--cloud); }
+.t1 { fill: var(--fg); font-size: 13.5px; font-weight: 600; }
+.t2 { fill: var(--muted); font-size: 11.5px; }
+.tm { fill: var(--muted); font-size: 11px; font-family: var(--mono); }
+.tag { font-size: 10.5px; font-weight: 700; }
+.c-ingest { fill: var(--ingest); } .c-ask { fill: var(--ask); } .c-accent { fill: var(--accent); } .c-cloud { fill: var(--cloud); }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge-ingest { stroke: var(--ingest); stroke-width: 1.8; fill: none; }
+.edge-ask { stroke: var(--ask); stroke-width: 1.8; fill: none; }
+.edge-cloud { stroke: var(--cloud); stroke-width: 1.8; fill: none; stroke-dasharray: 6 5; }
+.ah { fill: var(--muted); } .ah-i { fill: var(--ingest); } .ah-a { fill: var(--ask); } .ah-c { fill: var(--cloud); }
+.elabel { fill: var(--muted); font-size: 11px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header class="lede">
+    <div class="eyebrow">arag-lg · 2026-11-09</div>
+    <h1>ARag 当前架构</h1>
+    <p>应用跑在 Mac 上，模型跑在 GPU 机上，云端 API 作为可选项。下面先回答两个问题，再用三张图说明：各个组件在哪里、文档怎么入库、提问怎么得到回答。</p>
+  </header>
+
+  <section>
+    <div class="qa">
+      <div>
+        <h3>提问时能在 UI 上切换本地和 API 吗？</h3>
+        <p><span class="verdict">能，每次提问都可以换。</span>输入框旁的模型选择器列出模型目录里的模型（Qwen3-8B 本地、DeepSeek 等），选中的模型随这次提问一起发给后端，同一个对话里也能中途换。</p>
+        <p>只换「写回答」的模型。检索（向量、重排序）和改写检索词的辅助模型由启动配置决定，不随选择器变化。没登记 key 或没有地址的模型会显示为不可用。</p>
+      </div>
+      <div>
+        <h3>图片模型现在用在哪里？</h3>
+        <p><span class="verdict">只在入库时用，提问时不用。</span>Docling 从 PDF 里抠出图片后，Qwen3-VL 为每张图写一段文字说明，作为一个「图」小块和正文一起存进检索库。</p>
+        <p>提问时检索到的是这段文字，回答模型读文字作答，所以回答模型本身不需要看图能力。目前聊天里也不能上传图片。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>1. 组件在哪里</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--ingest)"></i>入库时用</span>
+      <span><i class="sw" style="background:var(--ask)"></i>提问时用</span>
+      <span><i class="sw" style="background:var(--accent)"></i>两边都用</span>
+      <span><i class="sw" style="background:var(--cloud)"></i>云端（可选）</span>
+    </div>
+    <div class="fig" tabindex="0" aria-label="部署图，可横向滚动">
+      <svg viewBox="0 0 960 560" role="img" aria-labelledby="d1t">
+        <title id="d1t">部署图：浏览器连 Mac 上的 Web 和 API；Mac 上的 runner 和 worker 通过 HTTP 调用 GPU 机上的五个推理服务，并可选调用云端 API。</title>
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+          <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-c"/></marker>
+        </defs>
+
+        <!-- 浏览器 -->
+        <rect x="16" y="56" width="118" height="70" rx="10" class="n"/>
+        <text x="75" y="86" text-anchor="middle" class="t1">浏览器</text>
+        <text x="75" y="105" text-anchor="middle" class="t2">聊天 · 资料库</text>
+        <path d="M134 91 H186" class="edge" marker-end="url(#a)"/>
+
+        <!-- Mac -->
+        <rect x="170" y="16" width="370" height="528" rx="16" class="g-box"/>
+        <text x="190" y="40" class="g-title">MAC · DOCKER COMPOSE</text>
+
+        <rect x="190" y="58" width="160" height="66" rx="10" class="n"/>
+        <text x="270" y="86" text-anchor="middle" class="t1">Web</text>
+        <text x="270" y="105" text-anchor="middle" class="tm">Next.js · :3100</text>
+        <path d="M350 91 H366" class="edge" marker-end="url(#a)"/>
+        <rect x="368" y="58" width="152" height="66" rx="10" class="n"/>
+        <text x="444" y="86" text-anchor="middle" class="t1">API</text>
+        <text x="444" y="105" text-anchor="middle" class="tm">FastAPI · :8100</text>
+
+        <rect x="190" y="170" width="160" height="78" rx="10" class="n-ask"/>
+        <text x="270" y="200" text-anchor="middle" class="t1">回答 runner</text>
+        <text x="270" y="220" text-anchor="middle" class="t2">LangGraph Agent</text>
+        <text x="270" y="236" text-anchor="middle" class="t2">检索 · 写回答</text>
+        <rect x="368" y="170" width="152" height="78" rx="10" class="n-ingest"/>
+        <text x="444" y="200" text-anchor="middle" class="t1">入库 worker</text>
+        <text x="444" y="220" text-anchor="middle" class="t2">解析 · 切块</text>
+        <text x="444" y="236" text-anchor="middle" class="t2">图片说明 · 向量化</text>
+        <path d="M300 124 V166" class="edge" marker-end="url(#a)"/>
+        <path d="M444 124 V166" class="edge" marker-end="url(#a)"/>
+        <text x="306" y="150" class="elabel">提问</text>
+        <text x="450" y="150" class="elabel">上传</text>
+
+        <text x="190" y="290" class="g-title">数据</text>
+        <rect x="190" y="302" width="104" height="62" rx="10" class="n"/>
+        <text x="242" y="328" text-anchor="middle" class="t1">Postgres</text>
+        <text x="242" y="348" text-anchor="middle" class="t2">元数据 · 队列</text>
+        <rect x="303" y="302" width="104" height="62" rx="10" class="n"/>
+        <text x="355" y="328" text-anchor="middle" class="t1">Qdrant</text>
+        <text x="355" y="348" text-anchor="middle" class="t2">向量 + BM25</text>
+        <rect x="416" y="302" width="104" height="62" rx="10" class="n"/>
+        <text x="468" y="328" text-anchor="middle" class="t1">Redis</text>
+        <text x="468" y="348" text-anchor="middle" class="t2">流式事件</text>
+
+        <text x="190" y="400" class="t2">Postgres：文档、对话、提问和入库的任务队列</text>
+        <text x="190" y="420" class="t2">Qdrant：每个小块的向量和关键词（BM25）</text>
+        <text x="190" y="440" class="t2">Redis：回答过程的事件，经 SSE 实时推给浏览器</text>
+        <text x="190" y="478" class="t2">runner 和 worker 读写这三个库，</text>
+        <text x="190" y="498" class="t2">需要模型时通过 HTTP 调用右侧的服务。</text>
+
+        <!-- Mac → GPU / 云 -->
+        <path d="M520 209 H572" class="edge" marker-end="url(#a)"/>
+        <text x="524" y="200" class="elabel">HTTP</text>
+        <path d="M350 248 C 350 520, 450 480, 572 480" class="edge-cloud" marker-end="url(#ac)"/>
+
+        <!-- GPU -->
+        <rect x="580" y="16" width="364" height="400" rx="16" class="g-box"/>
+        <text x="600" y="40" class="g-title">GPU 机 · 10.32.1.30 · RTX 4090 24GB</text>
+
+        <rect x="600" y="56" width="324" height="58" rx="10" class="n-ingest"/>
+        <text x="616" y="80" class="t1">Docling</text><text x="910" y="80" text-anchor="end" class="tm">:5001</text>
+        <text x="616" y="100" class="t2">PDF 解析：版面、表格、抠图、OCR</text>
+
+        <rect x="600" y="124" width="324" height="58" rx="10" class="n-both"/>
+        <text x="616" y="148" class="t1">bge-m3</text><text x="910" y="148" text-anchor="end" class="tm">TEI :8081</text>
+        <text x="616" y="168" class="t2">向量化：入库时转小块，提问时转问题</text>
+
+        <rect x="600" y="192" width="324" height="58" rx="10" class="n-ask"/>
+        <text x="616" y="216" class="t1">ruri-v3 reranker</text><text x="910" y="216" text-anchor="end" class="tm">TEI :8084</text>
+        <text x="616" y="236" class="t2">重排序：把检索结果按相关度重新排</text>
+
+        <rect x="600" y="260" width="324" height="58" rx="10" class="n-both"/>
+        <text x="616" y="284" class="t1">Qwen3-8B</text><text x="910" y="284" text-anchor="end" class="tm">vLLM :8090</text>
+        <text x="616" y="304" class="t2">写回答 · 改写检索词 · 入库时补充上下文</text>
+
+        <rect x="600" y="328" width="324" height="58" rx="10" class="n-ingest"/>
+        <text x="616" y="352" class="t1">Qwen3-VL-8B</text><text x="910" y="352" text-anchor="end" class="tm">vLLM :8091</text>
+        <text x="616" y="372" class="t2">看图：为每张图写文字说明</text>
+
+        <!-- 云 -->
+        <rect x="580" y="440" width="364" height="104" rx="16" class="g-box"/>
+        <text x="600" y="464" class="g-title">云端 API · 可选</text>
+        <rect x="600" y="476" width="324" height="52" rx="10" class="n-cloud"/>
+        <text x="616" y="498" class="t1">DeepSeek 等</text>
+        <text x="616" y="517" class="t2">在管理页面登记 key 后出现在模型选择器</text>
+      </svg>
+    </div>
+    <p class="cap">虚线表示可选路径：只有在选择器里选了云端模型，回答才走这条线。</p>
+  </section>
+
+  <section>
+    <h2>2. 文档怎么入库</h2>
+    <div class="fig" tabindex="0" aria-label="入库流程图，可横向滚动">
+      <svg viewBox="0 0 960 300" role="img" aria-labelledby="d2t">
+        <title id="d2t">入库流程：上传、解析、切块、图片说明、补充上下文、向量化、写入 Qdrant。</title>
+        <defs>
+          <marker id="ai" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah-i"/></marker>
+        </defs>
+        <g>
+          <rect x="16" y="40" width="112" height="84" rx="10" class="n"/>
+          <text x="72" y="74" text-anchor="middle" class="t1">上传</text>
+          <text x="72" y="94" text-anchor="middle" class="t2">PDF · Office</text>
+          <text x="72" y="110" text-anchor="middle" class="t2">按内容去重</text>
+        </g>
+        <path d="M128 82 H146" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="148" y="40" width="112" height="84" rx="10" class="n-ingest"/>
+          <text x="204" y="74" text-anchor="middle" class="t1">解析</text>
+          <text x="204" y="94" text-anchor="middle" class="t2">正文 · 表格</text>
+          <text x="204" y="110" text-anchor="middle" class="t2">抠出图片</text>
+        </g>
+        <path d="M260 82 H278" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="280" y="40" width="112" height="84" rx="10" class="n"/>
+          <text x="336" y="74" text-anchor="middle" class="t1">切块</text>
+          <text x="336" y="94" text-anchor="middle" class="t2">父章节</text>
+          <text x="336" y="110" text-anchor="middle" class="t2">+ 子小块</text>
+        </g>
+        <path d="M392 82 H410" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="412" y="40" width="124" height="84" rx="10" class="n-ingest" stroke-width="2"/>
+          <text x="474" y="74" text-anchor="middle" class="t1">图片说明</text>
+          <text x="474" y="94" text-anchor="middle" class="t2">每张图一段文字</text>
+          <text x="474" y="110" text-anchor="middle" class="t2">存成「图」小块</text>
+        </g>
+        <path d="M536 82 H554" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="556" y="40" width="124" height="84" rx="10" class="n-ingest"/>
+          <text x="618" y="74" text-anchor="middle" class="t1">补充上下文</text>
+          <text x="618" y="94" text-anchor="middle" class="t2">给每个小块加</text>
+          <text x="618" y="110" text-anchor="middle" class="t2">一句所在背景</text>
+        </g>
+        <path d="M680 82 H698" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="700" y="40" width="112" height="84" rx="10" class="n-ingest"/>
+          <text x="756" y="74" text-anchor="middle" class="t1">向量化</text>
+          <text x="756" y="94" text-anchor="middle" class="t2">向量 + BM25</text>
+          <text x="756" y="110" text-anchor="middle" class="t2">关键词</text>
+        </g>
+        <path d="M812 82 H830" class="edge-ingest" marker-end="url(#ai)"/>
+        <g>
+          <rect x="832" y="40" width="112" height="84" rx="10" class="n"/>
+          <text x="888" y="74" text-anchor="middle" class="t1">写入</text>
+          <text x="888" y="94" text-anchor="middle" class="t2">Qdrant</text>
+          <text x="888" y="110" text-anchor="middle" class="t2">可被检索</text>
+        </g>
+
+        <!-- 模型 -->
+        <text x="16" y="168" class="g-title">用到的模型（都在 GPU 机）</text>
+        <path d="M204 124 V196" class="edge" stroke-dasharray="3 4"/>
+        <path d="M474 124 V196" class="edge" stroke-dasharray="3 4"/>
+        <path d="M618 124 V196" class="edge" stroke-dasharray="3 4"/>
+        <path d="M756 124 V196" class="edge" stroke-dasharray="3 4"/>
+        <rect x="148" y="198" width="112" height="40" rx="8" class="n"/>
+        <text x="204" y="223" text-anchor="middle" class="tm">Docling</text>
+        <rect x="412" y="198" width="124" height="40" rx="8" class="n"/>
+        <text x="474" y="223" text-anchor="middle" class="tm">Qwen3-VL-8B</text>
+        <rect x="556" y="198" width="124" height="40" rx="8" class="n"/>
+        <text x="618" y="223" text-anchor="middle" class="tm">Qwen3-8B</text>
+        <rect x="700" y="198" width="112" height="40" rx="8" class="n"/>
+        <text x="756" y="223" text-anchor="middle" class="tm">bge-m3</text>
+        <text x="16" y="276" class="t2">图片模型只出现在这里。说明写好后就是普通文字，之后提问检索的都是文字。</text>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. 提问怎么得到回答</h2>
+    <div class="fig" tabindex="0" aria-label="提问流程图，可横向滚动">
+      <svg viewBox="0 0 960 330" role="img" aria-labelledby="d3t">
+        <title id="d3t">提问流程：浏览器发问题和所选模型，API 建任务，runner 检索、重排序、写回答，过程经 Redis 和 SSE 实时推回浏览器。</title>
+        <defs>
+          <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah-a"/></marker>
+          <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+        </defs>
+        <rect x="16" y="40" width="128" height="92" rx="10" class="n-both" stroke-width="2"/>
+        <text x="80" y="72" text-anchor="middle" class="t1">提问</text>
+        <text x="80" y="92" text-anchor="middle" class="t2">问题</text>
+        <text x="80" y="110" text-anchor="middle" class="t2">+ 选中的模型</text>
+        <path d="M144 86 H170" class="edge-ask" marker-end="url(#aa)"/>
+
+        <rect x="172" y="40" width="112" height="92" rx="10" class="n"/>
+        <text x="228" y="72" text-anchor="middle" class="t1">API</text>
+        <text x="228" y="92" text-anchor="middle" class="t2">建一个任务</text>
+        <text x="228" y="110" text-anchor="middle" class="t2">放进队列</text>
+        <path d="M284 86 H310" class="edge-ask" marker-end="url(#aa)"/>
+
+        <rect x="312" y="24" width="632" height="124" rx="14" class="g-box"/>
+        <text x="330" y="46" class="g-title">回答 RUNNER · AGENT</text>
+        <rect x="330" y="58" width="138" height="76" rx="10" class="n-ask"/>
+        <text x="399" y="84" text-anchor="middle" class="t1">检索</text>
+        <text x="399" y="103" text-anchor="middle" class="t2">向量 + 关键词</text>
+        <text x="399" y="120" text-anchor="middle" class="t2">合并排名</text>
+        <path d="M468 96 H490" class="edge-ask" marker-end="url(#aa)"/>
+        <rect x="492" y="58" width="138" height="76" rx="10" class="n-ask"/>
+        <text x="561" y="84" text-anchor="middle" class="t1">重排序</text>
+        <text x="561" y="103" text-anchor="middle" class="t2">挑出最相关的</text>
+        <text x="561" y="120" text-anchor="middle" class="t2">几个小块</text>
+        <path d="M630 96 H652" class="edge-ask" marker-end="url(#aa)"/>
+        <rect x="654" y="58" width="138" height="76" rx="10" class="n-both" stroke-width="2"/>
+        <text x="723" y="84" text-anchor="middle" class="t1">写回答</text>
+        <text x="723" y="103" text-anchor="middle" class="t2">带引用编号</text>
+        <text x="723" y="120" text-anchor="middle" class="t2">校验引用</text>
+        <path d="M792 96 H814" class="edge-ask" marker-end="url(#aa)"/>
+        <rect x="816" y="58" width="112" height="76" rx="10" class="n"/>
+        <text x="872" y="84" text-anchor="middle" class="t1">推回浏览器</text>
+        <text x="872" y="103" text-anchor="middle" class="t2">Redis → SSE</text>
+        <text x="872" y="120" text-anchor="middle" class="t2">逐字显示</text>
+
+        <!-- 改写ループ -->
+        <path d="M561 134 C 561 170, 399 170, 399 138" class="edge" stroke-dasharray="4 4" marker-end="url(#ag)"/>
+        <text x="480" y="182" text-anchor="middle" class="elabel">结果不理想时：辅助模型改写检索词，再搜一次</text>
+
+        <!-- 模型 -->
+        <text x="330" y="222" class="g-title">用到的模型</text>
+        <path d="M399 134 V236" class="edge" stroke-dasharray="3 4" opacity="0.6"/>
+        <path d="M561 190 V236" class="edge" stroke-dasharray="3 4" opacity="0.6"/>
+        <path d="M723 134 V236" class="edge" stroke-dasharray="3 4" opacity="0.6"/>
+        <rect x="330" y="238" width="138" height="40" rx="8" class="n"/>
+        <text x="399" y="263" text-anchor="middle" class="tm">bge-m3</text>
+        <rect x="492" y="238" width="138" height="40" rx="8" class="n"/>
+        <text x="561" y="263" text-anchor="middle" class="tm">ruri reranker</text>
+        <rect x="654" y="238" width="138" height="40" rx="8" class="n-both"/>
+        <text x="723" y="257" text-anchor="middle" class="tm">选择器里的模型</text>
+        <text x="723" y="272" text-anchor="middle" class="t2">Qwen3-8B / DeepSeek</text>
+        <text x="16" y="310" class="t2">橙色框是唯一随 UI 选择器切换的部分；检索、重排序、改写检索词由启动配置决定。图片模型不在这条路径上。</text>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>每个模型：做什么、在哪里、怎么切换</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>用途</th><th>现在用的</th><th>在哪里</th><th>什么时候用</th><th>怎么切换</th></tr></thead>
+        <tbody>
+          <tr><td>写回答</td><td>Qwen3-8B（默认）· DeepSeek</td><td>GPU 机 :8090 · 云端</td><td>每次提问</td><td><span class="pill p-ui">UI 选择器，每次可换</span></td></tr>
+          <tr><td>改写检索词 · 长对话摘要</td><td>Qwen3-8B</td><td>GPU 机 :8090</td><td>检索不理想时 · 对话很长时</td><td><span class="pill p-env">.env</span> <code>ARAG_UTILITY_MODEL</code></td></tr>
+          <tr><td>向量化</td><td>bge-m3</td><td>GPU 机 :8081</td><td>入库 · 每次提问</td><td><span class="pill p-env">.env</span> 换了要全部重新入库</td></tr>
+          <tr><td>重排序</td><td>ruri-v3-reranker</td><td>GPU 机 :8084</td><td>每次提问</td><td><span class="pill p-env">.env</span> <code>ARAG_RERANK_*</code></td></tr>
+          <tr><td>PDF 解析</td><td>Docling</td><td>GPU 机 :5001</td><td>入库</td><td><span class="pill p-env">.env</span> <code>ARAG_DOCLING_URL</code></td></tr>
+          <tr><td>补充上下文</td><td>Qwen3-8B</td><td>GPU 机 :8090</td><td>入库</td><td><span class="pill p-env">.env</span> <code>ARAG_CONTEXT_MODEL</code></td></tr>
+          <tr><td>图片说明</td><td>Qwen3-VL-8B</td><td>GPU 机 :8091</td><td>只在入库</td><td><span class="pill p-env">.env</span> <code>ARAG_VLM_MODEL</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap">标 .env 的项改完后重启 <code>api</code>、<code>worker</code>、<code>runner</code> 容器生效。</p>
+  </section>
+</div>
