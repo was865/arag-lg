@@ -64,4 +64,44 @@ describe("proxy", () => {
     expect(res.status).toBe(502);
     expect((await res.json()).error.code).toBe("upstream_unavailable");
   });
+
+  it("authorize の見出しを付けて送り、利用者ヘッダは付けない", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}"));
+    await proxy(new Request("http://web/api/v1/kbs"), ["kbs"], {
+      baseUrl: "http://api:8000",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      authorize: async () => new Headers({ authorization: "Bearer t" }),
+    });
+    const h = new Headers((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].headers);
+    expect(h.get("authorization")).toBe("Bearer t");
+    expect(h.get("x-dev-user-id")).toBeNull();
+  });
+
+  it("authorize が応答を返したら上流を呼ばずにそれを返す（未ログインの 401）", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}"));
+    const res = await proxy(new Request("http://web/api/v1/kbs"), ["kbs"], {
+      baseUrl: "http://api:8000",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      authorize: async () => Response.json({ error: { code: "unauthenticated" } }, { status: 401 }),
+    });
+    expect(res.status).toBe(401);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("状態を変える要求は Origin が許可外なら 403（GET と Origin 無しは通す）", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}"));
+    const o = { ...opts(fetchImpl as unknown as typeof fetch), allowedOrigins: ["http://localhost:3100"] };
+    const post = (origin?: string) =>
+      new Request("http://web/api/v1/runs", {
+        method: "POST",
+        body: "{}",
+        headers: origin ? { origin } : {},
+      });
+    expect((await proxy(post("http://evil.example"), ["runs"], o)).status).toBe(403);
+    expect((await proxy(post("http://localhost:3100"), ["runs"], o)).status).toBe(200);
+    expect((await proxy(post(), ["runs"], o)).status).toBe(200);
+    const get = new Request("http://web/api/v1/kbs", { headers: { origin: "http://evil.example" } });
+    expect((await proxy(get, ["kbs"], o)).status).toBe(200);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
 });

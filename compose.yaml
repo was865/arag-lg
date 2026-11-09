@@ -53,7 +53,10 @@ services:
       ARAG_RERANK_MODEL: ${ARAG_RERANK_MODEL:-cl-nagoya/ruri-v3-reranker-310m}
       ARAG_RERANK_MAX_CHARS: ${ARAG_RERANK_MAX_CHARS:-0}
       ARAG_DOCLING_URL: ${ARAG_DOCLING_URL:-}
-      ARAG_AUTH_MODE: ${ARAG_AUTH_MODE:-dev}
+      # 認証（specs/006-auth）: 既定は Better Auth の JWT。評価（arag.eval）で API を直接叩くときだけ dev にする
+      ARAG_AUTH_MODE: ${ARAG_AUTH_MODE:-jwt}
+      ARAG_AUTH_JWKS_URL: http://web:3000/api/auth/jwks
+      ARAG_AUTH_ISSUER: ${BETTER_AUTH_URL:-http://localhost:3100}
       ARAG_INGEST_CONCURRENCY: ${ARAG_INGEST_CONCURRENCY:-2}
       ARAG_CONTEXT_MODEL: ${ARAG_CONTEXT_MODEL:-}
       ARAG_CONTEXT_BASE_URL: ${ARAG_CONTEXT_BASE_URL:-}
@@ -102,9 +105,23 @@ services:
     build: ./web
     environment:
       API_BASE_URL: http://api:8000
+      # Better Auth（specs/006-auth）。BETTER_AUTH_URL はブラウザから見た URL
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3100}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?.env に BETTER_AUTH_SECRET を設定してください}
+      ARAG_AUTH_DATABASE_URL: postgresql://arag:arag@postgres:5432/arag
+      ARAG_SMTP_URL: ${ARAG_SMTP_URL:-smtp://mailpit:1025}
+      ARAG_MAIL_FROM: ${ARAG_MAIL_FROM:-ARag <no-reply@arag.local>}
+      # 認証なしで動かす開発構成にするときだけ設定する（例 dev）
+      ARAG_DEV_USER_ID: ${ARAG_DEV_USER_ID:-}
     ports: ["${WEB_PORT:-3100}:3000"]
     depends_on:
+      postgres: { condition: service_healthy }
       api: { condition: service_healthy }
+
+  # 開発用のメール受信箱（確認・再設定メールをここで見る）。UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    ports: ["${MAILPIT_UI_PORT:-8025}:8025", "${MAILPIT_SMTP_PORT:-1025}:1025"]
 
   tei-embed:
     profiles: ["cpu"]

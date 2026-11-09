@@ -19,8 +19,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # --- P1 入庫（specs/003-ingestion/design.md §6）---
-    # dev: X-Dev-User-Id / X-Dev-Role ヘッダで利用者を指定（P4 で jwt を追加）
+    # dev: X-Dev-User-Id / X-Dev-Role ヘッダで利用者を指定（開発・評価用）
+    # jwt: Better Auth の JWT を JWKS で検証する（specs/006-auth）
     auth_mode: Literal["dev", "jwt"] = "dev"
+    auth_jwks_url: str = "http://localhost:3100/api/auth/jwks"
+    auth_issuer: str = "http://localhost:3100"
+    auth_audience: str = "arag-api"
     storage_dir: str = "./.data/storage"
     docling_url: str = ""
     docling_page_window: int = 20

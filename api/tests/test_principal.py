@@ -48,6 +48,20 @@ def test_invalid_role_is_401() -> None:
     assert res.status_code == 401
 
 
+def test_dev_email_verified_header() -> None:
+    app = _client("dev").app
+    c = TestClient(app)
+
+    @app.get("/verified")
+    async def verified(p: CurrentPrincipal) -> dict[str, object]:
+        return {"v": p.email_verified}
+
+    assert c.get("/verified", headers={"X-Dev-User-Id": "u"}).json() == {"v": True}
+    assert c.get("/verified", headers={"X-Dev-User-Id": "u", "X-Dev-Email-Verified": "false"}).json() == {
+        "v": False
+    }
+
+
 def test_dev_headers_ignored_outside_dev_mode() -> None:
     res = _client("jwt").get("/me", headers={"X-Dev-User-Id": "u1", "X-Dev-Role": "admin"})
     assert res.status_code == 401

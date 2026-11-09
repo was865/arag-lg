@@ -14,7 +14,8 @@
 | sqlalchemy / alembic | Python | 2.1.8 / 1.20.1 | MIT | 2026-11-08 | https://pypi.org/project/SQLAlchemy/ |
 | uvicorn / sse-starlette | Python | 0.54.0 / 3.7.0 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/uvicorn/ |
 | redis-py | Python | 8.1.0 | MIT | 2026-11-08 | https://pypi.org/project/redis/ |
-| PyJWT | Python | 2.15.1 | MIT | 2026-11-08 | https://pypi.org/project/PyJWT/ |
+| PyJWT（crypto） | Python | 2.15.1 | MIT | 2026-11-09 | https://pypi.org/project/PyJWT/ |
+| cryptography | Python | 50.0.2 | Apache-2.0 / BSD-3-Clause | 2026-11-09 | https://pypi.org/project/cryptography/ |
 | opentelemetry-sdk | Python | 1.45.2 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/opentelemetry-sdk/ |
 | langfuse（SDK、任意） | Python | 5.2.0 | MIT | 2026-11-08 | https://pypi.org/project/langfuse/ |
 | psycopg / psycopg-binary（LGPL：改変なし・ライブラリ利用のみ。decisions.md §12 で許可） | Python | 3.3.8 | LGPL-3.0-only | 2026-11-08 | https://pypi.org/project/psycopg/ |
@@ -25,7 +26,7 @@
 | ruff / mypy / pytest / pytest-asyncio（開発のみ） | Python | 0.17.4 / 2.4.1 / 9.2.0 / 1.4.1 | MIT / MIT / MIT / Apache-2.0 | 2026-11-08 | https://pypi.org/project/ruff/ |
 | server-only | npm | 0.0.1 | MIT | 2026-11-08 | https://www.npmjs.com/package/server-only |
 | caniuse-lite（Next の推移的依存・データ） | npm | — | CC-BY-4.0 | 2026-11-08 | https://www.npmjs.com/package/caniuse-lite |
-| Mailpit（開発用メール受信、P4 で導入予定） | コンテナ | latest | MIT | 2026-11-08 | https://github.com/axllent/mailpit |
+| Mailpit（開発用メール受信） | コンテナ | v1.33.1 | MIT | 2026-11-09 | https://github.com/axllent/mailpit |
 | docling-core[chunking] | Python | 2.106.0 | MIT | 2026-11-08 | https://pypi.org/project/docling-core/ |
 | transformers / tokenizers / huggingface-hub（docling-core[chunking] 経由。トークナイザのみ使用） | Python | 5.22.2 / 0.23.3 / — | Apache-2.0 | 2026-11-08 | https://pypi.org/project/transformers/ |
 | pypdf | Python | 7.0.0 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/pypdf/ |
@@ -47,6 +48,8 @@
 | next / react | npm | 16.4.5 / 19.3.1 | MIT | 2026-11-08 | https://github.com/vercel/next.js |
 | tailwindcss | npm | 4.3.5 | MIT | 2026-11-08 | https://www.npmjs.com/package/tailwindcss |
 | better-auth | npm | 1.7.18 | MIT | 2026-11-08 | https://github.com/better-auth/better-auth |
+| pg | npm | 8.23.1 | MIT | 2026-11-09 | https://www.npmjs.com/package/pg |
+| nodemailer | npm | 10.4.0 | MIT-0 | 2026-11-09 | https://www.npmjs.com/package/nodemailer |
 | zod | npm | 4.6.7 | MIT | 2026-11-08 | https://www.npmjs.com/package/zod |
 | openapi-typescript / openapi-fetch | npm | 7.13.0 / 0.17.0 | MIT | 2026-11-08 | https://www.npmjs.com/package/openapi-typescript |
 | storybook / vitest | npm | 10.6.6 / 5.1.0 | MIT | 2026-11-08 | https://www.npmjs.com/package/storybook |

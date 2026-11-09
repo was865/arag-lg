@@ -530,7 +530,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenMenu }:
           <div className="grid h-40 place-items-center">
             <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
           </div>
-        ) : listEmpty && browsing && !folderId ? (
+        ) : listEmpty && !search && filter === "all" && !folderId ? (
           <EmptyLibrary canUpload={Boolean(target)} onPick={() => fileRef.current?.click()} />
         ) : (
           <div className="mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2">

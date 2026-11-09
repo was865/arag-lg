@@ -4,7 +4,9 @@ import "server-only";
  *
  * - SSE・原本の Range 応答はバッファせず body をそのまま流す。
  * - ブラウザの切断（request.signal）を上流へ伝え、SSE の読み出しを止める。
- * - P3 は開発用の利用者ヘッダを付ける。P4 で Better Auth のセッションから JWT に置き換える。
+ * - 利用者は authorize（Better Auth のセッション → JWT、specs/006-auth R13）で渡す。
+ *   開発・評価用に ARAG_DEV_USER_ID を明示したときだけ、代わりに利用者ヘッダを付ける（R17）。
+ * - 状態を変える要求は Origin を確かめる（CSRF、R14）。
  */
 
 const REQUEST_HEADERS = ["content-type", "accept", "last-event-id", "range", "if-none-match"];
@@ -23,18 +25,16 @@ const RESPONSE_HEADERS = [
 
 export interface ProxyOptions {
   baseUrl: string;
+  /** 上流へ付ける認証の見出し。応答を返したら上流を呼ばずにそれを返す（未ログインなど）。 */
+  authorize?: (request: Request) => Promise<Headers | Response>;
   devUserId?: string;
   devRole?: string;
+  /** GET・HEAD 以外で受け付ける Origin。未指定なら検査しない。 */
+  allowedOrigins?: string[];
   fetchImpl?: typeof fetch;
 }
 
-export function proxyOptionsFromEnv(): ProxyOptions {
-  return {
-    baseUrl: process.env.API_BASE_URL ?? "http://localhost:8100",
-    devUserId: process.env.ARAG_DEV_USER_ID ?? "dev",
-    devRole: process.env.ARAG_DEV_ROLE ?? "admin",
-  };
-}
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function upstreamUrl(baseUrl: string, path: string[], search: string): string {
   const safe = path.map((p) => encodeURIComponent(p)).join("/");
@@ -42,14 +42,24 @@ export function upstreamUrl(baseUrl: string, path: string[], search: string): st
 }
 
 export async function proxy(request: Request, path: string[], opts: ProxyOptions): Promise<Response> {
+  const origin = request.headers.get("origin");
+  if (!SAFE_METHODS.has(request.method) && origin && opts.allowedOrigins && !opts.allowedOrigins.includes(origin)) {
+    return Response.json({ error: { code: "forbidden_origin", message: "許可されていない送信元です" } }, { status: 403 });
+  }
   const url = upstreamUrl(opts.baseUrl, path, new URL(request.url).search);
   const headers = new Headers();
   for (const h of REQUEST_HEADERS) {
     const v = request.headers.get(h);
     if (v) headers.set(h, v);
   }
-  if (opts.devUserId) headers.set("x-dev-user-id", opts.devUserId);
-  if (opts.devRole) headers.set("x-dev-role", opts.devRole);
+  if (opts.authorize) {
+    const auth = await opts.authorize(request);
+    if (auth instanceof Response) return auth;
+    auth.forEach((v, k) => headers.set(k, v));
+  } else if (opts.devUserId) {
+    headers.set("x-dev-user-id", opts.devUserId);
+    if (opts.devRole) headers.set("x-dev-role", opts.devRole);
+  }
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const init: RequestInit & { duplex?: "half" } = {

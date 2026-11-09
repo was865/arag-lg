@@ -6,12 +6,17 @@
  *   （生成中の run の購読を保つため）。再読み込みすると active-run から続きを表示する。
  * - 文書の管理画面・設定・認証は P4 で移植する。
  */
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { LibraryView } from "@/components/library/library-view";
 import { TrashView } from "@/components/library/trash-view";
 import { parseRoute, routePath, type Route } from "@/lib/routes";
+import { AccountModal } from "@/components/auth/account-modal";
+import { UnverifiedBanner } from "@/components/auth/unverified-banner";
+import { authClient } from "@/lib/auth/client";
+import { toAppUser } from "@/lib/auth/user";
 import { ThemeToggle } from "@/components/sidebar/theme-toggle";
 import { Composer } from "@/components/chat/composer";
 import { EmptyState } from "@/components/chat/empty-state";
@@ -35,7 +40,7 @@ import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspac
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 
-// P3 は開発用の利用者（中継が X-Dev-User-Id を付ける）。P4 で Better Auth のセッションに置き換える
+// 認証を使わない開発構成（ARAG_DEV_USER_ID）のときの表示用の利用者
 const DEV_USER: AppUser = {
   name: "開発ユーザー",
   firstName: "開発ユーザー",
@@ -59,6 +64,25 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { tweaks, setTweak } = useTweaks();
   const { kbs } = useKbs();
+  const { data: session } = authClient.useSession();
+  const sessionUser = session?.user;
+  const user = useMemo(() => (sessionUser ? toAppUser(sessionUser) : DEV_USER), [sessionUser]);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const router = useRouter();
+
+  // メール確認リンクから戻ってきたとき（?verified=1 / ?error=...）に知らせて、URL から消す
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (!q.has("verified") && !q.has("error")) return;
+    if (q.has("error")) push("確認リンクが無効か、期限が切れています。確認メールを再送してください", "error");
+    else push("メールアドレスを確認しました。質問と文書の追加ができます", "success");
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [push]);
+
+  const signOut = async () => {
+    await authClient.signOut();
+    router.replace("/login");
+  };
   const [panelWidth, handleResizeWidth] = usePanelWidth();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isWide = useMediaQuery("(min-width: 1181px)");
@@ -469,7 +493,9 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             onToggleStar={toggleStar}
             dataSourceCount={stats?.totalDocumentCount ?? 0}
             dark={tweaks.dark}
-            user={DEV_USER}
+            user={user}
+            onSignOut={sessionUser ? () => void signOut() : undefined}
+            onOpenSettings={sessionUser ? () => setAccountOpen(true) : undefined}
           />
         }
         rightPanel={
@@ -493,6 +519,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           ) : null
         }
       >
+        <div className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        {sessionUser && !sessionUser.emailVerified ? <UnverifiedBanner email={sessionUser.email} /> : <div />}
         {page.view === "library" ? (
           <LibraryView
             kbId={page.kbId}
@@ -561,7 +589,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                     <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
                   </div>
                 ) : (
-                  <EmptyState user={DEV_USER} stats={stats} onFillComposer={(v) => setComposerValue(v)} />
+                  <EmptyState user={user} stats={stats} onFillComposer={(v) => setComposerValue(v)} />
                 )
               ) : (
                 <div
@@ -633,8 +661,10 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           </div>
         </main>
         )}
+        </div>
       </AppShell>
       {confirmDialog}
+      {accountOpen && <AccountModal onClose={() => setAccountOpen(false)} />}
     </>
   );
 }

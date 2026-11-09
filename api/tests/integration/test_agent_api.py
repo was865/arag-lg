@@ -199,6 +199,11 @@ async def test_branch_from_message_reuses_ordinal_and_checkpoint(
     assert r.status_code == 404
 
 
+async def test_unverified_user_cannot_start_run(api: httpx.AsyncClient) -> None:
+    r = await api.post("/v1/runs", json={"query": "q"}, headers=ALICE | {"X-Dev-Email-Verified": "false"})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "email_not_verified"
+
+
 async def test_validation_and_unavailable_model(api: httpx.AsyncClient) -> None:
     assert (await api.post("/v1/runs", json={"query": "   "}, headers=ALICE)).status_code == 422
     assert (await api.post("/v1/runs", json={"query": "あ" * 4001}, headers=ALICE)).status_code == 422

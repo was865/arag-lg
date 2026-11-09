@@ -1,4 +1,5 @@
-import { proxy, proxyOptionsFromEnv } from "@/lib/api/proxy";
+import { proxy } from "@/lib/api/proxy";
+import { proxyOptionsFromEnv } from "@/lib/api/proxy-env";
 
 // request を読むので cacheComponents の下でも常にリクエスト時に実行される
 

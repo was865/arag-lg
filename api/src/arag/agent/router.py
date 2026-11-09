@@ -277,6 +277,8 @@ async def _check_limits(request: Request, s: AsyncSession, p: Principal) -> None
 async def _start(
     request: Request, s: AsyncSession, p: Principal, thread: Thread | None, body: RunRequest
 ) -> RunCreated:
+    if not p.email_verified:
+        raise ApiError(403, "email_not_verified", "メールアドレスの確認が必要です")
     try:
         model = _catalog(request).resolve(body.model_id)
     except ModelNotFound as e:
