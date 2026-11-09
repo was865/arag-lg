@@ -255,7 +255,7 @@ function MemberMenu({
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [open]);
-  const item = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] hover:bg-divider";
+  const item = "flex w-full items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 text-left text-[12.5px] hover:bg-divider";
   return (
     <span className="relative justify-self-end">
       <button
@@ -273,11 +273,11 @@ function MemberMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-8 z-20 w-[220px] animate-pop-in rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
+          className="absolute right-0 top-8 z-20 w-max min-w-[160px] animate-pop-in rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
         >
           {canResend && (
             <button role="menuitem" className={cn(item, "text-fg")} onClick={onResend}>
-              <Icon name="send" size={13} />
+              <Icon name="mail" size={13} />
               パスワード設定のリンクを送る
             </button>
           )}
