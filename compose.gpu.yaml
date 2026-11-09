@@ -84,17 +84,22 @@ services:
   #   docker compose -f compose.gpu.yaml --profile vlm up -d
   # Mac 側の .env: ARAG_VLM_MODEL=openai:qwen2.5-vl / ARAG_VLM_BASE_URL=http://<GPU機>:8091/v1
   # 24GB に TEI・vllm（llm）・docling と同居させるので KV を小さく固定する。足りなければ llm と時間を分けて起動する。
-  # Qwen3-VL-8B-Instruct-FP8（Apache-2.0）に替える場合は VLM_HF_MODEL で指定する。
+  # Qwen3-VL-8B-Instruct-FP8（Apache-2.0）に替えて会話も兼ねさせる比較:
+  #   VLM_HF_MODEL=Qwen/Qwen3-VL-8B-Instruct-FP8 VLM_SERVED_NAME=qwen3-vl VLM_MAX_LEN=16384 \
+  #     docker compose -f compose.gpu.yaml --profile vlm up -d vllm-vl
   vllm-vl:
     <<: *gpu
     profiles: [vlm]
     image: vllm/vllm-openai:v0.32.0
     command:
       - "--model=${VLM_HF_MODEL:-Qwen/Qwen2.5-VL-7B-Instruct-AWQ}"
-      - "--served-model-name=qwen2.5-vl"
-      - "--max-model-len=8192"
+      - "--served-model-name=${VLM_SERVED_NAME:-qwen2.5-vl}"
+      - "--max-model-len=${VLM_MAX_LEN:-8192}"
       - "--kv-cache-memory-bytes=${VLM_KV_BYTES:-1500M}"
       - "--limit-mm-per-prompt={\"image\": 1}"
+      # 1 つのモデルで会話も兼ねる場合（Qwen3-VL の比較。specs/016 の gpu-report）に備えてツール呼び出しを有効にする
+      - "--enable-auto-tool-choice"
+      - "--tool-call-parser=hermes"
     ports: ["8091:8000"]
     ipc: host
     volumes: [hf-cache:/root/.cache/huggingface]
