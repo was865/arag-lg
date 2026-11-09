@@ -61,7 +61,9 @@ services:
 
   # 文脈付与の LLM（開発・評価用、specs/004-retrieval report §5）。profile で別起動:
   #   docker compose -f compose.gpu.yaml --profile llm up -d
-  # WSL2 では --gpu-memory-utilization が KV を負に見積もるので KV の量を直接指定する
+  # WSL2 では --gpu-memory-utilization が KV を負に見積もるので KV の量を直接指定する。
+  # ただし起動時の空き容量チェックは --gpu-memory-utilization（既定 0.92）で行われ、他と同居すると必ず失敗するので低くしておく
+  # （実際の確保量には効かない。specs/016 vlm-compare.md）
   vllm:
     <<: *gpu
     profiles: [llm]
@@ -71,6 +73,7 @@ services:
       - "--served-model-name=qwen3-8b"
       - "--max-model-len=16384"
       - "--kv-cache-memory-bytes=2600M"
+      - "--gpu-memory-utilization=${LLM_GPU_UTIL:-0.3}"
       - "--enable-prefix-caching"
       # エージェントのツール呼び出し（specs/005-agent）
       - "--enable-auto-tool-choice"
@@ -82,22 +85,23 @@ services:
 
   # 図の説明（specs/016 R3）。入庫のときだけ必要なので profile で別起動する:
   #   docker compose -f compose.gpu.yaml --profile vlm up -d
-  # Mac 側の .env: ARAG_VLM_MODEL=openai:qwen2.5-vl / ARAG_VLM_BASE_URL=http://<GPU機>:8091/v1
-  # 24GB に TEI・vllm（llm）・docling と同居させるので KV を小さく固定する。足りなければ llm と時間を分けて起動する。
-  # Qwen3-VL-8B-Instruct-FP8（Apache-2.0）に替えて会話も兼ねさせる比較:
-  #   VLM_HF_MODEL=Qwen/Qwen3-VL-8B-Instruct-FP8 VLM_SERVED_NAME=qwen3-vl VLM_MAX_LEN=16384 \
-  #     docker compose -f compose.gpu.yaml --profile vlm up -d vllm-vl
+  # 既定は Qwen3-VL-8B-Instruct-FP8（Apache-2.0）。Qwen2.5-VL-7B-AWQ より図の説明が詳しく速い（specs/016 vlm-compare.md）。
+  # Mac 側の .env: ARAG_VLM_MODEL=openai:qwen3-vl / ARAG_VLM_BASE_URL=http://<GPU機>:8091/v1
+  # 24GB に TEI・vllm（llm）・docling と同居させるので文脈 8192・KV 1500M に固定する（16384 は KV 不足で起動しない）。
+  # 24GB を超えても OOM にならず WDDM が他のメモリを追い出して静かに遅くなるので、KV は必要最小にする。
+  # Qwen3-VL だけで会話も兼ねる構成（vllm を止める）: VLM_MAX_LEN=32768 VLM_KV_BYTES=4700M
   vllm-vl:
     <<: *gpu
     profiles: [vlm]
     image: vllm/vllm-openai:v0.32.0
     command:
-      - "--model=${VLM_HF_MODEL:-Qwen/Qwen2.5-VL-7B-Instruct-AWQ}"
-      - "--served-model-name=${VLM_SERVED_NAME:-qwen2.5-vl}"
+      - "--model=${VLM_HF_MODEL:-Qwen/Qwen3-VL-8B-Instruct-FP8}"
+      - "--served-model-name=${VLM_SERVED_NAME:-qwen3-vl}"
       - "--max-model-len=${VLM_MAX_LEN:-8192}"
       - "--kv-cache-memory-bytes=${VLM_KV_BYTES:-1500M}"
+      - "--gpu-memory-utilization=${VLM_GPU_UTIL:-0.3}"
       - "--limit-mm-per-prompt={\"image\": 1}"
-      # 1 つのモデルで会話も兼ねる場合（Qwen3-VL の比較。specs/016 の gpu-report）に備えてツール呼び出しを有効にする
+      # 1 つのモデルで会話も兼ねる構成に備えてツール呼び出しを有効にする
       - "--enable-auto-tool-choice"
       - "--tool-call-parser=hermes"
     ports: ["8091:8000"]
