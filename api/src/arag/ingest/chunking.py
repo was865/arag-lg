@@ -23,12 +23,14 @@ from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
 from docling_core.types.doc.common.content_layer import ContentLayer
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.items.table.table import TableItem
+from docling_core.types.doc.items.table.table_data import TableCell
 from docling_core.types.doc.items.text import SectionHeaderItem, TextItem
 from docling_core.types.doc.labels import DocItemLabel
 
 # v2: ページをまたぐ表の続きを結合
 # v3: 1 か所にしか出ないページヘッダを本文に戻す・続けて並ぶ同じ深さの見出しを 1 段ずつ入れ子にする
-CHUNKER_VERSION = "hybrid-md-v3"
+# v4: Excel の合計行など、表の下で 1 セルずつに分かれた断片を表の行に戻す
+CHUNKER_VERSION = "hybrid-md-v4"
 HEADING_SEP = " > "
 
 BlockType = Literal["text", "table", "figure", "code", "formula", "list"]
@@ -121,7 +123,7 @@ def merge_continued_tables(doc: DoclingDocument) -> DoclingDocument:
             continue  # キャプションは表の直後に並ぶので隣接判定から外す
         if isinstance(item, TableItem) and prev is not None and _continues(prev, item):
             for row in item.data.grid:
-                prev.data.add_row([c.text for c in row])
+                _append_row(prev, [c.text for c in row])
             prev.prov.extend(item.prov)
             absorbed.append(item)
             continue
@@ -131,12 +133,86 @@ def merge_continued_tables(doc: DoclingDocument) -> DoclingDocument:
     return out
 
 
+def _append_row(table: TableItem, texts: list[str]) -> None:
+    """表の最後に 1 行足す。
+
+    TableData.add_row は table_cells が「1 セル 1 要素の行優先の並び」だと仮定して行番号を振り直すため、
+    結合セル（1 つの TableCell が複数行にまたがる）がある表では行が崩れる。ここでは既存のセルに触れない。
+    """
+    data = table.data
+    r = data.num_rows
+    data.table_cells.extend(
+        TableCell(
+            text=t,
+            start_row_offset_idx=r,
+            end_row_offset_idx=r + 1,
+            start_col_offset_idx=j,
+            end_col_offset_idx=j + 1,
+        )
+        for j, t in enumerate(texts)
+    )
+    data.num_rows = r + 1
+
+
 def _continues(a: TableItem, b: TableItem) -> bool:
     if not a.prov or not b.prov or b.captions:
         return False
     if b.prov[0].page_no != a.prov[-1].page_no + 1 or a.data.num_cols != b.data.num_cols:
         return False
     return not any(c.column_header for c in b.data.table_cells)
+
+
+def merge_sheet_fragments(doc: DoclingDocument) -> DoclingDocument:
+    """Excel のシートで、表の下に分かれた断片を表の行に戻した複製を返す（元の文書は変えない）。
+
+    docling は空のセルを挟んだ行（「合計 | | | | 600」など）を、値のあるセルごとの小さな表に分ける。
+    すると値が列から離れ、「合計」と「600」だけが並ぶ。表の bbox はセル番地（l/r が列、t/b が行）なので、
+    同じシートで、表の下 1 行以内（空行 1 つまで）に始まり、列が表の範囲に収まる、表より列の少ない表を
+    1 行だけの表を断片とみなし、行・列の位置を保って表の行として足す。
+    値が 1 つだけの行（表の下の注記など）は足さない。
+    """
+    out = doc.model_copy(deep=True)
+    absorbed: list[TableItem] = []
+    by_page: dict[int, list[TableItem]] = defaultdict(list)
+    for t in out.tables:
+        if len(t.prov) == 1:
+            by_page[t.prov[0].page_no].append(t)
+    for tables in by_page.values():
+        tables.sort(key=lambda t: (t.prov[0].bbox.t, t.prov[0].bbox.l))
+        for host in tables:
+            if host in absorbed:
+                continue
+            hb = host.prov[0].bbox
+            l0, r0, bottom = int(hb.l), int(hb.r), int(hb.b)
+            rows: dict[int, list[str]] = {}
+            parts: dict[int, list[TableItem]] = defaultdict(list)
+            for frag in tables:
+                fb = frag.prov[0].bbox
+                last = max([bottom - 1, *rows])
+                if (
+                    frag is host
+                    or frag in absorbed
+                    or frag.captions
+                    or frag.data.num_rows != 1  # 複数行の表は別の表として残す
+                    or frag.data.num_cols >= host.data.num_cols
+                    or not (bottom <= fb.t <= last + 2)  # 空行 1 つまで
+                    or fb.l < l0
+                    or fb.r > r0
+                ):
+                    continue
+                row = rows.setdefault(int(fb.t), [""] * host.data.num_cols)
+                for j, cell in enumerate(frag.data.grid[0]):
+                    row[int(fb.l) - l0 + j] = cell.text
+                parts[int(fb.t)].append(frag)
+            for r, row in sorted(rows.items()):
+                # 値が 1 つだけの行（表の下の注記など）は入れない。「合計」と値のように 2 つ以上の行だけ戻す
+                if sum(1 for v in row if v) < 2:
+                    continue
+                _append_row(host, row)
+                absorbed.extend(parts[r])
+    if absorbed:
+        out.delete_items(node_items=list(absorbed))
+    return out
 
 
 # ページ番号だけのヘッダ（「1 / 2」「- 3 -」「Page 4」「5 ページ」など）
@@ -224,6 +300,8 @@ def chunk_document(
     doc = nest_stacked_headings(keep_unique_page_headers(doc))
     if page_unit == "page":
         doc = merge_continued_tables(doc)
+    elif page_unit == "sheet":
+        doc = merge_sheet_fragments(doc)
     # スライド・シートは 1 枚ずつ分けて切る（merge_peers が枚をまたいで結合しないように）
     docs = (
         [doc.filter(page_nrs={p}) for p in sorted(doc.pages)] if page_unit != "page" and doc.pages else [doc]

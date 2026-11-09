@@ -101,3 +101,34 @@ def cross_page_table_doc(cols_b: int = 3, caption_b: bool = False) -> DoclingDoc
         tb.captions.append(doc.add_text(DocItemLabel.CAPTION, "表2: 別の表", prov=prov(2)).get_ref())
     doc.add_text(DocItemLabel.TEXT, "MX-17 は即時停止を推奨する。", prov=prov(2))
     return doc
+
+
+def _cell_prov(page: int, left: int, top: int, right: int, bottom: int) -> ProvenanceItem:
+    """Excel の表の位置（docling はセル番地を bbox に入れる: l/r が列、t/b が行）。"""
+    return ProvenanceItem(page_no=page, bbox=BoundingBox(l=left, t=top, r=right, b=bottom), charspan=(0, 0))
+
+
+def sheet_with_total_row_doc() -> DoclingDocument:
+    """空行を挟んだ合計行が、docling で 1 セルずつの表に分かれたシート（harukaze_mix x02）。"""
+    doc = DoclingDocument(name="保守記録")
+    for p in (1, 2):
+        doc.add_page(page_no=p, size=Size(width=600, height=800))
+    main, _ = table(
+        [["日付", "設備ID", "停止時間（分）"], ["09-02", "PM-04", "30"], ["09-05", "PM-04", "120"]], 1
+    )
+    # 設備ID の 2 行を結合したセル（docling は結合セルを 1 つの TableCell にする）
+    main.table_cells = [
+        c for c in main.table_cells if not (c.start_row_offset_idx == 2 and c.start_col_offset_idx == 1)
+    ]
+    span = next(c for c in main.table_cells if c.start_row_offset_idx == 1 and c.start_col_offset_idx == 1)
+    span.end_row_offset_idx, span.row_span = 3, 2
+    doc.add_table(data=main, prov=_cell_prov(1, 0, 0, 3, 3))
+    label, _ = table([["合計"]], 1)
+    doc.add_table(data=label, prov=_cell_prov(1, 0, 4, 1, 5))
+    total, _ = table([["150"]], 1)
+    doc.add_table(data=total, prov=_cell_prov(1, 2, 4, 3, 5))
+    note, _ = table([["注: 停止時間は分単位。"]], 1)
+    doc.add_table(data=note, prov=_cell_prov(1, 0, 6, 1, 7))
+    other, _ = table([["設備ID", "設置場所"], ["PM-04", "機械室"]], 2)
+    doc.add_table(data=other, prov=_cell_prov(2, 0, 0, 2, 2))
+    return doc

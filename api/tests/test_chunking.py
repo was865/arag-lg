@@ -2,9 +2,16 @@
 
 from docling_core.types.doc import ContentLayer, DocItemLabel, DoclingDocument, Size
 
-from arag.ingest.chunking import chunk_document, merge_continued_tables
+from arag.ingest.chunking import chunk_document, merge_continued_tables, merge_sheet_fragments
 
-from .docling_fixtures import CharTokenizer, cross_page_table_doc, headingless_doc, prov, regulation_doc
+from .docling_fixtures import (
+    CharTokenizer,
+    cross_page_table_doc,
+    headingless_doc,
+    prov,
+    regulation_doc,
+    sheet_with_total_row_doc,
+)
 
 
 def test_sections_follow_heading_level_2() -> None:
@@ -156,3 +163,24 @@ def test_stacked_headings_keep_the_first_as_title() -> None:
     doc.add_text(DocItemLabel.TEXT, "軸受温度は要注意。", prov=prov(1))
     res = chunk_document(doc, CharTokenizer(max_tokens=200))
     assert res.chunks[-1].heading_path == "判定"
+
+
+def test_sheet_total_row_fragments_join_the_table() -> None:
+    """合計行の断片（「合計」と「150」）を、列の位置を保って上の表の最後の行に戻す（harukaze_mix hm22）。"""
+    doc = sheet_with_total_row_doc()
+    merged = merge_sheet_fragments(doc)
+    assert len(doc.tables) == 5  # 元の文書は変えない
+    # 注記（値が 1 つだけの行）と別のシートの表はそのまま
+    assert [t.data.num_rows for t in merged.tables] == [4, 1, 2]
+    rows = [[c.text for c in r] for r in merged.tables[0].data.grid]
+    # 結合セルがあっても、元の行は崩れない
+    assert rows == [
+        ["日付", "設備ID", "停止時間（分）"],
+        ["09-02", "PM-04", "30"],
+        ["09-05", "PM-04", "120"],
+        ["合計", "", "150"],
+    ]
+    r = chunk_document(doc, CharTokenizer(max_tokens=400), page_unit="sheet")
+    t = next(c for c in r.chunks if "PM-04" in c.text and "09-02" in c.text)
+    total = next(line for line in t.text.splitlines() if line.startswith("| 合計"))
+    assert total.split("|")[3].strip() == "150"  # 停止時間の列に入る
