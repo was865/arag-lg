@@ -108,6 +108,7 @@ export const chat = {
   cacheTokens: "キャッシュ読込",
   sectionReasoning: "推論過程",
   noCandidates: "候補なし",
+  keywordFallback: "{terms}をすべて含む箇所はありませんでした。言い回しが違う可能性があるため、続けて意味検索（vector_search）で探しました。",
   expandCount: "拡張件数",
   sectionModel: "モデル",
   sectionInput: "入力",

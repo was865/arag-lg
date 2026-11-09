@@ -13,6 +13,7 @@ from langgraph.types import Command
 
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
+from arag.agent.ops import KEYWORD_FALLBACK_NOTE
 from arag.agent.steps import Step, StepClock
 from arag.agent.tools import LABELS
 from arag.prompts import load_prompt
@@ -115,6 +116,8 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         text = result.text if isinstance(result, ToolMessage) else ""
         n = len(_MATERIAL.findall(text))
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
+        if n and text.startswith(KEYWORD_FALLBACK_NOTE):
+            summary = f"完全一致 0 件 → 意味検索で資料 {n} 件"
         clock.done(summary, {"result": text[:2000]})
         return result
 

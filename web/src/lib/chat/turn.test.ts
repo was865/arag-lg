@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEvent, isTerminal, liveCitations, newTurn, toToolCall, turnFromMessage, type ApiStep, type RunEvent } from "./turn";
+import { applyEvent, explainFallback, isTerminal, liveCitations, newTurn, toToolCall, turnFromMessage, type ApiStep, type RunEvent } from "./turn";
 
 const step = (over: Partial<ApiStep>): ApiStep => ({
   id: "c1",
@@ -193,5 +193,29 @@ describe("liveCitations（生成中の番号）", () => {
     });
     expect(done.answer).toBe("停止する[1]。根拠[2]");
     expect(done.rawAnswer).toBeUndefined();
+  });
+});
+
+describe("explainFallback", () => {
+  // 保存済みの回答（旧版の要約）: キーワード 0 件 → 意味検索 6 件
+  const old = [
+    step({ id: "k", name: "keyword_search", label: "キーワード検索", status: "done", summary: "資料 6 件" }),
+    step({ id: "k:search", parent_id: "k", name: "retrieve", label: "検索", status: "done", input: { mode: "keyword", query: "MX-17 異常時の対応" }, output: { hits: [] }, summary: "0 件（最高スコア 0.00）" }),
+    step({ id: "k:h:search", parent_id: "k:h", name: "retrieve", label: "検索", status: "done", input: { mode: "hybrid", query: "MX-17 異常時の対応" }, output: { hits: [{ title: "a", heading: "", score: 0.9 }] }, summary: "6 件（最高スコア 0.89）" }),
+  ].map(toToolCall);
+
+  it("切り替えたことを親・子の要約とラベルで示す", () => {
+    const [top, kw, sem] = explainFallback(old);
+    expect(top!.summary).toBe("完全一致 0 件 → 意味検索で資料 6 件");
+    expect(kw!.summary).toBe("0 件（すべての語を含む箇所なし）");
+    expect(kw!.output?.fallback).toBe(true);
+    expect(sem!.label).toBe("意味検索で補う");
+  });
+
+  it("何度当てても同じ・切り替えが無ければ触らない", () => {
+    const once = explainFallback(old);
+    expect(explainFallback(once)).toEqual(once);
+    const alone = old.slice(0, 2);
+    expect(explainFallback(alone)).toBe(alone);
   });
 });

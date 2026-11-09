@@ -157,10 +157,43 @@ export function newTurn(
 
 function upsertStep(steps: ToolCall[], step: ToolCall): ToolCall[] {
   const i = steps.findIndex((s) => s.id === step.id);
-  if (i < 0) return [...steps, step];
+  if (i < 0) return explainFallback([...steps, step]);
   const next = steps.slice();
   next[i] = step;
-  return next;
+  return explainFallback(next);
+}
+
+const OLD_KEYWORD_ZERO = /^0 件（最高スコア/;
+const OLD_TOOL_TOTAL = /^資料 (\d+) 件$/;
+
+/**
+ * キーワード検索（完全一致）が 0 件で意味検索に切り替えた流れを、各ステップで分かるようにする。
+ * 新しい API は要約を書いて返すが、保存済みの回答（旧版）は要約が素っ気ないのでここで補う。純関数・何度当てても同じ。
+ */
+export function explainFallback(steps: ToolCall[]): ToolCall[] {
+  let out = steps;
+  const patch = (i: number, p: Partial<ToolCall>) => {
+    if (out === steps) out = steps.slice();
+    out[i] = { ...out[i]!, ...p };
+  };
+  steps.forEach((s, i) => {
+    if (s.name !== "bm25_search" || s.status !== "done" || !s.parentId) return;
+    const hits = s.output?.hits;
+    if (!Array.isArray(hits) || hits.length > 0) return;
+    const j = steps.findIndex((x, k) => k > i && x.parentId === s.parentId && x.name === "vector_search");
+    if (j < 0) return;
+    if (!s.output?.fallback || OLD_KEYWORD_ZERO.test(s.summary)) {
+      patch(i, {
+        output: { ...s.output, fallback: true },
+        summary: OLD_KEYWORD_ZERO.test(s.summary) ? "0 件（すべての語を含む箇所なし）" : s.summary,
+      });
+    }
+    if (steps[j]!.label === "検索") patch(j, { label: "意味検索で補う" });
+    const p = steps.findIndex((x) => x.id === s.parentId);
+    const m = p >= 0 ? OLD_TOOL_TOTAL.exec(steps[p]!.summary) : null;
+    if (m) patch(p, { summary: `完全一致 0 件 → 意味検索で資料 ${m[1]} 件` });
+  });
+  return out;
 }
 
 function withSources(turn: Turn, sources: ApiSource[], citationMap: ApiCitationMap): Turn {
@@ -230,7 +263,7 @@ export function turnFromMessage(m: ApiMessage, threadId?: string): Turn {
       m.image && threadId
         ? { url: messageImageUrl(threadId, m.id), width: m.image.width, height: m.image.height, description: m.image.description ?? null }
         : undefined,
-    steps: (m.steps ?? []).map(toToolCall),
+    steps: explainFallback((m.steps ?? []).map(toToolCall)),
     answer: m.answer,
     streaming: false,
     citationMap: toCitationMap(m.citation_map),

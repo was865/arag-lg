@@ -123,6 +123,9 @@ async def test_keyword_search_requires_all_terms(
     # 補った検索も同じツール呼び出しの子として出す（画面で見えるように）
     done = [s for s in ev.steps() if s["status"] == "done"]
     assert {s["parent_id"] for s in done} == {"c2"} and len({s["id"] for s in done}) == 2
+    # 何が起きたかを各ステップの要約で説明する
+    assert done[0]["summary"] == "0 件（「MX-17」「存在しない語」をすべて含む箇所なし）"
+    assert done[1]["label"] == "意味検索で補う"
 
 
 async def test_list_outline_and_read_section(

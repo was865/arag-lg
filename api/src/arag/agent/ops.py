@@ -97,6 +97,10 @@ def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
     return "\n\n".join(parts)
 
 
+# キーワード検索が 0 件で意味検索に切り替えたときの前置き（ステップの要約もこれで見分ける）
+KEYWORD_FALLBACK_NOTE = "注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。"
+
+
 def diversify(hits: list[SearchHit], *, k: int, per_document: int) -> list[SearchHit]:
     """スコア順のまま、1 文書 per_document 件までで k 件選ぶ。足りなければ残りから順に埋める。"""
     if per_document <= 0:
@@ -175,6 +179,7 @@ async def op_search(
     must_contain: list[str] | None = None,
     step_tag: str = "",
     label: str = "検索",
+    running: str = "検索しています",
 ) -> str:
     """step_tag は同じ呼び出しで 2 回検索するときのステップ ID の区別（親は call_id のまま）。"""
     sid = f"{call_id}:{step_tag}" if step_tag else call_id
@@ -198,11 +203,16 @@ async def op_search(
             label=label,
             status="running",
             input={"query": query, "mode": mode},
-            summary="検索しています",
+            summary=running,
         ),
     )
     res = await _run_search(ctx, SearchRequest(query=query, **base))
-    clock.done(f"{len(res.hits)} 件（最高スコア {_best(res):.2f}）", _hits_output(res))
+    if must_contain and not res.hits:
+        # 何が足りなかったのかを画面で分かるようにする（このあと意味検索で補う）
+        words = "".join(f"「{t}」" for t in must_contain)
+        clock.done(f"0 件（{words}をすべて含む箇所なし）", {**_hits_output(res), "terms": must_contain})
+    else:
+        clock.done(f"{len(res.hits)} 件（最高スコア {_best(res):.2f}）", _hits_output(res))
     used = query
     # 関連度による再検索（R17）。rerank が効いていないとき（縮退）はスコアが比較できないので行わない
     tries = 0
@@ -283,9 +293,16 @@ async def op_keyword_search(
         return out
     # 表記ゆれ（「ISO認証」と「ISO 27001認証」など）で 0 件になりやすいので、意味検索で補う
     alt = await op_search(
-        ctx, emit, call_id, query, document_ids=document_ids, step_tag="h", label="意味検索で補う"
+        ctx,
+        emit,
+        call_id,
+        query,
+        document_ids=document_ids,
+        step_tag="h",
+        label="意味検索で補う",
+        running="語をすべて含む箇所が無いため、意味の近い資料を探しています",
     )
-    return f"注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。\n\n{alt}"
+    return f"{KEYWORD_FALLBACK_NOTE}\n\n{alt}"
 
 
 async def op_list_documents(ctx: RunContext, query: str | None = None) -> str:

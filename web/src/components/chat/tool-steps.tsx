@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, formatMs } from "@/lib/utils";
+import { Icon } from "@/components/icons";
 import type { RerankHit, ToolCall, ToolName, ToolStatus, ToolView } from "@/lib/types";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
@@ -417,6 +418,17 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if ((step.name === "vector_search" || step.name === "bm25_search") && Array.isArray(output.hits)) {
     const hits = output.hits as CandidateHit[];
     if (hits.length === 0) {
+      if (output.fallback) {
+        const terms = Array.isArray(output.terms)
+          ? (output.terms as unknown[]).map(String)
+          : String(step.input.query ?? "").split(/\s+/).filter(Boolean);
+        return (
+          <div className="flex items-start gap-1.5 rounded-lg bg-surface-2 px-2.5 py-2 text-[11.5px] leading-[1.6] text-fg-2">
+            <Icon name="info" size={12} className="mt-[3px] shrink-0 text-muted" />
+            <span>{interpolate(t.chat.keywordFallback, { terms: terms.map((x) => `「${x}」`).join("") })}</span>
+          </div>
+        );
+      }
       return <div className="px-1 py-1 text-[11.5px] text-muted">{t.chat.noCandidates}</div>;
     }
     // スコアは非負前提（dense=cosine, sparse=BM25/dot）。リスト内最大値でバー幅を正規化。

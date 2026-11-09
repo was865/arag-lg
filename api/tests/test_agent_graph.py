@@ -53,6 +53,30 @@ async def test_search_then_answer_with_citation_cleanup() -> None:
     assert model.tool_choices == ["any", None]
 
 
+class KeywordMissSearch(FakeSearch):
+    """語の完全一致（must_contain）では何も返さない検索。"""
+
+    async def __call__(self, _s: Any, _p: Any, req: Any) -> Any:
+        res = await super().__call__(_s, _p, req)
+        return res.model_copy(update={"hits": []}) if req.must_contain else res
+
+
+async def test_keyword_fallback_is_explained_in_steps() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("keyword_search", terms=["MX-17", "異常時の対応"]), AIMessage(content="停止する[1]")
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(KeywordMissSearch("MX-17 は即時停止を推奨する。")), "MX-17 の異常時は？")
+    done = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "done"]
+    top = next(s for s in done if s["parent_id"] is None)
+    assert top["summary"] == "完全一致 0 件 → 意味検索で資料 1 件"
+    kids = [s for s in done if s["parent_id"] == top["id"]]
+    assert [k["label"] for k in kids] == ["検索", "意味検索で補う"]
+    assert kids[0]["summary"].startswith("0 件（「MX-17」「異常時の対応」をすべて含む箇所なし")
+
+
 async def test_step_budget_forces_final_answer_without_tools() -> None:
     model = FakeToolModel(
         messages=script(
