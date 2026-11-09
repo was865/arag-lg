@@ -7,8 +7,7 @@ import { useOverflow } from "@/components/sources/use-overflow";
 import { TableSheet } from "@/components/sources/table-sheet";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
-import { interpolate } from "@/i18n/interpolate";
-import { cellFit, columnCount, numericColumns } from "@/components/sources/table-layout";
+import { cellFit, numericColumns } from "@/components/sources/table-layout";
 
 function Seg({ s, renderMath }: { s: InlineSegment; renderMath?: boolean }) {
   const cls = cn(s.bold && "font-semibold", s.italic && "italic", s.underline && "underline");
@@ -49,7 +48,6 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
 
   const wide = overflow.left || overflow.right;
   const numeric = numericColumns(model);
-  const cols = columnCount(model);
   // 先頭列が見出し（設備ID など）のときは横スクロールしても残す
   const stickFirst = wide && model.rows.length > 1 && model.rows.every((r) => r.cells[0]?.colspan === 1);
 
@@ -97,7 +95,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   return (
     <div
       className={cn(
-        "relative min-w-0 overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface",
+        "group/tbl relative min-w-0 overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface",
         className,
       )}
     >
@@ -114,28 +112,24 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute right-0 top-0 w-4 bg-gradient-to-l from-[var(--edge-shadow)] to-transparent transition-opacity duration-200",
-          wide ? "bottom-[33px]" : "bottom-0",
+          "pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-[var(--edge-shadow)] to-transparent transition-opacity duration-200",
           overflow.right ? "opacity-100" : "opacity-0",
         )}
       />
 
-      {/* 横に広い表だけ、下に列数と拡大を置く（見出しに重ねない） */}
+      {/* 拡大は横に広い表だけ。ふだんは隠し、表に触れたときだけ角に出す（モバイルはホバーが無いので常時） */}
       {wide && (
-        <div className="flex h-[33px] items-center justify-between gap-2 border-t-[0.5px] border-divider bg-surface-2 pl-3 pr-1.5 text-[10.5px] text-muted">
-          <span className="min-w-0 truncate">{interpolate(t.sources.tableScrollHint, { n: String(cols) })}</span>
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            title={t.sources.expandTable}
-            className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[6px] px-1.5 font-medium text-fg-2 hover:bg-divider hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden>
-              <path d="M6 2H2v4M10 14h4v-4M2 2l5 5M14 14l-5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {t.sources.expand}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          title={t.sources.expandTable}
+          aria-label={t.sources.expandTable}
+          className="absolute right-1.5 top-1.5 z-[2] grid h-6 w-6 place-items-center rounded-[6px] bg-surface-elev text-muted opacity-0 shadow-e1 ring-[0.5px] ring-divider-strong transition-opacity duration-150 hover:text-fg focus-visible:opacity-100 group-hover/tbl:opacity-100 max-md:opacity-100"
+        >
+          <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden>
+            <path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       )}
 
       {sheetOpen && <TableSheet onClose={() => setSheetOpen(false)}>{table(true)}</TableSheet>}
