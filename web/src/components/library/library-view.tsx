@@ -17,6 +17,14 @@ import { MoveDialog } from "@/components/library/move-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
 import { refreshKbs, useKbs } from "@/hooks/use-kbs";
 import { useUploadQueue } from "@/hooks/use-upload-queue";
+import {
+  dirKey,
+  isAccepted,
+  readDropped,
+  resolveFolders,
+  splitRelPath,
+  type RelFile,
+} from "@/lib/library/folder-upload";
 import { ApiError } from "@/lib/chat/api";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { getFileMeta } from "@/lib/file-types";
@@ -98,6 +106,8 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const [bulkMoving, setBulkMoving] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dirRef = useRef<HTMLInputElement>(null);
+  const [addMenu, setAddMenu] = useState(false);
   const dragDepth = useRef(0);
 
   // 名前の絞り込みは入力が落ち着いてからサーバーに問い合わせる（全件が対象）
@@ -218,6 +228,54 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     // 開いている KB に送るときだけ、開いているフォルダへ入れる
     queue.add(target.id, files, target.id === kbId ? folderId : null);
     // 送信直後の「待機中」を一覧にも出す
+    window.setTimeout(() => void reload(), 1200);
+  };
+
+  /** フォルダを構成ごと送る（同名のフォルダがあれば中に入れ、無ければ作る）。 */
+  const startFolderUpload = async (rel: RelFile[]) => {
+    if (!target) {
+      push("このナレッジベースには追加できません（閲覧のみ）", "error");
+      return;
+    }
+    const groups = new Map<string, { dir: string[]; files: File[] }>();
+    let skipped = 0;
+    for (const r of rel) {
+      const dir = splitRelPath(r.path);
+      if (dir === null || !isAccepted(r.file.name)) {
+        skipped += 1;
+        continue;
+      }
+      const g = groups.get(dirKey(dir)) ?? { dir, files: [] };
+      g.files.push(r.file);
+      groups.set(dirKey(dir), g);
+    }
+    const total = [...groups.values()].reduce((n, g) => n + g.files.length, 0);
+    if (!total) {
+      push("追加できる形式のファイルがありませんでした", "error");
+      return;
+    }
+    const base = target.id === kbId ? folderId : null;
+    try {
+      const existing = await libraryApi.folders(target.id);
+      const map = await resolveFolders(
+        base,
+        [...groups.values()].map((g) => g.dir),
+        existing,
+        async (name, parent) => (await libraryApi.createFolder(target.id, name, parent)).id,
+      );
+      for (const [key, g] of groups) queue.add(target.id, g.files, map.get(key) ?? null);
+    } catch (e) {
+      push(errorMessage(e, "フォルダを作れませんでした"), "error");
+      void reload();
+      return;
+    }
+    push(
+      skipped
+        ? `${total} 件のファイルをフォルダごと追加しています（対象外の ${skipped} 件は除きました）`
+        : `${total} 件のファイルをフォルダごと追加しています`,
+      "success",
+    );
+    void reload();
     window.setTimeout(() => void reload(), 1200);
   };
 
@@ -422,7 +480,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       e.preventDefault();
       dragDepth.current = 0;
       setDragging(false);
-      startUpload(e.dataTransfer.files);
+      // フォルダが含まれていれば構成ごと送る（エントリはイベント中に取り出す）
+      const files = [...e.dataTransfer.files];
+      void readDropped(e.dataTransfer.items).then(
+        (rel) => (rel ? void startFolderUpload(rel) : startUpload(files)),
+        () => startUpload(files),
+      );
     },
   };
 
@@ -550,13 +613,52 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           </button>
         )}
         {target && (
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-0 bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
-          >
-            <Icon name="plus" size={13} />
-            追加
-          </button>
+          <span className="relative">
+            <button
+              onClick={() => setAddMenu((x) => !x)}
+              aria-haspopup="menu"
+              aria-expanded={addMenu}
+              className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-0 bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
+            >
+              <Icon name="plus" size={13} />
+              追加
+              <Icon name="chevronDown" size={11} />
+            </button>
+            {addMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setAddMenu(false)} />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-9 z-30 w-[200px] animate-pop-in overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
+                >
+                  {(
+                    [
+                      ["doc", "ファイルを選ぶ", ""],
+                      ["folder", "フォルダを選ぶ", "中のフォルダ構成も再現します"],
+                    ] as const
+                  ).map(([icon, label, hint]) => (
+                    <button
+                      key={label}
+                      role="menuitem"
+                      onClick={() => {
+                        setAddMenu(false);
+                        (icon === "folder" ? dirRef : fileRef).current?.click();
+                      }}
+                      className="flex w-full items-start gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-medium text-fg hover:bg-divider"
+                    >
+                      <span className="mt-[2px]">
+                        <Icon name={icon} size={13} />
+                      </span>
+                      <span>
+                        {label}
+                        {hint && <span className="block text-[11px] font-normal text-muted">{hint}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </span>
         )}
         <input
           ref={fileRef}
@@ -567,6 +669,17 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           onChange={(e) => {
             startUpload(e.target.files);
             e.target.value = "";
+          }}
+        />
+        <input
+          ref={dirRef}
+          type="file"
+          hidden
+          {...{ webkitdirectory: "" }}
+          onChange={(e) => {
+            const rel = [...(e.target.files ?? [])].map((file) => ({ file, path: file.webkitRelativePath || file.name }));
+            e.target.value = "";
+            void startFolderUpload(rel);
           }}
         />
       </header>
