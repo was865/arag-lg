@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHORTCUT_GROUPS, shortcutAction } from "@/lib/shortcuts";
+import { keyParts, SHORTCUT_GROUPS, shortcutAction } from "@/lib/shortcuts";
 
 const key = (k: string, over: Partial<KeyboardEvent> = {}) =>
   ({ key: k, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, isComposing: false, ...over }) as KeyboardEvent;
@@ -36,5 +36,13 @@ describe("shortcutAction", () => {
   it("修飾キーなし・IME 変換中は何もしない", () => {
     expect(shortcutAction(key("b"), { running: false })).toBeNull();
     expect(shortcutAction(key("b", { metaKey: true, isComposing: true }), { running: false })).toBeNull();
+  });
+
+  it("keyParts は修飾記号と + で分ける", () => {
+    expect(keyParts("⇧⌘O")).toEqual(["⇧", "⌘", "O"]);
+    expect(keyParts("⌘,")).toEqual(["⌘", ","]);
+    expect(keyParts("Shift+Enter")).toEqual(["Shift", "Enter"]);
+    expect(keyParts("?")).toEqual(["?"]);
+    expect(keyParts("Esc")).toEqual(["Esc"]);
   });
 });

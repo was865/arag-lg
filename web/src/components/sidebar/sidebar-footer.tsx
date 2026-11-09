@@ -49,6 +49,7 @@ export function SidebarUserFooter({
     <div className="border-t-[0.5px] border-divider p-2">
       <button
         ref={btnRef}
+        data-tour="user-menu"
         className={cn(
           "flex w-full items-center gap-2.5 rounded-lg bg-transparent px-2 py-1.5 hover:bg-divider",
           menuOpen && "bg-divider",

@@ -33,7 +33,7 @@ import { useConversations, NEW_THREAD } from "@/hooks/use-conversations";
 import { useKbs } from "@/hooks/use-kbs";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { HelpModal } from "@/components/help/help-modal";
-import { WelcomeGuide } from "@/components/onboarding/welcome-guide";
+import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useAgentCfg } from "@/hooks/use-agent-cfg";
 import { useTweaks } from "@/hooks/use-tweaks";
@@ -745,13 +745,14 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
       {helpOpen && (
         <HelpModal
           onClose={() => setHelpOpen(false)}
+          stats={stats}
           onReplayTour={() => {
             setHelpOpen(false);
             setGuideState("open");
           }}
         />
       )}
-      {guideOpen && <WelcomeGuide name={sessionUser?.name} onClose={closeGuide} />}
+      {guideOpen && <OnboardingTour name={sessionUser?.name} onClose={closeGuide} />}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showAccount={Boolean(sessionUser)} />}
       {shareOpen && activeThread && (
         <ShareDialog

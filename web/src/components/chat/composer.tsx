@@ -155,6 +155,7 @@ export function Composer({
       }}
     >
       <div
+        data-tour="composer"
         className={cn(
           "rounded-[16px] border border-divider-strong bg-surface shadow-e2 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow-2)] max-md:rounded-[14px]",
         )}
@@ -177,7 +178,6 @@ export function Composer({
         )}
         <textarea
           ref={taRef}
-          data-tour="composer"
           rows={1}
           value={value}
           disabled={running}
@@ -207,6 +207,7 @@ export function Composer({
               <button
                 ref={scopeRef}
                 type="button"
+                data-tour="scope"
                 className={cn(toolBtn, scopeOpen && "bg-divider text-fg")}
                 title={t.chat.scopeTitle}
                 disabled={running}

@@ -63,3 +63,15 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string; label: str
     ],
   },
 ];
+
+/** 表示用にキーを分ける（"⇧⌘O" → ["⇧", "⌘", "O"]、"Shift+Enter" → ["Shift", "Enter"]）。 */
+export function keyParts(keys: string): string[] {
+  if (keys.length > 1 && keys.includes("+")) return keys.split("+");
+  const out: string[] = [];
+  let rest = keys;
+  while (rest.length > 1 && "⇧⌘⌥⌃".includes(rest[0])) {
+    out.push(rest[0]);
+    rest = rest.slice(1);
+  }
+  return [...out, rest];
+}
