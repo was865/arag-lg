@@ -27,8 +27,8 @@
 - [x] C3 Mac: `__main__.py` の `ingest` / `run`、`agentic_rag_demo` 題集の移植 — R19・R23
 - [x] C4 Mac: `variants.yaml` と `index --variant`（Postgres の子チャンクから別コレクション）— R21・R22
 - [x] C5 Mac: `public.py`: `beir_scifact` 部分集合（旧 `beir.py` 移植）と日本語公開データ 1 つ（ライセンス確認・decisions に記録）— R23
-- [ ] C6 Mac+ユーザー: `agentic_rag_demo_ext` の候補を LLM で作成 → 一次選別 → **ユーザー確認** → 50 問以上で確定（英語質問 5 問以上）— R23
-  - 69 問を一次選別済み（`eval/suites/agentic_rag_demo_ext/golden.yaml`）。ユーザー確認待ち
+- [x] C6 Mac+ユーザー: `agentic_rag_demo_ext` の候補を LLM で作成 → 一次選別 → **ユーザー確認** → 50 問以上で確定（英語質問 5 問以上）— R23
+  - 2026-11-09 ユーザー確認で 69 問（英語 14 問）に確定。key_facts を言い換え・英語回答でも当たる語に緩め、ext60（「同等の認証」の曖昧さ）と ext67（文書に答えがある）を直し、該当なしの 4 問に `expect_no_answer` を付けた（「資料に無い」と答えたかで採点）
 
 ## D. 実データでの比較（Mac + Win）
 

@@ -139,6 +139,21 @@ def facts_matched(answer: str, facts: list[list[str]]) -> list[bool]:
     return [any(canon(x) in a for x in f) for f in facts]
 
 
+# 「資料に無い」と答えたことを示す言い回し（日英）。canon 後の小文字で照合する
+_DECLINE = re.compile(
+    r"(記載|明記|言及|明示|記述)(が|は)?(され)?(てい)?(ありません|ない|ません|無い|なし)"
+    r"|示されていな|示されていません|見つかりませんでした|見当たりません|資料に(は)?(ありません|ない|無い)"
+    r"|not (explicitly )?(mention|state|specif|provide|include|contain|found|cover)"
+    r"|(does|do|is|are) not (mention|state|specify|provide|include|contain)"
+    r"|no (information|mention|details?) (about|on|regarding)"
+)
+
+
+def declines(answer: str) -> bool:
+    """回答が「資料に記載が無い」と述べているか。"""
+    return bool(_DECLINE.search(canon(answer)))
+
+
 def _coverage(matched: list[bool]) -> float:
     return 1.0 if not matched else sum(matched) / len(matched)
 
@@ -297,6 +312,10 @@ async def run_case(
     answer = data["answer"]
     cited = cited_documents(data)
     matched = facts_matched(answer, facts)
+    no_answer = data.get("no_answer_reason") is not None
+    if case.expect_no_answer:
+        # 答えの無い題は、資料に無いと答えたか（回答不能を含む）だけを見る
+        matched = [no_answer or declines(answer)]
     faith: float | None = None
     unsupported: list[str] = []
     judge_error = None
@@ -321,7 +340,7 @@ async def run_case(
         unsupported_claims=unsupported,
         tokens=data["tokens_in"] + data["tokens_out"],
         duration_ms=data["duration_ms"],
-        no_answer=data.get("no_answer_reason") is not None,
+        no_answer=no_answer,
         no_answer_reason=data.get("no_answer_reason"),
         judge_error=judge_error,
         facts_matched=matched,

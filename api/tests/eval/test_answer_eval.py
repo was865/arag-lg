@@ -10,6 +10,7 @@ from arag.eval.answer import (
     citation_recall,
     cited_documents,
     cited_sources,
+    declines,
     faithfulness_from_claims,
     iter_sse,
     run_case,
@@ -229,3 +230,43 @@ def test_facts_matched_normalizes_dates() -> None:
     facts = [["2026-06-05"], ["2026/06/07"], ["ＡＢＣ"]]
     assert facts_matched("納期は2026年6月5日です", facts) == [True, False, False]
     assert facts_matched("期限 2026/6/7", [["2026年6月7日"]]) == [True]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "AlphaGate X2 の消費電力は明示されていません。",
+        "資料には記載がありません。",
+        "具体的なエスカレーション先については明記されていない。",
+        "The documents do not mention the power consumption.",
+        "This is not specified in the documents.",
+    ],
+)
+def test_declines_detects_absence(answer: str) -> None:
+    assert declines(answer)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "温度センサーT2の校正基準は 80.0℃ です [1]。",
+        "部長承認を省略できる条件は、低リスク顧客に限られます [1]。",
+    ],
+)
+def test_declines_rejects_made_up_answers(answer: str) -> None:
+    assert not declines(answer)
+
+
+@pytest.mark.parametrize(
+    ("answer", "reason", "coverage"),
+    [
+        ("消費電力は資料に記載されていません。", None, 1.0),
+        ("", "no_relevant_sources", 1.0),
+        ("校正基準は 80.0℃ です [1]。", None, 0.0),
+    ],
+)
+async def test_run_case_scores_expected_no_answer(answer: str, reason: str | None, coverage: float) -> None:
+    api = FakeApi([("run.completed", {**COMPLETED, "answer": answer, "no_answer_reason": reason})])
+    case = Case(id="n1", query="消費電力は？", tags=["ja", "negative"], expect_no_answer=True)
+    r = await run_case(api, case, kb_id="kb1", model_id=None)
+    assert r.fact_coverage == coverage

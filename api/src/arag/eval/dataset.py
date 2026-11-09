@@ -19,6 +19,8 @@ class Case(BaseModel):
     relevant_documents: list[str] = Field(default_factory=list)
     key_facts: list[KeyFact] = Field(default_factory=list)
     answer: str | None = None  # 参考解答（検索評価では使わない。P3 の回答評価用）
+    # 文書に答えが無い題。回答評価では「資料に無い」と答えるか回答不能なら事実網羅 1.0、答えを作ったら 0.0
+    expect_no_answer: bool = False
 
 
 class Thresholds(BaseModel):
