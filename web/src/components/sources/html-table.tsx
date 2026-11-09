@@ -7,6 +7,8 @@ import { useOverflow } from "@/components/sources/use-overflow";
 import { TableSheet } from "@/components/sources/table-sheet";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
+import { interpolate } from "@/i18n/interpolate";
+import { cellFit, columnCount, numericColumns } from "@/components/sources/table-layout";
 
 function Seg({ s, renderMath }: { s: InlineSegment; renderMath?: boolean }) {
   const cls = cn(s.bold && "font-semibold", s.italic && "italic", s.underline && "underline");
@@ -46,83 +48,97 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   }
 
   const wide = overflow.left || overflow.right;
+  const numeric = numericColumns(model);
+  const cols = columnCount(model);
+  // 先頭列が見出し（設備ID など）のときは横スクロールしても残す
+  const stickFirst = wide && model.rows.length > 1 && model.rows.every((r) => r.cells[0]?.colspan === 1);
 
-  const table = (
-    <table className="w-full border-collapse text-[11.5px] leading-[1.5]">
+  const table = (sheet: boolean) => (
+    <table className="w-full border-separate border-spacing-0 text-[11.5px] leading-[1.55]">
       <tbody>
-        {model.rows.map((row, ri) => (
-          <tr key={ri}>
-            {row.cells.map((c, ci) => {
-              const Tag = c.header ? "th" : "td";
-              return (
-                <Tag
-                  key={ci}
-                  colSpan={c.colspan}
-                  rowSpan={c.rowspan}
-                  className={cn(
-                    // 列を 1 文字ずつの最小幅まで潰さない。最小幅を確保することで
-                    // 列数が多い表はコンテナ幅を超え、ラッパの横スクロールが発動する。
-                    "min-w-[5em] border-[0.5px] border-divider px-2.5 py-1.5 align-top [overflow-wrap:anywhere]",
-                    c.header ? "bg-surface-2 text-left font-semibold text-fg" : "text-fg-2",
-                  )}
-                >
-                  <Lines lines={c.lines} renderMath={renderMath} />
-                </Tag>
-              );
-            })}
-          </tr>
-        ))}
+        {model.rows.map((row, ri) => {
+          const last = ri === model.rows.length - 1;
+          return (
+            <tr key={ri}>
+              {row.cells.map((c, ci) => {
+                const Tag = c.header ? "th" : "td";
+                const fit = cellFit(c);
+                const right = numeric.has(ci) && (fit === "numeric" || c.header);
+                const sticky = !sheet && stickFirst && ci === 0;
+                return (
+                  <Tag
+                    key={ci}
+                    colSpan={c.colspan}
+                    rowSpan={c.rowspan}
+                    className={cn(
+                      "px-3 py-[7px] align-top",
+                      // 区切りは細い横線と縦線だけ（外枠はラッパが持つ）
+                      !last && "border-b-[0.5px] border-divider",
+                      ci < row.cells.length - 1 && "border-r-[0.5px] border-divider",
+                      c.header ? "bg-surface-2 text-left text-[11px] font-semibold text-fg" : "bg-surface text-fg-2",
+                      // 数値・短い語は 1 行に収め、長い文だけ読みやすい幅で折り返す
+                      fit === "long" ? "min-w-[9em] max-w-[24em] [overflow-wrap:anywhere]" : "whitespace-nowrap",
+                      right && "text-right tabular-nums",
+                      sticky && "sticky left-0 z-[1]",
+                      sticky && overflow.left && "shadow-[6px_0_8px_-6px_var(--edge-shadow)]",
+                    )}
+                  >
+                    <Lines lines={c.lines} renderMath={renderMath} />
+                  </Tag>
+                );
+              })}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
 
   return (
-    <div className={cn("group/tbl relative min-w-0", className)}>
+    <div
+      className={cn(
+        "relative min-w-0 overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface",
+        className,
+      )}
+    >
       <div
         ref={ref}
         data-overflow-left={overflow.left}
         data-overflow-right={overflow.right}
-        className="overflow-x-auto rounded-[8px] border-[0.5px] border-divider"
+        className="overflow-x-auto [scrollbar-width:thin]"
       >
-        {table}
+        {table(false)}
       </div>
 
-      {/* 左に続きがある合図（フェード） */}
-      {overflow.left && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-px left-px w-8 rounded-l-[8px] bg-gradient-to-r from-bg-2 to-transparent"
-        />
-      )}
+      {/* 右に続きがある合図: 地の色に依存しない細い影だけ（強調表示の上でも濁らない） */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute right-0 top-0 w-4 bg-gradient-to-l from-[var(--edge-shadow)] to-transparent transition-opacity duration-200",
+          wide ? "bottom-[33px]" : "bottom-0",
+          overflow.right ? "opacity-100" : "opacity-0",
+        )}
+      />
 
-      {/* 右に続きがある合図（フェード＋シェブロン） */}
-      {overflow.right && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-px right-px flex w-12 items-center justify-end rounded-r-[8px] bg-gradient-to-l from-bg-2 via-bg-2 to-transparent pr-1"
-        >
-          <svg viewBox="0 0 16 16" width="12" height="12" className="text-muted">
-            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+      {/* 横に広い表だけ、下に列数と拡大を置く（見出しに重ねない） */}
+      {wide && (
+        <div className="flex h-[33px] items-center justify-between gap-2 border-t-[0.5px] border-divider bg-surface-2 pl-3 pr-1.5 text-[10.5px] text-muted">
+          <span className="min-w-0 truncate">{interpolate(t.sources.tableScrollHint, { n: String(cols) })}</span>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            title={t.sources.expandTable}
+            className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[6px] px-1.5 font-medium text-fg-2 hover:bg-divider hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden>
+              <path d="M6 2H2v4M10 14h4v-4M2 2l5 5M14 14l-5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {t.sources.expand}
+          </button>
         </div>
       )}
 
-      {/* 全画面拡大（デスクトップはホバー表示、モバイルは常時表示） */}
-      {wide && (
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          title={t.sources.expandTable}
-          className="absolute right-1.5 top-1.5 z-[1] inline-flex h-6 items-center gap-1 rounded-[6px] border-[0.5px] border-divider-strong bg-surface/90 px-1.5 text-[10.5px] font-medium text-fg-2 opacity-0 backdrop-blur-sm transition-opacity hover:bg-surface group-hover/tbl:opacity-100 focus-visible:opacity-100 max-md:opacity-100"
-        >
-          <svg viewBox="0 0 16 16" width="11" height="11">
-            <path d="M6 2H2v4M10 14h4v-4M2 2l5 5M14 14l-5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {t.sources.expand}
-        </button>
-      )}
-
-      {sheetOpen && <TableSheet onClose={() => setSheetOpen(false)}>{table}</TableSheet>}
+      {sheetOpen && <TableSheet onClose={() => setSheetOpen(false)}>{table(true)}</TableSheet>}
     </div>
   );
 }

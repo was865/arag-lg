@@ -37,6 +37,8 @@ export const sources = {
   // HtmlTable expand button
   expandTable: "表を全画面で開く",
   expand: "拡大",
+  // 横に広い表の下に出す案内（{n} は列数）
+  tableScrollHint: "横にスクロール · 全 {n} 列",
 
   // PanelResizer aria-label
   panelResizerAriaLabel: "一次資料パネルの幅を調整",
