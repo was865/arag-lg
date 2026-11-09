@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults: { run: { working-directory: api } }
     steps:
       - uses: actions/checkout@v5
@@ -40,11 +40,11 @@ jobs:
         run: uv run pytest -q -p no:cacheprovider --rootdir ../scripts ../scripts
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults: { run: { working-directory: web } }
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.0
         with: { package_json_file: web/package.json }
       - uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
@@ -56,12 +56,12 @@ jobs:
 
   generated:
     name: OpenAPI 生成物の一致
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
         with: { version: "0.13.6", enable-cache: true }
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.0
         with: { package_json_file: web/package.json }
       - uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
@@ -71,12 +71,12 @@ jobs:
 
   licenses:
     name: ライセンス走査
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
         with: { version: "0.13.6", enable-cache: true }
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.0
         with: { package_json_file: web/package.json }
       - uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
@@ -85,7 +85,7 @@ jobs:
 
   compose-smoke:
     name: compose 起動スモーク
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [api, web]
     env:
       ARAG_TEI_EMBED_URL: http://tei-embed:80
