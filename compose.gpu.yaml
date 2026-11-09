@@ -96,6 +96,9 @@ services:
       - "--served-model-name=${VLM_SERVED_NAME:-qwen2.5-vl}"
       - "--max-model-len=${VLM_MAX_LEN:-8192}"
       - "--kv-cache-memory-bytes=${VLM_KV_BYTES:-1500M}"
+      # KV を直接指定しても、起動時に「空き ≥ 利用率 × 全体」を確かめる（既定 0.92 だと他と同居できない）。
+      # 実際の確保量には効かないので、空きより小さければよい（gpu-report.md）
+      - "--gpu-memory-utilization=${VLM_GPU_UTIL:-0.3}"
       - "--limit-mm-per-prompt={\"image\": 1}"
       # 1 つのモデルで会話も兼ねる場合（Qwen3-VL の比較。specs/016 の gpu-report）に備えてツール呼び出しを有効にする
       - "--enable-auto-tool-choice"
