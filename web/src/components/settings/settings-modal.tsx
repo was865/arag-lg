@@ -254,7 +254,7 @@ function AgentRow({
   const hint = [f.hint, `既定: ${typeof def === "boolean" ? (def ? "オン" : "オフ") : def}`].filter(Boolean).join(" ");
   if (f.kind === "bool") {
     return (
-      <Row label={f.label} hint={hint} changed={!isDefault}>
+      <Row label={f.label} term={f.term} termTitle={`agent_cfg.${f.key}`} hint={hint} changed={!isDefault}>
         <Switch label={f.label} checked={cfg[f.key]} onChange={(v) => set(f.key, v)} />
       </Row>
     );
@@ -262,7 +262,7 @@ function AgentRow({
   const v = cfg[f.key];
   const decimals = f.step < 1 ? 2 : 0;
   return (
-    <Row label={f.label} hint={hint} changed={!isDefault}>
+    <Row label={f.label} term={f.term} termTitle={`agent_cfg.${f.key}`} hint={hint} changed={!isDefault}>
       <div className="flex items-center gap-2.5">
         <input
           type="range"
@@ -286,11 +286,16 @@ function AgentRow({
 
 function Row({
   label,
+  term,
+  termTitle,
   hint,
   changed,
   children,
 }: {
   label: string;
+  /** 技術者向けの用語（Top-K など） */
+  term?: string;
+  termTitle?: string;
   hint?: string;
   changed?: boolean;
   children: React.ReactNode;
@@ -298,8 +303,16 @@ function Row({
   return (
     <div className="flex items-center gap-4 border-b-[0.5px] border-divider px-5 py-3 max-md:flex-wrap max-md:gap-2">
       <div className="min-w-0 flex-1 max-md:basis-full">
-        <div className="flex items-center gap-1.5 text-[13px] font-medium text-fg">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-medium text-fg">
           {label}
+          {term && (
+            <span
+              title={termTitle}
+              className="rounded-[4px] bg-divider px-1.5 py-px font-mono text-[10.5px] font-normal tracking-[0.01em] text-muted"
+            >
+              {term}
+            </span>
+          )}
           {changed && <span aria-label="既定から変更" className="h-1.5 w-1.5 rounded-full bg-accent" />}
         </div>
         {hint && <div className="mt-0.5 text-[11.5px] leading-snug text-muted">{hint}</div>}

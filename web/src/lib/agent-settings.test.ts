@@ -34,4 +34,11 @@ describe("回答の設定", () => {
     }
     expect(AGENT_FIELDS.some((f) => (f.key as string) === "verify")).toBe(false);
   });
+
+  it("すべての項目に技術者向けの用語と説明がある", () => {
+    for (const f of AGENT_FIELDS) {
+      expect(f.term, f.key).toMatch(/\S/);
+      expect(f.hint, f.key).toMatch(/\S/);
+    }
+  });
 });

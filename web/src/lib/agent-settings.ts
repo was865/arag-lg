@@ -28,20 +28,21 @@ export const AGENT_DEFAULTS: AgentSettings = {
 type NumKey = { [K in keyof AgentSettings]: AgentSettings[K] extends number ? K : never }[keyof AgentSettings];
 type BoolKey = { [K in keyof AgentSettings]: AgentSettings[K] extends boolean ? K : never }[keyof AgentSettings];
 
+/** term は技術者向けの一般的な用語（RAG・エージェントの文脈で通じる英語名）。画面ではラベルの横に小さく出す。 */
 export type AgentField =
-  | { kind: "number"; key: NumKey; label: string; hint: string; min: number; max: number; step: number; advanced?: boolean }
-  | { kind: "bool"; key: BoolKey; label: string; hint: string; advanced?: boolean };
+  | { kind: "number"; key: NumKey; label: string; term: string; hint: string; min: number; max: number; step: number; advanced?: boolean }
+  | { kind: "bool"; key: BoolKey; label: string; term: string; hint: string; advanced?: boolean };
 
 export const AGENT_FIELDS: AgentField[] = [
-  { kind: "number", key: "top_k", label: "回答に使う資料の数", hint: "検索して回答に渡す箇所の数。増やすと網羅的になるが遅くなる。", min: 1, max: 20, step: 1 },
-  { kind: "number", key: "per_document", label: "1 つの文書から使う上限", hint: "同じ文書ばかりにならないようにする。0 は無制限。", min: 0, max: 20, step: 1 },
-  { kind: "number", key: "max_steps", label: "最大ステップ数", hint: "検索や読み込みを繰り返せる回数の上限。", min: 5, max: 20, step: 1 },
-  { kind: "number", key: "max_retrieve_retries", label: "再検索の回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
-  { kind: "bool", key: "require_citations", label: "出典を必ず付ける", hint: "回答の各内容に出典番号を付けさせる。" },
-  { kind: "bool", key: "admit_unknown", label: "分からないときはそう答える", hint: "資料に無いことは推測せず「見つからない」と答える。" },
-  { kind: "number", key: "candidate_k", label: "候補の数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
-  { kind: "number", key: "parallel_tools", label: "同時に実行する検索の数", hint: "", min: 1, max: 8, step: 1, advanced: true },
-  { kind: "number", key: "grade_threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
+  { kind: "number", key: "top_k", term: "Top-K", label: "回答に使う資料の数", hint: "検索して回答に渡す箇所の数。増やすと網羅的になるが遅くなる。", min: 1, max: 20, step: 1 },
+  { kind: "number", key: "per_document", term: "Per-document cap", label: "1 つの文書から使う上限", hint: "同じ文書ばかりにならないようにする。0 は無制限。", min: 0, max: 20, step: 1 },
+  { kind: "number", key: "max_steps", term: "Max agent steps", label: "最大ステップ数", hint: "検索や読み込みを繰り返せる回数の上限。", min: 5, max: 20, step: 1 },
+  { kind: "number", key: "max_retrieve_retries", term: "Query rewrite retries", label: "再検索の回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
+  { kind: "bool", key: "require_citations", term: "Citation enforcement", label: "出典を必ず付ける", hint: "回答の各内容に出典番号を付けさせる。" },
+  { kind: "bool", key: "admit_unknown", term: "Abstention", label: "分からないときはそう答える", hint: "資料に無いことは推測せず「見つからない」と答える。" },
+  { kind: "number", key: "candidate_k", term: "Rerank candidates", label: "候補の数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
+  { kind: "number", key: "parallel_tools", term: "Parallel tool calls", label: "同時に実行する検索の数", hint: "1 回の判断で並行して走らせる検索・読み込みの数。", min: 1, max: 8, step: 1, advanced: true },
+  { kind: "number", key: "grade_threshold", term: "Relevance threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
 ];
 
 const num = (v: unknown, lo: number, hi: number, d: number, round = true) =>
