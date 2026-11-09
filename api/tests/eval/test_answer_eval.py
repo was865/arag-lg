@@ -312,11 +312,14 @@ def test_declines_not_directly_provided() -> None:
 
 
 async def test_run_case_flags_wrong_facts() -> None:
-    """答えの中の誤りの値（wrong_facts）を拾う。正しい値も書いてあれば key_facts は当たるので、別に見る（specs/021）。"""
-    api = FakeApi([("run.completed", COMPLETED | {"answer": "合計は **600分** です。30 + 25 + 80 = 135分[1]。"})])
-    case = Case(
-        id="w", query="合計は？", key_facts=[KeyFact(any=["135"])], wrong_facts=[KeyFact(any=["600分", "600 分"])]
-    )
+    """答えの中の誤りの値（wrong_facts）を拾う。
+
+    正しい値も書いてあれば key_facts は当たるので、別に見る（specs/021）。
+    """
+    answer = "合計は **600分** です。30 + 25 + 80 = 135分[1]。"
+    api = FakeApi([("run.completed", COMPLETED | {"answer": answer})])
+    wrong = [KeyFact(any=["600分", "600 分"])]
+    case = Case(id="w", query="合計は？", key_facts=[KeyFact(any=["135"])], wrong_facts=wrong)
     r = await run_case(api, case, kb_id="k", model_id=None)
     assert r.fact_coverage == 1.0
     assert r.wrong_facts_found == ["600分"]

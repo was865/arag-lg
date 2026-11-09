@@ -18,7 +18,8 @@ class Case(BaseModel):
     tags: list[str] = Field(default_factory=list)  # 言語は ja / en / cross（日英をまたぐ）
     relevant_documents: list[str] = Field(default_factory=list)
     key_facts: list[KeyFact] = Field(default_factory=list)
-    # 答えに書いてはいけない誤りの値（例: 一部の集計で表全体の合計）。key_facts は正しい値を含むかしか見ないので別に見る（specs/021）
+    # 答えに書いてはいけない誤りの値（例: 一部の集計で表全体の合計）。
+    # key_facts は正しい値を含むかしか見ないので別に見る（specs/021）
     wrong_facts: list[KeyFact] = Field(default_factory=list)
     answer: str | None = None  # 参考解答（検索評価では使わない。P3 の回答評価用）
     # 文書に答えが無い題。回答評価では「資料に無い」と答えるか回答不能なら事実網羅 1.0、答えを作ったら 0.0
