@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 
-from arag import audit_router, health
+from arag import analytics_router, audit_router, health
 from arag.agent import router as router_agent
 from arag.agent.openapi import install_event_schemas
 from arag.db.engine import make_engine, make_sessionmaker
@@ -76,5 +76,6 @@ def create_app(
     app.include_router(router_search.router)
     app.include_router(router_agent.router)
     app.include_router(audit_router.router)
+    app.include_router(analytics_router.router)
     install_event_schemas(app)
     return app

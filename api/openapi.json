@@ -31,6 +31,65 @@
         "title": "ActiveRunOut",
         "type": "object"
       },
+      "AnalyticsOut": {
+        "properties": {
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/Daily"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/FeedbackSummary"
+          },
+          "no_answer_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonCount"
+            },
+            "title": "No Answer Reasons",
+            "type": "array"
+          },
+          "recent_gaps": {
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "title": "Recent Gaps",
+            "type": "array"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          },
+          "top_documents": {
+            "items": {
+              "$ref": "#/components/schemas/TopDocument"
+            },
+            "title": "Top Documents",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/Totals"
+          }
+        },
+        "required": [
+          "days",
+          "since",
+          "totals",
+          "daily",
+          "no_answer_reasons",
+          "recent_gaps",
+          "feedback",
+          "top_documents"
+        ],
+        "title": "AnalyticsOut",
+        "type": "object"
+      },
       "AnswerDelta": {
         "properties": {
           "text": {
@@ -445,6 +504,30 @@
         "title": "CitationRef",
         "type": "object"
       },
+      "Daily": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "no_answer": {
+            "title": "No Answer",
+            "type": "integer"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "questions",
+          "no_answer"
+        ],
+        "title": "Daily",
+        "type": "object"
+      },
       "DocumentOut": {
         "properties": {
           "chunk_count": {
@@ -714,6 +797,32 @@
         "title": "FeedbackOut",
         "type": "object"
       },
+      "FeedbackSummary": {
+        "properties": {
+          "down": {
+            "title": "Down",
+            "type": "integer"
+          },
+          "top_down_tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagCount"
+            },
+            "title": "Top Down Tags",
+            "type": "array"
+          },
+          "up": {
+            "title": "Up",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "down",
+          "top_down_tags"
+        ],
+        "title": "FeedbackSummary",
+        "type": "object"
+      },
       "FolderCreate": {
         "properties": {
           "name": {
@@ -816,6 +925,30 @@
           }
         },
         "title": "FolderUpdate",
+        "type": "object"
+      },
+      "Gap": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "reason",
+          "created_at"
+        ],
+        "title": "Gap",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1326,6 +1459,24 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "ReasonCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "count"
+        ],
+        "title": "ReasonCount",
         "type": "object"
       },
       "RunCancelled": {
@@ -2325,6 +2476,24 @@
         "title": "StepEvent",
         "type": "object"
       },
+      "TagCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "count"
+        ],
+        "title": "TagCount",
+        "type": "object"
+      },
       "ThreadCreate": {
         "properties": {
           "title": {
@@ -2531,6 +2700,81 @@
           }
         },
         "title": "ThreadPatch",
+        "type": "object"
+      },
+      "TopDocument": {
+        "properties": {
+          "answers": {
+            "title": "Answers",
+            "type": "integer"
+          },
+          "citations": {
+            "title": "Citations",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "citations",
+          "answers"
+        ],
+        "title": "TopDocument",
+        "type": "object"
+      },
+      "Totals": {
+        "properties": {
+          "answered_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered Rate"
+          },
+          "median_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Duration Ms"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "tokens_in": {
+            "title": "Tokens In",
+            "type": "integer"
+          },
+          "tokens_out": {
+            "title": "Tokens Out",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "questions",
+          "users",
+          "answered_rate",
+          "median_duration_ms",
+          "tokens_in",
+          "tokens_out"
+        ],
+        "title": "Totals",
         "type": "object"
       },
       "TrashItem": {
@@ -2756,6 +3000,49 @@
         "summary": "Readyz",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/admin/analytics": {
+      "get": {
+        "operationId": "analytics_v1_admin_analytics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analytics",
+        "tags": [
+          "analytics"
         ]
       }
     },

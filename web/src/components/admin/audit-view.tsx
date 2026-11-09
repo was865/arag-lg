@@ -100,7 +100,7 @@ export function AuditView() {
   const input =
     "h-8 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-[12.5px] text-fg outline-none focus:border-accent";
   return (
-    <div className="grid h-dvh grid-rows-[auto_auto_1fr] bg-bg">
+    <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="audit" />
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-2">

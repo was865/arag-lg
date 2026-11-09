@@ -1,6 +1,6 @@
 "use client";
 
-/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・監査ログ）。 */
+/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・監査ログ・利用状況）。 */
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { key: "members", href: "/admin/members", label: "メンバー" },
   { key: "audit", href: "/admin/audit", label: "監査ログ" },
+  { key: "analytics", href: "/admin/analytics", label: "利用状況" },
 ] as const;
 
 export function AdminHeader({ current, children }: { current: (typeof TABS)[number]["key"]; children?: ReactNode }) {
@@ -21,14 +22,14 @@ export function AdminHeader({ current, children }: { current: (typeof TABS)[numb
       >
         <Icon name="chevronLeft" size={16} />
       </Link>
-      <nav aria-label="管理" className="flex min-w-0 flex-1 items-center gap-1">
+      <nav aria-label="管理" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
         {TABS.map((t) => (
           <Link
             key={t.key}
             href={t.href}
             aria-current={current === t.key ? "page" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1 text-[13.5px] no-underline",
+              "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-[13.5px] no-underline max-md:px-2",
               current === t.key ? "bg-surface-2 font-semibold text-fg" : "font-medium text-muted hover:text-fg",
             )}
           >

@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analytics */
+        get: operations["analytics_v1_admin_analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/audit": {
         parameters: {
             query?: never;
@@ -758,6 +775,26 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** AnalyticsOut */
+        AnalyticsOut: {
+            /** Daily */
+            daily: components["schemas"]["Daily"][];
+            /** Days */
+            days: number;
+            feedback: components["schemas"]["FeedbackSummary"];
+            /** No Answer Reasons */
+            no_answer_reasons: components["schemas"]["ReasonCount"][];
+            /** Recent Gaps */
+            recent_gaps: components["schemas"]["Gap"][];
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /** Top Documents */
+            top_documents: components["schemas"]["TopDocument"][];
+            totals: components["schemas"]["Totals"];
+        };
         /** AnswerDelta */
         AnswerDelta: {
             /** Text */
@@ -899,6 +936,18 @@ export interface components {
             /** Source Id */
             source_id: string;
         };
+        /** Daily */
+        Daily: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** No Answer */
+            no_answer: number;
+            /** Questions */
+            questions: number;
+        };
         /** DocumentOut */
         DocumentOut: {
             /** Chunk Count */
@@ -991,6 +1040,15 @@ export interface components {
             /** Reason Tags */
             reason_tags: string[];
         };
+        /** FeedbackSummary */
+        FeedbackSummary: {
+            /** Down */
+            down: number;
+            /** Top Down Tags */
+            top_down_tags: components["schemas"]["TagCount"][];
+            /** Up */
+            up: number;
+        };
         /** FolderCreate */
         FolderCreate: {
             /** Name */
@@ -1031,6 +1089,18 @@ export interface components {
             name?: string | null;
             /** Parent Id */
             parent_id?: string | null;
+        };
+        /** Gap */
+        Gap: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Query */
+            query: string;
+            /** Reason */
+            reason: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1220,6 +1290,13 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "unavailable";
+        };
+        /** ReasonCount */
+        ReasonCount: {
+            /** Count */
+            count: number;
+            /** Reason */
+            reason: string;
         };
         /** RunCancelled */
         RunCancelled: {
@@ -1594,6 +1671,13 @@ export interface components {
              */
             type: "step";
         };
+        /** TagCount */
+        TagCount: {
+            /** Count */
+            count: number;
+            /** Tag */
+            tag: string;
+        };
         /** ThreadCreate */
         ThreadCreate: {
             /**
@@ -1678,6 +1762,30 @@ export interface components {
             title?: string | null;
             /** Visibility */
             visibility?: ("private" | "org" | "public") | null;
+        };
+        /** TopDocument */
+        TopDocument: {
+            /** Answers */
+            answers: number;
+            /** Citations */
+            citations: number;
+            /** Title */
+            title: string;
+        };
+        /** Totals */
+        Totals: {
+            /** Answered Rate */
+            answered_rate: number | null;
+            /** Median Duration Ms */
+            median_duration_ms: number | null;
+            /** Questions */
+            questions: number;
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+            /** Users */
+            users: number;
         };
         /** TrashItem */
         TrashItem: {
@@ -1801,6 +1909,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness"];
+                };
+            };
+        };
+    };
+    analytics_v1_admin_analytics_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

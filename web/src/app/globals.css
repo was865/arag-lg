@@ -47,6 +47,8 @@
   --color-code-bg: var(--code-bg);
 
   --color-accent: var(--accent);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
   --color-accent-soft: var(--accent-soft);
   --color-accent-glow: var(--accent-glow);
 
@@ -58,6 +60,9 @@
 /* ── Theme palettes ─────────────────────────────────────────────────────── */
 .theme-light {
   --bg: #faf8f3;
+  /* グラフの系列色（アクセントとは独立。dataviz の検証済み） */
+  --chart-1: #3d7fd1;
+  --chart-2: #d97757;
   --bg-2: #f4f1ea;
   --surface: #ffffff;
   --surface-2: #fbf9f4;
@@ -80,6 +85,8 @@
 
 .theme-dark {
   --bg: #16151a;
+  --chart-1: #4f8de0;
+  --chart-2: #c96a4b;
   --bg-2: #1b1a20;
   --surface: #1f1e24;
   --surface-2: #25232b;

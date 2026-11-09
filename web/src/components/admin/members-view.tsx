@@ -109,7 +109,7 @@ export function MembersView() {
   };
 
   return (
-    <div className="grid h-dvh grid-rows-[auto_auto_1fr] bg-bg">
+    <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="members">
         {data && <span className="font-mono text-[11px] text-muted max-md:hidden">{data.items.length} 人</span>}
         <button
