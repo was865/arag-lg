@@ -54,3 +54,33 @@ export function formatDate(iso: string, now = new Date()): string {
   const dd = String(d.getDate()).padStart(2, "0");
   return d.getFullYear() === now.getFullYear() ? `${mm}/${dd}` : `${d.getFullYear()}/${mm}/${dd}`;
 }
+
+const EXT_LABELS: Record<string, string> = {
+  pdf: "PDF", docx: "Word", doc: "Word", xlsx: "Excel", xls: "Excel", pptx: "PowerPoint", ppt: "PowerPoint",
+  md: "Markdown", txt: "テキスト", csv: "CSV", html: "HTML", htm: "HTML", png: "画像", jpg: "画像", jpeg: "画像",
+};
+
+export interface FormatRow {
+  label: string;
+  documents: number;
+  bytes: number;
+}
+
+/** 拡張子ごとの数 → 形式ごとの行（Word の doc/docx などはまとめる）。多い順に max 行、残りは「その他」。 */
+export function formatRows(byExt: { ext: string; documents: number; bytes: number }[], max = 6): FormatRow[] {
+  const merged = new Map<string, FormatRow>();
+  for (const e of byExt) {
+    const label = EXT_LABELS[e.ext] ?? (e.ext ? e.ext.toUpperCase() : "その他");
+    const row = merged.get(label) ?? { label, documents: 0, bytes: 0 };
+    row.documents += e.documents;
+    row.bytes += e.bytes;
+    merged.set(label, row);
+  }
+  const rows = [...merged.values()].sort((a, b) => b.documents - a.documents || a.label.localeCompare(b.label));
+  if (rows.length <= max) return rows;
+  const rest = rows.slice(max - 1).reduce(
+    (acc, r) => ({ ...acc, documents: acc.documents + r.documents, bytes: acc.bytes + r.bytes }),
+    { label: "その他", documents: 0, bytes: 0 },
+  );
+  return [...rows.slice(0, max - 1), rest];
+}

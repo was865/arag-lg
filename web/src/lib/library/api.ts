@@ -10,6 +10,7 @@ export type UploadResult = S["UploadResult"];
 export type FolderOut = S["FolderOut"];
 export type OutlineSection = S["OutlineSection"];
 export type SectionOut = S["SectionOut"];
+export type DocumentOverview = S["DocumentOverview"];
 
 const client = createClient<paths>({ baseUrl: "/api" });
 
@@ -43,6 +44,14 @@ export const libraryApi = {
           limit: q.limit ?? 50,
         },
       },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  /** 概要（形式の内訳・最近の追加・失敗・よく引用される文書。specs/023）。 */
+  async overview(kbId: string | null) {
+    const { data, error, response } = await client.GET("/v1/documents/overview", {
+      params: { query: { kb_id: kbId ?? undefined } },
     });
     if (!data) fail(response.status, error);
     return data;

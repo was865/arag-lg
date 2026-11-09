@@ -3,7 +3,7 @@
 import base64
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Header, Query, Request, Response, status
@@ -14,7 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.audit import AuditEvent
 from arag.auth.principal import Principal
-from arag.db.models import Chunk, Content, Document, Folder, IngestJob, KnowledgeBase, Section
+from arag.db.models import (
+    Chunk,
+    Citation,
+    Content,
+    Document,
+    Folder,
+    IngestJob,
+    KnowledgeBase,
+    Message,
+    Section,
+)
 from arag.deps import CtxDep
 from arag.errors import ApiError, not_found
 from arag.ingest.gc import collect_orphans, delete_documents
@@ -59,6 +69,30 @@ class DocumentStats(BaseModel):
     documents: int
     total_bytes: int
     by_status: dict[str, int]
+
+
+class ExtCount(BaseModel):
+    ext: str = Field(description="拡張子（小文字・ドット無し。無ければ空）")
+    documents: int
+    bytes: int
+
+
+class CitedDocument(BaseModel):
+    document: DocumentOut
+    citations: int = Field(description="期間内に回答で引用された回数")
+
+
+class DocumentOverview(BaseModel):
+    """ナレッジベースの概要（specs/023）。"""
+
+    documents: int
+    total_bytes: int
+    by_status: dict[str, int]
+    by_ext: list[ExtCount] = Field(description="文書数の多い順")
+    added_7d: int = Field(description="この 7 日に追加された文書の数")
+    recent: list[DocumentOut] = Field(description="最近追加された文書（新しい順に最大 5 件）")
+    failed: list[DocumentOut] = Field(description="処理に失敗した文書（新しい順に最大 5 件）")
+    top_cited: list[CitedDocument] = Field(description="この 30 日によく引用された文書（最大 5 件）")
 
 
 class DocumentUpdate(BaseModel):
@@ -273,6 +307,78 @@ async def document_stats(ctx: CtxDep, kb_id: uuid.UUID | None = None) -> Documen
         documents=sum(int(n) for _, n, _ in rows),
         total_bytes=sum(int(b) for _, _, b in rows),
         by_status={s: int(n) for s, n, _ in rows},
+    )
+
+
+OVERVIEW_LIST = 5
+CITED_DAYS = 30
+
+
+@router.get("/v1/documents/overview", response_model=DocumentOverview)
+async def document_overview(ctx: CtxDep, kb_id: uuid.UUID | None = None) -> DocumentOverview:
+    """読めるナレッジベース（kb_id があればその 1 つ）の概要。
+
+    引用の回数は全員の回答を数えるが、出す文書は読めるものだけ。
+    """
+    if kb_id is not None:
+        await service.get_readable_kb(ctx.session, ctx.principal, kb_id)
+    scope = [Document.deleted_at.is_(None), _readable_kb_filter(ctx.principal)]
+    if kb_id is not None:
+        scope.append(Document.kb_id == kb_id)
+    s = ctx.session
+    base = (
+        select(Content.ext, Content.status, func.count(Document.id), func.coalesce(func.sum(Content.size), 0))
+        .join(Content, Content.content_hash == Document.content_hash)
+        .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+        .where(*scope)
+        .group_by(Content.ext, Content.status)
+    )
+    by_status: dict[str, int] = {}
+    by_ext: dict[str, list[int]] = {}
+    for ext, st, n, b in (await s.execute(base)).all():
+        by_status[st] = by_status.get(st, 0) + int(n)
+        e = by_ext.setdefault(ext or "", [0, 0])
+        e[0] += int(n)
+        e[1] += int(b)
+    now = datetime.now(UTC)
+    added = await s.scalar(
+        select(func.count(Document.id))
+        .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+        .where(*scope, Document.created_at >= now - timedelta(days=7))
+    )
+    newest = _doc_query().where(*scope).order_by(Document.created_at.desc(), Document.id.desc())
+    recent = (await s.execute(newest.limit(OVERVIEW_LIST))).all()
+    failed = (await s.execute(newest.where(Content.status == "error").limit(OVERVIEW_LIST))).all()
+    cited = (
+        select(Citation.document_id, func.count(Citation.id).label("n"))
+        .join(Message, Message.id == Citation.message_id)
+        .where(Citation.document_id.is_not(None), Message.created_at >= now - timedelta(days=CITED_DAYS))
+        .group_by(Citation.document_id)
+        .subquery()
+    )
+    top = (
+        await s.execute(
+            _doc_query()
+            .add_columns(cited.c.n)
+            .join(cited, cited.c.document_id == Document.id)
+            .where(*scope)
+            .order_by(cited.c.n.desc(), Document.filename)
+            .limit(OVERVIEW_LIST)
+        )
+    ).all()
+    p = ctx.principal
+    return DocumentOverview(
+        documents=sum(by_status.values()),
+        total_bytes=sum(b for _, b in by_ext.values()),
+        by_status=by_status,
+        by_ext=[
+            ExtCount(ext=e, documents=n, bytes=b)
+            for e, (n, b) in sorted(by_ext.items(), key=lambda x: (-x[1][0], x[0]))
+        ],
+        added_7d=int(added or 0),
+        recent=[_doc_out(p, r) for r in recent],
+        failed=[_doc_out(p, r) for r in failed],
+        top_cited=[CitedDocument(document=_doc_out(p, r[:5]), citations=int(r[5])) for r in top],
     )
 
 

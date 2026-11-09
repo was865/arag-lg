@@ -534,6 +534,24 @@
         "title": "CitationRef",
         "type": "object"
       },
+      "CitedDocument": {
+        "properties": {
+          "citations": {
+            "description": "期間内に回答で引用された回数",
+            "title": "Citations",
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DocumentOut"
+          }
+        },
+        "required": [
+          "document",
+          "citations"
+        ],
+        "title": "CitedDocument",
+        "type": "object"
+      },
       "CredentialIn": {
         "properties": {
           "api_key": {
@@ -810,6 +828,75 @@
         "title": "DocumentOut",
         "type": "object"
       },
+      "DocumentOverview": {
+        "description": "ナレッジベースの概要（specs/023）。",
+        "properties": {
+          "added_7d": {
+            "description": "この 7 日に追加された文書の数",
+            "title": "Added 7D",
+            "type": "integer"
+          },
+          "by_ext": {
+            "description": "文書数の多い順",
+            "items": {
+              "$ref": "#/components/schemas/ExtCount"
+            },
+            "title": "By Ext",
+            "type": "array"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "failed": {
+            "description": "処理に失敗した文書（新しい順に最大 5 件）",
+            "items": {
+              "$ref": "#/components/schemas/DocumentOut"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "recent": {
+            "description": "最近追加された文書（新しい順に最大 5 件）",
+            "items": {
+              "$ref": "#/components/schemas/DocumentOut"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "top_cited": {
+            "description": "この 30 日によく引用された文書（最大 5 件）",
+            "items": {
+              "$ref": "#/components/schemas/CitedDocument"
+            },
+            "title": "Top Cited",
+            "type": "array"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documents",
+          "total_bytes",
+          "by_status",
+          "by_ext",
+          "added_7d",
+          "recent",
+          "failed",
+          "top_cited"
+        ],
+        "title": "DocumentOverview",
+        "type": "object"
+      },
       "DocumentPage": {
         "properties": {
           "items": {
@@ -892,6 +979,30 @@
           }
         },
         "title": "DocumentUpdate",
+        "type": "object"
+      },
+      "ExtCount": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "ext": {
+            "description": "拡張子（小文字・ドット無し。無ければ空）",
+            "title": "Ext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ext",
+          "documents",
+          "bytes"
+        ],
+        "title": "ExtCount",
         "type": "object"
       },
       "FeedbackIn": {
@@ -4404,6 +4515,57 @@
           }
         },
         "summary": "Bulk Move",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/v1/documents/overview": {
+      "get": {
+        "description": "読めるナレッジベース（kb_id があればその 1 つ）の概要。引用の回数は全員の回答を数えるが、文書は読めるものだけ。",
+        "operationId": "document_overview_v1_documents_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kb_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kb Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Overview",
         "tags": [
           "documents"
         ]

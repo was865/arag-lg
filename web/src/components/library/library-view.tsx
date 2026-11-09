@@ -29,6 +29,7 @@ import { ApiError } from "@/lib/chat/api";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, originalUrl, type DocumentOut, type FolderOut } from "@/lib/library/api";
+import { LibraryOverview } from "@/components/library/library-overview";
 import { chunk, selectRange, toggleId } from "@/lib/library/selection";
 import { breadcrumb, childFolders } from "@/lib/library/folders";
 import {
@@ -744,6 +745,14 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           <EmptyLibrary canUpload={Boolean(target)} onPick={() => fileRef.current?.click()} />
         ) : (
           <div className={cn("mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2", selecting && "pb-24")}>
+            {crumbs.length === 0 && !search && filter === "all" && !selecting && (
+              <LibraryOverview
+                kbId={kbId}
+                refreshKey={stats ? `${stats.documents}:${JSON.stringify(stats.by_status)}` : ""}
+                onOpenDocument={onOpenDocument}
+                onShowFailed={() => setFilter("error")}
+              />
+            )}
             <div
               className={cn(
                 ROW_GRID,

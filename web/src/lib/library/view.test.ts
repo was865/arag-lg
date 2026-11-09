@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { KbInfo } from "@/hooks/use-kbs";
-import { docStatus, formatBytes, filterStatuses, formatDate, uploadTarget } from "@/lib/library/view";
+import { docStatus, formatBytes, filterStatuses, formatDate, uploadTarget, formatRows } from "@/lib/library/view";
 
 const kb = (over: Partial<KbInfo>): KbInfo => ({
   id: "k",
@@ -55,5 +55,28 @@ describe("formatBytes / formatDate", () => {
     const now = new Date(2026, 10, 9);
     expect(formatDate(new Date(2026, 1, 3).toISOString(), now)).toBe("02/03");
     expect(formatDate(new Date(2025, 11, 31).toISOString(), now)).toBe("2025/12/31");
+  });
+});
+
+describe("formatRows", () => {
+  it("同じ形式をまとめ、多い順に並べる", () => {
+    const rows = formatRows([
+      { ext: "pdf", documents: 3, bytes: 30 },
+      { ext: "docx", documents: 2, bytes: 20 },
+      { ext: "doc", documents: 2, bytes: 5 },
+      { ext: "zz", documents: 1, bytes: 1 },
+    ]);
+    expect(rows).toEqual([
+      { label: "Word", documents: 4, bytes: 25 },
+      { label: "PDF", documents: 3, bytes: 30 },
+      { label: "ZZ", documents: 1, bytes: 1 },
+    ]);
+  });
+  it("多すぎる形式は「その他」にまとめる", () => {
+    const rows = formatRows(
+      ["pdf", "md", "csv", "txt"].map((ext, i) => ({ ext, documents: 10 - i, bytes: 1 })),
+      3,
+    );
+    expect(rows.map((r) => [r.label, r.documents])).toEqual([["PDF", 10], ["Markdown", 9], ["その他", 15]]);
   });
 });

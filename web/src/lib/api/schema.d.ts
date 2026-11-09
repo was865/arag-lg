@@ -245,6 +245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Overview
+         * @description 読めるナレッジベース（kb_id があればその 1 つ）の概要。引用の回数は全員の回答を数えるが、文書は読めるものだけ。
+         */
+        get: operations["document_overview_v1_documents_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents/stats": {
         parameters: {
             query?: never;
@@ -1126,6 +1146,15 @@ export interface components {
             /** Source Id */
             source_id: string;
         };
+        /** CitedDocument */
+        CitedDocument: {
+            /**
+             * Citations
+             * @description 期間内に回答で引用された回数
+             */
+            citations: number;
+            document: components["schemas"]["DocumentOut"];
+        };
         /** CredentialIn */
         CredentialIn: {
             /** Api Key */
@@ -1227,6 +1256,45 @@ export interface components {
             /** Writable */
             writable: boolean;
         };
+        /**
+         * DocumentOverview
+         * @description ナレッジベースの概要（specs/023）。
+         */
+        DocumentOverview: {
+            /**
+             * Added 7D
+             * @description この 7 日に追加された文書の数
+             */
+            added_7d: number;
+            /**
+             * By Ext
+             * @description 文書数の多い順
+             */
+            by_ext: components["schemas"]["ExtCount"][];
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Documents */
+            documents: number;
+            /**
+             * Failed
+             * @description 処理に失敗した文書（新しい順に最大 5 件）
+             */
+            failed: components["schemas"]["DocumentOut"][];
+            /**
+             * Recent
+             * @description 最近追加された文書（新しい順に最大 5 件）
+             */
+            recent: components["schemas"]["DocumentOut"][];
+            /**
+             * Top Cited
+             * @description この 30 日によく引用された文書（最大 5 件）
+             */
+            top_cited: components["schemas"]["CitedDocument"][];
+            /** Total Bytes */
+            total_bytes: number;
+        };
         /** DocumentPage */
         DocumentPage: {
             /** Items */
@@ -1254,6 +1322,18 @@ export interface components {
             filename?: string | null;
             /** Folder Id */
             folder_id?: string | null;
+        };
+        /** ExtCount */
+        ExtCount: {
+            /** Bytes */
+            bytes: number;
+            /** Documents */
+            documents: number;
+            /**
+             * Ext
+             * @description 拡張子（小文字・ドット無し。無ければ空）
+             */
+            ext: string;
         };
         /** FeedbackIn */
         FeedbackIn: {
@@ -2771,6 +2851,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_overview_v1_documents_overview_get: {
+        parameters: {
+            query?: {
+                kb_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOverview"];
                 };
             };
             /** @description Validation Error */

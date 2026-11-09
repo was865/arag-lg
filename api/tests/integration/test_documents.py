@@ -231,3 +231,48 @@ async def test_trash_lists_only_restorable(client: httpx.AsyncClient) -> None:
     admin_trash = (await client.get("/v1/trash", headers=ADMIN)).json()
     assert [(t["kind"], t["name"]) for t in admin_trash] == [("kb", "全社")]
     assert (await client.get("/v1/trash", headers=as_user("carol"))).json() == []
+
+
+async def test_overview_counts_formats_failures_and_citations(
+    client: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    """specs/023 R1: 形式の内訳・最近の追加・失敗した文書・よく引用される文書。"""
+    from arag.db.models import Citation, Message, Thread
+
+    kb = await _personal(client, ALICE)
+    items = (
+        await _upload(client, kb, [("a.txt", b"aaaa"), ("b.txt", b"bb"), ("c.md", b"# c"), ("d.csv", b"x,y")])
+    ).json()["items"]
+    # 結果の順は送った順とは限らないので名前で引く
+    by_name = {i["filename"]: i["document_id"] for i in items}
+    ids = [by_name[n] for n in ("a.txt", "b.txt", "c.md", "d.csv")]
+    async with sessionmaker() as s:
+        await s.execute(
+            text(
+                "update app.contents set status='error' where content_hash ="
+                " (select content_hash from app.documents where id = :id)"
+            ),
+            {"id": ids[3]},
+        )
+        th = Thread(user_id="bob", title="t")
+        s.add(th)
+        await s.flush()
+        for n, doc_ids in enumerate([[ids[1], ids[0]], [ids[1]]]):
+            m = Message(thread_id=th.id, ordinal=n, query="q", answer_text="a")
+            s.add(m)
+            await s.flush()
+            for o, d in enumerate(doc_ids, 1):
+                s.add(Citation(message_id=m.id, ordinal=o, document_id=uuid.UUID(d), document_title="x"))
+        await s.commit()
+
+    ov = (await client.get(f"/v1/documents/overview?kb_id={kb}", headers=ALICE)).json()
+    assert ov["documents"] == 4 and ov["added_7d"] == 4
+    assert ov["by_ext"][0] == {"ext": "txt", "documents": 2, "bytes": 6}
+    assert {e["ext"] for e in ov["by_ext"]} == {"txt", "md", "csv"}
+    assert [d["filename"] for d in ov["failed"]] == ["d.csv"]
+    assert len(ov["recent"]) == 4
+    cited = [(c["document"]["filename"], c["citations"]) for c in ov["top_cited"]]
+    assert cited == [("b.txt", 2), ("a.txt", 1)]
+    # 他人の個人 KB の文書は、引用されていても出さない
+    bob = (await client.get("/v1/documents/overview", headers=BOB)).json()
+    assert bob["documents"] == 0 and bob["top_cited"] == [] and bob["recent"] == []
