@@ -31,6 +31,7 @@ class Storage(Protocol):
     async def size(self, key: str) -> int: ...
     async def exists(self, key: str) -> bool: ...
     async def delete_prefix(self, prefix: str) -> None: ...
+    async def delete(self, key: str) -> None: ...
     def local_path(self, key: str) -> Path | None: ...
 
 
@@ -86,6 +87,10 @@ class LocalStorage:
     async def delete_prefix(self, prefix: str) -> None:
         path = self._path(prefix)
         await asyncio.to_thread(shutil.rmtree, path, True)
+
+    async def delete(self, key: str) -> None:
+        """1 つのファイルを消す（無ければ何もしない）。"""
+        await asyncio.to_thread(self._path(key).unlink, True)
 
 
 def _atomic_write(path: Path, data: bytes) -> None:

@@ -14,7 +14,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
@@ -26,12 +26,15 @@ from arag.agent.citations import CitationRegistry, cited_numbers, normalize_mark
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
 from arag.agent.graph import build_agent
+from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
+from arag.agent.steps import Step, StepClock
 from arag.agent.stream import EventSink, is_cancelled, redis_client
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
 from arag.logging import get_logger
+from arag.storage import Storage
 
 log = get_logger("arag.agent.runner")
 
@@ -46,6 +49,10 @@ NO_ANSWER_TEXT = {
 
 
 RUNNER_LOST = "回答の生成が中断されました。もう一度お試しください。"
+
+
+class ImageReader(Protocol):
+    async def read(self, image: bytes, question: str) -> str: ...
 
 
 @dataclass
@@ -67,6 +74,9 @@ class RunnerDeps:
     events_ttl_sec: int = 3600
     cancel_poll_sec: float = 0.5
     agent_cache: dict[str, Any] = field(default_factory=dict)
+    # 質問に添えた画像（specs/017）。画像の保存先と、画像を文章にする読み手（未設定なら読めない扱い）
+    storage: Storage | None = None
+    image_reader: ImageReader | None = None
 
     def agent_for(self, m: ResolvedModels) -> Any:
         if m.id not in self.agent_cache:
@@ -190,7 +200,13 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 "max_concurrency": cfg.parallel_tools,
                 "recursion_limit": cfg.max_steps * 3 + 10,
             }
-            await _stream(agent, config, ctx, sink, turn, req["query"])
+            query = req["query"]
+            if isinstance(req.get("image"), dict):
+                description = await _read_image(deps, sink, turn, req)
+                query = with_image_description(query, description)
+                # 検索語の書き換えでも画像の内容を踏まえる（R5）
+                ctx.question = query
+            await _stream(agent, config, ctx, sink, turn, query)
             final = await agent.aget_state({"configurable": {"thread_id": str(thread_id)}})
             msgs = final.values.get("messages", [])
             last = msgs[-1] if msgs else None
@@ -250,6 +266,38 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     else:
         await sink.emit({"type": "run.failed", "code": code or "generation_failed", "message": answer})
     return status
+
+
+async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[str, Any]) -> str | None:
+    """添付画像を文章にする（R4）。失敗しても回答は止めず None を返す（R5）。"""
+    img = req["image"]
+    step = Step(id=f"img-{img['id']}", name="read_image", label="画像を読み取る", status="running")
+    events: list[dict[str, Any]] = []
+    clock = StepClock(events.append, step)
+
+    async def flush() -> None:
+        # 進行表示に出しつつ、保存するステップにも残す
+        for ev in events:
+            turn.steps[ev["step"]["id"]] = ev["step"]
+            await sink.emit(ev)
+        events.clear()
+
+    await flush()  # 「読み取り中」を先に出す
+    description: str | None = None
+    try:
+        if deps.image_reader is None or deps.storage is None:
+            raise RuntimeError("画像の読み取りが設定されていません")
+        data = await deps.storage.read(img["key"])
+        description = (await deps.image_reader.read(data, req["query"])).strip() or None
+        if description is None:
+            raise RuntimeError("画像から何も読み取れませんでした")
+        clock.done("読み取りました", {"description": description})
+        img["description"] = description
+    except Exception as e:
+        log.warning("read_image_failed", error=f"{type(e).__name__}: {e}")
+        clock.done("画像を読み取れませんでした", {"error": str(e)[:200]}, error=True)
+    await flush()
+    return description
 
 
 async def _stream(
@@ -530,9 +578,11 @@ async def main() -> None:
     from arag.agent.catalog import load_catalog
     from arag.agent.checkpoint import open_checkpointer
     from arag.db.engine import make_engine, make_sessionmaker
+    from arag.inference import build_query_image_reader
     from arag.logging import configure_logging
     from arag.search.service import build_search_deps, search
     from arag.settings import Settings
+    from arag.storage import LocalStorage
 
     settings = Settings()
     configure_logging(settings.log_level)
@@ -568,6 +618,8 @@ async def main() -> None:
             search=search_fn,
             resolve_models=resolve,
             events_ttl_sec=settings.run_events_ttl_sec,
+            storage=LocalStorage(settings.storage_dir),
+            image_reader=build_query_image_reader(settings),
         )
         runner = Runner(
             deps,

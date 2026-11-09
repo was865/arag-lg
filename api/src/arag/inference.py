@@ -7,6 +7,7 @@
 from typing import Any
 from urllib.parse import urlparse
 
+from arag.agent.query_image import QueryImageReader
 from arag.health import Check, http_check
 from arag.ingest.embedder import OpenAIEmbedder, TeiEmbedder
 from arag.ingest.figures import LlmFigureDescriber
@@ -60,6 +61,15 @@ def build_figure_describer(settings: Settings) -> LlmFigureDescriber | None:
     if not settings.vlm_model:
         return None
     return LlmFigureDescriber(
+        chat_model(settings.vlm_model, base_url=settings.vlm_base_url, kwargs=settings.vlm_model_kwargs)
+    )
+
+
+def build_query_image_reader(settings: Settings) -> QueryImageReader | None:
+    """質問に添えた画像を読む（図の説明と同じモデル。specs/017）。"""
+    if not settings.vlm_model:
+        return None
+    return QueryImageReader(
         chat_model(settings.vlm_model, base_url=settings.vlm_base_url, kwargs=settings.vlm_model_kwargs)
     )
 

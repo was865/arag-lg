@@ -858,6 +858,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/threads/{thread_id}/messages/{message_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Message Image
+         * @description 質問に添えた画像。スレッドの持ち主だけが見られる（specs/017 R6）。
+         */
+        get: operations["get_message_image_v1_threads__thread_id__messages__message_id__image_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/threads/{thread_id}/runs": {
         parameters: {
             query?: never;
@@ -1420,6 +1440,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            image?: components["schemas"]["QueryImageOut"] | null;
             /** Model Id */
             model_id: string | null;
             /** No Answer Reason */
@@ -1528,6 +1549,11 @@ export interface components {
         ModelsOut: {
             /** Default Id */
             default_id: string | null;
+            /**
+             * Image Input
+             * @default false
+             */
+            image_input: boolean;
             /** Models */
             models: components["schemas"]["ModelOut"][];
         };
@@ -1567,6 +1593,23 @@ export interface components {
             chunk_id: string;
             /** Score */
             score: number;
+        };
+        /** QueryImageIn */
+        QueryImageIn: {
+            /** Data */
+            data: string;
+        };
+        /**
+         * QueryImageOut
+         * @description 質問に添えた画像（本体は /v1/threads/{id}/messages/{id}/image）。
+         */
+        QueryImageOut: {
+            /** Description */
+            description?: string | null;
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
         };
         /** Readiness */
         Readiness: {
@@ -1667,6 +1710,7 @@ export interface components {
             document_ids?: string[] | null;
             /** From Message Id */
             from_message_id?: string | null;
+            image?: components["schemas"]["QueryImageIn"] | null;
             /**
              * Include Archived
              * @default false
@@ -1838,6 +1882,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Has Image
+             * @default false
+             */
+            has_image: boolean;
             /** Query */
             query: string;
             /** Sources */
@@ -4066,6 +4115,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_message_image_v1_threads__thread_id__messages__message_id__image_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

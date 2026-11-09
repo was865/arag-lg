@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # 自前の OpenAI 互換サーバ（vLLM の Qwen2.5-VL 等）。vlm_model は "openai:<served-model-name>" にする
     vlm_base_url: str = ""
     vlm_model_kwargs: dict[str, Any] = {}
+    # 質問に添える画像（specs/017）。保存前に長辺をこの値まで縮め、受け付ける元の大きさの上限
+    query_image_max_px: int = 1280
+    query_image_max_bytes: int = 8_000_000
     sudachi_mode: Literal["A", "B", "C"] = "B"
     bm25_avgdl: float = 200.0
     # 英語の語幹化（Snowball）。既定は off（specs/004-retrieval §10 の評価で決める）

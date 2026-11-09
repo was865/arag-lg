@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from arag.agent.catalog import load_catalog
 from arag.agent.config import ModelCatalog, ModelNotFound
 from arag.agent.events import CitationRef, SourceView
+from arag.agent.query_image import ImageRejected, decode_query_image, image_key
 from arag.agent.service import (
+    QueryImageIn,
     RunRequest,
     active_run,
     create_run,
@@ -31,6 +33,7 @@ from arag.db.models import Message, MessageFeedback, Run, Thread
 from arag.deps import CtxDep, get_session
 from arag.errors import ApiError, not_found
 from arag.settings import Settings
+from arag.storage import Storage
 
 router = APIRouter(tags=["chat"])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -64,6 +67,8 @@ class ModelOut(BaseModel):
 class ModelsOut(BaseModel):
     models: list[ModelOut]
     default_id: str | None
+    # 質問に画像を添えられるか（図の説明用モデルが設定されているか。specs/017 R3）
+    image_input: bool = False
 
 
 @router.get("/v1/models", response_model=ModelsOut)
@@ -78,6 +83,7 @@ async def list_models(request: Request, _p: CurrentPrincipal, s: Session) -> Mod
             ModelOut(id=m.id, label=m.label, tags=list(m.tags), available=m.available) for m in cat.models
         ],
         default_id=default,
+        image_input=bool(_settings(request).vlm_model),
     )
 
 
@@ -107,6 +113,21 @@ class FeedbackOut(BaseModel):
     comment: str | None
 
 
+class QueryImageOut(BaseModel):
+    """質問に添えた画像（本体は /v1/threads/{id}/messages/{id}/image）。"""
+
+    width: int
+    height: int
+    description: str | None = None
+
+
+def _image_out(request: dict[str, Any]) -> QueryImageOut | None:
+    img = request.get("image")
+    if not isinstance(img, dict) or not img.get("key"):
+        return None
+    return QueryImageOut(width=img["width"], height=img["height"], description=img.get("description"))
+
+
 class MessageOut(BaseModel):
     id: uuid.UUID
     ordinal: int
@@ -123,6 +144,7 @@ class MessageOut(BaseModel):
     no_answer_reason: str | None
     created_at: datetime
     feedback: FeedbackOut | None = None
+    image: QueryImageOut | None = None
 
 
 class ActiveRunOut(BaseModel):
@@ -218,6 +240,7 @@ async def get_thread_detail(thread_id: uuid.UUID, p: CurrentPrincipal, s: Sessio
                 citation_map={k: CitationRef.model_validate(v) for k, v in m.citation_map.items()},
                 no_answer_reason=m.no_answer_reason,
                 created_at=m.created_at,
+                image=_image_out(m.request),
                 feedback=FeedbackOut(rating=f.rating, reason_tags=f.reason_tags, comment=f.comment)  # type: ignore[arg-type]
                 if (f := fb.get(m.id))
                 else None,
@@ -225,6 +248,28 @@ async def get_thread_detail(thread_id: uuid.UUID, p: CurrentPrincipal, s: Sessio
             for m in msgs
         ],
         active_run=_active_out(await active_run(s, t.id)),
+    )
+
+
+@router.get(
+    "/v1/threads/{thread_id}/messages/{message_id}/image",
+    response_class=Response,
+    responses={200: {"content": {"image/jpeg": {}}}},
+)
+async def get_message_image(
+    thread_id: uuid.UUID, message_id: uuid.UUID, request: Request, p: CurrentPrincipal, s: Session
+) -> Response:
+    """質問に添えた画像。スレッドの持ち主だけが見られる（specs/017 R6）。"""
+    t = await get_thread(s, p, thread_id)
+    m = await s.get(Message, message_id)
+    img = (m.request or {}).get("image") if m is not None and m.thread_id == t.id else None
+    storage: Storage = request.app.state.storage
+    if not isinstance(img, dict) or not img.get("key") or not await storage.exists(img["key"]):
+        raise not_found("画像が見つかりません")
+    return Response(
+        await storage.read(img["key"]),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=86400"},
     )
 
 
@@ -260,6 +305,12 @@ async def delete_thread(thread_id: uuid.UUID, request: Request, p: CurrentPrinci
     r = await active_run(s, t.id)
     if r is not None:
         await request_cancel(_redis(request), str(r.id))
+    # 質問に添えた画像（保存済みのメッセージと、まだ終わっていない run の分。specs/017 R8）
+    reqs = [*await s.scalars(select(Message.request).where(Message.thread_id == t.id))]
+    reqs += [*await s.scalars(select(Run.request).where(Run.thread_id == t.id))]
+    image_keys = {
+        img["key"] for q in reqs if isinstance(img := (q or {}).get("image"), dict) and img.get("key")
+    }
     # checkpoint（スキーマ lg）も消す。表が無い（runner 未起動）なら何もしない
     for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
         exists = await s.scalar(text("SELECT to_regclass(:t)"), {"t": f"lg.{table}"})
@@ -267,6 +318,9 @@ async def delete_thread(thread_id: uuid.UUID, request: Request, p: CurrentPrinci
             await s.execute(text(f"DELETE FROM lg.{table} WHERE thread_id = :id"), {"id": str(t.id)})
     await s.delete(t)
     await s.commit()
+    storage: Storage = request.app.state.storage
+    for key in image_keys:
+        await storage.delete(key)
     return Response(status_code=204)
 
 
@@ -300,6 +354,24 @@ async def _check_limits(request: Request, s: AsyncSession, p: Principal) -> None
             raise ApiError(429, "monthly_quota_exceeded", "今月の利用上限に達しました")
 
 
+async def _store_image(request: Request, p: Principal, img: QueryImageIn) -> dict[str, Any]:
+    """検証・縮小して保存し、run の request に入れる情報を返す（specs/017 R2・R3）。"""
+    settings = _settings(request)
+    if not settings.vlm_model:
+        raise ApiError(422, "image_unsupported", "画像の読み取りが設定されていないため、画像は添えられません")
+    try:
+        q = decode_query_image(
+            img.data, max_px=settings.query_image_max_px, max_bytes=settings.query_image_max_bytes
+        )
+    except ImageRejected as e:
+        raise ApiError(422, "invalid_image", str(e)) from e
+    image_id = uuid.uuid4().hex
+    key = image_key(p.user_id, image_id)
+    storage: Storage = request.app.state.storage
+    await storage.put(key, q.data)
+    return {"id": image_id, "key": key, "width": q.width, "height": q.height}
+
+
 async def _start(
     request: Request, s: AsyncSession, p: Principal, thread: Thread | None, body: RunRequest
 ) -> RunCreated:
@@ -310,7 +382,8 @@ async def _start(
     except ModelNotFound as e:
         raise ApiError(422, "model_unavailable", str(e)) from e
     await _check_limits(request, s, p)
-    t, run = await create_run(s, p, thread, body, model.id)
+    image = await _store_image(request, p, body.image) if body.image is not None else None
+    t, run = await create_run(s, p, thread, body, model.id, image=image)
     await s.commit()
     return RunCreated(run_id=run.id, message_id=run.message_id, thread_id=t.id)
 
@@ -454,6 +527,8 @@ class SharedMessage(BaseModel):
     answer: str
     created_at: datetime
     sources: list[SharedSource]
+    # 画像そのものは共有しない（specs/017 R6）
+    has_image: bool = False
 
 
 class SharedThreadOut(BaseModel):
@@ -514,6 +589,7 @@ async def get_shared_thread(token: str, p: OptionalPrincipal, s: Session) -> Sha
                 answer=m.answer_text,
                 created_at=m.created_at,
                 sources=shared_sources(m.citation_map, m.sources),
+                has_image=_image_out(m.request) is not None,
             )
             for m in msgs
         ],

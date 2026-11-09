@@ -3,12 +3,13 @@
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.agent.config import AgentCfg
+from arag.agent.query_image import DEFAULT_QUERY
 from arag.auth.principal import Principal
 from arag.db.models import Message, Run, Thread
 from arag.errors import ApiError, not_found
@@ -19,6 +20,11 @@ TITLE_MAX = 40
 ACTIVE = ("queued", "running")
 
 
+class QueryImageIn(BaseModel):
+    # 元画像 8MB の base64 ＋ data URL の接頭辞まで
+    data: str = Field(min_length=1, max_length=11_000_000)
+
+
 class RunRequest(BaseModel):
     query: str
     model_id: str | None = None
@@ -27,16 +33,24 @@ class RunRequest(BaseModel):
     document_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
     agent_cfg: dict[str, Any] | None = None
     from_message_id: uuid.UUID | None = None
+    # 質問に添える画像（specs/017）。base64（data URL も可）。検証・縮小は API で行う
+    image: QueryImageIn | None = None
 
     @field_validator("query")
     @classmethod
     def _query(cls, v: str) -> str:
         v = v.strip()
-        if not v:
-            raise ValueError("質問を入力してください")
         if len(v) > QUERY_MAX:
             raise ValueError(f"質問は {QUERY_MAX} 文字以内にしてください")
         return v
+
+    @model_validator(mode="after")
+    def _query_or_image(self) -> "RunRequest":
+        if not self.query:
+            if self.image is None:
+                raise ValueError("質問を入力してください")
+            self.query = DEFAULT_QUERY  # 画像だけで送ったとき（R7）
+        return self
 
 
 def title_from(query: str) -> str:
@@ -65,7 +79,12 @@ async def active_run(session: AsyncSession, thread_id: uuid.UUID) -> Run | None:
 
 
 async def create_run(
-    session: AsyncSession, p: Principal, thread: Thread | None, req: RunRequest, model_id: str
+    session: AsyncSession,
+    p: Principal,
+    thread: Thread | None,
+    req: RunRequest,
+    model_id: str,
+    image: dict[str, Any] | None = None,
 ) -> tuple[Thread, Run]:
     """run を queued で作る（コミットは呼び出し側）。分岐なら対象ターンの位置と checkpoint を覚える。"""
     if thread is None:
@@ -99,6 +118,7 @@ async def create_run(
             "branch": branch,
             "branch_checkpoint_id": branch_ckpt,
             "principal": {"user_id": p.user_id, "role": p.role, "email": p.email},
+            **({"image": image} if image else {}),
         },
     )
     try:

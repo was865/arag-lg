@@ -1422,6 +1422,16 @@
             "title": "Id",
             "type": "string"
           },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryImageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "model_id": {
             "anyOf": [
               {
@@ -1774,6 +1784,11 @@
             ],
             "title": "Default Id"
           },
+          "image_input": {
+            "default": false,
+            "title": "Image Input",
+            "type": "boolean"
+          },
           "models": {
             "items": {
               "$ref": "#/components/schemas/ModelOut"
@@ -1887,6 +1902,51 @@
           "score"
         ],
         "title": "PathHit",
+        "type": "object"
+      },
+      "QueryImageIn": {
+        "properties": {
+          "data": {
+            "maxLength": 11000000,
+            "minLength": 1,
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "QueryImageIn",
+        "type": "object"
+      },
+      "QueryImageOut": {
+        "description": "質問に添えた画像（本体は /v1/threads/{id}/messages/{id}/image）。",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "QueryImageOut",
         "type": "object"
       },
       "Readiness": {
@@ -2163,6 +2223,16 @@
               }
             ],
             "title": "From Message Id"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryImageIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "include_archived": {
             "default": false,
@@ -2625,6 +2695,11 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "has_image": {
+            "default": false,
+            "title": "Has Image",
+            "type": "boolean"
           },
           "query": {
             "title": "Query",
@@ -6265,6 +6340,56 @@
           }
         },
         "summary": "Get Active Run",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/v1/threads/{thread_id}/messages/{message_id}/image": {
+      "get": {
+        "description": "質問に添えた画像。スレッドの持ち主だけが見られる（specs/017 R6）。",
+        "operationId": "get_message_image_v1_threads__thread_id__messages__message_id__image_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Message Image",
         "tags": [
           "chat"
         ]

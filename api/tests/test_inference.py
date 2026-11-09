@@ -8,6 +8,7 @@ import pytest
 from arag.inference import (
     build_embedder,
     build_figure_describer,
+    build_query_image_reader,
     build_reranker,
     describe_inference,
     inference_checks,
@@ -180,6 +181,14 @@ def test_build_figure_describer_uses_base_url(monkeypatch: pytest.MonkeyPatch) -
     assert calls == [
         {"name": "openai:qwen2.5-vl", "base_url": "http://gpu:8091/v1", "kwargs": {"temperature": 0}}
     ]
+
+
+def test_build_query_image_reader_shares_vlm(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr("arag.inference.chat_model", lambda name, **kw: calls.append(name) or object())
+    assert build_query_image_reader(_settings()) is None
+    assert build_query_image_reader(_settings(vlm_model="openai:qwen3-vl", vlm_base_url="http://gpu:8091/v1"))
+    assert calls == ["openai:qwen3-vl"]
 
 
 def test_describe_inference_hides_keys() -> None:
