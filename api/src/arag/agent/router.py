@@ -13,6 +13,7 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from arag.agent.catalog import load_catalog
 from arag.agent.config import ModelCatalog, ModelNotFound
 from arag.agent.events import CitationRef, SourceView
 from arag.agent.service import (
@@ -45,12 +46,9 @@ def _redis(request: Request) -> Redis:
     return r
 
 
-def _catalog(request: Request) -> ModelCatalog:
-    cat = getattr(request.app.state, "catalog", None)
-    if cat is None:
-        cat = ModelCatalog.from_raw(_settings(request).chat_models)
-        request.app.state.catalog = cat
-    return cat
+async def _catalog(request: Request, s: AsyncSession) -> ModelCatalog:
+    # DB の目録と .env の合成（specs/013-llm-keys R5）。変更がすぐ効くよう毎回読む
+    return await load_catalog(s, _settings(request))
 
 
 # --- モデル ---
@@ -69,8 +67,8 @@ class ModelsOut(BaseModel):
 
 
 @router.get("/v1/models", response_model=ModelsOut)
-async def list_models(request: Request, _p: CurrentPrincipal) -> ModelsOut:
-    cat = _catalog(request)
+async def list_models(request: Request, _p: CurrentPrincipal, s: Session) -> ModelsOut:
+    cat = await _catalog(request, s)
     try:
         default: str | None = cat.default().id
     except ModelNotFound:
@@ -308,7 +306,7 @@ async def _start(
     if not p.email_verified:
         raise ApiError(403, "email_not_verified", "メールアドレスの確認が必要です")
     try:
-        model = _catalog(request).resolve(body.model_id)
+        model = (await _catalog(request, s)).resolve(body.model_id)
     except ModelNotFound as e:
         raise ApiError(422, "model_unavailable", str(e)) from e
     await _check_limits(request, s, p)

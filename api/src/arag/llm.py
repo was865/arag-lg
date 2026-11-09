@@ -6,13 +6,19 @@ from typing import Any
 from langchain_core.language_models import BaseChatModel
 
 
-def chat_model(name: str, *, base_url: str = "", kwargs: dict[str, Any] | None = None) -> BaseChatModel:
+def chat_model(
+    name: str, *, base_url: str = "", kwargs: dict[str, Any] | None = None, api_key: str = ""
+) -> BaseChatModel:
     from langchain.chat_models import init_chat_model
 
     extra: dict[str, Any] = dict(kwargs or {})
+    if api_key:
+        # 画面で登録した接続の鍵（specs/013-llm-keys）。環境変数より優先する
+        extra["api_key"] = api_key
     if base_url:
         # 自前サーバは鍵を見ないが、クライアントは空の鍵を受け付けない
-        extra |= {"base_url": base_url, "api_key": os.environ.get("ARAG_CONTEXT_API_KEY", "EMPTY")}
+        extra["base_url"] = base_url
+        extra.setdefault("api_key", os.environ.get("ARAG_CONTEXT_API_KEY", "EMPTY"))
         if name.startswith("openai:"):
             # 自前サーバでは stream_usage が既定で切れ、ストリーミング時のトークン数が 0 になる
             extra.setdefault("stream_usage", True)

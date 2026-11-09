@@ -29,3 +29,16 @@ describe("toRangeQuery", () => {
     expect(toRangeQuery("", "")).toEqual({ from: undefined, to: undefined });
   });
 });
+
+describe("LLM の操作", () => {
+  it("名前とキーの入れ替えを示し、キーそのものは出さない", () => {
+    expect(actionLabel("llm.credential.update")).toBe("LLM の接続を変更");
+    expect(
+      describeTarget({
+        resource_type: "llm_credential",
+        resource_id: "c1",
+        detail: { label: "DeepSeek 本番", changed: [], key_rotated: true },
+      }),
+    ).toBe("DeepSeek 本番（キーを入れ替え）");
+  });
+});

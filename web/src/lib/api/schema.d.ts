@@ -73,6 +73,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/llm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_v1_admin_llm_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/llm/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Credential */
+        post: operations["create_credential_v1_admin_llm_credentials_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/llm/credentials/{cred_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Credential */
+        delete: operations["delete_credential_v1_admin_llm_credentials__cred_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Credential */
+        patch: operations["update_credential_v1_admin_llm_credentials__cred_id__patch"];
+        trace?: never;
+    };
+    "/v1/admin/llm/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Model */
+        post: operations["create_model_v1_admin_llm_models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/llm/models/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reorder Models */
+        put: operations["reorder_models_v1_admin_llm_models_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/llm/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Model */
+        delete: operations["delete_model_v1_admin_llm_models__model_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Model */
+        patch: operations["update_model_v1_admin_llm_models__model_id__patch"];
+        trace?: never;
+    };
+    "/v1/admin/llm/models/{model_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Model */
+        post: operations["check_model_v1_admin_llm_models__model_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents": {
         parameters: {
             query?: never;
@@ -894,6 +1015,15 @@ export interface components {
             /** Updated */
             updated: number;
         };
+        /** CheckOut */
+        CheckOut: {
+            /** Error */
+            error: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Ok */
+            ok: boolean;
+        };
         /** ChunkOut */
         ChunkOut: {
             /** Block Type */
@@ -935,6 +1065,55 @@ export interface components {
             section_id: string;
             /** Source Id */
             source_id: string;
+        };
+        /** CredentialIn */
+        CredentialIn: {
+            /** Api Key */
+            api_key?: string | null;
+            /**
+             * Base Url
+             * @default
+             */
+            base_url: string;
+            /** Label */
+            label: string;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "openai" | "anthropic" | "deepseek" | "google_genai" | "openai_compatible";
+        };
+        /** CredentialOut */
+        CredentialOut: {
+            /** Base Url */
+            base_url: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key Hint */
+            key_hint: string | null;
+            /** Label */
+            label: string;
+            /** Models */
+            models: number;
+            /** Provider */
+            provider: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CredentialPatch */
+        CredentialPatch: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Label */
+            label?: string | null;
         };
         /** Daily */
         Daily: {
@@ -1189,6 +1368,17 @@ export interface components {
              */
             status: "ok";
         };
+        /** LlmAdminOut */
+        LlmAdminOut: {
+            /** Credentials */
+            credentials: components["schemas"]["CredentialOut"][];
+            /** Encryption Ready */
+            encryption_ready: boolean;
+            /** Models */
+            models: components["schemas"]["ModelRow"][];
+            /** Providers */
+            providers: string[];
+        };
         /** MessageOut */
         MessageOut: {
             /** Answer */
@@ -1229,6 +1419,28 @@ export interface components {
             /** Tokens Out */
             tokens_out: number;
         };
+        /** ModelIn */
+        ModelIn: {
+            /** Credential Id */
+            credential_id?: string | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Kwargs */
+            kwargs?: {
+                [key: string]: unknown;
+            };
+            /** Label */
+            label: string;
+            /** Model */
+            model: string;
+            /** Tags */
+            tags?: string[];
+        };
         /** ModelOut */
         ModelOut: {
             /** Available */
@@ -1240,12 +1452,69 @@ export interface components {
             /** Tags */
             tags: string[];
         };
+        /** ModelPatch */
+        ModelPatch: {
+            /**
+             * Clear Credential
+             * @default false
+             */
+            clear_credential: boolean;
+            /** Credential Id */
+            credential_id?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Kwargs */
+            kwargs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Label */
+            label?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Tags */
+            tags?: string[] | null;
+        };
+        /** ModelRow */
+        ModelRow: {
+            /** Available */
+            available: boolean;
+            /** Credential Id */
+            credential_id: string | null;
+            /** Credential Label */
+            credential_label: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Kwargs */
+            kwargs: {
+                [key: string]: unknown;
+            };
+            /** Label */
+            label: string;
+            /** Model */
+            model: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "db" | "env";
+            /** Tags */
+            tags: string[];
+        };
         /** ModelsOut */
         ModelsOut: {
             /** Default Id */
             default_id: string | null;
             /** Models */
             models: components["schemas"]["ModelOut"][];
+        };
+        /** OrderIn */
+        OrderIn: {
+            /** Ids */
+            ids: string[];
         };
         /** OutlineSection */
         OutlineSection: {
@@ -2002,6 +2271,282 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_v1_admin_llm_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmAdminOut"];
+                };
+            };
+        };
+    };
+    create_credential_v1_admin_llm_credentials_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CredentialIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_credential_v1_admin_llm_credentials__cred_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cred_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_credential_v1_admin_llm_credentials__cred_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cred_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CredentialPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_model_v1_admin_llm_models_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_models_v1_admin_llm_models_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_model_v1_admin_llm_models__model_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_model_v1_admin_llm_models__model_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_model_v1_admin_llm_models__model_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckOut"];
                 };
             };
             /** @description Validation Error */

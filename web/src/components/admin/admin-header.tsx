@@ -1,6 +1,6 @@
 "use client";
 
-/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・監査ログ・利用状況）。 */
+/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・監査ログ・利用状況・モデル）。 */
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
@@ -10,6 +10,7 @@ const TABS = [
   { key: "members", href: "/admin/members", label: "メンバー" },
   { key: "audit", href: "/admin/audit", label: "監査ログ" },
   { key: "analytics", href: "/admin/analytics", label: "利用状況" },
+  { key: "models", href: "/admin/models", label: "モデル" },
 ] as const;
 
 export function AdminHeader({ current, children }: { current: (typeof TABS)[number]["key"]; children?: ReactNode }) {

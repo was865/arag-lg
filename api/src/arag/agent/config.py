@@ -78,14 +78,17 @@ class ModelSpec:
     kwargs: dict[str, Any] = field(default_factory=dict)
     tags: tuple[str, ...] = ()
     available: bool = False
+    # 画面で登録した接続の鍵（ログ・repr に出さない）
+    api_key: str = field(default="", repr=False)
+    source: str = "env"  # env / db
 
     def build(self) -> BaseChatModel:
-        return chat_model(self.model, base_url=self.base_url, kwargs=self.kwargs)
+        return chat_model(self.model, base_url=self.base_url, kwargs=self.kwargs, api_key=self.api_key)
 
 
 @dataclass(frozen=True, slots=True)
 class ModelCatalog:
-    """設定（ARAG_CHAT_MODELS）のモデル目録。先頭の利用可能なものが既定。"""
+    """モデル目録（DB と ARAG_CHAT_MODELS の合成は arag.agent.catalog）。先頭の利用可能なものが既定。"""
 
     models: tuple[ModelSpec, ...]
 

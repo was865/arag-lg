@@ -6,11 +6,12 @@
 
 import asyncio
 import contextlib
+import inspect
 import os
 import socket
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -61,7 +62,8 @@ class RunnerDeps:
     redis: Redis
     checkpointer: Any
     search: SearchFn
-    resolve_models: Callable[[str | None], ResolvedModels]
+    # 同期・非同期どちらでもよい（本番は実行ごとに DB の目録を読む）
+    resolve_models: Callable[[str | None], ResolvedModels | Awaitable[ResolvedModels]]
     events_ttl_sec: int = 3600
     cancel_poll_sec: float = 0.5
     agent_cache: dict[str, Any] = field(default_factory=dict)
@@ -156,7 +158,8 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     checkpoint_id: str | None = None
     status, code, err = "completed", None, ""
     try:
-        models = deps.resolve_models(model_id)
+        got = deps.resolve_models(model_id)
+        models = await got if inspect.isawaitable(got) else got
     except Exception as e:
         models, status, code, err = None, "failed", "model_unavailable", str(e)
     await sink.emit(
@@ -524,8 +527,8 @@ async def main() -> None:
 
     from qdrant_client import AsyncQdrantClient
 
+    from arag.agent.catalog import load_catalog
     from arag.agent.checkpoint import open_checkpointer
-    from arag.agent.config import ModelCatalog
     from arag.db.engine import make_engine, make_sessionmaker
     from arag.logging import configure_logging
     from arag.search.service import build_search_deps, search
@@ -533,7 +536,6 @@ async def main() -> None:
 
     settings = Settings()
     configure_logging(settings.log_level)
-    catalog = ModelCatalog.from_raw(settings.chat_models)
     engine = make_engine(settings.database_url)
     sm = make_sessionmaker(engine)
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
@@ -543,7 +545,10 @@ async def main() -> None:
     async def search_fn(s: AsyncSession, p: Principal, r: Any) -> Any:
         return await search(s, sdeps, p, r)
 
-    def resolve(model_id: str | None) -> ResolvedModels:
+    async def resolve(model_id: str | None) -> ResolvedModels:
+        # 画面での目録・鍵の変更を次の実行から効かせる（specs/013-llm-keys R5）
+        async with sm() as s:
+            catalog = await load_catalog(s, settings)
         spec = catalog.resolve(model_id)
         util = catalog.resolve(settings.utility_model).build() if settings.utility_model else None
         fb = catalog.fallback(spec.id)
@@ -571,7 +576,7 @@ async def main() -> None:
             heartbeat_sec=settings.run_heartbeat_sec,
             stale_sec=settings.run_stale_sec,
         )
-        log.info("runner_started", worker=runner.worker_id, models=[m.id for m in catalog.models])
+        log.info("runner_started", worker=runner.worker_id)
         await runner.run(stop)
     await redis.aclose()
     await qdrant.close()

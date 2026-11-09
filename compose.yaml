@@ -70,6 +70,8 @@ services:
       # P3 エージェント: モデル目録（JSON）と書き換え・要約用モデル（目録の id）
       ARAG_CHAT_MODELS: ${ARAG_CHAT_MODELS:-[]}
       ARAG_UTILITY_MODEL: ${ARAG_UTILITY_MODEL:-}
+      # 管理画面で登録する API キーの暗号化鍵（specs/013-llm-keys）
+      ARAG_SECRET_KEY: ${ARAG_SECRET_KEY:-}
       ARAG_RUN_CONCURRENCY: ${ARAG_RUN_CONCURRENCY:-8}
       ARAG_RATE_LIMIT_RUNS_PER_MIN: ${ARAG_RATE_LIMIT_RUNS_PER_MIN:-20}
       ARAG_MONTHLY_TOKEN_LIMIT: ${ARAG_MONTHLY_TOKEN_LIMIT:-0}

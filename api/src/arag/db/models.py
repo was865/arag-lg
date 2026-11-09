@@ -361,3 +361,38 @@ class Run(Base):
     created_at: Mapped[datetime] = _now()
     started_at: Mapped[datetime | None] = _ts_nullable()
     finished_at: Mapped[datetime | None] = _ts_nullable()
+
+
+class LlmCredential(Base):
+    """LLM の接続（API キーは暗号化して持つ。specs/013-llm-keys）。"""
+
+    __tablename__ = "llm_credentials"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    secret_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    key_hint: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    base_url: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class LlmModel(Base):
+    """会話で選べるモデル（目録）。.env の ARAG_CHAT_MODELS より前に並ぶ。"""
+
+    __tablename__ = "llm_models"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    credential_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("llm_credentials.id", ondelete="RESTRICT"), nullable=True
+    )
+    kwargs: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()

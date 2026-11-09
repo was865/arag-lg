@@ -2,6 +2,7 @@
 
 from typing import Any, Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -77,6 +78,8 @@ class Settings(BaseSettings):
     chat_models: list[dict[str, Any]] = []
     # 書き換え・要約用（目録の id。空なら会話モデルと同じ）
     utility_model: str = ""
+    # 画面で登録する API キーの暗号化鍵（Fernet。カンマ区切りで入れ替え。specs/013-llm-keys）
+    secret_key: SecretStr = SecretStr("")
     run_concurrency: int = 8
     run_heartbeat_sec: float = 10.0
     run_stale_sec: float = 60.0

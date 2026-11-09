@@ -19,6 +19,13 @@ export const ACTION_LABEL: Record<string, string> = {
   "member.ban": "メンバーを停止",
   "member.unban": "メンバーを再開",
   "member.resend_invite": "招待を再送",
+  "llm.credential.create": "LLM の接続を追加",
+  "llm.credential.update": "LLM の接続を変更",
+  "llm.credential.delete": "LLM の接続を削除",
+  "llm.model.create": "モデルを追加",
+  "llm.model.update": "モデルを変更",
+  "llm.model.delete": "モデルを削除",
+  "llm.model.reorder": "モデルを並べ替え",
 };
 
 /** 絞り込みの選択肢（前方一致で API に渡す）。 */
@@ -28,6 +35,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "folder.", label: "フォルダ" },
   { value: "kb.", label: "ナレッジベース" },
   { value: "member.", label: "メンバー管理" },
+  { value: "llm.", label: "モデル・API キー" },
   { value: "thread.", label: "共有" },
   { value: "chat.", label: "質問" },
 ];
@@ -47,12 +55,15 @@ export function describeTarget(row: {
   const base =
     typeof d.email === "string"
       ? d.email
-      : row.resource_type || row.resource_id
-        ? [row.resource_type, row.resource_id].filter(Boolean).join(" ")
-        : "";
+      : typeof d.label === "string"
+        ? d.label
+        : row.resource_type || row.resource_id
+          ? [row.resource_type, row.resource_id].filter(Boolean).join(" ")
+          : "";
   const notes: string[] = [];
   if (d.from !== undefined && d.to !== undefined) notes.push(`${role(d.from)} → ${role(d.to)}`);
   else if (d.role !== undefined) notes.push(role(d.role));
+  if (d.key_rotated === true) notes.push("キーを入れ替え");
   if (typeof d.visibility === "string") {
     notes.push(VISIBILITY_OPTIONS.find((o) => o.id === d.visibility)?.label ?? d.visibility);
   }
