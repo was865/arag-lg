@@ -254,7 +254,9 @@ export interface paths {
         };
         /**
          * Document Overview
-         * @description 読めるナレッジベース（kb_id があればその 1 つ）の概要。引用の回数は全員の回答を数えるが、文書は読めるものだけ。
+         * @description 読めるナレッジベース（kb_id があればその 1 つ）の概要。
+         *
+         *     引用の回数は全員の回答を数えるが、出す文書は読めるものだけ。
          */
         get: operations["document_overview_v1_documents_overview_get"];
         put?: never;
