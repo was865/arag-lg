@@ -1,4 +1,5 @@
 import "server-only";
+import { log } from "@/lib/log";
 
 /** 認証メール（確認・パスワード再設定）の送信（specs/006-auth R6・R9・R10）。
  * ARAG_SMTP_URL（例 smtp://mailpit:1025）が無ければ送らず、リンクをサーバのログに出す（開発専用）。 */
@@ -87,7 +88,8 @@ export function isInviteUrl(url: string): boolean {
 export async function sendMail(mail: Mail): Promise<void> {
   const t = getTransport();
   if (!t) {
-    console.info(`[auth-mail] SMTP 未設定のため送信しません: to=${mail.to} subject=${mail.subject}\n${mail.text}`);
+    // 開発専用: リンクを確かめられるよう本文もログに出す
+    log("info", "auth.mail_not_sent", { to: mail.to, subject: mail.subject, text: mail.text });
     return;
   }
   await t.sendMail({ from: process.env.ARAG_MAIL_FROM ?? `${APP} <no-reply@arag.local>`, ...mail });

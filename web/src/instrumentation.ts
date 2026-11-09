@@ -3,9 +3,10 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.ARAG_DEV_USER_ID) return; // 認証を使わない開発構成
   const { migrateAuth } = await import("@/lib/auth/migrate");
+  const { log } = await import("@/lib/log");
   try {
     await migrateAuth();
   } catch (e) {
-    console.error("[auth] 認証表のマイグレーションに失敗しました", e);
+    log("error", "auth.migrate_failed", {}, e);
   }
 }

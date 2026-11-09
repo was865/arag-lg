@@ -1,4 +1,5 @@
 import "server-only";
+import { log } from "@/lib/log";
 
 /** 管理 API の共通部品（specs/010-admin-members）。 */
 import { serverApiHeaders } from "@/lib/api/proxy-env";
@@ -30,7 +31,7 @@ export function fromAuthError(e: unknown, fallback: string): Response {
   if (code === "USER_ALREADY_EXISTS" || code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
     return apiError(409, "already_exists", "このメールアドレスは既に登録されています");
   }
-  console.error("[admin]", fallback, e);
+  log("error", "admin.auth_api_failed", { message: fallback, code }, e);
   return apiError(status >= 400 && status < 600 ? status : 500, "admin_failed", fallback);
 }
 
@@ -54,6 +55,6 @@ export async function logAdmin(
     });
     if (!res.ok) throw new Error(String(res.status));
   } catch (e) {
-    console.error(`[admin] 監査ログに書けませんでした: ${JSON.stringify({ actor: session.user.id, action, target })}`, e);
+    log("error", "admin.audit_write_failed", { actor: session.user.id, action, target }, e);
   }
 }
