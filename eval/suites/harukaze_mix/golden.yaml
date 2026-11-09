@@ -164,6 +164,8 @@ cases:
   relevant_documents: [x02-保守記録_2026-09.xlsx]
   key_facts:
   - any: ['135']
+  wrong_facts:
+  - any: [600分, 600 分]  # 表全体の合計
 - id: hm23-xlsx
   query: 9月の保守記録に載っている停止時間の合計は何分ですか？
   tags: [ja, xlsx, table]
@@ -261,12 +263,16 @@ cases:
   relevant_documents: [d01-仕様書_HP-300.pdf]
   key_facts:
   - any: ['5.5']
+  wrong_facts:
+  - any: [7.5 kW, 7.5kW]  # HP-320 の値
 - id: hm38-similar
   query: HP-320 の質量は？
   tags: [ja, pdf, similar]
   relevant_documents: [d02-仕様書_HP-320.pdf]
   key_facts:
   - any: ['94']
+  wrong_facts:
+  - any: [86 kg, 86kg]  # HP-300 の値
 - id: hm39-similar
   query: 液温 70℃ の用途には HP-300 と HP-320 のどちらを選ぶべきですか？
   tags: [ja, pdf, similar, multi]

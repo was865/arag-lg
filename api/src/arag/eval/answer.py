@@ -62,6 +62,9 @@ class CaseResult:
     error: str | None = None
     judge_error: str | None = None
     facts_matched: list[bool] = field(default_factory=list)
+    # 誤りの値（wrong_facts）を見た題か、と答えに出た誤りの値
+    wrong_checked: bool = False
+    wrong_facts_found: list[str] = field(default_factory=list)
     # 評価者の判定（主張ごと）と、評価者に見せた資料。人手ラベルとの一致確認（E2）に使う
     claims: list[dict[str, Any]] = field(default_factory=list)
     judge_sources: list[dict[str, Any]] = field(default_factory=list)
@@ -146,6 +149,12 @@ def facts_matched(answer: str, facts: list[list[str]]) -> list[bool]:
     return [any(canon(x) in a for x in f) for f in facts]
 
 
+def wrong_facts_found(answer: str, facts: list[list[str]]) -> list[str]:
+    """答えに出た誤りの値（各項目の最初に当たった表記）。"""
+    a = canon(answer)
+    return [next(x for x in f if canon(x) in a) for f in facts if any(canon(x) in a for x in f)]
+
+
 # 「資料に無い」と答えたことを示す言い回し（日英）。canon 後の小文字で照合する
 _DECLINE = re.compile(
     r"(記載|明記|言及|明示|記述)(が|は)?(され)?(てい)?(ありません|ない|ません|無い|なし)"
@@ -215,6 +224,7 @@ def _block(rs: list[CaseResult]) -> dict[str, Any]:
         "p50_ms": _pct(durs, 0.5),
         "p95_ms": _pct(durs, 0.95),
         "no_answer_rate": _mean([float(r.no_answer) for r in rs]),
+        "wrong_fact_rate": _mean([float(bool(r.wrong_facts_found)) for r in rs if r.wrong_checked]),
         "failed": sum(1 for r in rs if r.status != "completed"),
     }
 
@@ -245,6 +255,7 @@ ROWS = [
     ("p50 (ms)", "p50_ms"),
     ("p95 (ms)", "p95_ms"),
     ("回答不能率", "no_answer_rate"),
+    ("誤りの記述", "wrong_fact_rate"),
     ("失敗", "failed"),
 ]
 
@@ -279,6 +290,9 @@ def to_markdown(result: dict[str, Any]) -> str:
             f"{c['tool_calls']} | {c['duration_ms']} | "
             f"{', '.join(c['cited_documents'])} | {excerpt} |"
         )
+    wrong = [(c["id"], w) for c in result["cases"] for w in c.get("wrong_facts_found", [])]
+    if wrong:
+        lines += ["", "## 誤りの記述", ""] + [f"- {i}: {w}" for i, w in wrong]
     unsupported = [(c["id"], u) for c in result["cases"] for u in c.get("unsupported_claims", [])]
     if unsupported:
         lines += ["", "## 裏付けの無い主張", ""] + [f"- {i}: {u}" for i, u in unsupported]
@@ -368,6 +382,8 @@ async def run_case(
         no_answer_reason=data.get("no_answer_reason"),
         judge_error=judge_error,
         facts_matched=matched,
+        wrong_checked=bool(case.wrong_facts),
+        wrong_facts_found=wrong_facts_found(answer, [f.any for f in case.wrong_facts]),
         claims=claims,
         judge_sources=sources if judge is not None else [],
         **traj,

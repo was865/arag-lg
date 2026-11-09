@@ -309,3 +309,27 @@ def test_declines_not_directly_provided() -> None:
     from arag.eval.answer import declines
 
     assert declines("The email address is not directly provided in the search results.")
+
+
+async def test_run_case_flags_wrong_facts() -> None:
+    """答えの中の誤りの値（wrong_facts）を拾う。正しい値も書いてあれば key_facts は当たるので、別に見る（specs/021）。"""
+    api = FakeApi([("run.completed", COMPLETED | {"answer": "合計は **600分** です。30 + 25 + 80 = 135分[1]。"})])
+    case = Case(
+        id="w", query="合計は？", key_facts=[KeyFact(any=["135"])], wrong_facts=[KeyFact(any=["600分", "600 分"])]
+    )
+    r = await run_case(api, case, kb_id="k", model_id=None)
+    assert r.fact_coverage == 1.0
+    assert r.wrong_facts_found == ["600分"]
+
+
+def test_summarize_wrong_fact_rate_counts_only_cases_with_wrong_facts() -> None:
+    rs = [
+        _result(id="a", wrong_facts_found=["600分"], wrong_checked=True),
+        _result(id="b", wrong_facts_found=[], wrong_checked=True),
+        _result(id="c"),  # wrong_facts の無い題は数えない
+    ]
+    s = summarize(rs)
+    assert s["wrong_fact_rate"] == 0.5
+    assert summarize([_result(id="c")])["wrong_fact_rate"] is None
+    md = to_markdown({"suite": "demo", "model_id": None, "summary": s, "cases": [r.__dict__ for r in rs]})
+    assert "| 誤りの記述 |" in md and "- a: 600分" in md
