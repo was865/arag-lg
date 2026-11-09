@@ -4988,6 +4988,43 @@
         ]
       }
     },
+    "/v1/folders/{folder_id}/purge": {
+      "delete": {
+        "description": "ごみ箱のフォルダを配下ごと完全に削除する（文書の完全削除と同じ権限。R34）。",
+        "operationId": "purge_folder_v1_folders__folder_id__purge_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Folder Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Purge Folder",
+        "tags": [
+          "folders"
+        ]
+      }
+    },
     "/v1/folders/{folder_id}/restore": {
       "post": {
         "operationId": "restore_folder_v1_folders__folder_id__restore_post",

@@ -80,15 +80,19 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
     const ok = await confirm({
       title: `「${item.name}」を完全に削除しますか？`,
       description:
-        "元の文書と検索用のデータがすべて消えます。この操作は取り消せません。",
+        item.kind === "folder"
+          ? "中のフォルダと文書も含め、元の文書と検索用のデータがすべて消えます。この操作は取り消せません。"
+          : "元の文書と検索用のデータがすべて消えます。この操作は取り消せません。",
       confirmLabel: "完全に削除",
       tone: "danger",
     });
     if (!ok) return;
     setBusyId(item.id);
     try {
-      await libraryApi.purge(item.id);
+      await libraryApi.purge(item);
       setItems((all) => all?.filter((x) => x.id !== item.id) ?? null);
+      // フォルダは中の（別に消した）項目も消えるので取り直す
+      if (item.kind === "folder") void reload();
       push(`「${item.name}」を完全に削除しました`, "success");
     } catch (e) {
       push(e instanceof ApiError ? e.message : "削除できませんでした", "error");
@@ -188,7 +192,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                       <Icon name="refresh" size={12} />
                       元に戻す
                     </button>
-                    {item.kind === "document" && item.purgeable && (
+                    {item.kind !== "kb" && item.purgeable && (
                       <button
                         disabled={busy}
                         onClick={() => void purge(item)}

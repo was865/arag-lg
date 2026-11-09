@@ -455,6 +455,26 @@ export interface paths {
         patch: operations["update_folder_v1_folders__folder_id__patch"];
         trace?: never;
     };
+    "/v1/folders/{folder_id}/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purge Folder
+         * @description ごみ箱のフォルダを配下ごと完全に削除する（文書の完全削除と同じ権限。R34）。
+         */
+        delete: operations["purge_folder_v1_folders__folder_id__purge_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/folders/{folder_id}/restore": {
         parameters: {
             query?: never;
@@ -3131,6 +3151,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FolderOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    purge_folder_v1_folders__folder_id__purge_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

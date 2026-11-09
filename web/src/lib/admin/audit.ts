@@ -8,6 +8,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "document.purge": "文書を完全に削除",
   "folder.delete": "フォルダをごみ箱へ",
   "folder.restore": "フォルダを元に戻す",
+  "folder.purge": "フォルダを完全に削除",
   "kb.create": "ナレッジベースを作成",
   "kb.delete": "ナレッジベースを削除",
   "kb.restore": "ナレッジベースを元に戻す",

@@ -9,7 +9,7 @@
 from datetime import datetime, timedelta
 
 from arag.auth.principal import Principal
-from arag.db.models import Document, KnowledgeBase
+from arag.db.models import Document, Folder, KnowledgeBase
 
 PURGE_GRACE = timedelta(hours=24)
 
@@ -51,3 +51,16 @@ def can_purge(p: Principal, kb: KnowledgeBase, doc: Document, now: datetime) -> 
     if p.is_admin:
         return True
     return doc.uploaded_by == p.user_id and now - doc.deleted_at <= PURGE_GRACE
+
+
+def can_purge_folder(
+    p: Principal, kb: KnowledgeBase, folder: Folder, docs: list[Document], now: datetime
+) -> bool:
+    """フォルダの完全削除: admin はいつでも。本人は削除後 24 時間以内で、配下の文書がすべて自分のものなら。"""
+    if folder.deleted_at is None or not can_write_ignoring_trash(p, kb):
+        return False
+    if p.is_admin:
+        return True
+    if folder.deleted_by != p.user_id or now - folder.deleted_at > PURGE_GRACE:
+        return False
+    return all(can_purge(p, kb, d, now) for d in docs)

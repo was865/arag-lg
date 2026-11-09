@@ -121,3 +121,56 @@ async def test_restore_name_conflict_is_409(client: httpx.AsyncClient) -> None:
     await _mk(client, kb, "A")
     res = await client.post(f"/v1/folders/{a}/restore", headers=ALICE)
     assert res.status_code == 409
+
+
+async def test_purge_folder_removes_subtree_and_orphans(
+    client: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    """フォルダをごみ箱から完全に削除する（配下のフォルダ・文書ごと。文書と同じ権限）。"""
+    kb = await _personal_kb(client, ALICE)
+    a = await _mk(client, kb, "A")
+    b = await _mk(client, kb, "B", a)
+    keep = await _mk(client, kb, "K")
+    async with sessionmaker() as s:
+        await _add_doc(s, kb, a, "1" * 64)
+        await _add_doc(s, kb, b, "2" * 64)
+        await _add_doc(s, kb, keep, "3" * 64)
+        await s.commit()
+
+    # 生きているフォルダは完全削除できない（404）
+    assert (await client.delete(f"/v1/folders/{a}/purge", headers=ALICE)).status_code == 404
+    assert (await client.delete(f"/v1/folders/{a}", headers=ALICE)).status_code == 204
+    trash = (await client.get("/v1/trash", headers=ALICE)).json()
+    item = next(t for t in trash if t["kind"] == "folder")
+    assert item["id"] == a and item["purgeable"] is True
+    # 他人は消せない
+    assert (await client.delete(f"/v1/folders/{a}/purge", headers=BOB)).status_code == 404
+
+    assert (await client.delete(f"/v1/folders/{a}/purge", headers=ALICE)).status_code == 204
+    async with sessionmaker() as s:
+        folders = set(await s.scalars(text("SELECT name FROM app.folders")))
+        docs = set(await s.scalars(text("SELECT content_hash FROM app.documents")))
+        contents = set(await s.scalars(text("SELECT content_hash FROM app.contents")))
+        audit = await s.scalar(text("SELECT detail::text FROM app.audit_logs WHERE action='folder.purge'"))
+    assert folders == {"K"}
+    assert docs == {"3" * 64} and contents == {"3" * 64}
+    assert audit is not None and '"documents": 2' in audit and '"folders": 2' in audit
+    assert (await client.get("/v1/trash", headers=ALICE)).json() == []
+
+
+async def test_purge_folder_grace_period(
+    client: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    kb = await _personal_kb(client, ALICE)
+    a = await _mk(client, kb, "A")
+    async with sessionmaker() as s:
+        await _add_doc(s, kb, a, "4" * 64)
+        await s.commit()
+    await client.delete(f"/v1/folders/{a}", headers=ALICE)
+    async with sessionmaker() as s:
+        await s.execute(text("UPDATE app.folders SET deleted_at = deleted_at - interval '2 days'"))
+        await s.execute(text("UPDATE app.documents SET deleted_at = deleted_at - interval '2 days'"))
+        await s.commit()
+    item = (await client.get("/v1/trash", headers=ALICE)).json()[0]
+    assert item["purgeable"] is False
+    assert (await client.delete(f"/v1/folders/{a}/purge", headers=ALICE)).status_code == 403

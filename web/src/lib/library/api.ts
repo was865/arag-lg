@@ -75,10 +75,11 @@ export const libraryApi = {
           : await client.POST("/v1/kbs/{kb_id}/restore", { params: { path: { kb_id: item.id } } });
     if (!res.response.ok) fail(res.response.status, res.error);
   },
-  async purge(id: string) {
-    const { error, response } = await client.DELETE("/v1/documents/{doc_id}/purge", {
-      params: { path: { doc_id: id } },
-    });
+  async purge(item: { kind: string; id: string }) {
+    const { error, response } =
+      item.kind === "folder"
+        ? await client.DELETE("/v1/folders/{folder_id}/purge", { params: { path: { folder_id: item.id } } })
+        : await client.DELETE("/v1/documents/{doc_id}/purge", { params: { path: { doc_id: item.id } } });
     if (!response.ok) fail(response.status, error);
   },
   async trash() {

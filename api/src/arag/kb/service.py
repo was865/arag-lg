@@ -213,6 +213,23 @@ async def trash_folder(session: AsyncSession, folder: Folder, user_id: str) -> s
     return set(hashes)
 
 
+async def folder_purge_plan(session: AsyncSession, folder: Folder) -> tuple[list[uuid.UUID], list[Document]]:
+    """完全削除の対象（配下のフォルダ id・文書）。配下にごみ箱にないものがあれば 409。"""
+    ids = await subtree_ids(session, folder.id)
+    live = await session.scalar(
+        select(func.count()).select_from(Folder).where(Folder.id.in_(ids), Folder.deleted_at.is_(None))
+    )
+    live_docs = await session.scalar(
+        select(func.count())
+        .select_from(Document)
+        .where(Document.folder_id.in_(ids), Document.deleted_at.is_(None))
+    )
+    if live or live_docs:
+        raise ApiError(409, "folder_has_live_items", "このフォルダの中に、ごみ箱にないものがあります")
+    docs = list(await session.scalars(select(Document).where(Document.folder_id.in_(ids))))
+    return ids, docs
+
+
 async def revive_ancestors(session: AsyncSession, folder_id: uuid.UUID | None) -> None:
     """削除済みの祖先フォルダを生き返らせる（その祖先の他の配下は戻さない）。"""
     if folder_id is None:

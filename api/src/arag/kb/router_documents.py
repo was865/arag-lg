@@ -614,6 +614,13 @@ async def trash(request: Request, ctx: CtxDep) -> list[TrashItem]:
     )
     for f, kb in folders:
         assert f.deleted_at is not None
+        # 完全削除できるか（配下の文書も同じ規則で確かめる）
+        if p.is_admin and perm.can_write_ignoring_trash(p, kb):
+            purgeable = True
+        else:
+            sub = await service.subtree_ids(ctx.session, f.id)
+            sub_docs = list(await ctx.session.scalars(select(Document).where(Document.folder_id.in_(sub))))
+            purgeable = perm.can_purge_folder(p, kb, f, sub_docs, now)
         items.append(
             TrashItem(
                 kind="folder",
@@ -624,7 +631,7 @@ async def trash(request: Request, ctx: CtxDep) -> list[TrashItem]:
                 deleted_at=f.deleted_at,
                 deleted_by=f.deleted_by,
                 remaining_days=remaining(f.deleted_at),
-                purgeable=False,
+                purgeable=purgeable,
             )
         )
     docs = await ctx.session.execute(
