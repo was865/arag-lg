@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from qdrant_client import AsyncQdrantClient
-from redis.asyncio import Redis
 
 from arag import analytics_router, audit_router, health, llm_admin_router
 from arag.agent import router as router_agent
 from arag.agent.openapi import install_event_schemas
+from arag.agent.stream import redis_client
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.errors import install_error_handlers
 from arag.health import Check
@@ -67,7 +67,7 @@ def create_app(
     client = getattr(app.state.index, "client", None) or AsyncQdrantClient(url=settings.qdrant_url)
     app.state.search_deps = search_deps or build_search_deps(settings, client)
     # from_url は接続しない（初回コマンド時に接続）
-    app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    app.state.redis = redis_client(settings.redis_url)
     app.state.publisher = publisher or RedisPublisher(app.state.redis)
     install_error_handlers(app)
     app.add_middleware(RequestIdMiddleware)

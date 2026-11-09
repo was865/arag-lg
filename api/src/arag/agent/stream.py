@@ -12,6 +12,17 @@ from arag.agent.events import RUN_EVENT, TERMINAL
 MAXLEN = 5000
 FLUSH_CHARS = 64
 FLUSH_SEC = 0.05
+# XREAD で待つ時間（この間に何も無ければ心拍を返す）
+READ_BLOCK_MS = 15_000
+
+
+def redis_client(url: str) -> Redis:
+    """中継用の Redis クライアント。
+
+    redis-py 8 は読み取りタイムアウトの既定が 5 秒で、XREAD の待ち（READ_BLOCK_MS）より短い。
+    そのままだとモデルが 5 秒以上イベントを出さないだけで読み取りが失敗し SSE が切れるので、待ちより長くする。
+    """
+    return Redis.from_url(url, decode_responses=True, socket_timeout=READ_BLOCK_MS / 1000 + 10)
 
 
 def events_key(run_id: str) -> str:
@@ -68,7 +79,7 @@ class EventSink:
 
 
 async def read_events(
-    redis: Redis, run_id: str, last_id: str = "0", *, block_ms: int = 15_000
+    redis: Redis, run_id: str, last_id: str = "0", *, block_ms: int = READ_BLOCK_MS
 ) -> AsyncIterator[tuple[str, str, str] | None]:
     """(id, type, data) を順に返す。block_ms の間に何も無ければ None（心拍用）。終了イベントで止まる。"""
     key = events_key(run_id)

@@ -27,7 +27,7 @@ from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
 from arag.agent.graph import build_agent
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
-from arag.agent.stream import EventSink, is_cancelled
+from arag.agent.stream import EventSink, is_cancelled, redis_client
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
@@ -538,7 +538,7 @@ async def main() -> None:
     configure_logging(settings.log_level)
     engine = make_engine(settings.database_url)
     sm = make_sessionmaker(engine)
-    redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    redis = redis_client(settings.redis_url)
     qdrant = AsyncQdrantClient(url=settings.qdrant_url)
     sdeps = build_search_deps(settings, qdrant)
 
