@@ -31,3 +31,14 @@ export function proxyOptionsFromEnv(): ProxyOptions {
   if (devUserId) return { baseUrl, devUserId, devRole: process.env.ARAG_DEV_ROLE ?? "admin" };
   return { baseUrl, authorize, allowedOrigins: [authBaseUrl()] };
 }
+
+/** サーバで API を呼ぶときの見出し（共有ページなど、ログインは任意）。
+ * セッションがあればその JWT、dev 構成なら利用者ヘッダ、どちらも無ければ空。 */
+export async function serverApiHeaders(requestHeaders: Headers): Promise<Headers> {
+  const opts = proxyOptionsFromEnv();
+  if (opts.devUserId) {
+    return new Headers({ "x-dev-user-id": opts.devUserId, "x-dev-role": opts.devRole ?? "member" });
+  }
+  const auth = await authorize(new Request("http://internal/", { headers: requestHeaders }));
+  return auth instanceof Response ? new Headers() : auth;
+}

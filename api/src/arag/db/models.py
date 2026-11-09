@@ -255,6 +255,11 @@ class Thread(Base):
     user_id: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # 共有（specs/008-thread-share）: private / org / public。トークンは一度出したら保つ
+    visibility: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="private", server_default="private"
+    )
+    share_token: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True)
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
 

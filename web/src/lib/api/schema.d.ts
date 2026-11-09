@@ -611,6 +611,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shared Thread */
+        get: operations["get_shared_thread_v1_shared__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/threads": {
         parameters: {
             query?: never;
@@ -1379,6 +1396,42 @@ export interface components {
             /** Token Len */
             token_len: number;
         };
+        /** SharedMessage */
+        SharedMessage: {
+            /** Answer */
+            answer: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Query */
+            query: string;
+            /** Sources */
+            sources: components["schemas"]["SharedSource"][];
+        };
+        /** SharedSource */
+        SharedSource: {
+            /** N */
+            n: number;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SharedThreadOut
+         * @description 共有ページに渡す最小限（R5）。ステップ・章本文・文書 ID・利用者は含めない。
+         */
+        SharedThreadOut: {
+            /** Messages */
+            messages: components["schemas"]["SharedMessage"][];
+            /** Title */
+            title: string;
+            /**
+             * Visibility
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
+        };
         /** SourceSection */
         SourceSection: {
             /** Block Type */
@@ -1499,6 +1552,8 @@ export interface components {
             messages: components["schemas"]["MessageOut"][];
             /** Pinned */
             pinned: boolean;
+            /** Share Token */
+            share_token?: string | null;
             /** Title */
             title: string;
             /**
@@ -1506,6 +1561,12 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Visibility
+             * @default private
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
         };
         /** ThreadList */
         ThreadList: {
@@ -1526,6 +1587,8 @@ export interface components {
             id: string;
             /** Pinned */
             pinned: boolean;
+            /** Share Token */
+            share_token?: string | null;
             /** Title */
             title: string;
             /**
@@ -1533,6 +1596,12 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Visibility
+             * @default private
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
         };
         /** ThreadPatch */
         ThreadPatch: {
@@ -1540,6 +1609,8 @@ export interface components {
             pinned?: boolean | null;
             /** Title */
             title?: string | null;
+            /** Visibility */
+            visibility?: ("private" | "org" | "public") | null;
         };
         /** TrashItem */
         TrashItem: {
@@ -2890,6 +2961,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_thread_v1_shared__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedThreadOut"];
                 };
             };
             /** @description Validation Error */

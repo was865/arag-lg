@@ -13,6 +13,8 @@ import { Sidebar } from "@/components/sidebar/sidebar";
 import { LibraryView } from "@/components/library/library-view";
 import { TrashView } from "@/components/library/trash-view";
 import { DocumentViewer } from "@/components/library/document-viewer";
+import { ShareDialog } from "@/components/chat/share-dialog";
+import { Icon } from "@/components/icons";
 import type { DocumentOut } from "@/lib/library/api";
 import { kbLabel } from "@/lib/library/view";
 import { parseRoute, routePath, type Route } from "@/lib/routes";
@@ -96,6 +98,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const [page, setPage] = useState<Route>(initialRoute);
   /** ライブラリの上に重ねる文書ビューア。開くときに同じ URL の履歴を 1 つ積み、戻るボタンで閉じる。 */
   const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
@@ -600,6 +603,17 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                   {interpolate(t.workspace.btnSources, { n: String(citeTurn?.sources.length ?? 0) })}
                 </button>
               )}
+              {activeThread && phase !== "empty" && (
+                <button
+                  onClick={() => setShareOpen(true)}
+                  aria-label="共有"
+                  title="共有"
+                  className="inline-flex h-[30px] items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium text-fg-2 hover:bg-divider hover:text-fg max-md:w-8 max-md:justify-center max-md:px-0"
+                >
+                  <Icon name={activeThread.visibility && activeThread.visibility !== "private" ? "link" : "share"} size={13} />
+                  <span className="max-md:hidden">共有</span>
+                </button>
+              )}
               <ThemeToggle dark={tweaks.dark} onToggle={() => setTweak("dark", !tweaks.dark)} />
             </div>
           </header>
@@ -688,6 +702,13 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
       </AppShell>
       {confirmDialog}
       {accountOpen && <AccountModal onClose={() => setAccountOpen(false)} />}
+      {shareOpen && activeThread && (
+        <ShareDialog
+          thread={activeThread}
+          onChange={(t) => setThreads((all) => all.map((x) => (x.id === t.id ? t : x)))}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
       {viewerDoc && (
         <DocumentViewer
           key={viewerDoc.id}

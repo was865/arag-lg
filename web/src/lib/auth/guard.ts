@@ -11,7 +11,8 @@ export function safeNext(next: string | null | undefined): string {
 
 /** 移動先（不要なら null）。 */
 export function authRedirect(pathname: string, search: string, hasSession: boolean): string | null {
-  const isPublic = PUBLIC_PATHS.has(pathname);
+  // 共有ページ（/s/<token>）はログインなしでも開ける。範囲の判定は API が行う（specs/008-thread-share R6）
+  const isPublic = PUBLIC_PATHS.has(pathname) || pathname.startsWith("/s/");
   if (hasSession) {
     if (pathname !== "/login") return null;
     return safeNext(new URLSearchParams(search).get("next"));

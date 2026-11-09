@@ -66,3 +66,16 @@ async def current_principal(request: Request) -> Principal:
 
 
 CurrentPrincipal = Annotated[Principal, Depends(current_principal)]
+
+
+async def optional_principal(request: Request) -> Principal | None:
+    """ログインしていなくても呼べる API 用（共有ページなど）。資格情報が無い・不正なら None。"""
+    try:
+        return await current_principal(request)
+    except ApiError as e:
+        if e.status == 401:
+            return None
+        raise
+
+
+OptionalPrincipal = Annotated[Principal | None, Depends(optional_principal)]

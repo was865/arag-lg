@@ -10,6 +10,8 @@ describe("authRedirect", () => {
   it("ログイン画面・再設定画面は未ログインでも開ける", () => {
     expect(authRedirect("/login", "", false)).toBeNull();
     expect(authRedirect("/reset-password", "?token=a", false)).toBeNull();
+    expect(authRedirect("/s/abc", "", false)).toBeNull();
+    expect(authRedirect("/s/abc", "", true)).toBeNull();
   });
 
   it("ログイン済みで /login を開くとアプリ（next があればそこ）へ", () => {

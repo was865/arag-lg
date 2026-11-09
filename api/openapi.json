@@ -1836,6 +1836,88 @@
         "title": "SectionOut",
         "type": "object"
       },
+      "SharedMessage": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SharedSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "answer",
+          "created_at",
+          "sources"
+        ],
+        "title": "SharedMessage",
+        "type": "object"
+      },
+      "SharedSource": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "title"
+        ],
+        "title": "SharedSource",
+        "type": "object"
+      },
+      "SharedThreadOut": {
+        "description": "共有ページに渡す最小限（R5）。ステップ・章本文・文書 ID・利用者は含めない。",
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/SharedMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "visibility": {
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "visibility",
+          "messages"
+        ],
+        "title": "SharedThreadOut",
+        "type": "object"
+      },
       "SourceSection": {
         "properties": {
           "block_type": {
@@ -2120,6 +2202,17 @@
             "title": "Pinned",
             "type": "boolean"
           },
+          "share_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Token"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -2127,6 +2220,16 @@
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "default": "private",
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
+            "title": "Visibility",
             "type": "string"
           }
         },
@@ -2174,6 +2277,17 @@
             "title": "Pinned",
             "type": "boolean"
           },
+          "share_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Token"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -2181,6 +2295,16 @@
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "default": "private",
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
+            "title": "Visibility",
             "type": "string"
           }
         },
@@ -2219,6 +2343,22 @@
               }
             ],
             "title": "Title"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "enum": [
+                  "private",
+                  "org",
+                  "public"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
           }
         },
         "title": "ThreadPatch",
@@ -4313,6 +4453,48 @@
         "summary": "Search Endpoint",
         "tags": [
           "search"
+        ]
+      }
+    },
+    "/v1/shared/{token}": {
+      "get": {
+        "operationId": "get_shared_thread_v1_shared__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedThreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Shared Thread",
+        "tags": [
+          "chat"
         ]
       }
     },

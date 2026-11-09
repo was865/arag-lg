@@ -47,7 +47,7 @@ export const chatApi = {
     if (!data) fail(response.status, error);
     return data;
   },
-  async patchThread(id: string, body: { title?: string; pinned?: boolean }) {
+  async patchThread(id: string, body: { title?: string; pinned?: boolean; visibility?: "private" | "org" | "public" }) {
     const { data, error, response } = await client.PATCH("/v1/threads/{thread_id}", {
       params: { path: { thread_id: id } },
       body,

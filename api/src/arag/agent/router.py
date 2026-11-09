@@ -1,5 +1,6 @@
 """対話の API（specs/005-agent R1〜R12・R26〜R30）。"""
 
+import secrets
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -23,9 +24,10 @@ from arag.agent.service import (
 )
 from arag.agent.steps import Step
 from arag.agent.stream import EventSink, read_events, request_cancel, stream_exists
-from arag.auth.principal import CurrentPrincipal, Principal
+from arag.audit import AuditEvent
+from arag.auth.principal import CurrentPrincipal, OptionalPrincipal, Principal
 from arag.db.models import Message, MessageFeedback, Run, Thread
-from arag.deps import get_session
+from arag.deps import CtxDep, get_session
 from arag.errors import ApiError, not_found
 from arag.settings import Settings
 
@@ -84,10 +86,15 @@ async def list_models(request: Request, _p: CurrentPrincipal) -> ModelsOut:
 # --- スレッド ---
 
 
+Visibility = Literal["private", "org", "public"]
+
+
 class ThreadOut(BaseModel):
     id: uuid.UUID
     title: str
     pinned: bool
+    visibility: Visibility = "private"
+    share_token: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -139,11 +146,18 @@ class ThreadCreate(BaseModel):
 class ThreadPatch(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     pinned: bool | None = None
+    visibility: Visibility | None = None
 
 
 def _thread_out(t: Thread) -> ThreadOut:
     return ThreadOut(
-        id=t.id, title=t.title, pinned=t.pinned, created_at=t.created_at, updated_at=t.updated_at
+        id=t.id,
+        title=t.title,
+        pinned=t.pinned,
+        visibility=t.visibility,  # type: ignore[arg-type]
+        share_token=t.share_token,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
     )
 
 
@@ -217,12 +231,26 @@ async def get_thread_detail(thread_id: uuid.UUID, p: CurrentPrincipal, s: Sessio
 
 
 @router.patch("/v1/threads/{thread_id}", response_model=ThreadOut)
-async def patch_thread(thread_id: uuid.UUID, p: CurrentPrincipal, s: Session, body: ThreadPatch) -> ThreadOut:
-    t = await get_thread(s, p, thread_id)
+async def patch_thread(thread_id: uuid.UUID, ctx: CtxDep, body: ThreadPatch) -> ThreadOut:
+    s = ctx.session
+    t = await get_thread(s, ctx.principal, thread_id)
     if body.title is not None:
         t.title = body.title.strip() or t.title
     if body.pinned is not None:
         t.pinned = body.pinned
+    if body.visibility is not None and body.visibility != t.visibility:
+        t.visibility = body.visibility
+        # 公開するときに初めてトークンを出す。private に戻しても保つ（R2）
+        if body.visibility != "private" and t.share_token is None:
+            t.share_token = secrets.token_urlsafe(16)
+        await ctx.audit(
+            AuditEvent(
+                action="thread.share",
+                resource_type="thread",
+                resource_id=str(t.id),
+                detail={"visibility": body.visibility},
+            )
+        )
     await s.commit()
     await s.refresh(t)
     return _thread_out(t)
@@ -410,3 +438,71 @@ async def put_feedback(
     fb.updated_at = datetime.now(UTC)
     await s.commit()
     return FeedbackOut(rating=body.rating, reason_tags=body.reason_tags, comment=body.comment)
+
+
+# ── 共有（specs/008-thread-share）────────────────────────────────────────
+
+
+class SharedSource(BaseModel):
+    n: int
+    title: str
+
+
+class SharedMessage(BaseModel):
+    query: str
+    answer: str
+    created_at: datetime
+    sources: list[SharedSource]
+
+
+class SharedThreadOut(BaseModel):
+    """共有ページに渡す最小限（R5）。ステップ・章本文・文書 ID・利用者は含めない。"""
+
+    title: str
+    visibility: Visibility
+    messages: list[SharedMessage]
+
+
+def shared_sources(citation_map: dict[str, Any], sources: list[dict[str, Any]]) -> list[SharedSource]:
+    """引用番号 → 文書名（番号順）。出典が見つからない番号は除く。"""
+    titles = {str(x.get("id")): str(x.get("title", "")) for x in sources}
+    out: list[SharedSource] = []
+    for key, ref in citation_map.items():
+        if not key.isdigit() or not isinstance(ref, dict):
+            continue
+        title = titles.get(str(ref.get("source_id")))
+        if title is not None:
+            out.append(SharedSource(n=int(key), title=title))
+    return sorted(out, key=lambda x: x.n)
+
+
+@router.get("/v1/shared/{token}", response_model=SharedThreadOut)
+async def get_shared_thread(token: str, p: OptionalPrincipal, s: Session) -> SharedThreadOut:
+    t = (
+        (await s.scalars(select(Thread).where(Thread.share_token == token))).first()
+        if len(token) <= 32
+        else None
+    )
+    # private と存在しないものは区別しない（R4）
+    if t is None or t.visibility == "private":
+        raise not_found("共有されたスレッドが見つかりません")
+    if t.visibility == "org" and p is None:
+        raise ApiError(401, "unauthenticated", "このスレッドを見るにはログインが必要です")
+    msgs = await s.scalars(
+        select(Message)
+        .where(Message.thread_id == t.id, Message.status.in_(("completed", "cancelled")))
+        .order_by(Message.ordinal)
+    )
+    return SharedThreadOut(
+        title=t.title,
+        visibility=t.visibility,  # type: ignore[arg-type]
+        messages=[
+            SharedMessage(
+                query=m.query,
+                answer=m.answer_text,
+                created_at=m.created_at,
+                sources=shared_sources(m.citation_map, m.sources),
+            )
+            for m in msgs
+        ],
+    )
