@@ -38,3 +38,10 @@ test("running disables submit regardless", () => {
   expect(composerSubmitState({ value: "質問", attachments: [file("ready")], running: true }))
     .toEqual({ pending: false, canSubmit: false });
 });
+
+test("an attached image alone allows submit (specs/017 R7)", () => {
+  expect(composerSubmitState({ value: "", attachments: [], running: false, hasImage: true }))
+    .toEqual({ pending: false, canSubmit: true });
+  expect(composerSubmitState({ value: "", attachments: [], running: false }))
+    .toEqual({ pending: false, canSubmit: false });
+});

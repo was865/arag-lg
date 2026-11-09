@@ -25,6 +25,18 @@ export const chat = {
   placeholderRunning: "エージェントが実行中です…",
   placeholderIdle: "社内の文書について質問してください…",
   attachTitle: "ファイルを添付 (PDF/Word/Excelなど)",
+  // 質問に添える画像（specs/017）
+  imageAttachTitle: "画像を添付（貼り付け・ドロップも可）",
+  imageAttached: "添付した画像",
+  imageRemove: "画像を外す",
+  imageHint: "画像の内容を読み取ってから調べます",
+  imagePreparing: "画像を準備しています…",
+  imageDrop: "ここに画像をドロップ",
+  imageEnlarge: "画像を拡大",
+  // API の DEFAULT_QUERY と同じ文言（画像だけで送ったとき）
+  imageDefaultQuery: "この画像について関連資料を調べてください",
+  imageReadFailed: "画像を読み取れませんでした",
+
   scopeTitle: "検索範囲を選択",
   stopTitle: "実行を停止",
   pendingSubmitTitle: "アップロード完了までお待ちください",

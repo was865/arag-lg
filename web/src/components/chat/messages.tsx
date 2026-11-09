@@ -5,17 +5,64 @@ import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { AnswerFooter, CancelledNotice, ErrorNotice, UncitedNotice } from "@/components/chat/answer-footer";
 import { UserAttachments } from "@/components/uploads/uploads";
-import type { CitationStyle, StagedFile, Turn, ToolView } from "@/lib/types";
+import type { CitationStyle, StagedFile, Turn, TurnImage, ToolView } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
 import { dateSeparator, formatTurnTimestamp, sameLocalDay } from "@/lib/datetime";
+
+/** 質問に添えた画像の縮小表示。押すと拡大する（specs/017 R6）。 */
+function QueryImageThumb({ image }: { image: TurnImage }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const [broken, setBroken] = useState(false);
+  if (broken) return <span className="text-[12px] text-muted">{t.chat.imageAttached}</span>;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title={t.chat.imageEnlarge}
+        aria-label={t.chat.imageEnlarge}
+        className="block overflow-hidden rounded-[10px] border-0 bg-transparent p-0"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- 認証つきの API 画像・data URL をそのまま出す */}
+        <img
+          src={image.url}
+          alt={t.chat.imageAttached}
+          width={image.width}
+          height={image.height}
+          onError={() => setBroken(true)}
+          className="block h-auto max-h-[200px] w-auto max-w-[240px] object-contain"
+        />
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.chat.imageAttached}
+          onClick={() => setOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          className="fixed inset-0 z-50 grid place-items-center bg-[rgba(20,18,15,0.72)] p-4"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- 拡大表示 */}
+          <img src={image.url} alt={t.chat.imageAttached} className="max-h-full max-w-full rounded-[10px] object-contain" />
+        </div>
+      )}
+    </>
+  );
+}
 
 export function UserMessage({
   text,
   time,
   onEdit,
+  image,
 }: {
   text: string;
+  /** 質問に添えた画像（specs/017） */
+  image?: TurnImage;
   time?: React.ReactNode;
   /** 指定すると、ホバーで「編集」を出し、送信で作り直す（R34）。 */
   onEdit?: (text: string) => void;
@@ -84,6 +131,11 @@ export function UserMessage({
       )}
       {/* 吹き出しを peer にし、ホバー時だけ時刻（order-first で左側）を出す。 */}
       <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-[14.5px] leading-[1.55] text-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-[14px]">
+        {image && (
+          <div className="mb-2">
+            <QueryImageThumb image={image} />
+          </div>
+        )}
         {text}
       </div>
       {time}
@@ -199,6 +251,7 @@ export function Transcript({
             {showSeparator && <DateSeparator label={dateSeparator(turn.createdAt!, now, { today: t.chat.dateToday, yesterday: t.chat.dateYesterday })} />}
             <UserMessage
               text={turn.query}
+              image={turn.image}
               onEdit={onEdit && turn.messageId && !running ? (v) => onEdit(idx, v) : undefined}
               time={sentTime ? (
                 <time

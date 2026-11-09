@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, chatApi, streamUrl, type StartRunBody } from "@/lib/chat/api";
 import { applyEvent, isTerminal, newTurn, turnFromMessage, type RunEvent } from "@/lib/chat/turn";
-import type { Turn } from "@/lib/types";
+import type { Turn, TurnImage } from "@/lib/types";
 import { uid } from "@/lib/utils";
 
 export const NEW_THREAD = "new";
@@ -105,7 +105,7 @@ export function useConversations({ onRunEnd, onThreadCreated }: Options = {}) {
   const load = useCallback(
     async (threadId: string) => {
       const detail = await chatApi.thread(threadId);
-      const turns = detail.messages.map(turnFromMessage);
+      const turns = detail.messages.map((m) => turnFromMessage(m, threadId));
       const active = detail.active_run;
       if (active) turns.push(newTurn(active.query, { runId: active.run_id, messageId: active.message_id }));
       update(threadId, () => ({ turns, loaded: true }));
@@ -123,13 +123,13 @@ export function useConversations({ onRunEnd, onThreadCreated }: Options = {}) {
     async (
       threadId: string | null,
       query: string,
-      opts: { fromIdx?: number; fromMessageId?: string | null; body?: Partial<StartRunBody> } = {},
+      opts: { fromIdx?: number; fromMessageId?: string | null; body?: Partial<StartRunBody>; image?: TurnImage } = {},
     ): Promise<string | null> => {
       const key = threadId ?? NEW_THREAD;
       const pending = `pending:${uid()}`;
       update(key, (c) => {
         const kept = opts.fromIdx != null ? c.turns.slice(0, opts.fromIdx) : c.turns;
-        return { ...c, loaded: true, turns: [...kept, newTurn(query, { runId: pending })] };
+        return { ...c, loaded: true, turns: [...kept, newTurn(query, { runId: pending }, opts.image)] };
       });
       try {
         const r = await chatApi.startRun(threadId, {

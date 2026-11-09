@@ -35,6 +35,7 @@ export type ToolStatus = "pending" | "running" | "done" | "error";
 
 export type ToolName =
   | "skill"
+  | "read_image"
   | "reasoning"
   | "rewrite_query"
   | "retrieve"
@@ -101,8 +102,17 @@ export interface CompletedThread {
 }
 
 /** 1ターン分（ユーザー質問 + エージェント実行 + 回答）。 */
+/** 質問に添えた画像（specs/017）。url は data URL（送信直後）か API の画像 URL（保存済み）。 */
+export interface TurnImage {
+  url: string;
+  width?: number;
+  height?: number;
+  description?: string | null;
+}
+
 export interface Turn {
   query: string;
+  image?: TurnImage;
   steps: ToolCall[];
   answer: string;
   streaming: boolean;

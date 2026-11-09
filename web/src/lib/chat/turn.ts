@@ -5,7 +5,7 @@
  */
 import type { components } from "@/lib/api/schema";
 import type { TurnFeedback } from "@/lib/feedback-types";
-import type { CitationMap, Source, ToolCall, ToolName, Turn } from "@/lib/types";
+import type { CitationMap, Source, ToolCall, ToolName, Turn, TurnImage } from "@/lib/types";
 
 type S = components["schemas"];
 export type RunEvent = S["RunEvent"];
@@ -80,9 +80,14 @@ export function toCitationMap(m: ApiCitationMap | undefined | null): CitationMap
 }
 
 /** ライブの 1 ターン（質問を送った直後）。 */
-export function newTurn(query: string, ids: { runId?: string; messageId?: string } = {}): Turn {
+export function newTurn(
+  query: string,
+  ids: { runId?: string; messageId?: string } = {},
+  image?: TurnImage,
+): Turn {
   return {
     query,
+    image,
     steps: [],
     answer: "",
     streaming: true,
@@ -156,11 +161,20 @@ export function isTerminal(ev: RunEvent): boolean {
   return ev.type === "run.completed" || ev.type === "run.failed" || ev.type === "run.cancelled";
 }
 
+/** 保存済みメッセージの画像の URL（同一オリジンのプロキシ経由。cookie 認証で <img> から読める）。 */
+export function messageImageUrl(threadId: string, messageId: string): string {
+  return `/api/v1/threads/${threadId}/messages/${messageId}/image`;
+}
+
 /** 保存済みメッセージ（スレッド詳細）からターンを作る。 */
-export function turnFromMessage(m: ApiMessage): Turn {
+export function turnFromMessage(m: ApiMessage, threadId?: string): Turn {
   const sources = (m.sources ?? []).map(toSource);
   return {
     query: m.query,
+    image:
+      m.image && threadId
+        ? { url: messageImageUrl(threadId, m.id), width: m.image.width, height: m.image.height, description: m.image.description ?? null }
+        : undefined,
     steps: (m.steps ?? []).map(toToolCall),
     answer: m.answer,
     streaming: false,

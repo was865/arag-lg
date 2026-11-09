@@ -46,6 +46,7 @@ import { isEditable, shortcutAction } from "@/lib/shortcuts";
 import type { FeedbackRating, FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { AppUser, ModelOption, ScopeValue, Source, ThreadSummary, Turn } from "@/lib/types";
 import { cn, relativeTime } from "@/lib/utils";
+import { checkImageFile, imageFromUrl, shrinkImage, type QueryImage } from "@/lib/query-image";
 import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspace-stats";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
@@ -128,6 +129,10 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const [composerFocus, setComposerFocus] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
+  // 質問に添える画像（specs/017）。imageInput は API が図の説明用モデルを持つときだけ true
+  const [queryImage, setQueryImage] = useState<QueryImage | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageInput, setImageInput] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [activeCiteTurn, setActiveCiteTurn] = useState(0);
@@ -182,6 +187,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           available: x.available,
         }));
         setModels(opts);
+        setImageInput(Boolean(m.image_input));
         let saved: string | null = null;
         try {
           saved = localStorage.getItem(MODEL_STORAGE_KEY);
@@ -334,12 +340,34 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     agent_cfg: agentCfgPayload(agentCfg),
   });
 
+  const pickImage = async (f: File) => {
+    const err = checkImageFile(f);
+    if (err) {
+      push(err, "error");
+      return;
+    }
+    setImageBusy(true);
+    try {
+      setQueryImage(await shrinkImage(f));
+    } catch {
+      push(t.chat.imageReadFailed, "error");
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
   const startRun = (query: string) => {
     const q = query.trim();
-    if (!q || running) return;
+    const img = queryImage;
+    if ((!q && !img) || running || imageBusy) return;
     setComposerValue("");
+    setQueryImage(null);
     stickToBottom.current = true;
-    void send(activeId, q, { body: runBody() });
+    // 画像だけのときは API が既定の質問を入れる。表示用にもここで同じ文言を使う
+    void send(activeId, q || t.chat.imageDefaultQuery, {
+      body: { ...runBody(), image: img ? { data: img.dataUrl } : null },
+      image: img ? { url: img.dataUrl, width: img.width, height: img.height } : undefined,
+    });
   };
 
   /** idx のターンを作り直す（同じ質問 = 再生成、別の質問 = 編集）。 */
@@ -350,12 +378,23 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     }
     const turn = turns[idx];
     if (!turn || !activeId) return;
-    // 保存済みのメッセージがあればそこから分岐、無ければ（受付前に取り消した等）新しい質問として送る
-    void send(activeId, query ?? turn.query, {
-      fromIdx: idx,
-      fromMessageId: turn.messageId ?? null,
-      body: runBody(),
-    });
+    // 保存済みのメッセージがあればそこから分岐、無ければ（受付前に取り消した等）新しい質問として送る。
+    // 画像つきのターンは同じ画像を送り直す（読み取りは作り直しのたびに行う）
+    const go = (img: QueryImage | null) =>
+      void send(activeId, query ?? turn.query, {
+        fromIdx: idx,
+        fromMessageId: turn.messageId ?? null,
+        body: { ...runBody(), image: img ? { data: img.dataUrl } : null },
+        image: img ? { url: img.dataUrl, width: img.width, height: img.height } : undefined,
+      });
+    if (turn.image) {
+      imageFromUrl(turn.image.url)
+        .then(go)
+        .catch(() => {
+          push(t.chat.imageReadFailed, "error");
+          go(null);
+        });
+    } else go(null);
     if (!query) push(t.feedback.regenerating, "info");
   };
 
@@ -731,6 +770,10 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               running={running}
               scope={scope}
               focusKey={composerFocus}
+              image={queryImage}
+              imageBusy={imageBusy}
+              onPickImage={imageInput ? (f) => void pickImage(f) : undefined}
+              onRemoveImage={() => setQueryImage(null)}
               onChangeScope={(s) => {
                 setScope(s);
                 push(interpolate(t.feedback.scopeChanged, { label: s.label }), "info");

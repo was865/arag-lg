@@ -56,6 +56,13 @@ interface VerifyDetail {
 }
 
 const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
+  read_image: (
+    <>
+      <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <circle cx="5.75" cy="6.5" r="1.25" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M2.5 11.5l3.5-3 2.5 2 2-1.5 3 2.5" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+    </>
+  ),
   skill: <path d="M8 1.5l1.6 4.3 4.4 1.7-4.4 1.7L8 13.5l-1.6-4.3L2 7.5l4.4-1.7L8 1.5z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />,
   reasoning: (
     <>
@@ -367,6 +374,12 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
 
   if (step.name === "answer") {
     return hasTokenUsage(output) ? <KeyValueGrid rows={tokenRows(output, t)} /> : null;
+  }
+
+  if (step.name === "read_image") {
+    // 画像から読み取った文章（失敗時は理由）
+    const text = typeof output.description === "string" ? output.description : typeof output.error === "string" ? output.error : "";
+    return text ? <pre className={preCls}>{text}</pre> : null;
   }
 
   if (step.name === "reasoning") {

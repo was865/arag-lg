@@ -129,4 +129,14 @@ describe("turnFromMessage", () => {
     expect(t.feedback).toEqual({ rating: "down", reasonTags: ["wrong"], comment: null });
     expect(t.citationMap[1].sectionId).toBe("x1");
   });
+  it("画像つきメッセージは API の画像 URL を持つ（specs/017 R6）", () => {
+    const base = {
+      id: "m2", ordinal: 1, query: "この図は？", answer: "", status: "completed", model_id: null,
+      tokens_in: 0, tokens_out: 0, duration_ms: 0, steps: [], sources: [], citation_map: {},
+      no_answer_reason: null, created_at: "2026-11-09T00:00:00Z", feedback: null,
+    } satisfies Omit<Parameters<typeof turnFromMessage>[0], "image">;
+    const t = turnFromMessage({ ...base, image: { width: 640, height: 480, description: "棒グラフ" } }, "th1");
+    expect(t.image).toEqual({ url: "/api/v1/threads/th1/messages/m2/image", width: 640, height: 480, description: "棒グラフ" });
+    expect(turnFromMessage({ ...base, image: null }, "th1").image).toBeUndefined();
+  });
 });

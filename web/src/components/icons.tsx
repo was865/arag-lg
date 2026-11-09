@@ -92,6 +92,13 @@ const glyphs = {
       <circle cx="8" cy="8" r="1" fill="currentColor" />
     </>
   ),
+  image: (
+    <>
+      <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" fill="none" />
+      <circle cx="5.75" cy="6.5" r="1.25" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M2.5 11.5l3.5-3 2.5 2 2-1.5 3 2.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
+    </>
+  ),
   paperclip: <path d="M11 7l-4 4a2.5 2.5 0 003.5 3.5L14 11a4.5 4.5 0 00-6.4-6.4L4 8a2.5 2.5 0 003.5 3.5L10 9" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
   database: (
     <>
