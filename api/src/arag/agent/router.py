@@ -27,6 +27,7 @@ from arag.agent.service import (
 )
 from arag.agent.steps import Step
 from arag.agent.stream import EventSink, read_events, request_cancel, stream_exists
+from arag.agent.thread_search import Match, search_threads
 from arag.audit import AuditEvent
 from arag.auth.principal import CurrentPrincipal, OptionalPrincipal, Principal
 from arag.db.models import Message, MessageFeedback, Run, Thread
@@ -105,6 +106,17 @@ class ThreadOut(BaseModel):
 
 class ThreadList(BaseModel):
     items: list[ThreadOut]
+
+
+class ThreadSearchHit(BaseModel):
+    thread: ThreadOut
+    match: Match = Field(description="当たった場所（題名・質問・回答）")
+    snippet: str = Field(description="当たった語の前後")
+    message_id: uuid.UUID | None = Field(default=None, description="当たったメッセージ（題名のときは無し）")
+
+
+class ThreadSearchResult(BaseModel):
+    items: list[ThreadSearchHit]
 
 
 class FeedbackOut(BaseModel):
@@ -201,6 +213,28 @@ async def list_threads(
         q = q.where(Thread.updated_at < before)
     rows = await s.scalars(q.order_by(Thread.pinned.desc(), Thread.updated_at.desc()).limit(limit))
     return ThreadList(items=[_thread_out(t) for t in rows])
+
+
+@router.get("/v1/threads/search", response_model=ThreadSearchResult)
+async def search_thread_list(
+    p: CurrentPrincipal,
+    s: Session,
+    q: Annotated[str, Query(min_length=1, max_length=200, pattern=r"\S")],
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> ThreadSearchResult:
+    """自分のスレッドを、題名・質問・回答の本文で探す（空白で区切った語はすべて含む）。"""
+    hits = await search_threads(s, p.user_id, q, limit)
+    return ThreadSearchResult(
+        items=[
+            ThreadSearchHit(
+                thread=_thread_out(h.thread),
+                match=h.match,
+                snippet=h.snippet,
+                message_id=uuid.UUID(h.message_id) if h.message_id else None,
+            )
+            for h in hits
+        ]
+    )
 
 
 @router.post("/v1/threads", response_model=ThreadOut, status_code=201)

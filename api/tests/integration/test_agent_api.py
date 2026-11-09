@@ -331,3 +331,41 @@ def _parse_sse(text: str) -> list[dict[str, str]]:
         if "event" in fields:
             out.append(fields)
     return out
+
+
+async def test_thread_search_matches_title_question_and_answer(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    """スレッドの検索（specs/022 R1）: 題名・質問・回答の本文を探し、自分のスレッドだけを返す。"""
+    a = await _ask(api, "MX-17 の異常時の対応は？")
+    answer_a = "直ちに設備を停止し、保全課（内線 2417）に連絡します [1]。"
+    await _finish(sessionmaker, a["run_id"], 1, answer=answer_a)
+    b = await _ask(api, "年次点検はいつ？")
+    await _finish(sessionmaker, b["run_id"], 1, answer="毎年8月の夏季休業中です [1]。")
+    await api.patch(f"/v1/threads/{b['thread_id']}", json={"title": "点検の予定"}, headers=ALICE)
+
+    def ids(r: httpx.Response) -> list[str]:
+        assert r.status_code == 200, r.text
+        return [h["thread"]["id"] for h in r.json()["items"]]
+
+    # 回答の本文
+    r = await api.get("/v1/threads/search", params={"q": "内線 2417"}, headers=ALICE)
+    assert ids(r) == [a["thread_id"]]
+    [hit] = r.json()["items"]
+    assert hit["match"] == "answer" and "2417" in hit["snippet"]
+    assert hit["message_id"] is not None
+    # 質問（大文字・小文字を区別しない）
+    assert ids(await api.get("/v1/threads/search", params={"q": "mx-17"}, headers=ALICE)) == [a["thread_id"]]
+    # 題名
+    r = await api.get("/v1/threads/search", params={"q": "点検の予定"}, headers=ALICE)
+    assert ids(r) == [b["thread_id"]] and r.json()["items"][0]["match"] == "title"
+    # 空白で区切った語はすべて含む（AND）
+    found = await api.get("/v1/threads/search", params={"q": "8月 夏季"}, headers=ALICE)
+    assert ids(found) == [b["thread_id"]]
+    assert ids(await api.get("/v1/threads/search", params={"q": "8月 MX-17"}, headers=ALICE)) == []
+    # LIKE の記号はそのままの文字として探す
+    assert ids(await api.get("/v1/threads/search", params={"q": "%"}, headers=ALICE)) == []
+    # 他人のスレッドは出ない
+    assert ids(await api.get("/v1/threads/search", params={"q": "2417"}, headers=BOB)) == []
+    # 空の語は 422
+    assert (await api.get("/v1/threads/search", params={"q": "  "}, headers=ALICE)).status_code == 422

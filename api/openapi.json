@@ -3258,6 +3258,64 @@
         "title": "ThreadPatch",
         "type": "object"
       },
+      "ThreadSearchHit": {
+        "properties": {
+          "match": {
+            "description": "当たった場所（題名・質問・回答）",
+            "enum": [
+              "title",
+              "query",
+              "answer"
+            ],
+            "title": "Match",
+            "type": "string"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "当たったメッセージ（題名のときは無し）",
+            "title": "Message Id"
+          },
+          "snippet": {
+            "description": "当たった語の前後",
+            "title": "Snippet",
+            "type": "string"
+          },
+          "thread": {
+            "$ref": "#/components/schemas/ThreadOut"
+          }
+        },
+        "required": [
+          "thread",
+          "match",
+          "snippet"
+        ],
+        "title": "ThreadSearchHit",
+        "type": "object"
+      },
+      "ThreadSearchResult": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ThreadSearchHit"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ThreadSearchResult",
+        "type": "object"
+      },
       "TopDocument": {
         "properties": {
           "answers": {
@@ -6166,6 +6224,64 @@
           }
         },
         "summary": "Create Thread",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/v1/threads/search": {
+      "get": {
+        "description": "自分のスレッドを、題名・質問・回答の本文で探す（空白で区切った語はすべて含む）。",
+        "operationId": "search_thread_list_v1_threads_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "\\S",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadSearchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Thread List",
         "tags": [
           "chat"
         ]

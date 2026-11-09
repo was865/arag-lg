@@ -8,6 +8,7 @@ export type ThreadDetail = S["ThreadDetail"];
 export type ModelOut = S["ModelOut"];
 export type RunCreated = S["RunCreated"];
 export type ActiveRunOut = S["ActiveRunOut"];
+export type ThreadSearchHit = S["ThreadSearchHit"];
 
 /** API のエラー（`{error: {code, message}}`）。message は日本語。 */
 export class ApiError extends Error {
@@ -37,6 +38,15 @@ export const chatApi = {
   },
   async threads() {
     const { data, error, response } = await client.GET("/v1/threads", { params: { query: { limit: 200 } } });
+    if (!data) fail(response.status, error);
+    return data.items;
+  },
+  /** 題名・質問・回答の本文でスレッドを探す（空白区切りの語はすべて含む）。 */
+  async searchThreads(q: string, signal?: AbortSignal): Promise<ThreadSearchHit[]> {
+    const { data, error, response } = await client.GET("/v1/threads/search", {
+      params: { query: { q, limit: 30 } },
+      signal,
+    });
     if (!data) fail(response.status, error);
     return data.items;
   },

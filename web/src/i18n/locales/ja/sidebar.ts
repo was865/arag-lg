@@ -10,6 +10,12 @@ export const sidebar = {
 
   // search
   searchPlaceholder: "スレッドを検索…",
+  searchResults: "検索結果",
+  searchSearching: "検索しています…",
+  searchEmpty: "一致するスレッドはありません",
+  searchFailed: "検索できませんでした",
+  searchMatchQuery: "質問",
+  searchMatchAnswer: "回答",
 
   // thread groups
   groupPinned: "ピン留め",

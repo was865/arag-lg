@@ -822,6 +822,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/threads/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Thread List
+         * @description 自分のスレッドを、題名・質問・回答の本文で探す（空白で区切った語はすべて含む）。
+         */
+        get: operations["search_thread_list_v1_threads_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/threads/{thread_id}": {
         parameters: {
             query?: never;
@@ -2104,6 +2124,31 @@ export interface components {
             title?: string | null;
             /** Visibility */
             visibility?: ("private" | "org" | "public") | null;
+        };
+        /** ThreadSearchHit */
+        ThreadSearchHit: {
+            /**
+             * Match
+             * @description 当たった場所（題名・質問・回答）
+             * @enum {string}
+             */
+            match: "title" | "query" | "answer";
+            /**
+             * Message Id
+             * @description 当たったメッセージ（題名のときは無し）
+             */
+            message_id?: string | null;
+            /**
+             * Snippet
+             * @description 当たった語の前後
+             */
+            snippet: string;
+            thread: components["schemas"]["ThreadOut"];
+        };
+        /** ThreadSearchResult */
+        ThreadSearchResult: {
+            /** Items */
+            items: components["schemas"]["ThreadSearchHit"][];
         };
         /** TopDocument */
         TopDocument: {
@@ -3981,6 +4026,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_thread_list_v1_threads_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadSearchResult"];
                 };
             };
             /** @description Validation Error */

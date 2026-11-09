@@ -8,6 +8,8 @@ import { SidebarNewButton } from "@/components/sidebar/sidebar-new-button";
 import { SidebarRail, SidebarRailButton } from "@/components/sidebar/sidebar-rail";
 import { SidebarUserFooter } from "@/components/sidebar/sidebar-footer";
 import { ThreadRow, ThreadMenu } from "@/components/sidebar/thread-item";
+import { SidebarSearchResults } from "@/components/sidebar/sidebar-search-results";
+import { useThreadSearch } from "@/hooks/use-thread-search";
 import { cn } from "@/lib/utils";
 import type { AppUser, ThreadSummary } from "@/lib/types";
 import { useKbs } from "@/hooks/use-kbs";
@@ -69,8 +71,11 @@ export function Sidebar(props: SidebarProps) {
   // アクセス可能 KB。共有 KB があるときだけサイドバーに内訳を列挙する。
   const { kbs } = useKbs();
   const hasSharedKbs = kbs.some((k) => k.kind !== "personal");
+  const search = useThreadSearch(filter);
+  const searching = filter.trim() !== "";
 
-  const filtered = threads.filter((t) => !filter || t.title.toLowerCase().includes(filter.toLowerCase()));
+  // 本文まで探すのはサーバー（useThreadSearch）。これは結果が来るまでの題名だけの絞り込み。
+  const filtered = threads.filter((t) => !searching || t.title.toLowerCase().includes(filter.trim().toLowerCase()));
 
   if (collapsed) {
     // Icon rail (desktop ≥769px). Hidden entirely on mobile (drawer closes instead).
@@ -152,6 +157,9 @@ export function Sidebar(props: SidebarProps) {
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") setFilter(""); }}
+          type="search"
+          aria-label={t.sidebar.searchPlaceholder}
           placeholder={t.sidebar.searchPlaceholder}
           className="h-[30px] w-full rounded-lg border-0 bg-transparent pl-[30px] pr-2.5 text-[12.5px] text-fg outline-none placeholder:text-muted-2 focus:bg-surface focus:shadow-[0_0_0_1px_var(--divider-strong)]"
         />
@@ -161,7 +169,8 @@ export function Sidebar(props: SidebarProps) {
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
         {/* ナレッジベース: チャット履歴より上に置く一級ナビゲーション。
             開いている KB はスレッドと同じアクティブハイライトで示す。 */}
-        {onOpenLibrary && (
+        {/* 検索中は結果を上に出すため、ナレッジベースの欄を隠す */}
+        {onOpenLibrary && !searching && (
         <>
         <div className="mb-2" data-tour="kb-section">
           <div className="px-2 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
@@ -219,7 +228,17 @@ export function Sidebar(props: SidebarProps) {
         </>
         )}
 
-        {groups.map((g) => (
+        {searching && (
+          <SidebarSearchResults
+            query={filter}
+            state={search}
+            localMatches={filtered}
+            activeThreadId={activeThreadId}
+            onSelect={onSelectThread}
+          />
+        )}
+
+        {!searching && groups.map((g) => (
           <div key={g.label} className="mb-2">
             <div className="px-2 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
               {g.label}
