@@ -135,7 +135,9 @@ _DATE = re.compile(r"(\d{4})\s*(?:年|/|-|\.)\s*(\d{1,2})\s*(?:月|/|-|\.)\s*(\d
 
 
 def canon(s: str) -> str:
-    """事実照合用の正規化。normalize_text に加え、日付（2026年6月5日・2026/6/5）を 2026-06-05 にそろえる。"""
+    """事実照合用の正規化。normalize_text に加え、Markdown の太字記号（**・__）を外し、
+    日付（2026年6月5日・2026/6/5）を 2026-06-05 にそろえる。"""
+    s = s.replace("**", "").replace("__", "")
     return _DATE.sub(lambda m: f"{m[1]}-{int(m[2]):02d}-{int(m[3]):02d}", normalize_text(s))
 
 

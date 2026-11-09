@@ -296,3 +296,10 @@ async def test_run_case_scores_expected_no_answer(answer: str, reason: str | Non
     case = Case(id="n1", query="消費電力は？", tags=["ja", "negative"], expect_no_answer=True)
     r = await run_case(api, case, kb_id="kb1", model_id=None)
     assert r.fact_coverage == coverage
+
+
+def test_facts_matched_ignores_markdown_bold() -> None:
+    """回答の太字（**6**）で事実の照合が外れないようにする。"""
+    from arag.eval.answer import facts_matched
+
+    assert facts_matched("在庫数は **6** です", [["在庫数は6", "在庫数は 6"]]) == [True]

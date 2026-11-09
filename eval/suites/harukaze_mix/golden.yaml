@@ -370,7 +370,7 @@ cases:
   relevant_documents: [e02-Aster-Seals-SK-300-datasheet.pdf, x01-部品台帳.xlsx]
   key_facts:
   - any: [5キット, 5 キット, 5 kits, 5個, 5セット, 5つ, 最小発注数量は5]
-  - any: [6キット, 6 キット, 6個, 6セット, 6つ, 在庫は6, 在庫数は6]
+  - any: [6キット, 6 キット, 6個, 6セット, 6つ, 在庫は6, 在庫数は6, 在庫は 6, 在庫数は 6]
 - id: hm55-multi
   query: PM-04 の軸受交換はいつ行われ、そのとき設備は何分止まりましたか？
   tags: [ja, multi, scan, xlsx]
@@ -449,7 +449,7 @@ cases:
   tags: [cross, multiturn, en-doc]
   relevant_documents: [e01-Penang-HP-300-overhaul-procedure.docx]
   key_facts:
-  - any: [除湿, dehumidifier]
+  - any: [除湿, dehumidifier, デヒューミディファイア, デフュジファイア]
   - any: [30分, 30 分, 30 minutes]
 - id: hm67-turn
   turns: [新人安全教育の保護具について教えてください。]
