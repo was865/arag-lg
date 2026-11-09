@@ -249,10 +249,11 @@ async def _hydrate(session: AsyncSession, scope: Scope, cands: list[_Cand]) -> l
 
 def _rerank_text(chunk: Chunk | None, cfg: SearchConfig) -> str:
     assert chunk is not None
-    if cfg.rerank_input == "context+text" and chunk.context:
-        text = f"{chunk.context}\n\n{chunk.text}"
-    else:
-        text = chunk.text
+    text = chunk.text
+    if cfg.rerank_input != "text" and chunk.context:
+        text = f"{chunk.context}\n\n{text}"
+    if cfg.rerank_input == "heading+context+text" and chunk.heading_path:
+        text = f"{chunk.heading_path}\n{text}"
     return text[: cfg.rerank_max_chars] if cfg.rerank_max_chars > 0 else text
 
 

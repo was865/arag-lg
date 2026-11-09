@@ -5,11 +5,11 @@
     "recall_at_5": 1.0,
     "recall_at_k": 1.0,
     "precision_at_k": 0.1897,
-    "mrr": 1.0,
-    "ndcg_at_k": 1.0,
+    "mrr": 0.9923,
+    "ndcg_at_k": 0.9943,
     "n": 65,
     "fact_coverage": 0.9769,
-    "p50_ms": 107.5898,
-    "p95_ms": 120.6079
+    "p50_ms": 118.5453,
+    "p95_ms": 150.6173
   }
 }

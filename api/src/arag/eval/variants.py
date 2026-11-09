@@ -47,7 +47,7 @@ class Variant:
     rrf_k: int = 60
     weights: tuple[float, float] = (1.0, 1.0)
     rerank: bool = True
-    rerank_input: str = "context+text"
+    rerank_input: str = "heading+context+text"
     embed: str = DEFAULT_EMBED
     reranker: str = DEFAULT_RERANKER
     rerank_max_chars: int = 0

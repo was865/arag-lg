@@ -120,11 +120,24 @@ def test_rerank_text_max_chars() -> None:
 
     from arag.search.service import _rerank_text
 
-    ch = SimpleNamespace(context="文脈", text="x" * 100)
+    ch = SimpleNamespace(heading_path="", context="文脈", text="x" * 100)
     assert _rerank_text(ch, SearchConfig()) == "文脈\n\n" + "x" * 100  # type: ignore[arg-type]
     capped = _rerank_text(ch, SearchConfig(rerank_max_chars=10))  # type: ignore[arg-type]
     assert capped == "文脈\n\nxxxxxx" and len(capped) == 10
     assert _rerank_text(ch, SearchConfig(rerank_input="text", rerank_max_chars=5)) == "xxxxx"  # type: ignore[arg-type]
+
+
+def test_rerank_text_with_heading() -> None:
+    """見出しパスも渡す（本文に固有名が無い英語資料を日本語の問いで拾うため。specs/019）。"""
+    from types import SimpleNamespace
+
+    from arag.search.service import _rerank_text
+
+    cfg = SearchConfig(rerank_input="heading+context+text")
+    ch = SimpleNamespace(heading_path="Pump Procedure — Penang > 2. Records", context="文脈", text="本文")
+    assert _rerank_text(ch, cfg) == "Pump Procedure — Penang > 2. Records\n文脈\n\n本文"  # type: ignore[arg-type]
+    bare = SimpleNamespace(heading_path="", context="", text="本文")
+    assert _rerank_text(bare, cfg) == "本文"  # type: ignore[arg-type]
 
 
 def test_rerank_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

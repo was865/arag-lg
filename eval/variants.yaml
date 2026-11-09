@@ -16,7 +16,7 @@ models:
 
 variants:
   default:
-    {mode: hybrid, fusion: rrf, rrf_k: 60, weights: [1, 1], rerank: true, rerank_input: context+text,
+    {mode: hybrid, fusion: rrf, rrf_k: 60, weights: [1, 1], rerank: true, rerank_input: heading+context+text,
      reranker: ruri-v3-reranker-310m}
   dense_only: {base: default, mode: dense}
   keyword_only: {base: default, mode: keyword}
@@ -27,6 +27,7 @@ variants:
   rrf_sparse2: {base: default, weights: [1, 2]}
   dbsf: {base: default, fusion: dbsf}
   rerank_text_only: {base: default, rerank_input: text}
+  rerank_no_heading: {base: default, rerank_input: context+text}
   no_context: {base: default, context: false}
   ruri_embed: {base: default, embed: ruri-v3-310m}
   bge_rerank: {base: default, reranker: bge-reranker-v2-m3}

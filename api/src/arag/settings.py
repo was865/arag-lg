@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     search_rrf_k: int = 60
     search_weights: str = "1,1"  # dense,sparse
     rerank_enabled: bool = True
-    rerank_input: Literal["context+text", "text"] = "context+text"
+    rerank_input: Literal["heading+context+text", "context+text", "text"] = "heading+context+text"
     rerank_timeout_sec: float = 10.0
     # rerank のモデル名。TEI では記録用（載せているモデル）、API では要求に入れる（specs/004 report §4・016）
     rerank_model: str = "cl-nagoya/ruri-v3-reranker-310m"

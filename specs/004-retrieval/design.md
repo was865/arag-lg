@@ -78,7 +78,7 @@ hydrate で `documents` を `content_hash IN (...) AND kb_id IN scope.kb_ids AND
 
 ## 5. rerank
 
-- 入力文: `cfg.rerank_input = "context+text"`（既定）なら `f"{context}\n\n{text}"`、`"text"` なら本文のみ。
+- 入力文: `cfg.rerank_input = "heading+context+text"`（既定、specs/019）なら `f"{heading_path}\n{context}\n\n{text}"`、`"context+text"` なら `f"{context}\n\n{text}"`、`"text"` なら本文のみ。
 - TEI の `--max-client-batch-size` 既定 32 に合わせて 32 件ずつ送り、`index` で元の順に戻す。
 - `rerank_timeout_sec`（既定 10）、再試行 2 回。最終的に失敗したら `RerankError` → service が縮退（R10）。
 - `rerank_enabled=false` の variant では呼ばない（`score = fused_score`）。
@@ -136,7 +136,7 @@ GitHub の CI には GPU も実モデルも無いので、品質ゲートは **G
 | `SEARCH_TOP_K` / `SEARCH_CANDIDATE_K` | 6 / 50 | |
 | `SEARCH_FUSION` | `rrf` | `rrf` / `dbsf` |
 | `SEARCH_RRF_K` / `SEARCH_WEIGHTS` | 60 / `1,1` | dense, sparse の順 |
-| `RERANK_ENABLED` / `RERANK_INPUT` | true / `context+text` | 評価で確認済み（report.md §3） |
+| `RERANK_ENABLED` / `RERANK_INPUT` | true / `heading+context+text`（specs/019） | 評価で確認済み（report.md §3） |
 | `RERANK_TIMEOUT_SEC` | 10 | |
 | `EMBED_QUERY_PREFIX` / `EMBED_DOCUMENT_PREFIX` | 空 / 空 | ruri は「検索クエリ: 」「検索文書: 」 |
 | `SPARSE_EN_STEM` | false | 評価で効果なし（report.md §3） |

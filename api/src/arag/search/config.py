@@ -6,7 +6,7 @@ from typing import Any, Literal
 from arag.settings import Settings
 
 Fusion = Literal["rrf", "dbsf"]
-RerankInput = Literal["context+text", "text"]
+RerankInput = Literal["heading+context+text", "context+text", "text"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +15,7 @@ class SearchConfig:
     rrf_k: int = 60
     weights: tuple[float, float] = (1.0, 1.0)  # dense, sparse
     rerank_enabled: bool = True
-    rerank_input: RerankInput = "context+text"
+    rerank_input: RerankInput = "heading+context+text"
     rerank_max_chars: int = 0  # rerank 入力の文字数上限（0 は上限なし）
 
     @classmethod

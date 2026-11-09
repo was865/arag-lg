@@ -2,14 +2,14 @@
   "suite": "jqara",
   "variant": "default",
   "aggregate": {
-    "recall_at_5": 0.5006,
-    "recall_at_k": 0.6784,
-    "precision_at_k": 0.613,
-    "mrr": 0.9142,
-    "ndcg_at_k": 0.8304,
+    "recall_at_5": 0.5032,
+    "recall_at_k": 0.6805,
+    "precision_at_k": 0.615,
+    "mrr": 0.9122,
+    "ndcg_at_k": 0.8316,
     "n": 100,
     "fact_coverage": 0.98,
-    "p50_ms": 146.8762,
-    "p95_ms": 171.9918
+    "p50_ms": 243.0439,
+    "p95_ms": 292.683
   }
 }
