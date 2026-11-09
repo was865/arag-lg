@@ -100,7 +100,7 @@ def upgrade() -> None:
             SELECT gen_random_uuid(), m.kb_id, 'user', m.uid, 'manager', 'migration'
             FROM ({managers}) AS m(kb_id, uid)
             ON CONFLICT DO NOTHING
-            """  # noqa: S608 — 組み立てるのは固定の SQL だけ
+            """  # 組み立てるのは固定の SQL だけ
         )
     )
 

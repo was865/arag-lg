@@ -29,6 +29,12 @@ export interface KbInfo {
   deletedAt: string | null;
   /** 物理削除（GC）予定時刻（ISO 文字列）。deletedAt + 保持期間。生存中は null。 */
   expiresAt: string | null;
+  /** 自分の役割（specs/024。閲覧 / 編集 / 管理）。 */
+  role: "viewer" | "editor" | "manager" | null;
+  /** 共有リスト・名前・アーカイブ・削除を変えられるか。 */
+  canManage: boolean;
+  /** 共有リストに「全員」があるか（無ければサイドバーで鍵を出す）。 */
+  sharedWithEveryone: boolean;
 }
 
 interface KbStoreState {
@@ -69,6 +75,9 @@ function mapKbRows(rows: unknown[]): KbInfo[] {
     status: (row.status as string) ?? "active",
     deletedAt: (row.deleted_at as string) ?? null,
     expiresAt: (row.expires_at as string) ?? null,
+    role: (row.role as KbInfo["role"]) ?? null,
+    canManage: Boolean(row.can_manage),
+    sharedWithEveryone: Boolean(row.shared_with_everyone),
   };})
 }
 

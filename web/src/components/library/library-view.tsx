@@ -30,6 +30,7 @@ import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, originalUrl, type DocumentOut, type FolderOut } from "@/lib/library/api";
 import { LibraryOverview } from "@/components/library/library-overview";
+import { KbShareButton } from "@/components/access/kb-share-button";
 import { chunk, selectRange, toggleId } from "@/lib/library/selection";
 import { breadcrumb, childFolders } from "@/lib/library/folders";
 import {
@@ -590,6 +591,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             <span className="max-md:hidden">{selecting ? "選択をやめる" : "選択"}</span>
           </button>
         )}
+        {kb && kb.kind === "org" && <KbShareButton kbId={kb.id} kbName={kb.name} />}
         <button
           onClick={() => onAsk(kbId)}
           title={kb ? "このナレッジベースに質問" : "質問する"}

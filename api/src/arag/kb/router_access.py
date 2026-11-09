@@ -125,7 +125,14 @@ async def create_department(body: DepartmentIn, ctx: CtxDep) -> DepartmentOut:
     except IntegrityError as e:
         await ctx.session.rollback()
         raise _dept_conflict() from e
-    await ctx.audit(AuditEvent(action="department.create", resource_type="department", resource_id=str(d.id)))
+    await ctx.audit(
+        AuditEvent(
+            action="department.create",
+            resource_type="department",
+            resource_id=str(d.id),
+            detail={"label": d.name},
+        )
+    )
     await ctx.session.commit()
     return DepartmentOut(id=d.id, name=d.name, member_count=0)
 
@@ -146,7 +153,7 @@ async def rename_department(dept_id: uuid.UUID, body: DepartmentIn, ctx: CtxDep)
             action="department.rename",
             resource_type="department",
             resource_id=str(d.id),
-            detail={"from": before, "to": d.name},
+            detail={"label": d.name, "from": before, "to": d.name},
         )
     )
     await ctx.session.commit()
@@ -167,7 +174,7 @@ async def delete_department(dept_id: uuid.UUID, ctx: CtxDep) -> Response:
             action="department.delete",
             resource_type="department",
             resource_id=str(d.id),
-            detail={"name": d.name},
+            detail={"label": d.name},
         )
     )
     await ctx.session.delete(d)
@@ -200,7 +207,7 @@ def _can_edit_members(ctx: CtxDep, dept_id: uuid.UUID, *, target_role: str, curr
 async def put_department_member(
     dept_id: uuid.UUID, user_id: UserId, body: DeptMemberIn, ctx: CtxDep
 ) -> DeptMemberOut:
-    await _department(ctx, dept_id)
+    dept = await _department(ctx, dept_id)
     m = await ctx.session.get(DepartmentMember, (dept_id, user_id))
     _can_edit_members(ctx, dept_id, target_role=body.role, current=m.role if m else None)
     if m is None:
@@ -216,7 +223,7 @@ async def put_department_member(
             action=action,
             resource_type="department",
             resource_id=str(dept_id),
-            detail={"user_id": user_id, "role": body.role},
+            detail={"label": dept.name, "user_id": user_id, "role": body.role},
         )
     )
     await ctx.session.commit()
@@ -225,7 +232,7 @@ async def put_department_member(
 
 @router.delete("/v1/departments/{dept_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_department_member(dept_id: uuid.UUID, user_id: UserId, ctx: CtxDep) -> Response:
-    await _department(ctx, dept_id)
+    dept = await _department(ctx, dept_id)
     m = await ctx.session.get(DepartmentMember, (dept_id, user_id))
     if m is None:
         raise not_found()
@@ -236,7 +243,7 @@ async def delete_department_member(dept_id: uuid.UUID, user_id: UserId, ctx: Ctx
             action="department.member_remove",
             resource_type="department",
             resource_id=str(dept_id),
-            detail={"user_id": user_id},
+            detail={"label": dept.name, "user_id": user_id},
         )
     )
     await ctx.session.commit()

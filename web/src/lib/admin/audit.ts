@@ -1,5 +1,6 @@
 /** 監査ログの表示（specs/011-audit-log R5）。 */
 import { ROLE_LABEL, type Role } from "@/lib/admin/members";
+import { ROLE_LABEL as SHARE_ROLE_LABEL, type ShareRole } from "@/lib/access/shares";
 import { VISIBILITY_OPTIONS } from "@/lib/share";
 
 export const ACTION_LABEL: Record<string, string> = {
@@ -12,6 +13,17 @@ export const ACTION_LABEL: Record<string, string> = {
   "kb.create": "ナレッジベースを作成",
   "kb.delete": "ナレッジベースを削除",
   "kb.restore": "ナレッジベースを元に戻す",
+  "kb.archive": "ナレッジベースをアーカイブ",
+  "kb.unarchive": "ナレッジベースのアーカイブを解除",
+  "kb.share_add": "共有先を追加",
+  "kb.share_change": "共有の役割を変更",
+  "kb.share_remove": "共有先を外す",
+  "department.create": "部門を作成",
+  "department.rename": "部門の名前を変更",
+  "department.delete": "部門を削除",
+  "department.member_add": "部門にメンバーを追加",
+  "department.member_role": "部門での役割を変更",
+  "department.member_remove": "部門からメンバーを外す",
   "gc.purge": "期限切れの完全削除",
   "thread.share": "スレッドの公開範囲を変更",
   "chat.run": "質問",
@@ -36,6 +48,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "folder.", label: "フォルダ" },
   { value: "kb.", label: "ナレッジベース" },
   { value: "member.", label: "メンバー管理" },
+  { value: "department.", label: "部門" },
   { value: "llm.", label: "モデル・API キー" },
   { value: "thread.", label: "共有" },
   { value: "chat.", label: "質問" },
@@ -46,6 +59,8 @@ export function actionLabel(action: string): string {
 }
 
 const role = (r: unknown) => ROLE_LABEL[r as Role] ?? String(r);
+const DEPT_ROLE_LABEL: Record<string, string> = { member: "メンバー", manager: "部門管理者" };
+const SUBJECT_LABEL: Record<string, string> = { everyone: "全員", department: "部門", user: "人" };
 
 export function describeTarget(row: {
   resource_type: string | null;
@@ -62,7 +77,13 @@ export function describeTarget(row: {
           ? [row.resource_type, row.resource_id].filter(Boolean).join(" ")
           : "";
   const notes: string[] = [];
-  if (d.from !== undefined && d.to !== undefined) notes.push(`${role(d.from)} → ${role(d.to)}`);
+  if (typeof d.subject_type === "string") {
+    // 共有リストの変更（specs/024）。役割は 閲覧・編集・管理、無ければ「なし」
+    const sr = (r: unknown) => (r == null ? "なし" : (SHARE_ROLE_LABEL[r as ShareRole] ?? String(r)));
+    notes.push(`${SUBJECT_LABEL[d.subject_type] ?? d.subject_type}: ${sr(d.from)} → ${sr(d.to)}`);
+  } else if (typeof d.user_id === "string" && row.resource_type === "department") {
+    if (d.role !== undefined) notes.push(DEPT_ROLE_LABEL[String(d.role)] ?? String(d.role));
+  } else if (d.from !== undefined && d.to !== undefined) notes.push(`${role(d.from)} → ${role(d.to)}`);
   else if (d.role !== undefined) notes.push(role(d.role));
   if (d.key_rotated === true) notes.push("キーを入れ替え");
   if (typeof d.visibility === "string") {

@@ -19,6 +19,18 @@ describe("describeTarget", () => {
     );
     expect(describeTarget({ resource_type: null, resource_id: null, detail: null })).toBe("—");
   });
+  it("共有リストと部門の変更は名前と役割で書く（specs/024）", () => {
+    expect(
+      describeTarget({
+        resource_type: "kb",
+        resource_id: "k1",
+        detail: { label: "保全マニュアル", subject_type: "department", subject_id: "d1", from: null, to: "editor" },
+      }),
+    ).toBe("保全マニュアル（部門: なし → 編集）");
+    expect(
+      describeTarget({ resource_type: "department", resource_id: "d1", detail: { label: "製造部", user_id: "u1", role: "manager" } }),
+    ).toBe("製造部（部門管理者）");
+  });
 });
 
 describe("toRangeQuery", () => {

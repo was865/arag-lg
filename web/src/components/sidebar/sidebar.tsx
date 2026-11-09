@@ -12,7 +12,9 @@ import { SidebarSearchResults } from "@/components/sidebar/sidebar-search-result
 import { useThreadSearch } from "@/hooks/use-thread-search";
 import { cn } from "@/lib/utils";
 import type { AppUser, ThreadSummary } from "@/lib/types";
-import { useKbs } from "@/hooks/use-kbs";
+import { refreshKbs, useKbs } from "@/hooks/use-kbs";
+import { useDepartments } from "@/hooks/use-departments";
+import { CreateKbDialog } from "@/components/access/create-kb-dialog";
 import { useT } from "@/i18n/context";
 
 interface SidebarProps {
@@ -71,6 +73,12 @@ export function Sidebar(props: SidebarProps) {
   // アクセス可能 KB。共有 KB があるときだけサイドバーに内訳を列挙する。
   const { kbs } = useKbs();
   const hasSharedKbs = kbs.some((k) => k.kind !== "personal");
+  // 共有の KB を作れるのは admin と部門管理者（specs/024 R9）
+  const isAdmin = Boolean(props.onOpenAdmin);
+  const { departments } = useDepartments(Boolean(onOpenLibrary));
+  const managed = isAdmin ? departments : departments.filter((d) => d.my_role === "manager");
+  const canCreateKb = Boolean(onOpenLibrary) && (isAdmin || managed.length > 0);
+  const [creatingKb, setCreatingKb] = useState(false);
   const search = useThreadSearch(filter);
   const searching = filter.trim() !== "";
 
@@ -173,8 +181,18 @@ export function Sidebar(props: SidebarProps) {
         {onOpenLibrary && !searching && (
         <>
         <div className="mb-2" data-tour="kb-section">
-          <div className="px-2 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-            {t.sidebar.kbHeading}
+          <div className="flex items-center justify-between px-2 pb-1 pt-2">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">{t.sidebar.kbHeading}</span>
+            {canCreateKb && (
+              <button
+                onClick={() => setCreatingKb(true)}
+                aria-label={t.sidebar.kbCreate}
+                title={t.sidebar.kbCreate}
+                className="grid h-5 w-5 place-items-center rounded text-muted hover:bg-divider hover:text-fg"
+              >
+                <Icon name="plus" size={11} />
+              </button>
+            )}
           </div>
           {hasSharedKbs ? (
             <>
@@ -192,6 +210,7 @@ export function Sidebar(props: SidebarProps) {
                   label={kb.kind === "personal" ? t.sidebar.kbPersonal : kb.name}
                   count={String(kb.documentCount)}
                   readOnly={!kb.canWrite}
+                  restricted={kb.kind === "org" && !kb.sharedWithEveryone}
                   archived={kb.status === "archived"}
                   active={activeKbId === kb.id}
                   onClick={() => onOpenLibrary(kb.id)}
@@ -289,6 +308,18 @@ export function Sidebar(props: SidebarProps) {
         onOpenHelp={props.onOpenHelp}
       />
 
+      {creatingKb && (
+        <CreateKbDialog
+          isAdmin={isAdmin}
+          departments={managed}
+          onClose={() => setCreatingKb(false)}
+          onCreated={(id) => {
+            setCreatingKb(false);
+            void refreshKbs().then(() => onOpenLibrary?.(id));
+          }}
+        />
+      )}
+
       {menuAnchor && menuThread && (
         <ThreadMenu
           thread={menuThread}
@@ -322,8 +353,8 @@ export function Sidebar(props: SidebarProps) {
   );
 }
 
-function KbRow({ icon, label, count, readOnly, archived, active, onClick }: {
-  icon: IconName; label: string; count?: string; readOnly?: boolean; archived?: boolean; active?: boolean; onClick: () => void;
+function KbRow({ icon, label, count, readOnly, restricted, archived, active, onClick }: {
+  icon: IconName; label: string; count?: string; readOnly?: boolean; restricted?: boolean; archived?: boolean; active?: boolean; onClick: () => void;
 }) {
   const { t } = useT();
   return (
@@ -339,9 +370,14 @@ function KbRow({ icon, label, count, readOnly, archived, active, onClick }: {
         <Icon name={icon} size={13} />
       </span>
       <span className="min-w-0 flex-1 truncate" title={label}>{label}</span>
+      {/* 鍵 = 限られた人だけが使える（全員には共有していない）。閲覧のみは文字だけ（specs/024 R14） */}
+      {restricted && (
+        <span className="shrink-0 text-muted-2" title={t.sidebar.kbRestricted} aria-label={t.sidebar.kbRestricted}>
+          <Icon name="lock" size={10} />
+        </span>
+      )}
       {readOnly && (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-divider px-1.5 py-px text-[9.5px] font-semibold text-muted">
-          <Icon name="lock" size={9} />
+        <span className="shrink-0 rounded-full bg-divider px-1.5 py-px text-[9.5px] font-semibold text-muted">
           {t.sidebar.kbReadOnlyBadge}
         </span>
       )}

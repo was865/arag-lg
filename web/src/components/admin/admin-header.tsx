@@ -1,6 +1,6 @@
 "use client";
 
-/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・監査ログ・利用状況・モデル）。 */
+/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・部門・ナレッジベース・監査ログ・利用状況・モデル）。 */
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { key: "members", href: "/admin/members", label: "メンバー" },
+  { key: "departments", href: "/admin/departments", label: "部門" },
+  { key: "kbs", href: "/admin/kbs", label: "ナレッジベース" },
   { key: "audit", href: "/admin/audit", label: "監査ログ" },
   { key: "analytics", href: "/admin/analytics", label: "利用状況" },
   { key: "models", href: "/admin/models", label: "モデル" },

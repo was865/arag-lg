@@ -3,6 +3,7 @@
 /** メンバー管理（specs/010-admin-members）。一覧・招待・役割の変更・停止と再開。 */
 import { useCallback, useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
+import { MemberAccessDialog } from "@/components/admin/member-access-dialog";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -52,6 +53,7 @@ export function MembersView() {
   const [search, setSearch] = useState("");
   const [inviting, setInviting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Member | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearch(query.trim()), 250);
@@ -202,12 +204,14 @@ export function MembersView() {
                   <span className={cn("text-[12px] max-md:hidden", STATUS_TONE[st])}>{STATUS_LABEL[st]}</span>
                   <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{formatDate(m.createdAt)}</span>
                   <MemberMenu
-                    disabled={busy === m.id || !canBan}
+                    disabled={busy === m.id}
+                    canBan={canBan}
                     banned={m.banned}
                     canResend={canBan && !m.banned}
                     onBan={() => void ban(m)}
                     onUnban={() => void patch(m, { banned: false }, `${m.name || m.email} さんを再開しました`)}
                     onResend={() => void patch(m, { resendInvite: true }, "パスワード設定のリンクを送りました")}
+                    onAccess={() => setViewing(m)}
                   />
                 </div>
               );
@@ -228,6 +232,13 @@ export function MembersView() {
           }}
         />
       )}
+      {viewing && (
+        <MemberAccessDialog
+          userId={viewing.id}
+          name={viewing.name || viewing.email}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {dialog}
     </div>
   );
@@ -235,18 +246,22 @@ export function MembersView() {
 
 function MemberMenu({
   disabled,
+  canBan,
   banned,
   canResend,
   onBan,
   onUnban,
   onResend,
+  onAccess,
 }: {
   disabled: boolean;
+  canBan: boolean;
   banned: boolean;
   canResend: boolean;
   onBan: () => void;
   onUnban: () => void;
   onResend: () => void;
+  onAccess: () => void;
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -275,13 +290,17 @@ function MemberMenu({
           role="menu"
           className="absolute right-0 top-8 z-20 w-max min-w-[160px] animate-pop-in rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
         >
+          <button role="menuitem" className={cn(item, "text-fg")} onClick={onAccess}>
+            <Icon name="database" size={13} />
+            見られるナレッジベース
+          </button>
           {canResend && (
             <button role="menuitem" className={cn(item, "text-fg")} onClick={onResend}>
               <Icon name="mail" size={13} />
               パスワード設定のリンクを送る
             </button>
           )}
-          {banned ? (
+          {!canBan ? null : banned ? (
             <button role="menuitem" className={cn(item, "text-fg")} onClick={onUnban}>
               <Icon name="refresh" size={13} />
               再開する

@@ -12,6 +12,9 @@ const kb = (over: Partial<KbInfo>): KbInfo => ({
   status: "active",
   deletedAt: null,
   expiresAt: null,
+  role: "editor",
+  canManage: false,
+  sharedWithEveryone: true,
   ...over,
 });
 

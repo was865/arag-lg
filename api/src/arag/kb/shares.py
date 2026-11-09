@@ -140,7 +140,7 @@ async def replace_shares(ctx: Ctx, kb: KnowledgeBase, items: list[ShareIn], *, a
                     action=action,
                     resource_type="kb",
                     resource_id=str(kb.id),
-                    detail={"subject_type": st, "subject_id": sid, "from": old, "to": new},
+                    detail={"label": kb.name, "subject_type": st, "subject_id": sid, "from": old, "to": new},
                 )
             )
 
@@ -151,13 +151,22 @@ async def remove_department_shares(ctx: Ctx, dept_id: str) -> None:
             select(KbShare).where(KbShare.subject_type == "department", KbShare.subject_id == dept_id)
         )
     )
+    kb_ids = {r.kb_id for r in rows}
+    q = select(KnowledgeBase.id, KnowledgeBase.name).where(KnowledgeBase.id.in_(kb_ids))
+    names = dict((await ctx.session.execute(q)).tuples().all())
     for r in rows:
         await ctx.audit(
             AuditEvent(
                 action="kb.share_remove",
                 resource_type="kb",
                 resource_id=str(r.kb_id),
-                detail={"subject_type": "department", "subject_id": dept_id, "from": r.role, "to": None},
+                detail={
+                    "label": names.get(r.kb_id, ""),
+                    "subject_type": "department",
+                    "subject_id": dept_id,
+                    "from": r.role,
+                    "to": None,
+                },
             )
         )
     await ctx.session.execute(
