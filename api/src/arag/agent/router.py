@@ -444,6 +444,9 @@ async def put_feedback(
 class SharedSource(BaseModel):
     n: int
     title: str
+    # 同じ文書の別の箇所を見分けるための見出しとページ（本文は出さない）
+    heading: str | None = None
+    page: int | None = None
 
 
 class SharedMessage(BaseModel):
@@ -462,15 +465,26 @@ class SharedThreadOut(BaseModel):
 
 
 def shared_sources(citation_map: dict[str, Any], sources: list[dict[str, Any]]) -> list[SharedSource]:
-    """引用番号 → 文書名（番号順）。出典が見つからない番号は除く。"""
+    """引用番号 → 文書名と箇所（見出し・ページ。番号順）。出典が見つからない番号は除く。"""
     titles = {str(x.get("id")): str(x.get("title", "")) for x in sources}
+    sections: dict[str, dict[str, Any]] = {
+        str(sec.get("id")): sec for x in sources for sec in (x.get("sections") or []) if isinstance(sec, dict)
+    }
     out: list[SharedSource] = []
     for key, ref in citation_map.items():
         if not key.isdigit() or not isinstance(ref, dict):
             continue
         title = titles.get(str(ref.get("source_id")))
-        if title is not None:
-            out.append(SharedSource(n=int(key), title=title))
+        if title is None:
+            continue
+        sec = sections.get(str(ref.get("section_id")), {})
+        heading = str(sec.get("heading") or "").strip() or None
+        page = sec.get("page")
+        out.append(
+            SharedSource(
+                n=int(key), title=title, heading=heading, page=page if isinstance(page, int) else None
+            )
+        )
     return sorted(out, key=lambda x: x.n)
 
 

@@ -111,7 +111,7 @@ async def test_shared_access_by_visibility(
                 "query": "MX-17 は止めますか",
                 "answer": "夜間まで運転できます [1]",
                 "created_at": body["messages"][0]["created_at"],
-                "sources": [{"n": 1, "title": "点検台帳.pdf"}],
+                "sources": [{"n": 1, "title": "点検台帳.pdf", "heading": "判定", "page": None}],
             }
         ],
     }

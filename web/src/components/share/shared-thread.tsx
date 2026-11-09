@@ -63,6 +63,11 @@ export function SharedThread({ thread }: { thread: SharedThreadData }) {
                     </span>
                     <Icon name="doc" size={12} />
                     <span className="min-w-0 truncate">{s.title}</span>
+                    {(s.heading || s.page != null) && (
+                      <span className="min-w-0 shrink truncate text-[11.5px] text-muted">
+                        {[s.heading, s.page != null ? `p.${s.page}` : null].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ol>

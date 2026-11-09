@@ -1845,8 +1845,12 @@ export interface components {
         };
         /** SharedSource */
         SharedSource: {
+            /** Heading */
+            heading?: string | null;
             /** N */
             n: number;
+            /** Page */
+            page?: number | null;
             /** Title */
             title: string;
         };
