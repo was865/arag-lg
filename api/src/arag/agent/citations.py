@@ -8,7 +8,10 @@ from typing import Any
 
 from arag.search.schemas import SearchHit
 
-SNIPPET_MAX = 1200
+# 出典パネルに渡す本文の長さ。チャンクは 2,500 字ほどまでなので、ふつうは切らない。
+# 切るのは節をまるごと読んだとき（read_section）くらいで、表はできるだけ途中で切らない（HARD まで延ばす）
+SNIPPET_MAX = 3000
+SNIPPET_HARD = 8000
 MAX_RANGE = 10
 
 
@@ -117,7 +120,7 @@ def group_sources(items: dict[int, Cited]) -> tuple[dict[int, dict[str, str]], l
                 "id": str(c.item_id),
                 "n": n,
                 "heading": c.heading_path,
-                "body": c.text[:SNIPPET_MAX],
+                "body": excerpt(c.text),
                 "block_type": c.block_type,
                 "page": c.page,
             }
@@ -125,6 +128,40 @@ def group_sources(items: dict[int, Cited]) -> tuple[dict[int, dict[str, str]], l
         if c.score is not None and (src["score"] is None or c.score > src["score"]):
             src["score"] = c.score
     return cmap, list(docs.values())
+
+
+def _is_row(line: str) -> bool:
+    return line.lstrip().startswith("|")
+
+
+def excerpt(text: str, limit: int = SNIPPET_MAX, hard: int = SNIPPET_HARD) -> str:
+    """出典パネル用に本文を縮める。行の途中では切らず、表にかかったら表の終わりまで（hard まで）含める。"""
+    if len(text) <= limit:
+        return text
+    lines = text.split("\n")
+    out: list[str] = []
+    size = 0
+    i = 0
+    while i < len(lines):
+        add = len(lines[i]) + (1 if out else 0)
+        if size + add > limit:
+            # 表の行なら、そろった行のまま表の終わりまで延ばす（hard を超える行の手前で止める）
+            while i < len(lines) and _is_row(lines[i]):
+                add = len(lines[i]) + (1 if out else 0)
+                if size + add > hard:
+                    break
+                out.append(lines[i])
+                size += add
+                i += 1
+            break
+        out.append(lines[i])
+        size += add
+        i += 1
+    if not out:
+        # 1 行が上限より長い（改行の無い本文）
+        return text[:limit] + "…"
+    rest = i < len(lines)
+    return "\n".join(out) + ("\n…" if rest else "")
 
 
 def _attr(v: str) -> str:
@@ -150,8 +187,9 @@ _FULLWIDTH = re.compile(r"[【［]\s*([0-9０-９]+)\s*[】］]")
 _GROUP = re.compile(r"\[\s*([0-9０-９]+(?:\s*[,，、\-–]\s*[0-9０-９]+)+)\s*\](?!\()")
 _SINGLE_FW = re.compile(r"\[\s*([０-９]+)\s*\]")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
-# 小さいモデルは資料タグ <資料 n="1"> をまねて [n=1] や [資料 n="1"] と書くことがある
-_ATTR = re.compile(r"\[\s*(?:資料\s*)?n\s*=\s*[\"']?([0-9０-９]+)[\"']?\s*\]")
+# 小さいモデルは資料タグ <資料 n="1"> をまねて [n=1]・[n1]・[資料 n="1"] と書くことがある
+# = を落とした [n1] や全角の ＝ も受ける
+_ATTR = re.compile(r"\[\s*(?:資料\s*)?[nN]\s*[=＝]?\s*[\"']?([0-9０-９]+)[\"']?\s*\]")
 
 
 def _num(s: str) -> int:

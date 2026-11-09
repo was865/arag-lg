@@ -5,6 +5,7 @@ import uuid
 from arag.agent.citations import (
     CitationRegistry,
     cited_numbers,
+    excerpt,
     finalize_citations,
     format_material,
     normalize_markers,
@@ -93,6 +94,9 @@ def test_format_material_isolates_content() -> None:
 def test_normalize_markers() -> None:
     assert normalize_markers("A【1】B［２］C[3,4]D[5、6]E[7-9]") == "A[1]B[2]C[3][4]D[5][6]E[7][8][9]"
     assert normalize_markers('A[n=1]B[n="2"]C[資料 n="3"]') == "A[1]B[2]C[3]"
+    # 小さいモデルは = を落として [n1] と書くこともある
+    assert normalize_markers("A[n1]B[n 2]C[N3]D[n＝4]") == "A[1]B[2]C[3]D[4]"
+    assert normalize_markers("[n]と[nx1]") == "[n]と[nx1]"
     assert normalize_markers("[リンク](http://x) [1]") == "[リンク](http://x) [1]"
     assert normalize_markers("[1-50]") == "[1-50]"  # 長すぎる範囲は触らない
 
@@ -149,3 +153,31 @@ def test_finalize_drops_unknown_and_merges_repeats() -> None:
     fin = finalize_citations("A【2】[2]B[9]C[1, 1]D[リンク](http://x)", r)
     assert fin.answer == "A[1]BC[2]D[リンク](http://x)"
     assert list(fin.cmap) == [1, 2]
+
+
+def test_excerpt_keeps_short_text_whole() -> None:
+    assert excerpt("短い本文", limit=100) == "短い本文"
+
+
+def test_excerpt_cuts_at_line_boundary() -> None:
+    text = "一行目の文。\n二行目の文。\n三行目の文。"
+    out = excerpt(text, limit=10)
+    assert out == "一行目の文。\n…"
+
+
+def test_excerpt_extends_to_end_of_table() -> None:
+    """表の途中で切らない。上限内なら表の終わりまで含める。"""
+    table = "| A | B |\n|---|---|\n" + "\n".join(f"| {i} | x |" for i in range(20))
+    text = "前置き\n" + table + "\n後ろの文。"
+    out = excerpt(text, limit=30, hard=1000)
+    assert out == "前置き\n" + table + "\n…"
+
+
+def test_excerpt_keeps_whole_rows_when_table_too_long() -> None:
+    """表が大きすぎるときは、行の途中で切らずにそろった行までにする。"""
+    rows = "\n".join(f"| {i} | {'x' * 20} |" for i in range(100))
+    text = "| A | B |\n|---|---|\n" + rows
+    out = excerpt(text, limit=30, hard=200)
+    body = out.removesuffix("\n…")
+    assert len(body) <= 200 and out.endswith("\n…")
+    assert all(line.startswith("|") and line.endswith("|") for line in body.split("\n"))
