@@ -112,6 +112,9 @@ export interface TurnImage {
 
 export interface Turn {
   query: string;
+  /** 生成中だけ持つ、サーバが送ったままの回答と出典番号（answer・citationMap は出た順に振り直した表示用）。 */
+  rawAnswer?: string;
+  rawCitationMap?: CitationMap;
   image?: TurnImage;
   steps: ToolCall[];
   answer: string;

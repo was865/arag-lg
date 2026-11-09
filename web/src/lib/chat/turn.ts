@@ -79,6 +79,52 @@ export function toCitationMap(m: ApiCitationMap | undefined | null): CitationMap
   return out;
 }
 
+// ── 生成中の出典番号 ─────────────────────────────────────────────────
+// サーバは回答の確定時に、番号を「回答に出た順」に振り直す（api/src/arag/agent/citations.py）。
+// 生成中も同じ規則で見せて、完了の瞬間に番号が変わらないようにする。
+
+const MARK_RE = /\[(\d+)\](?!\()/g;
+const ATTR_RE = /\[\s*(?:資料\s*)?[nN]\s*[=＝]?\s*["']?([0-9０-９]+)["']?\s*\]/g;
+const FULLWIDTH_RE = /[【［]\s*([0-9０-９]+)\s*[】］]|\[\s*([０-９]+)\s*\]/g;
+const GROUP_RE = /\[\s*(\d+(?:\s*[,，、]\s*\d+)+)\s*\](?!\()/g;
+const REPEAT_RE = /\[(\d+)\](?:\[\1\](?!\())+/g;
+// 末尾の書きかけの記号（"[1" や "[n="）。次の差分で閉じるまで出さない
+const PARTIAL_RE = /[[【［][^\]】］\n]{0,12}$/;
+
+const toNum = (s: string) => Number(s.normalize("NFKC"));
+
+/** 生成中の回答の [n] を、出た順の 1, 2, 3… に振り直す。出典の無い番号は出さない。 */
+export function liveCitations(raw: string, map: CitationMap): { answer: string; citationMap: CitationMap } {
+  let text = raw.replace(PARTIAL_RE, "");
+  text = text
+    .replace(ATTR_RE, (_m, d: string) => `[${toNum(d)}]`)
+    .replace(FULLWIDTH_RE, (_m, a?: string, b?: string) => `[${toNum((a ?? b)!)}]`)
+    .replace(GROUP_RE, (_m, inner: string) =>
+      inner
+        .split(/\s*[,，、]\s*/)
+        .map((d) => `[${d}]`)
+        .join(""),
+    );
+  const order: number[] = [];
+  for (const m of text.matchAll(MARK_RE)) {
+    const n = Number(m[1]);
+    if (map[n] && !order.includes(n)) order.push(n);
+  }
+  const renum = new Map(order.map((old, i) => [old, i + 1]));
+  text = text.replace(MARK_RE, (_m, d: string) => {
+    const n = renum.get(Number(d));
+    return n ? `[${n}]` : "";
+  });
+  text = text.replace(REPEAT_RE, "[$1]");
+  const citationMap: CitationMap = {};
+  for (const [old, n] of renum) citationMap[n] = map[old];
+  return { answer: text, citationMap };
+}
+
+function relive(turn: Turn, raw: string, map: CitationMap): Turn {
+  return { ...turn, rawAnswer: raw, rawCitationMap: map, ...liveCitations(raw, map) };
+}
+
 /** ライブの 1 ターン（質問を送った直後）。 */
 export function newTurn(
   query: string,
@@ -125,15 +171,19 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
     case "step":
       return { ...turn, steps: upsertStep(turn.steps, toToolCall(ev.step)) };
     case "answer.delta":
-      return { ...turn, answer: turn.answer + ev.text };
+      return relive(turn, (turn.rawAnswer ?? turn.answer) + ev.text, turn.rawCitationMap ?? {});
     case "answer.reset":
       // 代替モデルへの切り替えなどで書き直す
-      return { ...turn, answer: "" };
-    case "sources":
-      return withSources(turn, ev.sources, ev.citation_map);
+      return relive(turn, "", turn.rawCitationMap ?? {});
+    case "sources": {
+      const next = withSources(turn, ev.sources, ev.citation_map);
+      return relive(next, turn.rawAnswer ?? turn.answer, next.citationMap);
+    }
     case "run.completed":
       return {
         ...withSources(turn, ev.sources, ev.citation_map),
+        rawAnswer: undefined,
+        rawCitationMap: undefined,
         answer: ev.answer,
         streaming: false,
         status: "done",

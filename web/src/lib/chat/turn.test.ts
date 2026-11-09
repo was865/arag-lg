@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEvent, isTerminal, newTurn, toToolCall, turnFromMessage, type ApiStep, type RunEvent } from "./turn";
+import { applyEvent, isTerminal, liveCitations, newTurn, toToolCall, turnFromMessage, type ApiStep, type RunEvent } from "./turn";
 
 const step = (over: Partial<ApiStep>): ApiStep => ({
   id: "c1",
@@ -138,5 +138,57 @@ describe("turnFromMessage", () => {
     const t = turnFromMessage({ ...base, image: { width: 640, height: 480, description: "棒グラフ" } }, "th1");
     expect(t.image).toEqual({ url: "/api/v1/threads/th1/messages/m2/image", width: 640, height: 480, description: "棒グラフ" });
     expect(turnFromMessage({ ...base, image: null }, "th1").image).toBeUndefined();
+  });
+});
+
+
+describe("liveCitations（生成中の番号）", () => {
+  const map = {
+    1: { sourceId: "d1", sectionId: "a" },
+    2: { sourceId: "d1", sectionId: "b" },
+    5: { sourceId: "d2", sectionId: "c" },
+  };
+
+  it("サーバの確定時と同じく、回答に出た順に 1 から振る", () => {
+    const r = liveCitations("停止[5]。点検は[2]と[5][5]。", map);
+    expect(r.answer).toBe("停止[1]。点検は[2]と[1]。");
+    expect(r.citationMap).toEqual({ 1: map[5], 2: map[2] });
+  });
+
+  it("まだ出典の無い番号・書きかけの記号は出さない", () => {
+    expect(liveCitations("A[9]B[1", map).answer).toBe("AB");
+    expect(liveCitations("A[n1]と【2】", map).answer).toBe("A[1]と[2]");
+  });
+
+  it("Markdown のリンクは触らない", () => {
+    expect(liveCitations("[資料](http://x)[1]", map).answer).toBe("[資料](http://x)[1]");
+  });
+
+  it("生成中の Turn は振り直した番号で出し、完了時はサーバの値に置き換える", () => {
+    const d2 = { ...source, id: "d2", sections: [{ ...source.sections[0], id: "c", n: 5 }] };
+    const t = play([
+      {
+        type: "sources",
+        sources: [source, d2],
+        citation_map: { "1": { source_id: "d1", section_id: "x1" }, "5": { source_id: "d2", section_id: "c" } },
+      },
+      { type: "answer.delta", text: "停止する[5" },
+      { type: "answer.delta", text: "]。根拠[1]" },
+    ]);
+    expect(t.answer).toBe("停止する[1]。根拠[2]");
+    expect(t.citationMap).toEqual({ 1: { sourceId: "d2", sectionId: "c" }, 2: { sourceId: "d1", sectionId: "x1" } });
+    const done = applyEvent(t, {
+      type: "run.completed",
+      message_id: "m1",
+      answer: "停止する[1]。根拠[2]",
+      tokens_in: 1,
+      tokens_out: 1,
+      duration_ms: 1,
+      no_answer_reason: null,
+      sources: [],
+      citation_map: { "1": { source_id: "d2", section_id: "c" }, "2": { source_id: "d1", section_id: "x1" } },
+    });
+    expect(done.answer).toBe("停止する[1]。根拠[2]");
+    expect(done.rawAnswer).toBeUndefined();
   });
 });
