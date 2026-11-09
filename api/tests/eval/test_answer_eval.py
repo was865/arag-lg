@@ -303,3 +303,9 @@ def test_facts_matched_ignores_markdown_bold() -> None:
     from arag.eval.answer import facts_matched
 
     assert facts_matched("在庫数は **6** です", [["在庫数は6", "在庫数は 6"]]) == [True]
+
+
+def test_declines_not_directly_provided() -> None:
+    from arag.eval.answer import declines
+
+    assert declines("The email address is not directly provided in the search results.")

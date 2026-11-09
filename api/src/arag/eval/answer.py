@@ -150,7 +150,7 @@ def facts_matched(answer: str, facts: list[list[str]]) -> list[bool]:
 _DECLINE = re.compile(
     r"(記載|明記|言及|明示|記述)(が|は)?(され)?(てい)?(ありません|ない|ません|無い|なし)"
     r"|示されていな|示されていません|見つかりませんでした|見当たりません|資料に(は)?(ありません|ない|無い)"
-    r"|not (explicitly )?(mention|state|specif|provide|include|contain|found|cover)"
+    r"|not (explicitly |directly )?(mention|state|specif|provide|include|contain|found|cover)"
     r"|(does|do|is|are) not (mention|state|specify|provide|include|contain)"
     r"|no (information|mention|details?) (about|on|regarding)"
 )
