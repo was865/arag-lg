@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
 
@@ -51,9 +51,6 @@ class TeiEmbedder:
         self._transport = transport
         self._dim: int | None = None
 
-    def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_sec, transport=self._transport)
-
     async def dimension(self) -> int:
         if self._dim is None:
             self._dim = len((await self.embed(["次元確認"]))[0])
@@ -73,16 +70,33 @@ class TeiEmbedder:
                 out.extend(await self._batch(client, list(texts[i : i + self.batch_size])))
         return out
 
+    def _client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=self.timeout_sec,
+            transport=self._transport,
+            headers=self._headers(),
+        )
+
+    def _headers(self) -> dict[str, str]:
+        return {}
+
+    async def _post(self, client: httpx.AsyncClient, batch: list[str]) -> httpx.Response:
+        return await client.post("/embed", json={"inputs": batch, "truncate": True, "normalize": True})
+
+    def _vectors(self, payload: object) -> list[list[float]]:
+        return payload  # type: ignore[return-value]  # TEI は入力順のベクトル配列
+
     async def _batch(self, client: httpx.AsyncClient, batch: list[str]) -> list[list[float]]:
         last: str = ""
         for attempt in range(1, self.max_attempts + 1):
             try:
-                res = await client.post("/embed", json={"inputs": batch, "truncate": True, "normalize": True})
+                res = await self._post(client, batch)
                 if res.status_code in _RETRY_STATUS:
                     last = f"HTTP {res.status_code}: {res.text[:200]}"
                 else:
                     res.raise_for_status()
-                    vectors: list[list[float]] = res.json()
+                    vectors = self._vectors(res.json())
                     if len(vectors) != len(batch):
                         raise EmbedError(f"件数が一致しません: {len(vectors)} != {len(batch)}")
                     return vectors
@@ -94,3 +108,32 @@ class TeiEmbedder:
             if attempt < self.max_attempts:
                 await asyncio.sleep(self.backoff_sec * 2 ** (attempt - 1))
         raise EmbedError(f"埋め込みに失敗しました: {last}")
+
+
+class OpenAIEmbedder(TeiEmbedder):
+    """OpenAI 互換の /embeddings（OpenAI・Jina・Voyage、vLLM・Infinity など。specs/016 R1）。
+
+    base_url は版を含める（例 https://api.openai.com/v1）。
+    鍵が空なら Authorization を送らない（自前サーバ向け）。
+    """
+
+    def __init__(
+        self, base_url: str, *, model: str, api_key: str = "", dimensions: int = 0, **kw: Any
+    ) -> None:
+        super().__init__(base_url, model=model, **kw)
+        self._api_key = api_key
+        self.dimensions = dimensions
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
+
+    async def _post(self, client: httpx.AsyncClient, batch: list[str]) -> httpx.Response:
+        body: dict[str, Any] = {"model": self.model, "input": batch, "encoding_format": "float"}
+        if self.dimensions:
+            body["dimensions"] = self.dimensions
+        return await client.post("/embeddings", json=body)
+
+    def _vectors(self, payload: object) -> list[list[float]]:
+        data = payload.get("data", []) if isinstance(payload, dict) else []
+        # 返る順は保証されないので index で並べ直す
+        return [d["embedding"] for d in sorted(data, key=lambda d: int(d["index"]))]

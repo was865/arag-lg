@@ -1,7 +1,8 @@
 # ARag 開発・CI 用の構成（specs/001-p0-skeleton/design.md）。
 #   docker compose up -d                 … postgres / qdrant / redis / api / worker / runner / web
 #   docker compose --profile cpu up -d   … 上記 + TEI（CPU・小モデル。amd64 のみ）+ docling-serve（CPU）
-# 入庫ワーカー（worker）は ARAG_TEI_EMBED_URL が必要。未設定なら説明を出して終了する。
+# 入庫ワーカー（worker）は埋め込み（ARAG_EMBED_URL か ARAG_TEI_EMBED_URL）が必要。未設定なら説明を出して終了する。
+# 推論の各部品は自前か外部 API かを .env で選ぶ（specs/016。構成例は .env.example）。
 # Mac では TEI を動かさず、GPU 機（compose.gpu.yaml）を ARAG_TEI_*_URL で参照する。
 # ホスト側ポートは旧版 a-rag（5432/6333/6379/8000/3000）と同時に動かせるようずらしている。
 name: arag
@@ -50,6 +51,18 @@ services:
       ARAG_REDIS_URL: redis://redis:6379/0
       ARAG_TEI_EMBED_URL: ${ARAG_TEI_EMBED_URL:-}
       ARAG_TEI_RERANK_URL: ${ARAG_TEI_RERANK_URL:-}
+      # 推論の部品（specs/016）: 自前（tei）か外部 API（openai / cohere 互換）かを選ぶ。例は .env.example
+      ARAG_EMBED_PROVIDER: ${ARAG_EMBED_PROVIDER:-tei}
+      ARAG_EMBED_URL: ${ARAG_EMBED_URL:-}
+      ARAG_EMBED_API_KEY: ${ARAG_EMBED_API_KEY:-}
+      ARAG_EMBED_MODEL: ${ARAG_EMBED_MODEL:-BAAI/bge-m3}
+      ARAG_EMBED_DIMENSIONS: ${ARAG_EMBED_DIMENSIONS:-0}
+      ARAG_EMBED_DOCUMENT_PREFIX: ${ARAG_EMBED_DOCUMENT_PREFIX:-}
+      ARAG_EMBED_QUERY_PREFIX: ${ARAG_EMBED_QUERY_PREFIX:-}
+      ARAG_QDRANT_COLLECTION: ${ARAG_QDRANT_COLLECTION:-chunks}
+      ARAG_RERANK_PROVIDER: ${ARAG_RERANK_PROVIDER:-tei}
+      ARAG_RERANK_URL: ${ARAG_RERANK_URL:-}
+      ARAG_RERANK_API_KEY: ${ARAG_RERANK_API_KEY:-}
       ARAG_RERANK_MODEL: ${ARAG_RERANK_MODEL:-cl-nagoya/ruri-v3-reranker-310m}
       ARAG_RERANK_MAX_CHARS: ${ARAG_RERANK_MAX_CHARS:-0}
       ARAG_DOCLING_URL: ${ARAG_DOCLING_URL:-}
@@ -64,6 +77,8 @@ services:
       ARAG_CONTEXT_MAX_DOCUMENT_TOKENS: ${ARAG_CONTEXT_MAX_DOCUMENT_TOKENS:-60000}
       ARAG_CONTEXT_CONCURRENCY: ${ARAG_CONTEXT_CONCURRENCY:-8}
       ARAG_VLM_MODEL: ${ARAG_VLM_MODEL:-}
+      ARAG_VLM_BASE_URL: ${ARAG_VLM_BASE_URL:-}
+      ARAG_VLM_MODEL_KWARGS: ${ARAG_VLM_MODEL_KWARGS:-{}}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
@@ -145,7 +160,7 @@ services:
     volumes: [tei-cache:/data]
 
   docling:
-    profiles: ["cpu"]
+    profiles: ["cpu", "parse"]  # parse: 軽量構成（[B]）で解析だけ CPU で動かす
     image: ghcr.io/docling-project/docling-serve-cpu:v1.38.2
     ports: ["${DOCLING_PORT:-5001}:5001"]
 

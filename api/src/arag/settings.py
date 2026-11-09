@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     # 空文字は「未設定」= readiness で skipped（GPU 機が止まっていても開発を続けられる）
     tei_embed_url: str = ""
     tei_rerank_url: str = ""
+    # --- 推論の部品（specs/016-inference-modules）---
+    # 埋め込み: tei（自前）か openai（OpenAI 互換 /embeddings）。URL 未設定なら tei_embed_url を使う
+    embed_provider: Literal["tei", "openai"] = "tei"
+    embed_url: str = ""
+    embed_api_key: SecretStr = SecretStr("")
+    embed_dimensions: int = 0  # 0 はモデルの既定（API が対応するときだけ送る）
+    # 並べ替え: tei（自前）か cohere（Cohere 互換 /rerank）。URL 未設定なら tei_rerank_url を使う
+    rerank_provider: Literal["tei", "cohere"] = "tei"
+    rerank_url: str = ""
+    rerank_api_key: SecretStr = SecretStr("")
     ready_timeout_sec: float = 2.0
     log_level: str = "INFO"
 
@@ -52,6 +62,9 @@ class Settings(BaseSettings):
     # 全文を渡す上限（超えたら該当 ±2 セクション）。文脈長の短い自前モデルでは下げる
     context_max_document_tokens: int = 60_000
     vlm_model: str = ""
+    # 自前の OpenAI 互換サーバ（vLLM の Qwen2.5-VL 等）。vlm_model は "openai:<served-model-name>" にする
+    vlm_base_url: str = ""
+    vlm_model_kwargs: dict[str, Any] = {}
     sudachi_mode: Literal["A", "B", "C"] = "B"
     bm25_avgdl: float = 200.0
     # 英語の語幹化（Snowball）。既定は off（specs/004-retrieval §10 の評価で決める）
@@ -64,7 +77,7 @@ class Settings(BaseSettings):
     rerank_enabled: bool = True
     rerank_input: Literal["context+text", "text"] = "context+text"
     rerank_timeout_sec: float = 10.0
-    # rerank のモデル名（ARAG_TEI_RERANK_URL の TEI が載せているもの。記録用。specs/004-retrieval report §4）
+    # rerank のモデル名。TEI では記録用（載せているモデル）、API では要求に入れる（specs/004 report §4・016）
     rerank_model: str = "cl-nagoya/ruri-v3-reranker-310m"
     # rerank 入力（文脈 + 本文）の文字数上限。長い英語文書で所要時間が延びるのを抑える（0 は上限なし）
     rerank_max_chars: int = 0

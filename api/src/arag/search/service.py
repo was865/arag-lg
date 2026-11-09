@@ -289,28 +289,15 @@ async def _attach_sections(session: AsyncSession, hits: list[SearchHit]) -> None
 
 
 def build_search_deps(settings: Any, client: AsyncQdrantClient) -> SearchDeps:
-    """Settings から本番の依存を作る（TEI 未設定なら埋め込み・rerank なしで縮退動作）。"""
-    from arag.ingest.embedder import TeiEmbedder
-    from arag.search.rerank import TeiReranker
+    """Settings から本番の依存を作る（埋め込み・rerank が未設定ならそれなしで縮退動作。specs/016）。"""
+    from arag.inference import build_embedder, build_reranker
 
     return SearchDeps(
         client=client,
         collection=settings.qdrant_collection,
-        embedder=TeiEmbedder(
-            settings.tei_embed_url,
-            model=settings.embed_model,
-            document_prefix=settings.embed_document_prefix,
-            query_prefix=settings.embed_query_prefix,
-            timeout_sec=settings.rerank_timeout_sec,
-            max_attempts=2,
-        )
-        if settings.tei_embed_url
-        else None,
-        reranker=TeiReranker(
-            settings.tei_rerank_url, model=settings.rerank_model, timeout_sec=settings.rerank_timeout_sec
-        )
-        if settings.tei_rerank_url
-        else None,
+        # 検索は応答を待たせないので、文書の埋め込みより短い時間・少ない再試行にする
+        embedder=build_embedder(settings, timeout_sec=settings.rerank_timeout_sec, max_attempts=2),
+        reranker=build_reranker(settings),
         sparse_factory=lambda: SparseEncoder(
             settings.sudachi_mode, avgdl=settings.bm25_avgdl, en_stem=settings.sparse_en_stem
         ),

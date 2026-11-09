@@ -1896,7 +1896,8 @@
               "enum": [
                 "ok",
                 "fail",
-                "skipped"
+                "skipped",
+                "external"
               ],
               "type": "string"
             },

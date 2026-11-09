@@ -15,15 +15,16 @@ from arag.settings import Settings
 
 log = get_logger(__name__)
 
-CheckResult = Literal["ok", "fail", "skipped"]
+CheckResult = Literal["ok", "fail", "skipped", "external"]
 
 
 @dataclass(frozen=True)
 class Check:
-    """依存先 1 件の疎通確認。run=None は未設定（skipped）。"""
+    """依存先 1 件の疎通確認。run=None は未設定（skipped）か外部 API（external、確かめない）。"""
 
     name: str
     run: Callable[[], Awaitable[bool]] | None
+    external: bool = False
 
 
 class Liveness(BaseModel):
@@ -37,7 +38,7 @@ class Readiness(BaseModel):
 
 async def _run_one(check: Check, limit_sec: float) -> CheckResult:
     if check.run is None:
-        return "skipped"
+        return "external" if check.external else "skipped"
     try:
         async with asyncio.timeout(limit_sec):
             ok = await check.run()
@@ -80,7 +81,7 @@ async def readyz(request: Request) -> JSONResponse:
 # ── 実チェッカ ─────────────────────────────────────────────────────────────
 
 
-def _http_check(url: str) -> Callable[[], Awaitable[bool]]:
+def http_check(url: str) -> Callable[[], Awaitable[bool]]:
     async def run() -> bool:
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
@@ -115,15 +116,11 @@ def _redis_check(url: str) -> Callable[[], Awaitable[bool]]:
 
 
 def build_checks(settings: Settings) -> list[Check]:
-    def http(name: str, base: str) -> Check:
-        # TEI・docling-serve とも /health。未設定なら skipped
-        return Check(name, _http_check(base.rstrip("/") + "/health") if base else None)
+    from arag.inference import inference_checks  # 循環 import を避ける
 
     return [
         Check("postgres", _postgres_check(settings.database_url)),
-        Check("qdrant", _http_check(settings.qdrant_url.rstrip("/") + "/readyz")),
+        Check("qdrant", http_check(settings.qdrant_url.rstrip("/") + "/readyz")),
         Check("redis", _redis_check(settings.redis_url)),
-        http("tei_embed", settings.tei_embed_url),
-        http("tei_rerank", settings.tei_rerank_url),
-        http("docling", settings.docling_url),  # R40
+        *inference_checks(settings),
     ]

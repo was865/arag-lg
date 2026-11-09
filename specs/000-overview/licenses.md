@@ -70,6 +70,8 @@
 | BAAI/bge-reranker-v2-m3 | モデル重み | — | Apache-2.0 | 2026-11-08 | https://huggingface.co/BAAI/bge-reranker-v2-m3 |
 | cl-nagoya/ruri-v3-310m・130m・reranker-310m（比較候補） | モデル重み | — | Apache-2.0 | 2026-11-08 | https://huggingface.co/cl-nagoya/ruri-v3-310m |
 | Qwen/Qwen3-8B-AWQ（文脈付与、開発・評価用） | モデル重み | — | Apache-2.0 | 2026-11-09 | https://huggingface.co/Qwen/Qwen3-8B-AWQ |
+| Qwen/Qwen2.5-VL-7B-Instruct-AWQ（図の説明、自前構成の既定。specs/016） | モデル重み | — | Apache-2.0 | 2026-11-09 | https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct-AWQ |
+| Qwen/Qwen3-VL-8B-Instruct-FP8（図の説明の代替） | モデル重み | — | Apache-2.0 | 2026-11-09 | https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-FP8 |
 | vllm/vllm-openai（GPU 機、profile llm） | コンテナ | v0.32.0 | Apache-2.0 | 2026-11-09 | https://github.com/vllm-project/vllm |
 | docling-layout-heron | モデル重み | — | Apache-2.0 | 2026-11-08 | https://huggingface.co/docling-project/docling-layout-heron |
 | docling-models（TableFormer 等） | モデル重み | — | CDLA-Permissive-2.0 / Apache-2.0 | 2026-11-08 | https://huggingface.co/docling-project/docling-models |

@@ -1572,7 +1572,7 @@ export interface components {
         Readiness: {
             /** Checks */
             checks: {
-                [key: string]: "ok" | "fail" | "skipped";
+                [key: string]: "ok" | "fail" | "skipped" | "external";
             };
             /**
              * Status

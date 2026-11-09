@@ -19,12 +19,12 @@ from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 
 from arag.db.engine import make_engine, make_sessionmaker
+from arag.inference import build_embedder, build_figure_describer, describe_inference
 from arag.ingest import queue
 from arag.ingest.chunking import load_tokenizer
 from arag.ingest.contextualize import Contextualizer, HeadingContextualizer, LlmContextualizer
-from arag.ingest.embedder import TeiEmbedder
 from arag.ingest.events import RedisPublisher
-from arag.ingest.figures import FigureDescriber, LlmFigureDescriber
+from arag.ingest.figures import FigureDescriber
 from arag.ingest.gc import run_gc
 from arag.ingest.index import QdrantIndex
 from arag.ingest.parser import DoclingServeParser
@@ -138,8 +138,9 @@ class Worker:
 
 
 def build_deps(settings: Settings) -> IngestDeps:
-    if not settings.tei_embed_url:
-        raise SystemExit("ARAG_TEI_EMBED_URL が未設定です（埋め込みサービスが必要です）")
+    embedder = build_embedder(settings)
+    if embedder is None:
+        raise SystemExit("ARAG_EMBED_URL（または ARAG_TEI_EMBED_URL）が未設定です（埋め込みが必要です）")
     engine = make_engine(settings.database_url)
     sessionmaker = make_sessionmaker(engine)
     contextualizer: Contextualizer = HeadingContextualizer()
@@ -154,22 +155,13 @@ def build_deps(settings: Settings) -> IngestDeps:
             concurrency=settings.context_concurrency,
             max_document_tokens=settings.context_max_document_tokens,
         )
-    describer: FigureDescriber | None = (
-        LlmFigureDescriber(chat_model(settings.vlm_model)) if settings.vlm_model else None
-    )
+    describer: FigureDescriber | None = build_figure_describer(settings)
     tokenizer = load_tokenizer(settings.embed_tokenizer, settings.chunk_max_tokens)
     return IngestDeps(
         sessionmaker=sessionmaker,
         storage=LocalStorage(settings.storage_dir),
         tokenizer=tokenizer,
-        embedder=TeiEmbedder(
-            settings.tei_embed_url,
-            model=settings.embed_model,
-            document_prefix=settings.embed_document_prefix,
-            query_prefix=settings.embed_query_prefix,
-            batch_size=settings.embed_batch_size,
-            timeout_sec=settings.http_timeout_sec,
-        ),
+        embedder=embedder,
         index=QdrantIndex(AsyncQdrantClient(url=settings.qdrant_url), settings.qdrant_collection),
         docling=DoclingServeParser(
             settings.docling_url,
@@ -195,6 +187,7 @@ def build_deps(settings: Settings) -> IngestDeps:
 async def main() -> None:
     settings = Settings()
     configure_logging(settings.log_level)
+    log.info("inference_config", **describe_inference(settings))  # 各役割が自前か API か（鍵は出さない）
     worker = Worker(
         build_deps(settings),
         database_url=settings.database_url,

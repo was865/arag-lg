@@ -18,7 +18,7 @@ from arag.ingest.index import QdrantIndex, QdrantPayloadSync
 from arag.ingest.pipeline import Index
 from arag.kb import router_documents, router_folders, router_kbs, router_uploads
 from arag.kb.sync import PayloadSync
-from arag.logging import configure_logging
+from arag.logging import configure_logging, get_logger
 from arag.middleware import RequestIdMiddleware
 from arag.search import router as router_search
 from arag.search.service import SearchDeps, build_search_deps
@@ -47,6 +47,9 @@ def create_app(
     """依存（設定・readiness チェック）を注入できるようにして、テストで外部サービスを不要にする。"""
     settings = settings or Settings()
     configure_logging(settings.log_level)
+    from arag.inference import describe_inference
+
+    get_logger("arag.main").info("inference_config", **describe_inference(settings))
     app = FastAPI(title="ARag API", version="0.1.0", lifespan=_lifespan)
     app.state.settings = settings
     app.state.checks = checks if checks is not None else health.build_checks(settings)

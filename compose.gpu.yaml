@@ -5,6 +5,9 @@
 #   （:8082 は bge-reranker-v2-m3 のまま比較用に回した）。
 # イメージ 89-* は Ada Lovelace（RTX 40 系, sm_89）用。
 # docling-serve（解析、:5001）も同じファイルで起動する。Mac 側の .env で ARAG_DOCLING_URL=http://<GPU機>:5001
+# 役割ごとに必要なサービスだけ起動できる（specs/016）。例: 埋め込みと rerank だけ
+#   docker compose -f compose.gpu.yaml up -d tei-embed tei-rerank-ruri
+# 会話・文脈付与の vLLM は --profile llm、図の説明の vLLM は --profile vlm。
 # 比較用（ruri-v3-310m 埋め込み :8083・bge-reranker-v2-m3 :8082）は profile で別起動:
 #   docker compose -f compose.gpu.yaml --profile compare up -d
 name: arag-gpu
@@ -73,6 +76,26 @@ services:
       - "--enable-auto-tool-choice"
       - "--tool-call-parser=hermes"
     ports: ["8090:8000"]
+    ipc: host
+    volumes: [hf-cache:/root/.cache/huggingface]
+    restart: unless-stopped
+
+  # 図の説明（specs/016 R3）。入庫のときだけ必要なので profile で別起動する:
+  #   docker compose -f compose.gpu.yaml --profile vlm up -d
+  # Mac 側の .env: ARAG_VLM_MODEL=openai:qwen2.5-vl / ARAG_VLM_BASE_URL=http://<GPU機>:8091/v1
+  # 24GB に TEI・vllm（llm）・docling と同居させるので KV を小さく固定する。足りなければ llm と時間を分けて起動する。
+  # Qwen3-VL-8B-Instruct-FP8（Apache-2.0）に替える場合は VLM_HF_MODEL で指定する。
+  vllm-vl:
+    <<: *gpu
+    profiles: [vlm]
+    image: vllm/vllm-openai:v0.32.0
+    command:
+      - "--model=${VLM_HF_MODEL:-Qwen/Qwen2.5-VL-7B-Instruct-AWQ}"
+      - "--served-model-name=qwen2.5-vl"
+      - "--max-model-len=8192"
+      - "--kv-cache-memory-bytes=${VLM_KV_BYTES:-1500M}"
+      - "--limit-mm-per-prompt={\"image\": 1}"
+    ports: ["8091:8000"]
     ipc: host
     volumes: [hf-cache:/root/.cache/huggingface]
     restart: unless-stopped
