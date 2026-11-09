@@ -5,7 +5,16 @@ import { useState } from "react";
 import { AuthCard, FIELD, Field, Notice, PRIMARY, Spinner } from "@/components/auth/auth-card";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 
-export function ResetPasswordForm({ token, linkError }: { token: string | null; linkError: string | null }) {
+export function ResetPasswordForm({
+  token,
+  linkError,
+  invite = false,
+}: {
+  token: string | null;
+  linkError: string | null;
+  /** 招待（specs/010-admin-members）。最初のパスワード設定として見せる。 */
+  invite?: boolean;
+}) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,7 +46,15 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
 
   if (done) {
     return (
-      <AuthCard title="パスワードを変更しました" description="ほかの端末のログインは解除しました。新しいパスワードでログインしてください。" footer={toLogin}>
+      <AuthCard
+        title={invite ? "パスワードを設定しました" : "パスワードを変更しました"}
+        description={
+          invite
+            ? "設定したパスワードでログインしてください。"
+            : "ほかの端末のログインは解除しました。新しいパスワードでログインしてください。"
+        }
+        footer={toLogin}
+      >
         <a href="/login" className={`${PRIMARY} no-underline`}>
           ログインする
         </a>
@@ -46,7 +63,11 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
   }
 
   return (
-    <AuthCard title="新しいパスワード" description="8 文字以上で設定してください。" footer={toLogin}>
+    <AuthCard
+      title={invite ? "ARag へようこそ" : "新しいパスワード"}
+      description={invite ? "ログインに使うパスワードを 8 文字以上で設定してください。" : "8 文字以上で設定してください。"}
+      footer={toLogin}
+    >
       <form onSubmit={submit} className="flex flex-col gap-3.5">
         <Field label="新しいパスワード">
           <input

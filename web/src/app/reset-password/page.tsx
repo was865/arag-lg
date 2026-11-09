@@ -7,11 +7,12 @@ export const metadata: Metadata = { title: "パスワードの再設定 — ARag
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
 async function Reset({ searchParams }: { searchParams: Search }) {
-  const { token, error } = await searchParams;
+  const { token, error, invite } = await searchParams;
   return (
     <ResetPasswordForm
       token={typeof token === "string" ? token : null}
       linkError={typeof error === "string" ? error : null}
+      invite={invite === "1"}
     />
   );
 }

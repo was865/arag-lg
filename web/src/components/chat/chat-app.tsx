@@ -524,6 +524,11 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             user={user}
             onSignOut={sessionUser ? () => void signOut() : undefined}
             onOpenSettings={sessionUser ? () => setAccountOpen(true) : undefined}
+            onOpenAdmin={
+              sessionUser?.role === "owner" || sessionUser?.role === "admin"
+                ? () => router.push("/admin/members")
+                : undefined
+            }
           />
         }
         rightPanel={

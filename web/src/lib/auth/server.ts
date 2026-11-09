@@ -3,11 +3,12 @@ import "server-only";
 /** Better Auth（specs/006-auth design §2）。認証表は Postgres の auth スキーマに置く。
  * 設定は環境変数から作るので、ビルド時に作られないよう getAuth() で遅延生成する。 */
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin, jwt } from "better-auth/plugins";
 import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { Pool } from "pg";
-import { resetPasswordMail, sendMail, verificationMail } from "@/lib/auth/mail";
+import { inviteMail, isInviteUrl, resetPasswordMail, sendMail, verificationMail } from "@/lib/auth/mail";
 
 export const AUTH_SCHEMA = "auth";
 export const API_AUDIENCE = "arag-api";
@@ -43,7 +44,7 @@ export function authOptions() {
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: 60 * 60,
       sendResetPassword: async ({ user, url }) => {
-        await sendMail(resetPasswordMail(user.email, user.name, url));
+        await sendMail((isInviteUrl(url) ? inviteMail : resetPasswordMail)(user.email, user.name, url));
       },
     },
     emailVerification: {
@@ -71,6 +72,15 @@ export function authOptions() {
         "/send-verification-email": { window: 60, max: 3 },
         "/change-password": { window: 60, max: 5 },
       },
+    },
+    hooks: {
+      // 管理エンドポイントはブラウザから直接呼ばせない。/api/admin/members（権限の規則つき）が
+      // サーバ内で auth.api.* として呼ぶ（request が無い）ものだけを通す（specs/010-admin-members R7）
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path.startsWith("/admin/") && ctx.request) {
+          throw new APIError("FORBIDDEN", { message: "この操作はメンバー管理画面から行ってください" });
+        }
+      }),
     },
     databaseHooks: {
       user: {

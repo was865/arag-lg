@@ -48,7 +48,7 @@ export const sidebar = {
   settings: "設定",
   orgAdmin: "会社管理",
   adminConsole: "管理コンソール",
-  adminConsoleHint: "会社・部門の管理",
+  adminConsoleHint: "メンバーの招待・役割・停止",
   lightMode: "ライトモード",
   darkMode: "ダークモード",
   workCalendar: "稼働日カレンダー",

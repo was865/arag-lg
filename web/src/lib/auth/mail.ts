@@ -56,6 +56,34 @@ export function resetPasswordMail(to: string, name: string, url: string): Mail {
   };
 }
 
+/** 招待（管理者が作ったアカウントの最初のパスワード設定）。specs/010-admin-members R3。 */
+export function inviteMail(to: string, name: string, url: string): Mail {
+  return {
+    to,
+    subject: `【${APP}】${APP} への招待`,
+    text: [
+      `${name || to} 様`,
+      "",
+      `${APP} に招待されました。`,
+      "次のリンクを開いて、パスワードを設定してください（1 時間有効）。",
+      "期限が切れたときは、招待した管理者に再送を頼んでください。",
+      "",
+      url,
+      "",
+      "心当たりがない場合は、このメールを破棄してください。",
+    ].join("\n"),
+  };
+}
+
+/** 招待のパスワード設定リンクか（招待では戻り先に invite=1 を付ける）。 */
+export function isInviteUrl(url: string): boolean {
+  try {
+    return decodeURIComponent(url).includes("invite=1");
+  } catch {
+    return false;
+  }
+}
+
 export async function sendMail(mail: Mail): Promise<void> {
   const t = getTransport();
   if (!t) {
