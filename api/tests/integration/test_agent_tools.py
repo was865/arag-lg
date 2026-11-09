@@ -120,6 +120,9 @@ async def test_keyword_search_requires_all_terms(
     out2 = await op_keyword_search(ctx, ev, "c2", ["MX-17", "存在しない語"])
     assert out2.startswith("注意: 語をすべて含む") and "<資料 " in out2
     assert [s["input"]["mode"] for s in ev.steps() if s["status"] == "done"] == ["keyword", "hybrid"]
+    # 補った検索も同じツール呼び出しの子として出す（画面で見えるように）
+    done = [s for s in ev.steps() if s["status"] == "done"]
+    assert {s["parent_id"] for s in done} == {"c2"} and len({s["id"] for s in done}) == 2
 
 
 async def test_list_outline_and_read_section(

@@ -103,6 +103,7 @@ describe("toToolCall", () => {
     });
     expect(toToolCall(step({ name: "keyword_search", input: { terms: ["MX-17", "部品"] } })).input.query).toBe("MX-17 部品");
     expect(toToolCall(step({ name: "retrieve", input: { mode: "keyword" } })).name).toBe("bm25_search");
+    expect(toToolCall(step({ name: "retrieve", parent_id: "c1:h", input: { mode: "hybrid" } })).parentId).toBe("c1");
   });
 });
 

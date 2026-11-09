@@ -41,7 +41,8 @@ export function toToolCall(step: ApiStep): ToolCall {
   return {
     id: step.id,
     name: viewName(step),
-    parentId: step.parent_id ?? undefined,
+    // 旧版の API は意味検索の補完を「<親>:h」の子にしていた（親が見つからず消える）。保存済みの回答のため親へ付け替える
+    parentId: step.parent_id?.replace(/:h$/, "") || undefined,
     label: step.label,
     status: step.status === "error" ? "error" : step.status === "done" ? "done" : "running",
     durationMs: step.duration_ms ?? 0,

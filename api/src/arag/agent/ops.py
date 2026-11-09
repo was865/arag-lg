@@ -173,7 +173,11 @@ async def op_search(
     block_types: list[str] | None = None,
     mode: str = "hybrid",
     must_contain: list[str] | None = None,
+    step_tag: str = "",
+    label: str = "検索",
 ) -> str:
+    """step_tag は同じ呼び出しで 2 回検索するときのステップ ID の区別（親は call_id のまま）。"""
+    sid = f"{call_id}:{step_tag}" if step_tag else call_id
     docs, unknown = _doc_ids_for_search(ctx, document_ids)
     base: dict[str, Any] = {
         "kb_ids": ctx.kb_ids,
@@ -188,10 +192,10 @@ async def op_search(
     clock = StepClock(
         emit,
         Step(
-            id=f"{call_id}:search",
+            id=f"{sid}:search",
             name="retrieve",
             parent_id=call_id,
-            label="検索",
+            label=label,
             status="running",
             input={"query": query, "mode": mode},
             summary="検索しています",
@@ -207,7 +211,7 @@ async def op_search(
         rw = StepClock(
             emit,
             Step(
-                id=f"{call_id}:rewrite{tries}",
+                id=f"{sid}:rewrite{tries}",
                 name="rewrite_query",
                 parent_id=call_id,
                 label="クエリの書き換え",
@@ -229,7 +233,7 @@ async def op_search(
         again = StepClock(
             emit,
             Step(
-                id=f"{call_id}:search{tries}",
+                id=f"{sid}:search{tries}",
                 name="retrieve",
                 parent_id=call_id,
                 label="再検索",
@@ -278,7 +282,9 @@ async def op_keyword_search(
     if "<資料 " in out:
         return out
     # 表記ゆれ（「ISO認証」と「ISO 27001認証」など）で 0 件になりやすいので、意味検索で補う
-    alt = await op_search(ctx, emit, f"{call_id}:h", query, document_ids=document_ids)
+    alt = await op_search(
+        ctx, emit, call_id, query, document_ids=document_ids, step_tag="h", label="意味検索で補う"
+    )
     return f"注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。\n\n{alt}"
 
 
