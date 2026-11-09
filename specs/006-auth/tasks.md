@@ -33,5 +33,5 @@
 
 - 2026-11-09 ブラウザ（compose・Mailpit）で確認: 未ログインは /login?next= へ、登録 → 未確認の帯と質問の 403 → 確認リンク → 質問 202 → アカウント画面 → ログアウト（API は 401）→ 誤パスワードの文言 → 再設定申請（中立の応答）→ 再設定リンク → 新しいパスワードでログイン → ログイン試行のレート制限（429）。
 - JWKS の取得中に同時に来た要求が 401 になる競合を見つけて直した（取得を共有する。`test_concurrent_requests_share_one_fetch`）。
-- 評価（`python -m arag.eval`）は API を直接叩くので、`ARAG_AUTH_MODE=dev docker compose up -d api` で起動したときだけ動く。
+- 評価（`python -m arag.eval`）と `arag.cli ingest-dir` は開発用ヘッダで API を直接叩く。本番の api（JWT）は変えず、`make eval-api` で評価用の api-eval（compose profile `eval`、`ARAG_AUTH_MODE=dev`、127.0.0.1:8101 のみ）を立てて使う。終わったら `make eval-api-down`。繋がらない・401 のときは起動方法を示して止まる（2026-11-09）。
 - 認証前に dev 利用者（`dev`）で作った個人 KB・スレッドは、新しい利用者からは見えない（利用者 ID が違う）。組織 KB は owner / admin から見える。

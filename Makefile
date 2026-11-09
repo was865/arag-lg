@@ -1,5 +1,5 @@
 # 開発用コマンド（specs/001-p0-skeleton R2）。
-.PHONY: setup dev-api dev-web up-infra up down test lint gen gen-check licenses
+.PHONY: setup dev-api dev-web up-infra up down eval-api eval-api-down test lint gen gen-check licenses
 
 setup: ## 依存をロックどおりに導入
 	cd api && uv sync --locked
@@ -18,7 +18,13 @@ up: ## 全サービスを build して起動
 	docker compose up -d --build --wait
 
 down:
-	docker compose down
+	docker compose --profile eval down
+
+eval-api: ## 評価・CLI 用の api（開発用ヘッダで認証、127.0.0.1:8101）を起動
+	docker compose --profile eval up -d --build --wait api-eval
+
+eval-api-down: ## 評価・CLI 用の api を止める
+	docker compose --profile eval stop api-eval
 
 test: ## 単体テスト
 	cd api && uv run pytest -q

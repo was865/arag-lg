@@ -20,6 +20,7 @@ from sqlalchemy import or_, select
 
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.db.models import Chunk, Content, IngestJob
+from arag.devapi import DEV_API_URL, check_dev_api
 from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
 from arag.ingest.gc import run_gc
@@ -119,6 +120,7 @@ async def ingest_dir(
     started = time.monotonic()
     jobs: dict[str, str] = {}
     async with httpx.AsyncClient(base_url=api.rstrip("/"), headers=headers, timeout=600) as client:
+        await check_dev_api(client)
         for i in range(0, len(files), batch):
             part = files[i : i + batch]
             res = await client.post(
@@ -209,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("ingest-dir", help="ディレクトリ内のファイルを API 経由で入庫し、完了まで待つ")
     d.add_argument("directory", type=Path)
     d.add_argument("--kb", required=True, help="入庫先 KB の ID")
-    d.add_argument("--api", default="http://localhost:8100")
+    d.add_argument("--api", default=DEV_API_URL)
     d.add_argument("--user", default="cli-admin")
     d.add_argument("--role", default="admin", choices=["owner", "admin", "member"])
     d.add_argument("--batch", type=int, default=10)

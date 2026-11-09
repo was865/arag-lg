@@ -22,6 +22,7 @@ from arag.auth.principal import Principal
 from arag.cli import ingest_dir
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.db.models import KnowledgeBase
+from arag.devapi import DEV_API_URL, check_dev_api
 from arag.eval.dataset import Case, GoldenSuite, load_suite
 from arag.eval.report import compare_table, diff_baseline, gate_failures, to_markdown
 from arag.eval.runner import run_suite
@@ -88,6 +89,7 @@ async def cmd_ingest(args: argparse.Namespace, settings: Settings) -> int:
         return 0
     headers = {"X-Dev-User-Id": EVAL_USER, "X-Dev-Role": "admin"}
     async with httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c:
+        await check_dev_api(c)
         kb = await find_kb(settings, args.suite)
         if kb is None:
             res = await c.post("/v1/kbs", json={"name": kb_name(args.suite)})
@@ -263,6 +265,7 @@ async def cmd_answer(args: argparse.Namespace, settings: Settings) -> int:
     headers = {"X-Dev-User-Id": EVAL_USER, "X-Dev-Role": "admin"}
     results = []
     async with httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c:
+        await check_dev_api(c)
         api = HttpRunApi(c)
         for i, case in enumerate(cases, 1):
             r = await run_case(api, case, kb_id=kb, model_id=args.model, judge=judge)
@@ -290,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     i = sub.add_parser("ingest", help="題集の文書を評価用 KB に入庫する")
     i.add_argument("--suite", required=True)
-    i.add_argument("--api", default="http://localhost:8100")
+    i.add_argument("--api", default=DEV_API_URL)
     i.add_argument("--batch", type=int, default=20)
     i.add_argument("--timeout", type=float, default=7200)
     x = sub.add_parser("index", help="variant 用の別コレクションを作る")
@@ -307,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--suite", required=True)
     a = sub.add_parser("answer", help="題集を実際のエージェントで解かせて回答を評価する")
     a.add_argument("--suite", required=True)
-    a.add_argument("--api", default="http://localhost:8100")
+    a.add_argument("--api", default=DEV_API_URL)
     a.add_argument("--model", help="ARAG_CHAT_MODELS の id（省略で既定）")
     a.add_argument("--judge", help="忠実度の評価者（ARAG_CHAT_MODELS の id）。省略で忠実度は出さない")
     a.add_argument("--only", nargs="+", help="題 id で絞る")

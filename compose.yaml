@@ -66,7 +66,7 @@ services:
       ARAG_RERANK_MODEL: ${ARAG_RERANK_MODEL:-cl-nagoya/ruri-v3-reranker-310m}
       ARAG_RERANK_MAX_CHARS: ${ARAG_RERANK_MAX_CHARS:-0}
       ARAG_DOCLING_URL: ${ARAG_DOCLING_URL:-}
-      # 認証（specs/006-auth）: 既定は Better Auth の JWT。評価（arag.eval）で API を直接叩くときだけ dev にする
+      # 認証（specs/006-auth）: Better Auth の JWT。評価・CLI は開発用ヘッダの api-eval を使う
       ARAG_AUTH_MODE: ${ARAG_AUTH_MODE:-jwt}
       ARAG_AUTH_JWKS_URL: http://web:3000/api/auth/jwks
       ARAG_AUTH_ISSUER: ${BETTER_AUTH_URL:-http://localhost:3100}
@@ -98,6 +98,15 @@ services:
       postgres: { condition: service_healthy }
       qdrant: { condition: service_healthy }
       redis: { condition: service_healthy }
+
+  # 評価・CLI 用の api（arag.eval / arag.cli が X-Dev-User-Id で直接叩く）。`make eval-api` で起動する。
+  # 開発用ヘッダは誰でも管理者を名乗れるので、既定では起動せず、ホストの 127.0.0.1 だけで待ち受ける
+  api-eval:
+    extends: { service: api }
+    profiles: [eval]
+    environment:
+      ARAG_AUTH_MODE: dev
+    ports: !override ["127.0.0.1:${EVAL_API_PORT:-8101}:8000"]
 
   worker:
     build: ./api

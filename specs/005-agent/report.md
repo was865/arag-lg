@@ -1,6 +1,6 @@
 # P3 エージェント 回答評価レポート（2026-11-09）
 
-`python -m arag.eval answer` で、題ごとに API から run を作り、本番と同じ runner・検索・モデルで解かせた結果。
+`make eval-api` で評価用の api を立て、`python -m arag.eval answer` で、題ごとに API から run を作り、本番と同じ runner・検索・モデルで解かせた結果。
 評価者（忠実度）はローカルの Qwen3-8B。人手ラベルとの一致確認（E2）は未実施なので、忠実度は参考値。
 
 - 推論: vLLM Qwen3-8B-AWQ（Win RTX 4090）、DeepSeek（`deepseek:deepseek-flash`）
