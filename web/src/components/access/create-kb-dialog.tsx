@@ -38,10 +38,10 @@ export function CreateKbDialog({
     setSaving(true);
     try {
       const kb = await accessApi.createKb(name.trim(), dept);
-      push("ナレッジベースを作りました", "success");
+      push("ナレッジベースを作成しました", "success");
       onCreated(kb.id);
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "作れませんでした", "error");
+      push(err instanceof ApiError ? err.message : "作成できませんでした", "error");
     } finally {
       setSaving(false);
     }
@@ -60,13 +60,13 @@ export function CreateKbDialog({
       <form
         role="dialog"
         aria-modal="true"
-        aria-label="ナレッジベースを作る"
+        aria-label="ナレッジベースを作成"
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
         className="flex w-[440px] max-w-full animate-pop-in flex-col gap-4 rounded-[16px] border-[0.5px] border-divider-strong bg-surface p-5 shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0] max-md:pb-[max(16px,env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center gap-2">
-          <h3 className="m-0 flex-1 text-[15px] font-bold text-fg">ナレッジベースを作る</h3>
+          <h3 className="m-0 flex-1 text-[15px] font-bold text-fg">ナレッジベースを作成</h3>
           <button
             type="button"
             onClick={onClose}
@@ -88,7 +88,7 @@ export function CreateKbDialog({
           />
         </label>
         <fieldset className="m-0 grid gap-1.5 border-0 p-0">
-          <legend className="mb-1.5 p-0 text-[12px] text-muted">だれ向けに作るか</legend>
+          <legend className="mb-1.5 p-0 text-[12px] text-muted">公開範囲</legend>
           {options.map((o) => (
             <label
               key={o.id ?? "everyone"}
@@ -122,7 +122,7 @@ export function CreateKbDialog({
             disabled={!name.trim() || saving || options.length === 0}
             className="h-8 rounded-lg bg-accent px-3.5 text-[12.5px] font-semibold text-white hover:brightness-105 disabled:opacity-50"
           >
-            {saving ? "作っています…" : "作る"}
+            {saving ? "作成しています…" : "作成"}
           </button>
         </div>
       </form>

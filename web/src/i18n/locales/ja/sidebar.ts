@@ -29,7 +29,7 @@ export const sidebar = {
   kbPersonal: "マイ文書",
   kbReadOnlyBadge: "閲覧のみ",
   kbRestricted: "限られた人だけが使えます",
-  kbCreate: "ナレッジベースを作る",
+  kbCreate: "ナレッジベースを作成",
   kbArchivedBadge: "アーカイブ済み",
   trash: "ごみ箱",
 

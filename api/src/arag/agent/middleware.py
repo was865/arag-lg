@@ -119,9 +119,9 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         n = len(_MATERIAL.findall(text))
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
-            summary = f"完全一致 0 件 → 意味検索で資料 {n} 件"
+            summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):
-            summary = f"完全一致 0 件 → 型番・番号だけで資料 {n} 件"
+            summary = f"完全一致 0 件 → 型番のみで資料 {n} 件"
         clock.done(summary, {"result": text[:2000]})
         return result
 

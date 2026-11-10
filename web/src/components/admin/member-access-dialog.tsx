@@ -1,6 +1,6 @@
 "use client";
 
-/** あるメンバーが見られる共有ナレッジベースと、その理由（specs/024 R13）。 */
+/** あるメンバーが閲覧できる共有ナレッジベースと、その理由（specs/024 R13）。 */
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
 import { useDepartments } from "@/hooks/use-departments";
@@ -40,13 +40,13 @@ export function MemberAccessDialog({ userId, name, onClose }: { userId: string; 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`${name} さんが見られるナレッジベース`}
+        aria-label={`${name} さんが閲覧できるナレッジベース`}
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[80dvh] w-[520px] max-w-full animate-pop-in flex-col gap-3 rounded-[16px] border-[0.5px] border-divider-strong bg-surface p-5 shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0] max-md:pb-[max(16px,env(safe-area-inset-bottom))]"
       >
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="m-0 truncate text-[15px] font-bold text-fg">{name} さんが見られるナレッジベース</h3>
+            <h3 className="m-0 truncate text-[15px] font-bold text-fg">{name} さんが閲覧できるナレッジベース</h3>
             <p className="m-0 mt-0.5 text-[11.5px] text-muted">共有のナレッジベースだけです。個人のナレッジベースは本人にしか見えません。</p>
           </div>
           <button
@@ -65,7 +65,7 @@ export function MemberAccessDialog({ userId, name, onClose }: { userId: string; 
               <span className="h-5 w-5 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : rows.length === 0 ? (
-            <p className="py-10 text-center text-[12.5px] text-muted">見られる共有ナレッジベースはありません</p>
+            <p className="py-10 text-center text-[12.5px] text-muted">閲覧できる共有ナレッジベースはありません</p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
               {rows.map((r) => (

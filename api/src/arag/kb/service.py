@@ -15,7 +15,7 @@ from arag.errors import ApiError, not_found
 from arag.kb import permissions as perm
 from arag.kb.access import Access
 
-PERSONAL_KB_NAME = "個人の知識ベース"
+PERSONAL_KB_NAME = "個人ナレッジベース"
 
 
 def utcnow() -> datetime:
@@ -93,7 +93,7 @@ async def get_readable_kb(session: AsyncSession, a: Access, kb_id: uuid.UUID) ->
 async def get_writable_kb(session: AsyncSession, a: Access, kb_id: uuid.UUID) -> KnowledgeBase:
     kb = await get_readable_kb(session, a, kb_id)
     if not perm.can_write(a, kb):
-        raise ApiError(403, "forbidden", "この知識ベースを変更する権限がありません")
+        raise ApiError(403, "forbidden", "このナレッジベースを変更する権限がありません")
     return kb
 
 

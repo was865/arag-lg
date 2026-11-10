@@ -42,7 +42,7 @@ log = get_logger("arag.agent.runner")
 
 NO_ANSWER_TEXT = {
     "no_sources": "社内の資料から、この質問に答えられる情報は見つかりませんでした。"
-    "言い方を変えるか、検索範囲（知識ベース）を広げてもう一度お試しください。",
+    "言い方を変えるか、検索範囲（ナレッジベース）を広げてもう一度お試しください。",
     "step_budget_exhausted": "調べる回数の上限に達したため、回答をまとめられませんでした。"
     "質問を絞るか、エージェント設定の「最大ステップ数」を増やしてください。",
     "tool_failed": "検索の実行に失敗したため回答できませんでした。しばらくしてからもう一度お試しください。",
@@ -290,7 +290,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
 async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[str, Any]) -> str | None:
     """添付画像を文章にする（R4）。失敗しても回答は止めず None を返す（R5）。"""
     img = req["image"]
-    step = Step(id=f"img-{img['id']}", name="read_image", label="画像を読み取る", status="running")
+    step = Step(id=f"img-{img['id']}", name="read_image", label="画像の読み取り", status="running")
     events: list[dict[str, Any]] = []
     clock = StepClock(events.append, step)
 
@@ -389,7 +389,7 @@ class _Reasoning:
             self.step = Step(
                 id=f"reasoning-{self.count}",
                 name="reasoning",
-                label="考えた過程",
+                label="思考プロセス",
                 status="running",
                 input={"model": self.ctx.model_label} if self.ctx.model_label else {},
             )
@@ -412,7 +412,7 @@ class _Reasoning:
                 "status": status,
                 "duration_ms": round((time.perf_counter() - self.t0) * 1000),
                 "output": {"reasoning": text},
-                "summary": f"{len(text)} 文字" if status == "done" else "考えています",
+                "summary": f"{len(text)} 文字" if status == "done" else "思考中",
             }
         )
         d = step.model_dump()

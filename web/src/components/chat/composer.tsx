@@ -347,12 +347,12 @@ export function Composer({
                 ref={recentRef}
                 type="button"
                 className={cn(toolBtn, recentOpen && "bg-divider text-fg")}
-                title="最近的查询"
+                title="最近の質問"
                 disabled={running}
                 onClick={() => setRecentOpen((o) => !o)}
               >
                 <Icon name="clock" size={13} />
-                <span className="max-md:hidden">最近</span>
+                <span className="max-md:hidden">履歴</span>
               </button>
               <RecentPopover
                 open={recentOpen}

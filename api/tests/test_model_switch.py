@@ -43,7 +43,7 @@ async def test_switches_once_and_shows_why() -> None:
     assert state["messages"][-1].text == "停止する[1]"
     switches = [s for s in _steps(custom) if s["name"] == "switch_model"]
     assert len(switches) == 1
-    assert switches[0]["summary"] == "Qwen3 8B: 接続できません → DeepSeek で続けます"
+    assert switches[0]["summary"] == "Qwen3 8B: 接続できません → DeepSeek に切り替え"
     assert switches[0]["output"]["reason"] == "接続できません" and switches[0]["duration_ms"] >= 0
     # 切り替えたあとは主モデルを試し直さない（毎回タイムアウトを待たない）
     assert primary.failures == 1 and len(backup.calls) == 2

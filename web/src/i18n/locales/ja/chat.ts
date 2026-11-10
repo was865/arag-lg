@@ -10,7 +10,7 @@ export const chat = {
   leadText: "社内の文書を調べて、出典付きで答えます。質問を入力するか、下のヒントから選んでください。",
 
   // messages
-  thinking: "考え中…",
+  thinking: "回答を生成中…",
   dateToday: "今日",
   dateYesterday: "昨日",
   sentAt: "{time} に送信",
@@ -47,7 +47,7 @@ export const chat = {
   hintNewThread: "で新規スレッド",
 
   // answer-footer
-  sourcesTitle: "このターンの一次資料を表示",
+  sourcesTitle: "この回答の出典を表示",
   // 回答で引用した箇所の数（{docs} は文書の数）
   sourcesChip: "出典 {n} 件",
   sourcesChipDocs: "出典 {n} 件（{docs} 文書）",
@@ -57,7 +57,7 @@ export const chat = {
   exportFailed: "書き出しに失敗しました",
   regenerateTitle: "再生成",
   feedbackUpTitle: "良い回答",
-  feedbackDownTitle: "悪い回答",
+  feedbackDownTitle: "良くない回答",
   feedbackDownReasonTitle: "理由を選択（複数可）",
   feedbackReasonOutdated: "情報が古い",
   feedbackReasonWrong: "事実誤り",
@@ -85,7 +85,7 @@ export const chat = {
   // scope-picker
   scopeHeader: "検索範囲",
   scopeKbSection: "ナレッジベース",
-  scopeAllKbs: "全て",
+  scopeAllKbs: "すべて",
   scopeAllKbsDesc: "アクセスできる全ナレッジベースを検索",
   scopePersonalKb: "個人ナレッジベース",
   scopePresets: "プリセット",
@@ -105,11 +105,11 @@ export const chat = {
   inputTokens: "入力トークン",
   outputTokens: "出力トークン",
   totalTokens: "合計トークン",
-  cacheTokens: "キャッシュ読込",
-  sectionReasoning: "推論過程",
+  cacheTokens: "キャッシュ読み込み",
+  sectionReasoning: "思考プロセス",
   noCandidates: "候補なし",
-  keywordFallback: "{terms}をすべて含む箇所はありませんでした。言い回しが違う可能性があるため、続けて意味検索（vector_search）で探しました。",
-  keywordRelax: "{terms}をすべて含む箇所はありませんでした。説明的な語は資料と言い回しが違うことが多いため、続けて型番・番号だけで探し直しました。",
+  keywordFallback: "{terms}をすべて含む箇所はありませんでした。言い回しが違う可能性があるため、続けてセマンティック検索（vector_search）で探しました。",
+  keywordRelax: "{terms}をすべて含む箇所はありませんでした。説明的な語は資料と言い回しが違うことが多いため、続けて型番のみで再検索しました。",
   expandCount: "拡張件数",
   sectionModel: "モデル",
   sectionInput: "入力",

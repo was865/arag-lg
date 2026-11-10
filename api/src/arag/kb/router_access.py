@@ -281,7 +281,7 @@ async def put_shares(kb_id: uuid.UUID, body: SharesIn, ctx: CtxDep) -> SharesOut
     """共有リストを丸ごと置き換える（全員は閲覧だけ・管理が 1 行以上）。差分を監査に残す。"""
     kb = await _share_kb(ctx, kb_id)
     if not perm.can_manage_org_kb(ctx.access, kb):
-        raise ApiError(403, "forbidden", "この知識ベースの共有を変える権限がありません")
+        raise ApiError(403, "forbidden", "このナレッジベースの共有を変更する権限がありません")
     await shares.replace_shares(ctx, kb, body.shares)
     await ctx.session.commit()
     return await _shares_out(await shares.reloaded(ctx), kb)

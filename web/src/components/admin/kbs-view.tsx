@@ -55,7 +55,7 @@ export function KbsView() {
           className="inline-flex h-[30px] items-center gap-1.5 rounded-lg bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
         >
           <Icon name="plus" size={13} />
-          作る
+          作成
         </button>
       </AdminHeader>
 
@@ -108,12 +108,12 @@ export function KbsView() {
                     </div>
                     <div className="truncate text-[11.5px] text-muted">
                       {k.shared_with_everyone ? "社内の全員が閲覧" : "限られた部門・人だけ"}
-                      <span className="hidden max-md:inline"> · {k.role ? ROLE_LABEL[k.role] : "共有リストにいない"}</span>
+                      <span className="hidden max-md:inline"> · {k.role ? ROLE_LABEL[k.role] : "共有リスト外"}</span>
                     </div>
                   </div>
                 </div>
                 <span className={cn("text-[12px] max-md:hidden", k.role ? "text-fg-2" : "text-muted")}>
-                  {k.role ? ROLE_LABEL[k.role] : "—（中身は見られません）"}
+                  {k.role ? ROLE_LABEL[k.role] : "—（内容は閲覧不可）"}
                 </span>
                 <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{k.role ? k.document_count : "—"}</span>
                 <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{formatDate(k.created_at)}</span>

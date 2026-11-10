@@ -188,10 +188,10 @@ export function explainFallback(steps: ToolCall[]): ToolCall[] {
         summary: OLD_KEYWORD_ZERO.test(s.summary) ? "0 件（すべての語を含む箇所なし）" : s.summary,
       });
     }
-    if (steps[j]!.label === "検索") patch(j, { label: "意味検索で補う" });
+    if (steps[j]!.label === "検索") patch(j, { label: "セマンティック検索で補完" });
     const p = steps.findIndex((x) => x.id === s.parentId);
     const m = p >= 0 ? OLD_TOOL_TOTAL.exec(steps[p]!.summary) : null;
-    if (m) patch(p, { summary: `完全一致 0 件 → 意味検索で資料 ${m[1]} 件` });
+    if (m) patch(p, { summary: `完全一致 0 件 → セマンティック検索で資料 ${m[1]} 件` });
   });
   return out;
 }

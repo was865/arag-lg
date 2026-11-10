@@ -48,7 +48,7 @@ async def _managed_org_kb(ctx: CtxDep, kb_id: uuid.UUID, *, trashed: bool) -> Kn
     if (kb.deleted_at is not None) != trashed:
         raise not_found()
     if not perm.can_manage_org_kb(ctx.access, kb):
-        raise ApiError(403, "forbidden", "この知識ベースを管理する権限がありません")
+        raise ApiError(403, "forbidden", "このナレッジベースを管理する権限がありません")
     return kb
 
 
@@ -75,7 +75,7 @@ async def create_kb(body: KbCreate, ctx: CtxDep) -> KbOut:
         raise ApiError(400, "invalid_department", "指定した部門が見つかりません")
     if not a.is_admin and (dept is None or dept not in a.managed_department_ids):
         raise ApiError(
-            403, "forbidden", "共有の知識ベースを作れるのは管理者と、自分の部門向けの部門管理者だけです"
+            403, "forbidden", "共有ナレッジベースを作成できるのは管理者と、自分の部門向けの部門管理者だけです"
         )
     kb = KnowledgeBase(id=uuid.uuid4(), kind="org", name=body.name, status="active")
     ctx.session.add(kb)
@@ -108,7 +108,7 @@ async def rename_kb(kb_id: uuid.UUID, body: KbUpdate, ctx: CtxDep) -> KbOut:
     ):
         raise not_found()
     if not perm.can_rename_kb(ctx.access, kb):
-        raise ApiError(403, "forbidden", "この知識ベースを変更する権限がありません")
+        raise ApiError(403, "forbidden", "このナレッジベースを変更する権限がありません")
     kb.name = body.name
     await ctx.session.commit()
     return await _one(ctx, kb)

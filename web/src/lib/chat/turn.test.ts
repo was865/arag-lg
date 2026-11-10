@@ -206,10 +206,10 @@ describe("explainFallback", () => {
 
   it("切り替えたことを親・子の要約とラベルで示す", () => {
     const [top, kw, sem] = explainFallback(old);
-    expect(top!.summary).toBe("完全一致 0 件 → 意味検索で資料 6 件");
+    expect(top!.summary).toBe("完全一致 0 件 → セマンティック検索で資料 6 件");
     expect(kw!.summary).toBe("0 件（すべての語を含む箇所なし）");
     expect(kw!.output?.fallback).toBe(true);
-    expect(sem!.label).toBe("意味検索で補う");
+    expect(sem!.label).toBe("セマンティック検索で補完");
   });
 
   it("何度当てても同じ・切り替えが無ければ触らない", () => {

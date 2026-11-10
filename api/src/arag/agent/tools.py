@@ -90,10 +90,10 @@ async def calculate(expression: str) -> str:
 TOOLS = [search, keyword_search, list_documents, get_outline, read_section, calculate]
 
 LABELS = {
-    "search": ("資料を検索", "検索しています"),
-    "keyword_search": ("キーワード検索", "完全一致で探しています"),
-    "list_documents": ("文書の一覧", "文書を確認しています"),
-    "get_outline": ("章立てを見る", "章立てを確認しています"),
-    "read_section": ("章を読む", "本文を読んでいます"),
-    "calculate": ("計算", "計算しています"),
+    "search": ("検索", "検索中"),
+    "keyword_search": ("キーワード検索", "キーワードで検索中"),
+    "list_documents": ("文書一覧", "文書一覧を取得中"),
+    "get_outline": ("目次を取得", "目次を取得中"),
+    "read_section": ("セクションを読む", "本文を読み込み中"),
+    "calculate": ("計算", "計算中"),
 }

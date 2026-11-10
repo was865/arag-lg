@@ -292,7 +292,7 @@ function MemberMenu({
         >
           <button role="menuitem" className={cn(item, "text-fg")} onClick={onAccess}>
             <Icon name="database" size={13} />
-            見られるナレッジベース
+            閲覧できるナレッジベース
           </button>
           {canResend && (
             <button role="menuitem" className={cn(item, "text-fg")} onClick={onResend}>

@@ -71,9 +71,9 @@ async def test_keyword_fallback_is_explained_in_steps() -> None:
     _, custom = await run(agent, ctx(KeywordMissSearch("MX-17 は即時停止を推奨する。")), "MX-17 の異常時は？")
     done = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "done"]
     top = next(s for s in done if s["parent_id"] is None)
-    assert top["summary"] == "完全一致 0 件 → 意味検索で資料 1 件"
+    assert top["summary"] == "完全一致 0 件 → セマンティック検索で資料 1 件"
     kids = [s for s in done if s["parent_id"] == top["id"]]
-    assert [k["label"] for k in kids] == ["検索", "型番・番号だけで再検索", "意味検索で補う"]
+    assert [k["label"] for k in kids] == ["検索", "型番のみで再検索", "セマンティック検索で補完"]
     assert kids[0]["summary"].startswith("0 件（「MX-17」「異常時の対応」をすべて含む箇所なし")
 
 

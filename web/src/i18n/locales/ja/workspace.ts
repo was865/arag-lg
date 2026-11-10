@@ -7,7 +7,7 @@ export const workspace = {
   badgeCancelled: "キャンセル済",
   badgeRunning: "実行中",
 
-  btnSources: "一次資料 ({n})",
+  btnSources: "出典 ({n})",
 
   // header — theme toggle
   toLight: "ライトモードへ",

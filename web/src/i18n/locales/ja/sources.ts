@@ -1,10 +1,10 @@
 export const sources = {
   // Panel header
-  panelTitle: "一次資料",
+  panelTitle: "出典",
   closePanelTitle: "閉じる",
 
   // Panel empty state
-  emptyState: "回答の生成が完了すると、参照された一次資料がここに表示されます。",
+  emptyState: "回答の生成が完了すると、参照した出典がここに表示されます。",
 
   // Panel header buttons
   openInNewTab: "ソースを新しいタブで開く",
@@ -38,7 +38,7 @@ export const sources = {
   expandTable: "表を全画面で開く",
 
   // PanelResizer aria-label
-  panelResizerAriaLabel: "一次資料パネルの幅を調整",
+  panelResizerAriaLabel: "出典パネルの幅を調整",
 
   // Show cited (parsed) text action（原本欠落/非対応時のフォールバック導線）
   showCitedText: "引用テキストを表示",

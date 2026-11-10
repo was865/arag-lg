@@ -101,11 +101,11 @@ class ModelSwitchMiddleware(AgentMiddleware[Any, RunContext]):
             Step(
                 id=f"switch-model-{ctx.model_switches}",
                 name="switch_model",
-                label="モデルを切り替え",
+                label="モデル切り替え",
                 status="running",
                 input={"from": frm, "to": to},
                 summary=f"{frm} が使えないため {to} に切り替えています",
             ),
         )
         clock.t0 = started  # 所要時間は「失敗したモデルを待った時間」
-        clock.done(f"{frm}: {reason} → {to} で続けます", {"from": frm, "to": to, "reason": reason})
+        clock.done(f"{frm}: {reason} → {to} に切り替え", {"from": frm, "to": to, "reason": reason})

@@ -28,7 +28,7 @@ export const uploads = {
 
   // DropOverlay
   dropTitle: "ファイルをここにドロップ",
-  dropSubtitle: "フォルダもOK · PDF · Word · Excel · PowerPoint · CSV · 画像 — 自動的に索引化されます",
+  dropSubtitle: "フォルダにも対応 · PDF · Word · Excel · PowerPoint · CSV · 画像 — 自動的に索引化されます",
 
   // QueueGroup summary
   groupDone: "{done}/{target} 完了",

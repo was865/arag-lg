@@ -122,7 +122,7 @@ async def test_keyword_search_requires_all_terms(
     assert out2.startswith("注意: すべての語を含む資料が無かったため、型番・番号だけで") and "<資料 " in out2
     assert "「存在しない語」の内容を search で" in out2
     done = [s for s in ev.steps() if s["status"] == "done" and s["name"] == "retrieve"]
-    assert [s["label"] for s in done] == ["検索", "型番・番号だけで再検索"]
+    assert [s["label"] for s in done] == ["検索", "型番のみで再検索"]
     assert {s["parent_id"] for s in done} == {"c2"} and len({s["id"] for s in done}) == 2
     # 何が起きたかを各ステップの要約で説明する
     assert done[0]["summary"] == "0 件（「MX-17」「存在しない語」をすべて含む箇所なし）"
@@ -133,7 +133,7 @@ async def test_keyword_search_requires_all_terms(
     assert out3.startswith("注意: 語をすべて含む") and "<資料 " in out3
     done3 = [s for s in ev3.steps() if s["status"] == "done" and s["name"] == "retrieve"]
     assert [s["input"]["mode"] for s in done3] == ["keyword", "hybrid"]
-    assert done3[0]["output"]["fallback"] == "semantic" and done3[1]["label"] == "意味検索で補う"
+    assert done3[0]["output"]["fallback"] == "semantic" and done3[1]["label"] == "セマンティック検索で補完"
 
 
 def test_code_terms() -> None:

@@ -297,7 +297,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                           </select>
                           <button
                             onClick={() => remove(s)}
-                            aria-label={`${label(s)} を外す`}
+                            aria-label={`${label(s)} を削除`}
                             className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
                           >
                             <Icon name="close" size={12} />

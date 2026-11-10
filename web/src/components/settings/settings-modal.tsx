@@ -156,21 +156,21 @@ function AppearancePanel() {
           onChange={(v) => setTweak("density", v)}
         />
       </Row>
-      <Row label="出典の表示" hint="回答の中の出典番号の見せ方">
+      <Row label="出典の表示" hint="回答内の出典番号の表示形式">
         <Segmented<CitationStyle>
           label="出典の表示"
           value={tweaks.citationStyle}
           options={[
             ["numbered", "番号"],
             ["chip", "チップ"],
-            ["pill", "ピル"],
+            ["pill", "バッジ"],
           ]}
           onChange={(v) => setTweak("citationStyle", v)}
         />
       </Row>
-      <Row label="検索の経過" hint="回答の前に行った検索や読み込みの見せ方">
+      <Row label="実行ステップの表示" hint="回答までに行った検索や読み込みの表示形式">
         <Segmented<ToolView>
-          label="検索の経過"
+          label="実行ステップの表示"
           value={tweaks.toolView}
           options={[
             ["card", "カード"],
@@ -180,9 +180,9 @@ function AppearancePanel() {
           onChange={(v) => setTweak("toolView", v)}
         />
       </Row>
-      <Row label="考えた過程を表示" hint="モデルが途中で書いた考えも経過に含める">
+      <Row label="思考プロセスを表示" hint="モデルの思考（Thinking）も実行ステップに表示します">
         <Switch
-          label="考えた過程を表示"
+          label="思考プロセスを表示"
           checked={tweaks.showReasoning}
           onChange={(v) => setTweak("showReasoning", v)}
         />

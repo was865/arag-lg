@@ -103,7 +103,7 @@ export async function proxy(request: Request, path: string[], opts: ProxyOptions
   } catch {
     if (request.signal.aborted) return new Response(null, { status: 499 });
     return Response.json(
-      { error: { code: "upstream_unavailable", message: "サーバに接続できません。しばらくしてからお試しください" } },
+      { error: { code: "upstream_unavailable", message: "サーバーに接続できません。しばらくしてからお試しください" } },
       { status: 502 },
     );
   }

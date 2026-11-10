@@ -267,7 +267,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       );
       for (const [key, g] of groups) queue.add(target.id, g.files, map.get(key) ?? null);
     } catch (e) {
-      push(errorMessage(e, "フォルダを作れませんでした"), "error");
+      push(errorMessage(e, "フォルダを作成できませんでした"), "error");
       void reload();
       return;
     }
@@ -396,7 +396,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       const f = await libraryApi.createFolder(kbId, name, folderId);
       setFolders((all) => [...all, f]);
     } catch (e) {
-      push(errorMessage(e, "フォルダを作れませんでした"), "error");
+      push(errorMessage(e, "フォルダを作成できませんでした"), "error");
     }
   };
 

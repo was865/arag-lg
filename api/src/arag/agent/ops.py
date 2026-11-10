@@ -188,7 +188,7 @@ async def op_search(
     must_contain: list[str] | None = None,
     step_tag: str = "",
     label: str = "検索",
-    running: str = "検索しています",
+    running: str = "検索中",
     next_on_empty: str | None = None,
 ) -> str:
     """step_tag は同じ呼び出しで 2 回検索するときのステップ ID の区別（親は call_id のまま）。"""
@@ -326,8 +326,8 @@ async def op_keyword_search(
             mode="keyword",
             must_contain=codes,
             step_tag="c",
-            label="型番・番号だけで再検索",
-            running=f"{dropped}を外し、型番・番号だけで探しています",
+            label="型番のみで再検索",
+            running=f"{dropped}を除外し、型番のみで検索中",
             next_on_empty="semantic",
         )
         if "<資料 " in out:
@@ -343,8 +343,8 @@ async def op_keyword_search(
         query,
         document_ids=document_ids,
         step_tag="h",
-        label="意味検索で補う",
-        running="語をすべて含む箇所が無いため、意味の近い資料を探しています",
+        label="セマンティック検索で補完",
+        running="完全一致なし。セマンティック検索中",
     )
     return f"{KEYWORD_FALLBACK_NOTE}\n\n{alt}"
 

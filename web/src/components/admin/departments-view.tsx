@@ -52,10 +52,10 @@ export function DepartmentsView() {
       const d = await accessApi.createDepartment(name);
       setNewName("");
       setSelected(d.id);
-      push(`「${name}」を作りました`, "success");
+      push(`「${name}」を作成しました`, "success");
       reload();
     } catch (err) {
-      push(errText(err, "作れませんでした"), "error");
+      push(errText(err, "作成できませんでした"), "error");
     }
   };
 
@@ -81,7 +81,7 @@ export function DepartmentsView() {
               <button
                 type="submit"
                 disabled={!newName.trim()}
-                aria-label="部門を作る"
+                aria-label="部門を作成"
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent text-white hover:brightness-105 disabled:opacity-50"
               >
                 <Icon name="plus" size={14} />
@@ -179,7 +179,7 @@ function DepartmentDetail({
     e.preventDefault();
     const n = name.trim();
     if (!n || n === dept.name) return;
-    void run(() => accessApi.renameDepartment(dept.id, n), "名前を変えました", "名前を変えられませんでした");
+    void run(() => accessApi.renameDepartment(dept.id, n), "名前を変更しました", "名前を変更できませんでした");
   };
 
   const remove = async () => {
@@ -235,8 +235,8 @@ function DepartmentDetail({
         onAdd={(p) =>
           void run(
             () => accessApi.putDepartmentMember(dept.id, p.id, "member"),
-            `${p.name || p.email} さんを加えました`,
-            "加えられませんでした",
+            `${p.name || p.email} さんを追加しました`,
+            "追加できませんでした",
           )
         }
       />
@@ -271,7 +271,7 @@ function DepartmentDetail({
                     void run(
                       () => accessApi.putDepartmentMember(dept.id, m.user_id, role),
                       `「${DEPT_ROLE[role]}」にしました`,
-                      "変えられませんでした",
+                      "変更できませんでした",
                     );
                   }}
                   className="h-7 rounded-md border-[0.5px] border-divider-strong bg-surface px-1.5 text-[12px] text-fg"
@@ -283,12 +283,12 @@ function DepartmentDetail({
                   onClick={() =>
                     void run(
                       () => accessApi.removeDepartmentMember(dept.id, m.user_id),
-                      `${personLabel(m.user_id, people)} さんを外しました`,
-                      "外せませんでした",
+                      `${personLabel(m.user_id, people)} さんを削除しました`,
+                      "削除できませんでした",
                     )
                   }
                   disabled={busy}
-                  aria-label={`${personLabel(m.user_id, people)} さんを部門から外す`}
+                  aria-label={`${personLabel(m.user_id, people)} さんを部門から削除`}
                   className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
                 >
                   <Icon name="close" size={12} />
@@ -299,7 +299,7 @@ function DepartmentDetail({
         )}
       </div>
       <p className="m-0 px-2 text-[11.5px] leading-[1.6] text-muted">
-        部門管理者は、この部門のメンバーを加えたり外したりでき、部門向けのナレッジベースを作れます。ナレッジベースの中身を見られるかどうかは、各ナレッジベースの「共有」で決まります。
+        部門管理者は、この部門のメンバーを追加・削除でき、部門向けのナレッジベースを作れます。ナレッジベースの中身を見られるかどうかは、各ナレッジベースの「共有」で決まります。
       </p>
     </div>
   );
@@ -346,7 +346,7 @@ function AddMember({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           disabled={disabled}
-          placeholder="名前・メールで探して加える"
+          placeholder="名前・メールで検索して追加"
           className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
         />
       </label>

@@ -81,16 +81,16 @@ export function ModelsView() {
 
   const removeModel = async (m: Model) => {
     const ok = await confirm({
-      title: `モデル「${m.label}」を目録から外しますか？`,
+      title: `モデル「${m.label}」を一覧から削除しますか？`,
       description: "このモデルを選んでいた人は、次の質問から既定のモデルになります。",
-      confirmLabel: "外す",
+      confirmLabel: "削除する",
       tone: "danger",
     });
     if (!ok) return;
     const { error: e } = await client.DELETE("/v1/admin/llm/models/{model_id}", {
       params: { path: { model_id: m.id } },
     });
-    if (e) push(errMessage(e, "外せませんでした"), "error");
+    if (e) push(errMessage(e, "削除できませんでした"), "error");
     refresh();
   };
 
@@ -225,8 +225,8 @@ export function ModelsView() {
 
               <section className="rounded-[12px] border-[0.5px] border-divider bg-surface">
                 <SectionHead
-                  title="モデル目録"
-                  hint="会話で選べるモデルです。使える先頭のものが既定になります。変更は次の質問から効きます。.env のモデルを画面で編集するには「目録に取り込む」を押してください。"
+                  title="モデル一覧"
+                  hint="会話で選べるモデルです。使える先頭のものが既定になります。変更は次の質問から効きます。.env のモデルを画面で編集するには「一覧に登録」を押してください。"
                   action={
                     <button
                       onClick={() => setModelDialog({ row: null })}
@@ -305,7 +305,7 @@ export function ModelsView() {
                               <span className="font-mono">{m.model}</span>
                               <span>
                                 {m.credential_label ??
-                                  (m.source === "env" ? "サーバの設定" : "環境変数のキー")}
+                                  (m.source === "env" ? "サーバー設定" : "環境変数のキー")}
                               </span>
                               <Availability model={m} />
                             </div>
@@ -335,9 +335,9 @@ export function ModelsView() {
                                 <button
                                   onClick={() => void removeModel(m)}
                                   className={cn(ghostBtn, "hover:text-danger")}
-                                  aria-label={`モデル「${m.label}」を外す`}
+                                  aria-label={`モデル「${m.label}」を削除`}
                                 >
-                                  外す
+                                  削除
                                 </button>
                               </>
                             ) : (
@@ -345,7 +345,7 @@ export function ModelsView() {
                                 onClick={() => setModelDialog({ row: m, importing: true })}
                                 className={ghostBtn}
                               >
-                                目録に取り込む
+                                一覧に登録
                               </button>
                             )}
                           </div>
@@ -578,7 +578,7 @@ function CredentialDialog({
       </Field>
       <Field
         label={compat ? "URL" : "URL（任意）"}
-        hint={compat ? "例: http://gpu-server:8090/v1" : "プロキシや別の窓口を使うときだけ入力します。"}
+        hint={compat ? "例: http://gpu-server:8090/v1" : "プロキシや別のエンドポイントを使う場合のみ入力します。"}
       >
         <input
           type="url"
@@ -650,7 +650,7 @@ function ModelDialog({
       const made = await client.POST("/v1/admin/llm/credentials", { body: creating });
       if (made.error || !made.data) {
         setBusy(false);
-        setError(errMessage(made.error, "接続を作れませんでした"));
+        setError(errMessage(made.error, "接続を作成できませんでした"));
         return;
       }
       useCred = made.data.id;
@@ -685,7 +685,7 @@ function ModelDialog({
 
   return (
     <Shell
-      title={editing ? "モデルを編集" : importing ? "目録に取り込む" : "モデルを追加"}
+      title={editing ? "モデルを編集" : importing ? "一覧に登録" : "モデルを追加"}
       onClose={onClose}
       onSubmit={() => void submit()}
     >
@@ -695,8 +695,8 @@ function ModelDialog({
           credId
             ? undefined
             : creating
-              ? `接続先 ${creating.base_url} の「OpenAI 互換」接続を作って使います（キーは不要）。`
-              : "サーバの環境変数にあるキー（DEEPSEEK_API_KEY など）を使います。"
+              ? `接続先 ${creating.base_url} の「OpenAI 互換」接続を作成して使います（キーは不要）。`
+              : "サーバーの環境変数にあるキー（DEEPSEEK_API_KEY など）を使います。"
         }
       >
         <select value={credId} onChange={(e) => setCredId(e.target.value)} className={field}>
@@ -705,7 +705,7 @@ function ModelDialog({
               {c.label}（{providerLabel(c.provider)}）
             </option>
           ))}
-          <option value="">{creating ? `新しく作る（${creating.base_url}）` : "なし（環境変数のキー）"}</option>
+          <option value="">{creating ? `新規作成（${creating.base_url}）` : "なし（環境変数のキー）"}</option>
         </select>
       </Field>
       <Field label="モデル" hint="「provider:モデル名」の形です。">

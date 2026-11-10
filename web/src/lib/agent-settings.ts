@@ -35,13 +35,13 @@ export type AgentField =
 
 export const AGENT_FIELDS: AgentField[] = [
   { kind: "number", key: "top_k", term: "Top-K", label: "回答に使う資料の数", hint: "検索して回答に渡す箇所の数。増やすと網羅的になるが遅くなる。", min: 1, max: 20, step: 1 },
-  { kind: "number", key: "per_document", term: "Per-document cap", label: "1 つの文書から使う上限", hint: "同じ文書ばかりにならないようにする。0 は無制限。", min: 0, max: 20, step: 1 },
+  { kind: "number", key: "per_document", term: "Per-document cap", label: "文書あたりの上限", hint: "同じ文書ばかりにならないようにする。0 は無制限。", min: 0, max: 20, step: 1 },
   { kind: "number", key: "max_steps", term: "Max agent steps", label: "最大ステップ数", hint: "検索や読み込みを繰り返せる回数の上限。", min: 5, max: 20, step: 1 },
-  { kind: "number", key: "max_retrieve_retries", term: "Query rewrite retries", label: "再検索の回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
-  { kind: "bool", key: "require_citations", term: "Citation enforcement", label: "出典を必ず付ける", hint: "回答の各内容に出典番号を付けさせる。" },
-  { kind: "bool", key: "admit_unknown", term: "Abstention", label: "分からないときはそう答える", hint: "資料に無いことは推測せず「見つからない」と答える。" },
-  { kind: "number", key: "candidate_k", term: "Rerank candidates", label: "候補の数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
-  { kind: "number", key: "parallel_tools", term: "Parallel tool calls", label: "同時に実行する検索の数", hint: "1 回の判断で並行して走らせる検索・読み込みの数。", min: 1, max: 8, step: 1, advanced: true },
+  { kind: "number", key: "max_retrieve_retries", term: "Query rewrite retries", label: "再検索回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
+  { kind: "bool", key: "require_citations", term: "Citation enforcement", label: "出典を必須にする", hint: "回答の各内容に出典番号を付けさせる。" },
+  { kind: "bool", key: "admit_unknown", term: "Abstention", label: "回答できない場合は明示する", hint: "資料に無いことは推測せず「見つからない」と答える。" },
+  { kind: "number", key: "candidate_k", term: "Rerank candidates", label: "候補数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
+  { kind: "number", key: "parallel_tools", term: "Parallel tool calls", label: "並列実行数", hint: "1 回の判断で並行して走らせる検索・読み込みの数。", min: 1, max: 8, step: 1, advanced: true },
   { kind: "number", key: "grade_threshold", term: "Relevance threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
 ];
 
