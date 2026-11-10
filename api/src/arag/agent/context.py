@@ -40,3 +40,5 @@ class RunContext:
     # 会話モデルの切り替え（0 = 主モデル。切り替えたら実行の残りはそのモデルで続ける）
     model_index: int = 0
     model_switches: int = 0
+    # いま呼んでいるモデルの表示名（「考えた過程」のステップに出す）
+    model_label: str = ""

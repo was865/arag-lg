@@ -22,8 +22,53 @@ def chat_model(
         if name.startswith("openai:"):
             # 自前サーバでは stream_usage が既定で切れ、ストリーミング時のトークン数が 0 になる
             extra.setdefault("stream_usage", True)
+        if name.startswith("openai:"):
+            # vLLM などは考えた過程を別の欄で返す。ChatOpenAI はそれを捨てるので拾う版を使う
+            return _compatible_chat(name.removeprefix("openai:"), extra)
     model: BaseChatModel = init_chat_model(name, **extra)
     return model
+
+
+def _reasoning_of(obj: Any) -> str | None:
+    """応答・差分から考えた過程を取り出す（vLLM: reasoning_content / reasoning）。"""
+    for key in ("reasoning_content", "reasoning"):
+        v = obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
+        if v is None and not isinstance(obj, dict):
+            v = (getattr(obj, "model_extra", None) or {}).get(key)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
+def _compatible_chat(model: str, extra: dict[str, Any]) -> BaseChatModel:
+    from langchain_core.outputs import ChatGenerationChunk, ChatResult
+    from langchain_openai import ChatOpenAI
+
+    class CompatibleChat(ChatOpenAI):
+        """OpenAI 互換サーバー向け。考えた過程を additional_kwargs["reasoning_content"] に残す。"""
+
+        def _create_chat_result(
+            self, response: Any, generation_info: dict[str, Any] | None = None
+        ) -> ChatResult:
+            result = super()._create_chat_result(response, generation_info)
+            choices = getattr(response, "choices", None)
+            if choices and (r := _reasoning_of(choices[0].message)):
+                result.generations[0].message.additional_kwargs["reasoning_content"] = r
+            return result
+
+        def _convert_chunk_to_generation_chunk(
+            self,
+            chunk: dict[str, Any],
+            default_chunk_class: type,
+            base_generation_info: dict[str, Any] | None,
+        ) -> ChatGenerationChunk | None:
+            gen = super()._convert_chunk_to_generation_chunk(chunk, default_chunk_class, base_generation_info)
+            choices = chunk.get("choices") or chunk.get("chunk", {}).get("choices") or []
+            if gen and choices and (r := _reasoning_of(choices[0].get("delta") or {})):
+                gen.message.additional_kwargs["reasoning_content"] = r
+            return gen
+
+    return CompatibleChat(model=model, **extra)
 
 
 # provider（"<provider>:<model>" の接頭辞）→ 鍵の環境変数

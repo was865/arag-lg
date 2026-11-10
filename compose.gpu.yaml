@@ -78,6 +78,8 @@ services:
       # エージェントのツール呼び出し（specs/005-agent）
       - "--enable-auto-tool-choice"
       - "--tool-call-parser=hermes"
+      # 思考（enable_thinking: true）を本文と別の欄（reasoning）で返す。思考を切ったときは本文だけが返る
+      - "--reasoning-parser=qwen3"
     ports: ["8090:8000"]
     ipc: host
     volumes: [hf-cache:/root/.cache/huggingface]

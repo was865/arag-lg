@@ -16,6 +16,7 @@ from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.steps import Step, StepClock
+from arag.agent.thinking import split_thinking
 from arag.agent.tools import LABELS
 from arag.prompts import load_prompt
 
@@ -126,7 +127,7 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
 
 
 class CitationMiddleware(AgentMiddleware[Any, RunContext]):
-    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。末尾の言い直しも落とす。"""
+    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。考えた過程と末尾の言い直しも落とす。"""
 
     async def aafter_agent(self, state: Any, runtime: Runtime[RunContext]) -> dict[str, Any] | None:
         msgs = state["messages"]
@@ -134,8 +135,9 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             return None
         last: AIMessage = msgs[-1]
         text = last.text
+        _, answer = split_thinking(text)  # 考えた過程は「考えた過程」のステップで見せる
         fixed = drop_repeated_tail(
-            strip_unknown(normalize_markers(text), set(runtime.context.registry.numbers()))
+            strip_unknown(normalize_markers(answer), set(runtime.context.registry.numbers()))
         )
         if fixed == text:
             return None

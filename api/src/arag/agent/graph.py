@@ -29,8 +29,9 @@ def build_agent(
         ),
         AgentPolicyMiddleware(),
     ]
-    if fallback is not None:
-        middleware.append(ModelSwitchMiddleware(model_label, [(fallback_label, fallback)]))
+    # 代替が無くても入れる（失敗の理由と、いまのモデル名を「考えた過程」に出すため）
+    fallbacks = [] if fallback is None else [(fallback_label, fallback)]
+    middleware.append(ModelSwitchMiddleware(model_label, fallbacks))
     middleware += [StepMiddleware(), CitationMiddleware()]
     return create_agent(
         model,

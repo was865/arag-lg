@@ -31,6 +31,7 @@ from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, StepClock
 from arag.agent.stream import EventSink, is_cancelled, redis_client
+from arag.agent.thinking import ThinkSplitter
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
@@ -321,6 +322,8 @@ async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[
 async def _stream(
     agent: Any, config: dict[str, Any], ctx: RunContext, sink: EventSink, turn: _Turn, query: str
 ) -> None:
+    splitters: dict[str, ThinkSplitter] = {}
+    reasoning = _Reasoning(sink, turn, ctx)
     async for mode, chunk in agent.astream(
         {"messages": [HumanMessage(query)]}, config, context=ctx, stream_mode=["messages", "custom"]
     ):
@@ -339,14 +342,82 @@ async def _stream(
         if msg.usage_metadata:
             turn.tokens_in += msg.usage_metadata.get("input_tokens", 0)
             turn.tokens_out += msg.usage_metadata.get("output_tokens", 0)
-        piece = msg.text
-        if piece:
-            turn.answer += piece
-            await sink.emit({"type": "answer.delta", "text": piece})
-        if msg.tool_call_chunks and turn.answer:
-            # ツール呼び出しの前置き文は回答ではない
+        key = msg.id or ""
+        if key not in splitters:  # 次のモデル呼び出し
+            await reasoning.close()
+            splitters[key] = ThinkSplitter()
+        thought, piece, reset = splitters[key].feed(msg.text)
+        if reset and turn.answer:  # 回答だと思って流した分は思考だった
             turn.answer = ""
             await sink.emit({"type": "answer.reset"})
+        separate = msg.additional_kwargs.get("reasoning_content")
+        await reasoning.add((separate if isinstance(separate, str) else "") + thought)
+        if piece:
+            await reasoning.close()
+            turn.answer += piece
+            await sink.emit({"type": "answer.delta", "text": piece})
+        if msg.tool_call_chunks:
+            await reasoning.close()
+            if turn.answer:
+                # ツール呼び出しの前置き文は回答ではない
+                turn.answer = ""
+                await sink.emit({"type": "answer.reset"})
+        if msg.chunk_position == "last":
+            await reasoning.close()
+    await reasoning.close()
+
+
+class _Reasoning:
+    """モデル呼び出しごとの「考えた過程」をステップとして送る（表示するかは画面の設定）。"""
+
+    UPDATE_EVERY = 400  # 考えている途中は、この文字数ごとに送り直す
+
+    def __init__(self, sink: EventSink, turn: _Turn, ctx: RunContext) -> None:
+        self.sink, self.turn, self.ctx = sink, turn, ctx
+        self.count = 0
+        self.step: Step | None = None
+        self.text = ""
+        self.sent = 0
+        self.t0 = 0.0
+
+    async def add(self, delta: str) -> None:
+        if not delta:
+            return
+        if self.step is None:
+            self.count += 1
+            self.text, self.sent, self.t0 = "", 0, time.perf_counter()
+            self.step = Step(
+                id=f"reasoning-{self.count}",
+                name="reasoning",
+                label="考えた過程",
+                status="running",
+                input={"model": self.ctx.model_label} if self.ctx.model_label else {},
+            )
+        self.text += delta
+        if self.sent == 0 or len(self.text) - self.sent >= self.UPDATE_EVERY:
+            self.sent = len(self.text)
+            await self._emit("running")
+
+    async def close(self) -> None:
+        if self.step is None:
+            return
+        await self._emit("done")
+        self.step = None
+
+    async def _emit(self, status: str) -> None:
+        assert self.step is not None
+        text = self.text.strip()
+        step = self.step.model_copy(
+            update={
+                "status": status,
+                "duration_ms": round((time.perf_counter() - self.t0) * 1000),
+                "output": {"reasoning": text},
+                "summary": f"{len(text)} 文字" if status == "done" else "考えています",
+            }
+        )
+        d = step.model_dump()
+        self.turn.steps[d["id"]] = d
+        await self.sink.emit({"type": "step", "step": d})
 
 
 async def _persist(

@@ -75,6 +75,7 @@ class ModelSwitchMiddleware(AgentMiddleware[Any, RunContext]):
         for i in range(ctx.model_index, len(chain)):
             label, model = chain[i]
             started = time.perf_counter()
+            ctx.model_label = label
             try:
                 resp = await handler(request if model is None else request.override(model=model))
             except GraphBubbleUp:

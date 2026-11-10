@@ -281,3 +281,29 @@ async def test_failed_models_are_named_with_reasons(
         msg = await s.get(Message, run.message_id)
         assert msg is not None and "DeepSeek: 残高が不足" in msg.answer_text
         assert [st["name"] for st in msg.steps] == ["switch_model"]
+
+
+async def test_thinking_becomes_a_reasoning_step(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    """本文の <think>…</think> は回答に入れず「考えた過程」のステップにする。"""
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="MX-17"),
+            AIMessage(content="<think>\n資料 [1] によると即時停止。\n</think>\n\n即時停止です[1]。"),
+        )
+    )
+    deps = make_deps(sessionmaker, redis, model)
+    deps.resolve_models = lambda _id: ResolvedModels(id="qwen", model=model, label="Qwen3 8B")
+    _th, run = await start(sessionmaker, "MX-17 はどうする？")
+    assert await execute_run(deps, run.id) == "completed"
+    evs = await events(redis, run.id)
+    deltas = "".join(e["text"] for e in evs if e["type"] == "answer.delta")
+    assert "think" not in deltas and "即時停止です" in deltas
+    assert evs[-1]["answer"] == "即時停止です[1]。"
+    async with sessionmaker() as s:
+        msg = await s.get(Message, run.message_id)
+        assert msg is not None and msg.answer_text == "即時停止です[1]。"
+        r = next(st for st in msg.steps if st["name"] == "reasoning")
+        assert r["status"] == "done" and r["output"] == {"reasoning": "資料 [1] によると即時停止。"}
+        assert r["input"] == {"model": "Qwen3 8B"} and r["label"] == "考えた過程"
