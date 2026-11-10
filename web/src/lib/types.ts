@@ -36,6 +36,7 @@ export type ToolStatus = "pending" | "running" | "done" | "error";
 export type ToolName =
   | "skill"
   | "read_image"
+  | "switch_model"
   | "reasoning"
   | "rewrite_query"
   | "retrieve"

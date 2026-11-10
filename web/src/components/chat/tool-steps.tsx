@@ -57,6 +57,9 @@ interface VerifyDetail {
 }
 
 const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
+  switch_model: (
+    <path d="M3 5h9l-2.5-2.5M13 11H4l2.5 2.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  ),
   read_image: (
     <>
       <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />

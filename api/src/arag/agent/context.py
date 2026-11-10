@@ -37,3 +37,6 @@ class RunContext:
     registry: CitationRegistry = field(default_factory=CitationRegistry)
     utility_model: BaseChatModel | None = None
     stats: RunStats = field(default_factory=RunStats)
+    # 会話モデルの切り替え（0 = 主モデル。切り替えたら実行の残りはそのモデルで続ける）
+    model_index: int = 0
+    model_switches: int = 0

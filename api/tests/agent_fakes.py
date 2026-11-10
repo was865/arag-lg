@@ -121,3 +121,22 @@ async def _null_session() -> Any:
 
 def null_sessionmaker() -> Any:
     return _null_session()
+
+
+class StatusError(Exception):
+    """openai の APIStatusError に似せた例外（status_code を持つ）。"""
+
+    def __init__(self, status_code: int) -> None:
+        super().__init__(f"Error code: {status_code}")
+        self.status_code = status_code
+
+
+class FailingModel(FakeToolModel):
+    """呼ばれるたびに決めた例外を投げる（呼ばれた回数を数える）。"""
+
+    error: Any = None
+    failures: int = 0
+
+    def _generate(self, *a: Any, **kw: Any) -> ChatResult:
+        self.failures += 1
+        raise self.error

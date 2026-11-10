@@ -26,6 +26,7 @@ from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
 from arag.agent.graph import build_agent
+from arag.agent.model_switch import ModelChainError
 from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, StepClock
@@ -61,6 +62,8 @@ class ResolvedModels:
     model: BaseChatModel
     utility: BaseChatModel | None = None
     fallback: BaseChatModel | None = None
+    label: str = ""
+    fallback_label: str = ""
 
 
 @dataclass
@@ -81,7 +84,12 @@ class RunnerDeps:
     def agent_for(self, m: ResolvedModels) -> Any:
         if m.id not in self.agent_cache:
             self.agent_cache[m.id] = build_agent(
-                m.model, utility=m.utility, fallback=m.fallback, checkpointer=self.checkpointer
+                m.model,
+                utility=m.utility,
+                fallback=m.fallback,
+                model_label=m.label or m.id,
+                fallback_label=m.fallback_label or "代替モデル",
+                checkpointer=self.checkpointer,
             )
         return self.agent_cache[m.id]
 
@@ -222,6 +230,9 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         except Exception as e:
             log.exception("run_failed", run_id=str(run_id))
             status, code, err = "failed", "generation_failed", f"{type(e).__name__}: {e}"[:500]
+            if isinstance(e, ModelChainError):
+                # どのモデルがなぜ使えなかったかを利用者に見せる（402 だけが残って原因が分からない、を防ぐ）
+                turn.answer = e.user_message()
 
     # 引用を確定する（回答に出た順に振り直し、引用した箇所だけを出典にする）
     fin = finalize_citations(turn.answer, ctx.registry)
@@ -608,7 +619,12 @@ async def main() -> None:
         util = catalog.resolve(settings.utility_model).build() if settings.utility_model else None
         fb = catalog.fallback(spec.id)
         return ResolvedModels(
-            id=spec.id, model=spec.build(), utility=util, fallback=fb.build() if fb else None
+            id=spec.id,
+            model=spec.build(),
+            utility=util,
+            fallback=fb.build() if fb else None,
+            label=spec.label,
+            fallback_label=fb.label if fb else "",
         )
 
     stop = asyncio.Event()

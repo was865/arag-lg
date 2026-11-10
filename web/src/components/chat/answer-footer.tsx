@@ -189,7 +189,8 @@ export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: (
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" fill="none" />
         <path d="M8 4.8v3.6M8 10.8v.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{message || t.chat.runFailedNotice}</span>
+      {/* 「モデルごとの理由」のように複数行で届くことがある */}
+      <span className="min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]">{message || t.chat.runFailedNotice}</span>
       <button className="shrink-0 border-0 bg-transparent py-1 text-[12.5px] font-semibold text-accent hover:underline" onClick={onRetry}>
         {t.chat.retryRun}
       </button>

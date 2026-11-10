@@ -22,7 +22,7 @@ from arag.db.models import AuditLog, Citation, Message, Run, Thread
 from arag.errors import ApiError
 from arag.settings import Settings
 
-from ..agent_fakes import FakeSearch, FakeToolModel, fake_hit, script, tool_call
+from ..agent_fakes import FailingModel, FakeSearch, FakeToolModel, StatusError, fake_hit, script, tool_call
 
 pytestmark = pytest.mark.integration
 ALICE = Principal(user_id="alice")
@@ -254,3 +254,30 @@ async def test_citations_renumbered_in_answer_order(
     async with sessionmaker() as s:
         cites = list(await s.scalars(select(Citation).where(Citation.message_id == run.message_id)))
         assert sorted((c.ordinal, c.snippet) for c in cites) == [(1, "三つ目"), (2, "二つ目")]
+
+
+async def test_failed_models_are_named_with_reasons(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    """主モデルも代替モデルも失敗したら、モデルごとの理由を回答欄と run.failed に出す。
+
+    切り替えのステップも残す。
+    """
+    primary = FailingModel(messages=script(), error=ConnectionError("down"))
+    backup = FailingModel(messages=script(), error=StatusError(402))
+    deps = make_deps(sessionmaker, redis, primary)
+    deps.resolve_models = lambda _id: ResolvedModels(
+        id="qwen-chain", model=primary, fallback=backup, label="Qwen3 8B", fallback_label="DeepSeek"
+    )
+    _th, run = await start(sessionmaker, "MX-17 はどうする？")
+    assert await execute_run(deps, run.id) == "failed"
+    last = (await events(redis, run.id))[-1]
+    assert last["type"] == "run.failed"
+    assert (
+        "Qwen3 8B: 接続できません" in last["message"]
+        and "DeepSeek: 残高が不足しています（402）" in last["message"]
+    )
+    async with sessionmaker() as s:
+        msg = await s.get(Message, run.message_id)
+        assert msg is not None and "DeepSeek: 残高が不足" in msg.answer_text
+        assert [st["name"] for st in msg.steps] == ["switch_model"]
