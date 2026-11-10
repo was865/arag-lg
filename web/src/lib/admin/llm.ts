@@ -76,3 +76,20 @@ export function validateModelForm(f: {
   const k = parseKwargs(f.kwargs);
   return k.ok ? null : k.error;
 }
+
+const sameUrl = (a: string, b: string) => a.trim().replace(/\/+$/, "") === b.trim().replace(/\/+$/, "");
+
+/**
+ * .env のモデル（base_url つき）を目録に取り込むときの接続。
+ * 同じ接続先の「OpenAI 互換」接続があれば使い、無ければ作る（鍵は不要）。base_url が無ければ環境変数のキーのまま。
+ */
+export function importConnection(
+  baseUrl: string | null | undefined,
+  credentials: { id: string; provider: string; base_url: string }[],
+  modelLabel: string,
+): { reuse: string } | { create: { provider: "openai_compatible"; label: string; base_url: string } } | null {
+  if (!baseUrl) return null;
+  const hit = credentials.find((c) => c.provider === "openai_compatible" && sameUrl(c.base_url, baseUrl));
+  if (hit) return { reuse: hit.id };
+  return { create: { provider: "openai_compatible", label: `${modelLabel} の接続`.slice(0, 100), base_url: baseUrl } };
+}

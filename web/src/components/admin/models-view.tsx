@@ -18,6 +18,7 @@ import {
   slugify,
   validateModelForm,
   type Provider,
+  importConnection,
 } from "@/lib/admin/llm";
 import { cn } from "@/lib/utils";
 
@@ -608,7 +609,13 @@ function ModelDialog({
   onSaved: (msg: string) => void;
 }) {
   const editing = !!initial && !importing;
-  const [credId, setCredId] = useState<string>(initial?.credential_id ?? (importing ? "" : (credentials[0]?.id ?? "")));
+  // .env のモデルは base_url を持つことがある。取り込むときは同じ接続先の接続を使うか作る（落とすと使えなくなる）
+  const plan = importing ? importConnection(initial?.base_url, credentials, initial?.label ?? "") : null;
+  const [credId, setCredId] = useState<string>(
+    initial?.credential_id ??
+      (plan && "reuse" in plan ? plan.reuse : importing ? "" : (credentials[0]?.id ?? "")),
+  );
+  const creating = plan && "create" in plan && !credId ? plan.create : null;
   const cred = credentials.find((c) => c.id === credId) ?? null;
   const provider = (cred?.provider as Provider | undefined) ?? null;
   const [model, setModel] = useState(initial?.model ?? "");
@@ -623,7 +630,9 @@ function ModelDialog({
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
-    const problem = validateModelForm({ id, label, model: model.trim(), provider, kwargs });
+    // 作る接続（OpenAI 互換）でも model の接頭辞を確かめる
+    const checked: Provider | null = provider ?? (creating ? "openai_compatible" : null);
+    const problem = validateModelForm({ id, label, model: model.trim(), provider: checked, kwargs });
     if (problem) {
       setError(problem);
       return;
@@ -636,6 +645,16 @@ function ModelDialog({
       .filter(Boolean);
     setBusy(true);
     setError(null);
+    let useCred = credId;
+    if (creating) {
+      const made = await client.POST("/v1/admin/llm/credentials", { body: creating });
+      if (made.error || !made.data) {
+        setBusy(false);
+        setError(errMessage(made.error, "接続を作れませんでした"));
+        return;
+      }
+      useCred = made.data.id;
+    }
     const res = editing
       ? await client.PATCH("/v1/admin/llm/models/{model_id}", {
           params: { path: { model_id: initial.id } },
@@ -653,7 +672,7 @@ function ModelDialog({
             id,
             label: label.trim(),
             model: model.trim(),
-            credential_id: credId || null,
+            credential_id: useCred || null,
             kwargs: kw,
             tags: tagList,
             enabled: true,
@@ -670,14 +689,23 @@ function ModelDialog({
       onClose={onClose}
       onSubmit={() => void submit()}
     >
-      <Field label="接続" hint={credId ? undefined : "サーバの環境変数にあるキー（DEEPSEEK_API_KEY など）を使います。"}>
+      <Field
+        label="接続"
+        hint={
+          credId
+            ? undefined
+            : creating
+              ? `接続先 ${creating.base_url} の「OpenAI 互換」接続を作って使います（キーは不要）。`
+              : "サーバの環境変数にあるキー（DEEPSEEK_API_KEY など）を使います。"
+        }
+      >
         <select value={credId} onChange={(e) => setCredId(e.target.value)} className={field}>
           {credentials.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label}（{providerLabel(c.provider)}）
             </option>
           ))}
-          <option value="">なし（環境変数のキー）</option>
+          <option value="">{creating ? `新しく作る（${creating.base_url}）` : "なし（環境変数のキー）"}</option>
         </select>
       </Field>
       <Field label="モデル" hint="「provider:モデル名」の形です。">

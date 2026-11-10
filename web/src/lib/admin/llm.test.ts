@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { modelPrefix, moveId, parseKwargs, PROVIDER_LABEL, slugify, validateModelForm } from "./llm";
+import { importConnection, modelPrefix, moveId, parseKwargs, PROVIDER_LABEL, slugify, validateModelForm } from "./llm";
 
 describe("LLM 管理の小さな関数", () => {
   it("provider の表示名と model の接頭辞", () => {
@@ -38,5 +38,19 @@ describe("LLM 管理の小さな関数", () => {
     expect(validateModelForm({ ...base, model: "openai:gpt" })).toMatch(/deepseek:/);
     expect(validateModelForm({ ...base, provider: null, model: "openai:gpt" })).toBeNull();
     expect(validateModelForm({ ...base, kwargs: "[" })).toMatch(/JSON/);
+  });
+});
+
+describe("importConnection", () => {
+  const creds = [
+    { id: "a", provider: "deepseek", base_url: "" },
+    { id: "b", provider: "openai_compatible", base_url: "http://gpu:8090/v1/" },
+  ];
+  it("同じ接続先の OpenAI 互換接続を使い、無ければ作る", () => {
+    expect(importConnection("http://gpu:8090/v1", creds, "Qwen")).toEqual({ reuse: "b" });
+    expect(importConnection("http://gpu:8091/v1", creds, "Qwen VL")).toEqual({
+      create: { provider: "openai_compatible", label: "Qwen VL の接続", base_url: "http://gpu:8091/v1" },
+    });
+    expect(importConnection(null, creds, "DeepSeek")).toBeNull();
   });
 });

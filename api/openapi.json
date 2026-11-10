@@ -1967,6 +1967,18 @@
             "title": "Available",
             "type": "boolean"
           },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "接続先（.env の base_url か接続の base_url）",
+            "title": "Base Url"
+          },
           "credential_id": {
             "anyOf": [
               {

@@ -92,6 +92,13 @@ async def test_credential_validation(api: httpx.AsyncClient) -> None:
     assert r.status_code == 201 and r.json()["key_hint"] is None
 
 
+async def test_env_rows_show_base_url(api: httpx.AsyncClient) -> None:
+    """.env のモデルを目録に取り込むとき、接続先を引き継げるよう base_url を返す。"""
+    admin = (await api.get("/v1/admin/llm", headers=ADMIN)).json()
+    urls = {m["id"]: m["base_url"] for m in admin["models"]}
+    assert urls == {"local": "http://llm/v1", "envds": None}
+
+
 async def test_catalog_merge_order_override_and_disable(api: httpx.AsyncClient) -> None:
     c = await _cred(api)
     assert (await _model(api, credential_id=c["id"], tags=["高速"])).status_code == 201

@@ -1823,6 +1823,11 @@ export interface components {
         ModelRow: {
             /** Available */
             available: boolean;
+            /**
+             * Base Url
+             * @description 接続先（.env の base_url か接続の base_url）
+             */
+            base_url?: string | null;
             /** Credential Id */
             credential_id: string | null;
             /** Credential Label */

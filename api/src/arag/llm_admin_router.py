@@ -99,6 +99,7 @@ class ModelRow(BaseModel):
     source: Literal["db", "env"]
     available: bool
     is_default: bool
+    base_url: str | None = Field(default=None, description="接続先（.env の base_url か接続の base_url）")
 
 
 class LlmAdminOut(BaseModel):
@@ -136,6 +137,7 @@ async def overview(ctx: CtxDep, settings: SettingsDep) -> LlmAdminOut:
         ).all()
     )
     labels = {c.id: c.label for c in creds}
+    urls = {c.id: c.base_url for c in creds}
     catalog = await load_catalog(s, settings)
     try:
         default_id: str | None = catalog.default().id
@@ -158,6 +160,7 @@ async def overview(ctx: CtxDep, settings: SettingsDep) -> LlmAdminOut:
             source="db",
             available=bool(live.get(m.id) and live[m.id].available),
             is_default=m.id == default_id,
+            base_url=(urls.get(m.credential_id) or None) if m.credential_id else None,
         )
         for m in db_models
     ]
@@ -174,6 +177,7 @@ async def overview(ctx: CtxDep, settings: SettingsDep) -> LlmAdminOut:
             source="env",
             available=m.available,
             is_default=m.id == default_id,
+            base_url=m.base_url or None,
         )
         for m in catalog.models
         if m.source == "env"
