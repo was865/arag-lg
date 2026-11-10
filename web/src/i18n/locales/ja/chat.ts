@@ -109,6 +109,7 @@ export const chat = {
   sectionReasoning: "推論過程",
   noCandidates: "候補なし",
   keywordFallback: "{terms}をすべて含む箇所はありませんでした。言い回しが違う可能性があるため、続けて意味検索（vector_search）で探しました。",
+  keywordRelax: "{terms}をすべて含む箇所はありませんでした。説明的な語は資料と言い回しが違うことが多いため、続けて型番・番号だけで探し直しました。",
   expandCount: "拡張件数",
   sectionModel: "モデル",
   sectionInput: "入力",

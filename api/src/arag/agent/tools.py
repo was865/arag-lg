@@ -32,8 +32,10 @@ async def search(query: str, runtime: Runtime, document_ids: list[str] | None = 
 async def keyword_search(terms: list[str], runtime: Runtime, document_ids: list[str] | None = None) -> str:
     """型番・条項番号・製品名など、すべての語をそのまま含む箇所を探す（完全一致）。
 
+    内容（「異常時の対応」「保存期間」など）は search で調べる。terms に説明的な語句を入れると一致しにくい。
+
     Args:
-        terms: 本文に必ず含まれるべき語（例 ["MX-17", "第12条"]）
+        terms: 資料にそのまま出る語だけ（例 ["MX-17"]、["第12条"]、["MX-17", "N9"]）
         document_ids: 特定の文書に絞るときの文書 ID か出典番号
     """
     return await op_keyword_search(

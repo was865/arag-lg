@@ -137,7 +137,12 @@ async def search(
     cands = await _hydrate(session, scope, cands)
     if req.must_contain:
         terms = [_norm(t) for t in req.must_contain]
-        cands = [c for c in cands if c.chunk and all(t in _norm(c.chunk.text) for t in terms)]
+        # 見出し（「第5条（異常時の対応）」など）にだけ出る語もあるので、見出しと本文の両方で確かめる
+        cands = [
+            c
+            for c in cands
+            if c.chunk and all(t in _norm(f"{c.chunk.heading_path or ''}\n{c.chunk.text}") for t in terms)
+        ]
     clock.lap("hydrate", len(cands))
 
     # ---- rerank（失敗したら融合順のまま）

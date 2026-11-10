@@ -169,6 +169,11 @@ async def test_must_contain_and_rerank_input(
         sessionmaker, _deps(qdrant_index, reranker=rr), query="MX-17", must_contain=["ｍｘ－17", "停止"]
     )
     assert [h.text for h in res.hits] == ["MX-17 は即時停止を推奨する。"]
+    # 見出し（点検 > 判定）にだけある語でも一致とみなす
+    by_heading = await _run(
+        sessionmaker, _deps(qdrant_index), query="MX-17", must_contain=["判定", "即時停止"]
+    )
+    assert [h.text for h in by_heading.hits] == ["MX-17 は即時停止を推奨する。"]
     # rerank には文脈 + 本文を渡す（既定）
     assert rr.inputs[0].endswith("MX-17 は即時停止を推奨する。") and rr.inputs[0] != res.hits[0].text
     rr2 = FakeReranker()

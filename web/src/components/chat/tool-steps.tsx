@@ -425,7 +425,11 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         return (
           <div className="flex items-start gap-1.5 rounded-lg bg-surface-2 px-2.5 py-2 text-[11.5px] leading-[1.6] text-fg-2">
             <Icon name="info" size={12} className="mt-[3px] shrink-0 text-muted" />
-            <span>{interpolate(t.chat.keywordFallback, { terms: terms.map((x) => `「${x}」`).join("") })}</span>
+            <span>
+              {interpolate(output.fallback === "codes" ? t.chat.keywordRelax : t.chat.keywordFallback, {
+                terms: terms.map((x) => `「${x}」`).join(""),
+              })}
+            </span>
           </div>
         );
       }

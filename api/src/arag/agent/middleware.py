@@ -11,9 +11,10 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemM
 from langgraph.runtime import Runtime
 from langgraph.types import Command
 
+from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
-from arag.agent.ops import KEYWORD_FALLBACK_NOTE
+from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.steps import Step, StepClock
 from arag.agent.tools import LABELS
 from arag.prompts import load_prompt
@@ -118,12 +119,14 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → 意味検索で資料 {n} 件"
+        elif n and text.startswith(KEYWORD_RELAX_NOTE):
+            summary = f"完全一致 0 件 → 型番・番号だけで資料 {n} 件"
         clock.done(summary, {"result": text[:2000]})
         return result
 
 
 class CitationMiddleware(AgentMiddleware[Any, RunContext]):
-    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。"""
+    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。末尾の言い直しも落とす。"""
 
     async def aafter_agent(self, state: Any, runtime: Runtime[RunContext]) -> dict[str, Any] | None:
         msgs = state["messages"]
@@ -131,7 +134,9 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             return None
         last: AIMessage = msgs[-1]
         text = last.text
-        fixed = strip_unknown(normalize_markers(text), set(runtime.context.registry.numbers()))
+        fixed = drop_repeated_tail(
+            strip_unknown(normalize_markers(text), set(runtime.context.registry.numbers()))
+        )
         if fixed == text:
             return None
         return {"messages": [AIMessage(content=fixed, id=last.id, usage_metadata=last.usage_metadata)]}

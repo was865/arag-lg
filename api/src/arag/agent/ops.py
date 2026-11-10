@@ -99,6 +99,15 @@ def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
 
 # キーワード検索が 0 件で意味検索に切り替えたときの前置き（ステップの要約もこれで見分ける）
 KEYWORD_FALLBACK_NOTE = "注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。"
+# 型番・番号だけに絞って見つかったときの前置き（後ろに語の説明が続く）
+KEYWORD_RELAX_NOTE = "注意: すべての語を含む資料が無かったため、型番・番号だけで探しました。"
+
+# 型番・条項番号などの「そのまま出るはずの語」（数字を含む・英大文字の略語）
+_CODE = re.compile(r"\d|^[A-Z][A-Z0-9_.\-]+$")
+
+
+def code_terms(terms: list[str]) -> list[str]:
+    return [t for t in terms if _CODE.search(t)]
 
 
 def diversify(hits: list[SearchHit], *, k: int, per_document: int) -> list[SearchHit]:
@@ -180,6 +189,7 @@ async def op_search(
     step_tag: str = "",
     label: str = "検索",
     running: str = "検索しています",
+    next_on_empty: str | None = None,
 ) -> str:
     """step_tag は同じ呼び出しで 2 回検索するときのステップ ID の区別（親は call_id のまま）。"""
     sid = f"{call_id}:{step_tag}" if step_tag else call_id
@@ -208,9 +218,12 @@ async def op_search(
     )
     res = await _run_search(ctx, SearchRequest(query=query, **base))
     if must_contain and not res.hits:
-        # 何が足りなかったのかを画面で分かるようにする（このあと意味検索で補う）
+        # 何が足りなかったのか・次に何をするのかを画面で分かるようにする
         words = "".join(f"「{t}」" for t in must_contain)
-        clock.done(f"0 件（{words}をすべて含む箇所なし）", {**_hits_output(res), "terms": must_contain})
+        detail: dict[str, Any] = {**_hits_output(res), "terms": must_contain}
+        if next_on_empty:
+            detail["fallback"] = next_on_empty
+        clock.done(f"0 件（{words}をすべて含む箇所なし）", detail)
     else:
         clock.done(f"{len(res.hits)} 件（最高スコア {_best(res):.2f}）", _hits_output(res))
     used = query
@@ -282,15 +295,46 @@ def _is_low(ctx: RunContext, res: SearchResult, mode: str) -> bool:
 async def op_keyword_search(
     ctx: RunContext, emit: Emit, call_id: str, terms: list[str], *, document_ids: list[str] | None = None
 ) -> str:
+    """全語の完全一致 → 型番・番号だけ → 意味検索、の順に広げる。各段は子ステップとして見せる。"""
     terms = [t.strip() for t in terms if t.strip()][:10]
     if not terms:
         return "検索語を 1 つ以上指定してください。"
     query = " ".join(terms)
+    codes = code_terms(terms)
+    relax = bool(codes) and len(codes) < len(terms)
     out = await op_search(
-        ctx, emit, call_id, query, document_ids=document_ids, mode="keyword", must_contain=terms
+        ctx,
+        emit,
+        call_id,
+        query,
+        document_ids=document_ids,
+        mode="keyword",
+        must_contain=terms,
+        next_on_empty="codes" if relax else "semantic",
     )
     if "<資料 " in out:
         return out
+    if relax:
+        # 「MX-17」「異常時の対応」のように説明的な語が混ざると全語一致しにくい。型番だけで探し直す
+        dropped = "".join(f"「{t}」" for t in terms if t not in codes)
+        out = await op_search(
+            ctx,
+            emit,
+            call_id,
+            query,
+            document_ids=document_ids,
+            mode="keyword",
+            must_contain=codes,
+            step_tag="c",
+            label="型番・番号だけで再検索",
+            running=f"{dropped}を外し、型番・番号だけで探しています",
+            next_on_empty="semantic",
+        )
+        if "<資料 " in out:
+            return (
+                f"{KEYWORD_RELAX_NOTE}{dropped}は資料に無い言い回しかもしれません。"
+                f"一般的な規定や手順も要るなら、{dropped}の内容を search で調べてください。\n\n{out}"
+            )
     # 表記ゆれ（「ISO認証」と「ISO 27001認証」など）で 0 件になりやすいので、意味検索で補う
     alt = await op_search(
         ctx,

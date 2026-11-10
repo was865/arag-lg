@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
 from arag.agent.ops import (
+    code_terms,
     op_get_outline,
     op_keyword_search,
     op_list_documents,
@@ -115,17 +116,28 @@ async def test_keyword_search_requires_all_terms(
     out = await op_keyword_search(ctx, Events(), "c1", ["MX-17", "部品"])
     assert "翌営業日" in out and "180 日" not in out
     assert "1 つ以上" in await op_keyword_search(ctx, Events(), "c1", ["  "])
-    # 全語を含む資料が無ければ意味検索で補う
+    # 説明的な語が混ざって全語一致しなければ、型番だけで探し直す
     ev = Events()
     out2 = await op_keyword_search(ctx, ev, "c2", ["MX-17", "存在しない語"])
-    assert out2.startswith("注意: 語をすべて含む") and "<資料 " in out2
-    assert [s["input"]["mode"] for s in ev.steps() if s["status"] == "done"] == ["keyword", "hybrid"]
-    # 補った検索も同じツール呼び出しの子として出す（画面で見えるように）
-    done = [s for s in ev.steps() if s["status"] == "done"]
+    assert out2.startswith("注意: すべての語を含む資料が無かったため、型番・番号だけで") and "<資料 " in out2
+    assert "「存在しない語」の内容を search で" in out2
+    done = [s for s in ev.steps() if s["status"] == "done" and s["name"] == "retrieve"]
+    assert [s["label"] for s in done] == ["検索", "型番・番号だけで再検索"]
     assert {s["parent_id"] for s in done} == {"c2"} and len({s["id"] for s in done}) == 2
     # 何が起きたかを各ステップの要約で説明する
     assert done[0]["summary"] == "0 件（「MX-17」「存在しない語」をすべて含む箇所なし）"
-    assert done[1]["label"] == "意味検索で補う"
+    assert done[0]["output"]["fallback"] == "codes"
+    # 型番が無ければ（または型番でも無ければ）意味検索で補う
+    ev3 = Events()
+    out3 = await op_keyword_search(ctx, ev3, "c3", ["存在しない語", "別の語"])
+    assert out3.startswith("注意: 語をすべて含む") and "<資料 " in out3
+    done3 = [s for s in ev3.steps() if s["status"] == "done" and s["name"] == "retrieve"]
+    assert [s["input"]["mode"] for s in done3] == ["keyword", "hybrid"]
+    assert done3[0]["output"]["fallback"] == "semantic" and done3[1]["label"] == "意味検索で補う"
+
+
+def test_code_terms() -> None:
+    assert code_terms(["MX-17", "異常時の対応", "第12条", "ISO", "部品"]) == ["MX-17", "第12条", "ISO"]
 
 
 async def test_list_outline_and_read_section(

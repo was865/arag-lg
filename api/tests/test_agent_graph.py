@@ -73,7 +73,7 @@ async def test_keyword_fallback_is_explained_in_steps() -> None:
     top = next(s for s in done if s["parent_id"] is None)
     assert top["summary"] == "完全一致 0 件 → 意味検索で資料 1 件"
     kids = [s for s in done if s["parent_id"] == top["id"]]
-    assert [k["label"] for k in kids] == ["検索", "意味検索で補う"]
+    assert [k["label"] for k in kids] == ["検索", "型番・番号だけで再検索", "意味検索で補う"]
     assert kids[0]["summary"].startswith("0 件（「MX-17」「異常時の対応」をすべて含む箇所なし")
 
 
