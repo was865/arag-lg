@@ -14,12 +14,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Seal } from "@/components/ui/seal";
 import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/feedback/toast-provider";
 import { DURATION } from "@/lib/motion";
 
 const TYPE = [
-  ["text-display", "大見出し 22", "11,490 件"],
+  ["font-display text-hero font-bold", "挨拶 34 明朝", "こんにちは、検証さん。"],
+  ["font-display text-display font-bold", "大見出し 22 明朝", "11,490 件"],
   ["text-title", "タイトル 19", "ナレッジベース"],
   ["text-headline", "見出し 15", "設定"],
   ["text-callout", "チャット本文 14", "MX-17 の保証期間は納品日から 12 か月です。"],
@@ -41,6 +43,16 @@ const TOASTS = [
   ["x01-部品台帳.xlsx を処理しています", "info"],
   ["共有リンクをコピーしました", "success"],
   ["アップロードできませんでした", "error"],
+] as const;
+
+const COLORS = [
+  ["bg-bg", "紙 bg"],
+  ["bg-surface", "面 surface"],
+  ["bg-bg-2", "沈み bg-2"],
+  ["bg-fg", "墨 fg"],
+  ["bg-muted", "灰 muted"],
+  ["bg-accent", "朱 accent"],
+  ["bg-danger", "紅 danger"],
 ] as const;
 
 const RADIUS = [
@@ -91,7 +103,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
         {theme === "theme-light" ? "ライト" : "ダーク"}
       </p>
 
-      <Block title="文字の段階（8 段）">
+      <Block title="文字の段階（9 段。上の 2 つは明朝）">
         <div className="flex flex-col gap-2.5">
           {TYPE.map(([cls, name, sample]) => (
             <div key={cls} className="flex items-baseline gap-4">
@@ -99,6 +111,37 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
               <span className={cn(cls, "min-w-0 truncate")}>{sample}</span>
             </div>
           ))}
+        </div>
+      </Block>
+
+      <Block title="色と印（朱は引用の印・送信・注意だけに使う）">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {COLORS.map(([cls, name]) => (
+              <div key={cls} className="flex flex-col items-center gap-1.5">
+                <div className={cn(cls, "h-11 w-14 rounded-control border-[0.5px] border-divider-strong shadow-e1")} />
+                <code className="font-mono text-mini text-muted">{name}</code>
+              </div>
+            ))}
+          </div>
+          <p className="m-0 max-w-[46ch] text-callout leading-[1.8] text-fg-2">
+            9 月に PM-04 が保守で止まった時間は、合計 <strong className="font-semibold text-fg">135 分</strong>です
+            <Seal n={1} className="mx-0.5 align-[2px]" />。いちばん長かったのは 9 月 19 日の軸受交換でした
+            <Seal n={1} className="mx-0.5 align-[2px]" />
+            <Seal n={2} className="align-[2px]" />。
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-start font-display text-hero font-bold leading-none">
+              ARag
+              <Seal className="ml-0.5 mt-1 h-2.5 min-w-2.5 px-0" />
+            </span>
+            <Seal n={3} size="md" />
+            <div className="flex items-center gap-2 rounded-card border-[0.5px] border-divider-strong bg-surface px-3 py-2 shadow-e2">
+              <Seal n={1} />
+              <span className="text-footnote font-semibold">x02-保守記録_2026-09.xlsx</span>
+              <span className="text-caption text-muted">関連度 0.98</span>
+            </div>
+          </div>
         </div>
       </Block>
 

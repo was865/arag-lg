@@ -2,7 +2,7 @@
  * サーバー・クライアントのどちらからも使えるよう hook を使わない（"use client" を付けない）。
  *
  * ボタン（UI 試作）。見た目は variant と size だけで決め、呼び出し側で色や大きさを足さない。
- * - primary: 画面の主な操作（1 画面に 1 つ）
+ * - primary: 画面の主な操作（1 画面に 1 つ）。墨色。朱（アクセント）は引用の印と送信に取っておく
  * - secondary: それ以外の操作
  * - ghost: ツールバー・一覧の中の控えめな操作
  * - danger: 削除などの取り消せない操作
@@ -19,10 +19,10 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-accent font-semibold text-white shadow-e1 hover:brightness-105 active:brightness-95",
+        primary: "bg-fg font-semibold text-bg shadow-e1 hover:opacity-90 active:opacity-80",
         secondary: "border-[0.5px] border-divider-strong bg-surface text-fg shadow-e1 hover:bg-surface-2",
         ghost: "text-fg hover:bg-divider",
-        danger: "bg-danger font-semibold text-white shadow-e1 hover:brightness-105 active:brightness-95",
+        danger: "bg-danger-fill font-semibold text-white shadow-e1 hover:brightness-105 active:brightness-95",
         "danger-ghost": "text-danger hover:bg-danger-soft",
         plain: "h-auto px-0 text-accent hover:opacity-75",
       },

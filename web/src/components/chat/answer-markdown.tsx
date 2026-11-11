@@ -10,6 +10,7 @@ import type { CitationStyle } from "@/lib/types";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { remarkCitations } from "@/components/chat/remark-citations";
+import { sealClass } from "@/components/ui/seal";
 
 export interface AnswerMarkdownProps {
   text: string;
@@ -25,8 +26,8 @@ function citeBtnClass(style: CitationStyle) {
     return cn(base, "mx-0.5 h-[18px] rounded-control border border-accent-soft bg-surface px-[5px] text-mini font-semibold text-accent hover:bg-accent-soft");
   if (style === "pill")
     return cn(base, "mx-0.5 h-[18px] rounded-full bg-accent px-[7px] text-mini font-semibold text-white");
-  // numbered (superscript)
-  return cn(base, "mx-px h-[14px] min-w-[14px] rounded-[4px] bg-accent-soft px-[3px] align-super text-mini font-bold text-accent hover:bg-accent hover:text-white");
+  // numbered: 朱の印（specs/025 R43）。ホバーで少し浮き、周りに淡い輪が出る
+  return cn(sealClass({ size: "sm" }), "mx-0.5 cursor-pointer border-0 align-[2px] transition-[transform,box-shadow] duration-(--duration-fast) hover:-translate-y-px hover:scale-110 hover:shadow-[0_0_0_4px_var(--accent-soft)] motion-reduce:hover:transform-none");
 }
 
 /** 引用番号ボタン。クリックで該当出典を開く（onCite）。 */

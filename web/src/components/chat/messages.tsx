@@ -127,7 +127,7 @@ export function UserMessage({
         </IconButton>
       )}
       {/* 吹き出しを peer にし、ホバー時だけ時刻（order-first で左側）を出す。 */}
-      <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-callout leading-[1.55] text-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-callout">
+      <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-callout leading-[1.55] text-bubble-user-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-callout">
         {image && (
           <div className="mb-2">
             <QueryImageThumb image={image} />

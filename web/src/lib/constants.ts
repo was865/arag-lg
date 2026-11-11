@@ -15,15 +15,15 @@ export const ONBOARDING_STORAGE_PREFIX = "arag:onboarded";
  *  LAN over plain HTTP の dev で動かす場合は HTTPS（mkcert 等）の用意が必要。 */
 export const AUTH_COOKIE = "__Host-arag_token";
 
-/** User-selectable accent presets (sage / coral / cobalt / violet). */
-export const ACCENT_PRESETS = ["#3FA77E", "#D97757", "#3D7EE6", "#8B6FE0"] as const;
+/** 利用者が選べるアクセント（朱 / 橙 / 緑 / 青 / 紫）。既定は朱（specs/025 R40）。 */
+export const ACCENT_PRESETS = ["#D2402B", "#D97757", "#3FA77E", "#3D7EE6", "#8B6FE0"] as const;
 
-export const DEFAULT_ACCENT = ACCENT_PRESETS[1];
+export const DEFAULT_ACCENT = ACCENT_PRESETS[0];
 
 /** standalone PWA のステータスバー背景（theme-color meta）に使うテーマ別背景色。
  *  globals.css の --bg（.theme-light / .theme-dark）と一致させること。 */
-export const THEME_COLOR_LIGHT = "#faf8f3";
-export const THEME_COLOR_DARK = "#16151a";
+export const THEME_COLOR_LIGHT = "#f5f4f1";
+export const THEME_COLOR_DARK = "#111214";
 
 /** Accepted upload extensions (mirrors the composer file input).
  *  MinerU が解析できる docx/xlsx/pptx・PDF・画像と、テキストパーサで扱う

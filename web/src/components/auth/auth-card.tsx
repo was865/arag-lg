@@ -29,7 +29,7 @@ export function AuthCard({ title, description, children, footer }: {
           </span>
           ARag
         </div>
-        <h1 className="m-0 mb-1.5 text-display font-bold tracking-[-0.01em] text-fg">{title}</h1>
+        <h1 className="m-0 mb-1.5 font-display text-display font-bold text-fg">{title}</h1>
         {description && <p className="m-0 mb-6 text-body leading-[1.6] text-muted">{description}</p>}
         {children}
         {footer && <div className="mt-6 text-center text-body text-muted">{footer}</div>}

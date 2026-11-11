@@ -11,6 +11,12 @@ describe("buttonVariants", () => {
     expect(cls).toContain("active:scale-[0.97]");
     expect(cls).toContain("motion-reduce:active:scale-100");
   });
+  it("primary は墨色（朱は引用の印と送信に取っておく）", () => {
+    const cls = buttonVariants({ variant: "primary" });
+    expect(cls).toContain("bg-fg");
+    expect(cls).toContain("text-bg");
+    expect(cls).not.toContain("bg-accent");
+  });
   it("danger-ghost は塗りなしの赤い文字", () => {
     const cls = buttonVariants({ variant: "danger-ghost" });
     expect(cls).toContain("text-danger");

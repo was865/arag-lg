@@ -11,6 +11,7 @@ describe("cn", () => {
   it("mini・display も文字の段階として扱う", () => {
     expect(cn("text-mini text-muted", "text-accent")).toBe("text-mini text-accent");
     expect(cn("text-caption", "text-display")).toBe("text-display");
+    expect(cn("text-display", "text-hero")).toBe("text-hero");
   });
   it("角丸の段階どうしは後勝ち", () => {
     expect(cn("rounded-control", "rounded-full")).toBe("rounded-full");

@@ -23,6 +23,8 @@
      `monospace` に落とすと OS 任せの未管理 CJK 回退になり（PingFang 指定も font-synthesis:none も
      html:lang() 切替も全て無視され）字重がムラになる。var(--font-cjk) を挟み、CJK だけは sans と
      同じ受管ネイティブ書体（zh=PingFang / ja=Hiragino）へ回す。 */
+  /* 見出し用の明朝（specs/025 R41）。挨拶・大きな数字・文書の題だけに使い、画面の文字はゴシックのまま */
+  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, var(--font-cjk), monospace;
 
   /* The shell switches column layout at these widths (tablet → overlay drawer,
@@ -42,11 +44,15 @@
   --color-divider: var(--divider);
   --color-divider-strong: var(--divider-strong);
   --color-bubble-user: var(--bubble-user);
+  --color-bubble-user-fg: var(--bubble-user-fg);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  /* 塗りつぶしの危険ボタン用（白い文字が読める濃さ。--danger はダークで文字用に明るくなるため分ける） */
+  --color-danger-fill: var(--danger-fill);
   --color-code-bg: var(--code-bg);
 
-  --color-accent: var(--accent);
+  /* 画面に出すアクセントは --accent-ui（ダークでは明るめにして読みやすさを保つ。R42） */
+  --color-accent: var(--accent-ui);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-accent-soft: var(--accent-soft);
@@ -74,6 +80,8 @@
   --text-title--line-height: 1.3;
   --text-display: 22px; /* ログイン画面の見出し・指標の大きな数字 */
   --text-display--line-height: 1.25;
+  --text-hero: 34px; /* 首ページの挨拶・ページを代表する数字（明朝で使う） */
+  --text-hero--line-height: 1.25;
 
   --radius-control: 8px; /* ボタン・入力・セグメント */
   --radius-card: 12px; /* グループ化した一覧・カード */
@@ -82,61 +90,71 @@
 
 /* ── Theme palettes ─────────────────────────────────────────────────────── */
 .theme-light {
-  --bg: #faf8f3;
+  /* 「朱印」: 灰みの白い紙に墨色の文字（specs/025 R40） */
+  --bg: #f5f4f1;
   /* グラフの系列色（アクセントとは独立。dataviz の検証済み） */
   --chart-1: #3d7fd1;
   --chart-2: #d97757;
-  --bg-2: #f4f1ea;
+  --bg-2: #eeede9;
   --surface: #ffffff;
-  --surface-2: #fbf9f4;
+  --surface-2: #faf9f7;
   --surface-elev: #ffffff;
-  --fg: #1f1b16;
-  --fg-2: #2e2a23;
-  --muted: #7a736b;
-  --muted-2: #9a938b;
-  --divider: rgba(31, 27, 22, 0.08);
-  --divider-strong: rgba(31, 27, 22, 0.14);
-  --bubble-user: #efeae0;
-  /* 誤り・取消・危険操作（旧版のハードコード #B83A1F をトークン化） */
-  --danger: #b83a1f;
-  --danger-soft: #fdefea;
-  --code-bg: #f1ecdf;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.07);
-  --shadow-3: 0 14px 40px rgba(0, 0, 0, 0.12);
+  --fg: #17181a;
+  --fg-2: #2b2d31;
+  --muted: #6c7078;
+  --muted-2: #9a9da3;
+  --divider: rgba(23, 24, 26, 0.08);
+  --divider-strong: rgba(23, 24, 26, 0.15);
+  /* 自分の発言は墨色の吹き出しに紙色の文字 */
+  --bubble-user: #17181a;
+  --bubble-user-fg: #f5f4f1;
+  /* 誤り・取消・危険操作。朱（アクセント）と見分けが付くよう、青みのある紅にする */
+  --danger: #b0203a;
+  --danger-fill: #b0203a;
+  --danger-soft: #fbecef;
+  --code-bg: #eeede9;
+  --shadow-1: 0 1px 2px rgba(20, 20, 25, 0.06);
+  --shadow-2: 0 6px 20px rgba(20, 20, 25, 0.09);
+  --shadow-3: 0 22px 60px rgba(20, 20, 25, 0.18);
   /* 横スクロールの「続きがある」端の影（地の色に依存しない） */
-  --edge-shadow: rgba(31, 27, 22, 0.1);
+  --edge-shadow: rgba(23, 24, 26, 0.1);
+  --accent-ui: var(--accent);
 }
 
 .theme-dark {
-  --bg: #16151a;
+  --bg: #111214;
   --chart-1: #4f8de0;
   --chart-2: #c96a4b;
-  --bg-2: #1b1a20;
-  --surface: #1f1e24;
-  --surface-2: #25232b;
-  --surface-elev: #2a2832;
-  --fg: #eeeae0;
-  --fg-2: #dad5c9;
-  --muted: #8e8a85;
-  --muted-2: #5e5b57;
-  --divider: rgba(255, 255, 255, 0.07);
-  --divider-strong: rgba(255, 255, 255, 0.13);
-  --bubble-user: #2c2a33;
-  /* 深色では明るめにしてコントラストを確保する（#B83A1F は 2.89:1 で不足） */
-  --danger: #f2876b;
-  --danger-soft: rgba(184, 58, 31, 0.18);
-  --code-bg: #15141a;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.4);
-  --shadow-3: 0 14px 40px rgba(0, 0, 0, 0.6);
+  --bg-2: #16171a;
+  --surface: #1a1b1e;
+  --surface-2: #202226;
+  --surface-elev: #26282d;
+  --fg: #ecebe7;
+  --fg-2: #d2d1cc;
+  --muted: #9a9ca2;
+  --muted-2: #6d7076;
+  --divider: rgba(255, 255, 255, 0.08);
+  --divider-strong: rgba(255, 255, 255, 0.15);
+  --bubble-user: #2c2e34;
+  --bubble-user-fg: #ecebe7;
+  /* ダークでは明るめにしてコントラストを確保する */
+  --danger: #f27a8e;
+  --danger-fill: #c2334c;
+  --danger-soft: rgba(176, 32, 58, 0.22);
+  --code-bg: #0d0e10;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 22px 60px rgba(0, 0, 0, 0.6);
   --edge-shadow: rgba(0, 0, 0, 0.45);
+  /* 利用者が選んだ色を、暗い地でも読める明るさへ寄せる */
+  --accent-ui: color-mix(in oklab, var(--accent) 80%, white);
 }
 
-/* Accent is user-selectable; default = terracotta. Soft/glow derived via color-mix
+/* Accent is user-selectable; default = 朱（vermilion）. Soft/glow derived via color-mix
    so a single --accent change updates every tinted surface. */
 :root {
-  --accent: #d97757;
+  --accent: #d2402b;
+  --accent-ui: var(--accent);
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --accent-glow: color-mix(in srgb, var(--accent) 25%, transparent);
   /* Secondary decorative glow for the login backdrop (set per-accent at runtime). */

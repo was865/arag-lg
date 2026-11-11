@@ -46,7 +46,7 @@ export function EmptyState({ user, stats, onFillComposer }: EmptyStateProps) {
         <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-[16px] bg-accent text-white shadow-[0_6px_20px_var(--accent-glow)] max-md:mb-[18px] max-md:h-12 max-md:w-12 max-md:rounded-sheet">
           <BrandMark size={24} className="max-md:h-[21px] max-md:w-[21px]" />
         </div>
-        <h1 className="m-0 mb-2.5 text-[clamp(22px,3.4vw,32px)] font-bold tracking-[-0.02em] text-fg [text-wrap:balance] [word-break:keep-all] max-md:text-[clamp(20px,6.4vw,26px)]">
+        <h1 className="m-0 mb-2.5 font-display text-[clamp(24px,3.6vw,34px)] font-bold tracking-[0.01em] text-fg [text-wrap:balance] [word-break:keep-all] max-md:text-[clamp(20px,6.4vw,26px)]">
           {greeting(t, hour)}{t.chat.greetingConnector}<span className="text-accent">{user.firstName}</span>{t.chat.greetingSuffix}
         </h1>
         <p className="m-0 mb-9 text-headline leading-[1.55] text-muted max-md:mb-[22px] max-md:text-body">

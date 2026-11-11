@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { DEFAULT_ACCENT, THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/constants";
 import type { Tweaks } from "@/lib/types";
+import { migrateStoredTweaks } from "@/lib/tweaks-migrate";
 
 const DEFAULTS: Tweaks = {
   dark: false,
@@ -34,7 +35,7 @@ function applyToRoot(t: Tweaks) {
   el.classList.toggle("theme-dark", t.dark);
   el.classList.toggle("theme-light", !t.dark);
   el.style.setProperty("--accent", t.accent);
-  const alt = t.accent.toLowerCase() === "#3fa77e" ? "#D97757" : "#3FA77E";
+  const alt = t.accent.toLowerCase() === "#3fa77e" ? "#D2402B" : "#3FA77E";
   el.style.setProperty("--accent-alt-glow", `color-mix(in srgb, ${alt} 30%, transparent)`);
   // standalone PWA のステータスバー背景（theme-color meta）をテーマに追従させる。
   // meta は layout の themeBootstrap が first paint 前に挿入済み（無ければ作る）。
@@ -52,7 +53,7 @@ export function useTweaks() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const tweaks = useMemo<Tweaks>(() => {
     try {
-      return { ...DEFAULTS, ...(raw ? JSON.parse(raw) : {}) };
+      return { ...DEFAULTS, ...(raw ? migrateStoredTweaks(JSON.parse(raw)) : {}) };
     } catch {
       return DEFAULTS;
     }
@@ -68,7 +69,7 @@ export function useTweaks() {
     <K extends keyof Tweaks>(key: K, value: Tweaks[K]) => {
       const current = (() => {
         try {
-          return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) || "{}") } as Tweaks;
+          return { ...DEFAULTS, ...migrateStoredTweaks(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) || "{}")) } as Tweaks;
         } catch {
           return DEFAULTS;
         }

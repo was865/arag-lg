@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/constants";
+import { LEGACY_DEFAULT_ACCENT, TWEAKS_VERSION } from "@/lib/tweaks-migrate";
 import { getDictionary } from "@/i18n/dictionary";
 import { LocaleProvider } from "@/i18n/context";
 import { ToastProvider } from "@/components/feedback/toast-provider";
@@ -13,6 +14,8 @@ import "@fontsource/noto-sans-jp/400.css";
 import "@fontsource/noto-sans-jp/500.css";
 import "@fontsource/noto-sans-jp/600.css";
 import "@fontsource/noto-sans-jp/700.css";
+// 見出し用の明朝（挨拶・大きな数字・文書の題）。太字だけを読み込む。
+import "@fontsource/shippori-mincho/700.css";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -39,7 +42,9 @@ const themeBootstrap = `
     dark = !!t.dark;
     var el = document.documentElement;
     el.classList.add(dark ? 'theme-dark' : 'theme-light');
-    if (t.accent) el.style.setProperty('--accent', t.accent);
+    // 版の印が無い保存値の旧既定（橙）は使わず、CSS の既定（朱）に任せる（lib/tweaks-migrate と同じ判定）
+    var legacy = !(t.v >= ${TWEAKS_VERSION}) && String(t.accent).toLowerCase() === '${LEGACY_DEFAULT_ACCENT}';
+    if (t.accent && !legacy) el.style.setProperty('--accent', t.accent);
   } catch (e) {
     document.documentElement.classList.add('theme-light');
   }
