@@ -1,5 +1,6 @@
 "use client";
 
+import { parseRetrieveHits } from "@/lib/chat/evidence";
 import { cn, formatMs } from "@/lib/utils";
 import { Icon } from "@/components/icons";
 import type { RerankHit, ToolCall, ToolName, ToolStatus, ToolView } from "@/lib/types";
@@ -179,32 +180,6 @@ function hasInputData(input: Record<string, unknown>): boolean {
 
 function isExpandable(step: ToolCall): boolean {
   return hasInputData(step.input) || step.output != null;
-}
-
-interface RetrieveHit {
-  n: number;
-  title: string;
-  heading: string;
-  snippet: string;
-}
-
-/** retrieve / fetch_document の出力テキスト（"[N] Title — heading\nbody"）を構造化する。 */
-function parseRetrieveResult(text: unknown): RetrieveHit[] {
-  if (typeof text !== "string" || !text) return [];
-  const hits: RetrieveHit[] = [];
-  // 各エントリは空行 + `[N]` 行始まりで区切る。最初のエントリは split で先頭に来る。
-  for (const part of text.split(/\n\n(?=\[\d+\])/)) {
-    const m = part.match(/^\[(\d+)\]\s*(.+?)\s*—\s*([^\n]+)\n?([\s\S]*)$/);
-    if (m) {
-      hits.push({
-        n: Number(m[1]),
-        title: m[2].trim(),
-        heading: m[3].trim(),
-        snippet: m[4].trim(),
-      });
-    }
-  }
-  return hits;
 }
 
 function KeyValueGrid({ rows }: { rows: { k: string; v: React.ReactNode }[] }) {
@@ -518,7 +493,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   }
 
   if ((step.name === "retrieve" || step.name === "fetch_document") && typeof output.result === "string") {
-    const hits = parseRetrieveResult(output.result);
+    const hits = parseRetrieveHits(output.result);
     if (hits.length) {
       return (
         <div className="overflow-hidden rounded-control border-[0.5px] border-divider bg-code-bg">

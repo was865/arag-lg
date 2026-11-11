@@ -52,7 +52,8 @@ import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspac
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { IconButton, Button } from "@/components/ui/button";
-import { m } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
+import { DURATION } from "@/lib/motion";
 import { CommandPalette, type PaletteItem } from "@/components/command-palette";
 import { kbGlyph } from "@/lib/home";
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
@@ -803,8 +804,15 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               )}
             </div>
 
+            <AnimatePresence>
             {awayFromBottom && phase !== "empty" && (
-              <div className="pointer-events-none relative h-0">
+              <m.div
+                key="jump"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8, transition: { duration: DURATION.exit } }}
+                className="pointer-events-none relative h-0"
+              >
                 <button
                   type="button"
                   onClick={jumpToLatest}
@@ -815,8 +823,9 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                   </svg>
                   {running ? "生成中の回答へ" : "最新へ"}
                 </button>
-              </div>
+              </m.div>
             )}
+            </AnimatePresence>
             <m.div layout="position" className={cn("min-w-0", home && "mx-auto w-full max-w-[760px]")}>
             <Composer
               value={composerValue}

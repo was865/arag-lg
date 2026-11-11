@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
+import { EvidenceRail } from "@/components/chat/evidence-rail";
+import { evidenceList } from "@/lib/chat/evidence";
 import { AnswerFooter, CancelledNotice, ErrorNotice, UncitedNotice } from "@/components/chat/answer-footer";
 import { UserAttachments } from "@/components/uploads/uploads";
 import type { CitationStyle, StagedFile, Turn, TurnImage, ToolView } from "@/lib/types";
@@ -165,7 +167,7 @@ export function AssistantMessage({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Streaming answer: markdown body + a blinking caret while tokens arrive. */
+/** 生成中の回答: 届いた文字が淡く現れ、末尾で印が呼吸する（specs/025 R20）。 */
 export function StreamingAnswer({
   text,
   streaming,
@@ -179,9 +181,9 @@ export function StreamingAnswer({
 }) {
   return (
     <div className="text-callout text-fg-2">
-      <AnswerMarkdown text={text} onCite={onCite} citationStyle={citationStyle} />
+      <AnswerMarkdown text={text} onCite={onCite} citationStyle={citationStyle} streaming={streaming} />
       {streaming && (
-        <span className="ml-px inline-block h-4 w-2 animate-blink bg-accent align-[-3px]" />
+        <span className="ml-px inline-block h-4 w-2 animate-breathe rounded-[2px] bg-accent align-[-3px] motion-reduce:animate-none" />
       )}
     </div>
   );
@@ -270,13 +272,20 @@ export function Transcript({
               )}
               <AgentActivity
                 steps={turn.steps}
+                sources={turn.sources}
                 variant={toolView}
                 running={running}
                 expandedMap={expandedSteps}
                 onToggleStep={onToggleStep}
               />
               {(turn.answer.length > 0 || turn.streaming) && (
-                <StreamingAnswer text={turn.answer} streaming={turn.streaming} onCite={(n) => onCite(n, idx)} citationStyle={citationStyle} />
+                // 回答と根拠カード。幅が足りれば横に、足りなければ下に並べる（specs/025 R45）
+                <div className="@container">
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-3.5 @[760px]:grid-cols-[minmax(0,1fr)_248px]">
+                    <StreamingAnswer text={turn.answer} streaming={turn.streaming} onCite={(n) => onCite(n, idx)} citationStyle={citationStyle} />
+                    <EvidenceRail items={evidenceList(turn.citationMap, turn.sources)} onOpen={(n) => onCite(n, idx)} />
+                  </div>
+                </div>
               )}
               {/* 取消でも途中までの回答は残す（runner が保存する） */}
               {turn.status === "cancelled" && <CancelledNotice onRetry={() => onRegenerate(idx)} />}

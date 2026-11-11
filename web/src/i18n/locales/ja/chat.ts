@@ -18,6 +18,16 @@ export const chat = {
   // agent-activity
   agentRunning: "エージェント実行中…",
   agentDone: "エージェント実行",
+  /** 検索の過程の要約（specs/025 R45） */
+  storySearched: "{n} 件の資料を検索",
+  storyCited: "{n} 件を引用",
+  storyNoSearch: "資料は検索していません",
+  storyDetail: "詳細",
+  storyMore: "ほか {n} 件",
+  /** 回答の横の根拠カード */
+  evidenceHeading: "根拠",
+  evidenceCount: "{n} 件",
+  evidencePage: "{n} ページ",
   stepUnit: "ステップ",
 
   // composer

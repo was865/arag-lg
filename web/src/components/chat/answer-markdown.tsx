@@ -11,11 +11,15 @@ import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { remarkCitations } from "@/components/chat/remark-citations";
 import { sealClass } from "@/components/ui/seal";
+import { linkEvidence } from "@/components/chat/evidence-rail";
+import { splitForFade } from "@/lib/chat/evidence";
 
 export interface AnswerMarkdownProps {
   text: string;
   onCite: (n: number) => void;
   citationStyle: CitationStyle;
+  /** 生成中（届いた文字を淡く出す） */
+  streaming?: boolean;
   className?: string;
 }
 
@@ -30,18 +34,57 @@ function citeBtnClass(style: CitationStyle) {
   return cn(sealClass({ size: "sm" }), "mx-0.5 cursor-pointer border-0 align-[2px] transition-[transform,box-shadow] duration-(--duration-fast) hover:-translate-y-px hover:scale-110 hover:shadow-[0_0_0_4px_var(--accent-soft)] motion-reduce:hover:transform-none");
 }
 
-/** 引用番号ボタン。クリックで該当出典を開く（onCite）。 */
+/** 引用番号ボタン。クリックで該当出典を開く（onCite）。ホバー・フォーカスで同じ番号の根拠カードを光らせる。 */
 function CitationButton({ n, style, onCite }: { n: number; style: CitationStyle; onCite: (n: number) => void }) {
   const { t } = useT();
+  const link = (on: boolean) => (e: { currentTarget: Element }) => linkEvidence(e.currentTarget, n, on);
   return (
     <button
-      className={citeBtnClass(style)}
+      data-cite={n}
+      className={cn(citeBtnClass(style), "data-[on]:-translate-y-px data-[on]:scale-110 data-[on]:shadow-[0_0_0_4px_var(--accent-soft)]")}
       title={interpolate(t.chat.openCitation, { n: String(n) })}
       onClick={() => onCite(n)}
+      onPointerEnter={link(true)}
+      onPointerLeave={link(false)}
+      onFocus={link(true)}
+      onBlur={link(false)}
     >
       {style === "chip" ? `[${n}]` : n}
     </button>
   );
+}
+
+/**
+ * 生成中の回答の文字を小分けにして <span class="stream-tok"> で包む rehype プラグイン（specs/025 R20）。
+ * 新しく増えた span だけが淡く現れる（前の span は React が同じ要素として残すので出し直しにならない）。
+ * コード・数式の中は包まない。@types/hast は未宣言の依存なので、必要最小限の局所型で扱う。
+ */
+interface HastNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+}
+const NO_FADE = new Set(["code", "pre", "svg", "math"]);
+function fadeIn(node: HastNode): void {
+  if (!node.children) return;
+  const cls = node.properties?.className;
+  if (node.tagName && (NO_FADE.has(node.tagName) || (Array.isArray(cls) && cls.some((c) => String(c).startsWith("katex"))))) return;
+  node.children = node.children.flatMap((child) => {
+    if (child.type !== "text" || !child.value) {
+      fadeIn(child);
+      return [child];
+    }
+    return splitForFade(child.value).map((part) =>
+      /^\s+$/.test(part)
+        ? { type: "text", value: part }
+        : { type: "element", tagName: "span", properties: { className: ["stream-tok"] }, children: [{ type: "text", value: part }] },
+    );
+  });
+}
+function rehypeStreamFade() {
+  return (tree: HastNode): void => fadeIn(tree);
 }
 
 /**
@@ -106,12 +149,12 @@ const ANSWER_PROSE = [
  * 引用番号 [N] はクリック可能なボタン、画像は自社アセットのみ描画する。
  * セキュリティ上、生 HTML は描画しない(rehype-raw 不使用)。
  */
-export function AnswerMarkdown({ text, onCite, citationStyle, className }: AnswerMarkdownProps) {
+export function AnswerMarkdown({ text, onCite, citationStyle, streaming, className }: AnswerMarkdownProps) {
   return (
     <div className={cn(ANSWER_PROSE, className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, remarkCitations]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={streaming ? [rehypeKatex, rehypeStreamFade] : [rehypeKatex]}
         components={{
           a: ({ href, children }) => {
             if (typeof href === "string" && href.startsWith("#cite-")) {
