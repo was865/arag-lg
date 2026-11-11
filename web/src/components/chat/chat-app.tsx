@@ -685,8 +685,21 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         ) : page.view === "trash" ? (
           <TrashView onOpenMenu={() => setSidebarCollapsed(false)} />
         ) : (
-        <main className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg">
-          <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:gap-1 max-md:px-2.5">
+        <main
+          className={cn(
+            "grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg",
+            // 首ページの淡い光は上部バーの下で切れないよう、main 全体に敷く（バーは透明にする）。
+            // 色帯が出ないよう薄くし、途中の濃さを刻んでなだらかに消す。
+            home &&
+              "bg-[radial-gradient(70%_55%_at_50%_-8%,color-mix(in_srgb,var(--accent)_10%,transparent)_0%,color-mix(in_srgb,var(--accent)_6%,transparent)_35%,color-mix(in_srgb,var(--accent)_2%,transparent)_65%,transparent_100%)]",
+          )}
+        >
+          <header
+            className={cn(
+              "sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] px-[18px] max-md:gap-1 max-md:px-2.5",
+              home ? "border-transparent bg-transparent" : "border-divider bg-bg",
+            )}
+          >
             <IconButton
               label={t.workspace.openMenuAriaLabel}
               tooltip={false}
@@ -755,7 +768,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             className={cn(
               "relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] overflow-hidden",
               home
-                ? "grid-rows-[minmax(0,1fr)_auto_minmax(0,1.2fr)] bg-[radial-gradient(60%_42%_at_50%_0%,var(--accent-soft),transparent_70%)] max-md:grid-rows-[auto_auto_minmax(0,1fr)]"
+                ? "grid-rows-[minmax(0,1fr)_auto_minmax(0,1.2fr)] max-md:grid-rows-[auto_auto_minmax(0,1fr)]"
                 : "grid-rows-[1fr_auto]",
             )}
           >
