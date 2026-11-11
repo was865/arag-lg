@@ -5,6 +5,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { inputClass } from "@/components/ui/input";
 import { personLabel, remember, usePeople } from "@/hooks/use-people";
 import { accessApi, type DepartmentOut, type Person } from "@/lib/access/api";
 import {
@@ -48,12 +51,6 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   useEffect(() => {
     let alive = true;
@@ -177,35 +174,22 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[240] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 max-md:items-end max-md:p-0"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`「${kbName}」を共有`}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[min(640px,90dvh)] w-[520px] max-w-full animate-pop-in flex-col rounded-[16px] border-[0.5px] border-divider-strong bg-surface shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0]"
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        title={`「${kbName}」を共有`}
+        description={initial === null ? "読み込んでいます…" : `利用できる人: 合計 ${total.toLocaleString("ja-JP")} 名`}
+        size="md"
+        className="max-h-[min(640px,90dvh)]"
+        // 開いた直後は検索欄にフォーカス（管理者のとき）
+        onOpenAutoFocus={(e) => {
+          if (inputRef.current) {
+            e.preventDefault();
+            inputRef.current.focus();
+          }
+        }}
       >
-        <div className="flex items-start gap-2 px-5 pb-3 pt-5">
-          <div className="min-w-0 flex-1">
-            <h3 className="m-0 truncate text-[15px] font-bold text-fg">「{kbName}」を共有</h3>
-            <p className="m-0 mt-0.5 text-[12px] text-muted">
-              {initial === null ? "読み込んでいます…" : `利用できる人: 合計 ${total.toLocaleString("ja-JP")} 名`}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
-          >
-            <Icon name="close" size={13} />
-          </button>
-        </div>
-
         {loadError ? (
-          <p className="m-0 px-5 pb-5 text-[13px] text-danger">{loadError}</p>
+          <p className="m-0 px-5 pb-5 text-body text-danger">{loadError}</p>
         ) : (
           <>
             {canManage && (
@@ -216,24 +200,24 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="部門または人（名前・メール）を追加"
                   aria-label="部門または人を追加"
-                  className="h-9 w-full rounded-lg border-[0.5px] border-divider-strong bg-surface px-3 text-[13px] text-fg outline-none placeholder:text-muted-2 focus:border-accent"
+                  className={inputClass}
                 />
                 {candidates.length > 0 && (
                   <ul
                     role="listbox"
-                    className="absolute inset-x-5 top-10 z-10 m-0 list-none overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
+                    className="absolute inset-x-5 top-10 z-10 m-0 list-none overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
                   >
                     {candidates.map((c) => (
                       <li key={c.kind === "department" ? `d:${c.dept.id}` : `u:${c.person.id}`}>
                         <button
                           onClick={() => void add(c)}
-                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-divider"
+                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-body hover:bg-divider"
                         >
                           <Icon name={c.kind === "department" ? "group" : "user"} size={14} className="text-muted" />
                           <span className="min-w-0 flex-1 truncate text-fg">
                             {c.kind === "department" ? c.dept.name : c.person.name || c.person.email}
                           </span>
-                          <span className="shrink-0 truncate text-[11.5px] text-muted">
+                          <span className="shrink-0 truncate text-caption text-muted">
                             {c.kind === "department" ? `部門 · ${c.dept.member_count} 名` : c.person.email}
                           </span>
                         </button>
@@ -262,12 +246,12 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                         <Icon name={icon} size={14} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] text-fg">{label(s)}</div>
+                        <div className="truncate text-body text-fg">{label(s)}</div>
                         {s.subject_type === "department" ? (
                           <button
                             onClick={() => setOpenDept((d) => (d === s.subject_id ? null : s.subject_id))}
                             aria-expanded={openDept === s.subject_id}
-                            className="inline-flex items-center gap-0.5 text-[11.5px] text-muted hover:text-fg"
+                            className="inline-flex items-center gap-0.5 text-caption text-muted hover:text-fg"
                           >
                             {sub}
                             <Icon
@@ -277,7 +261,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                             />
                           </button>
                         ) : (
-                          <div className="truncate text-[11.5px] text-muted">{sub}</div>
+                          <div className="truncate text-caption text-muted">{sub}</div>
                         )}
                       </div>
                       {canManage ? (
@@ -287,7 +271,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                             onChange={(e) => setRole(s, e.target.value as ShareRole)}
                             aria-label={`${label(s)} の役割`}
                             title={ROLE_HINT[s.role]}
-                            className="h-8 rounded-md border-[0.5px] border-divider-strong bg-surface px-2 text-[12.5px] text-fg"
+                            className="h-8 rounded-md border-[0.5px] border-divider-strong bg-surface px-2 text-footnote text-fg"
                           >
                             {(s.subject_type === "everyone" ? (["viewer"] as ShareRole[]) : ROLES).map((r) => (
                               <option key={r} value={r}>
@@ -304,11 +288,11 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                           </button>
                         </>
                       ) : (
-                        <span className="shrink-0 text-[12.5px] text-muted">{ROLE_LABEL[s.role]}</span>
+                        <span className="shrink-0 text-footnote text-muted">{ROLE_LABEL[s.role]}</span>
                       )}
                     </div>
                     {openDept === s.subject_id && (
-                      <p className="m-0 pb-2 pl-[42px] text-[12px] leading-[1.6] text-muted">
+                      <p className="m-0 pb-2 pl-[42px] text-footnote leading-[1.6] text-muted">
                         {members.length === 0 ? "メンバーはいません" : members.map((id) => personLabel(id, people)).join("、")}
                       </p>
                     )}
@@ -320,10 +304,10 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-2">
                     <Icon name="building" size={14} />
                   </span>
-                  <span className="min-w-0 flex-1 text-[13px] text-muted">社内の全員</span>
+                  <span className="min-w-0 flex-1 text-body text-muted">社内の全員</span>
                   <button
                     onClick={() => setShares((xs) => [...xs, { subject_type: "everyone", subject_id: "", role: "viewer" }])}
-                    className="rounded-md px-2 py-1 text-[12px] font-medium text-accent hover:bg-accent-soft"
+                    className="rounded-md px-2 py-1 text-footnote font-medium text-accent hover:bg-accent-soft"
                   >
                     全員に閲覧を許可
                   </button>
@@ -335,7 +319,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
               <div
                 role="alert"
                 className={cn(
-                  "mx-5 mt-1 rounded-lg px-3 py-2 text-[12px] leading-[1.6]",
+                  "mx-5 mt-1 rounded-control px-3 py-2 text-footnote leading-[1.6]",
                   error ? "bg-danger-soft text-danger" : "border-[0.5px] border-divider-strong bg-surface-2 text-fg",
                 )}
               >
@@ -350,30 +334,21 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-3 max-md:pb-[max(16px,env(safe-area-inset-bottom))]">
+            <DialogFooter className="items-center pt-3">
               {canManage ? (
                 <>
-                  <button
-                    onClick={onClose}
-                    className="h-8 rounded-lg border-[0.5px] border-divider-strong px-3 text-[12.5px] font-medium text-fg hover:bg-divider"
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    onClick={() => void save()}
-                    disabled={!dirty || Boolean(error) || saving}
-                    className="h-8 rounded-lg bg-accent px-3.5 text-[12.5px] font-semibold text-white hover:brightness-105 disabled:opacity-50"
-                  >
+                  <Button onClick={onClose}>キャンセル</Button>
+                  <Button variant="primary" onClick={() => void save()} disabled={!dirty || Boolean(error) || saving}>
                     {saving ? "保存しています…" : "保存"}
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <p className="m-0 flex-1 text-[12px] text-muted">共有を変えられるのは、このナレッジベースの管理者と管理者権限のある人です。</p>
+                <p className="m-0 flex-1 text-footnote text-muted">共有を変えられるのは、このナレッジベースの管理者と管理者権限のある人です。</p>
               )}
-            </div>
+            </DialogFooter>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

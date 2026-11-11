@@ -2,6 +2,7 @@
 
 /** ライブラリの見出しに出す共有の要約と「共有」ボタン（specs/024 R11）。 */
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { KbShareDialog } from "@/components/access/kb-share-dialog";
 import { refreshKbs } from "@/hooks/use-kbs";
@@ -35,15 +36,15 @@ export function KbShareButton({ kbId, kbName }: { kbId: string; kbName: string }
   const text = summary?.key === key ? summary.text : null;
   return (
     <>
-      <button
+      <Button variant="secondary" size="sm"
         onClick={() => setOpen(true)}
         title={text ?? "共有"}
-        className="inline-flex h-[30px] min-w-0 items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
+        className="min-w-0"
       >
         <Icon name="group" size={13} />
         <span className="max-md:hidden">共有</span>
         {text && <span className="min-w-0 max-w-[260px] truncate font-normal text-muted max-xl:hidden">{text}</span>}
-      </button>
+      </Button>
       {open && (
         <KbShareDialog
           kbId={kbId}

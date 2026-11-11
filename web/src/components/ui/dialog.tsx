@@ -12,7 +12,14 @@ import { cn } from "@/lib/utils";
 export const Dialog = D.Root;
 export const DialogClose = D.Close;
 
-const WIDTH = { sm: "w-[400px]", md: "w-[520px]", lg: "w-[600px]" } as const;
+const WIDTH = {
+  sm: "w-[400px]",
+  md: "w-[520px]",
+  lg: "w-[600px]",
+  xl: "w-[760px]",
+  /** 表・文書を広く見るシート（ほぼ全画面） */
+  full: "h-full max-h-full w-full max-w-[1100px] max-md:max-h-full max-md:rounded-none",
+} as const;
 
 export function DialogContent({
   title,
@@ -40,6 +47,7 @@ export function DialogContent({
         className={cn(
           "fixed inset-0 grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none max-md:items-end max-md:p-0",
           layer === "top" ? "z-[250]" : "z-[230]",
+          size === "full" && "p-4 max-md:p-0",
         )}
       >
         <D.Content
@@ -73,6 +81,51 @@ export function DialogContent({
         </D.Content>
       </D.Overlay>
     </D.Portal>
+  );
+}
+
+/**
+ * 見出しなどを自前で組む大きなダイアログ用（ヘルプなど）。暗転・フォーカス・Esc だけを受け持つ。
+ * title は読み上げ用（画面には出さない）。
+ */
+export function DialogFrame({
+  title,
+  layer = "base",
+  className,
+  children,
+  ...props
+}: Omit<React.ComponentProps<typeof D.Content>, "title"> & { title: string; layer?: "base" | "top" }) {
+  return (
+    <D.Portal>
+      <D.Overlay
+        className={cn(
+          "fixed inset-0 grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none max-md:p-0",
+          layer === "top" ? "z-[250]" : "z-[230]",
+        )}
+      >
+        <D.Content
+          aria-describedby={undefined}
+          className={cn(
+            "max-w-full animate-pop-in overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none motion-reduce:animate-none",
+            className,
+          )}
+          {...props}
+        >
+          <D.Title className="sr-only">{title}</D.Title>
+          {children}
+        </D.Content>
+      </D.Overlay>
+    </D.Portal>
+  );
+}
+
+/** ダイアログの本文（スクロールする部分） */
+export function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn("min-h-0 flex-1 overflow-y-auto px-5 pb-[max(20px,env(safe-area-inset-bottom))]", className)}
+      {...props}
+    />
   );
 }
 

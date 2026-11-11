@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { AnswerFooter, CancelledNotice, ErrorNotice, UncitedNotice } from "@/components/chat/answer-footer";
@@ -38,6 +39,7 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
       {open && (
         <div
           role="dialog"
+          // eslint-disable-next-line no-restricted-syntax -- 画像の拡大表示（ライトボックス）。枠のない全面表示で、Esc は自前で処理する
           aria-modal="true"
           aria-label={t.chat.imageAttached}
           onClick={() => setOpen(false)}
@@ -103,12 +105,11 @@ export function UserMessage({
               onClick={() => { setEditing(false); setDraft(text); }}
               className="h-7 rounded-[7px] border-[0.5px] border-divider-strong bg-surface px-3 text-[12px] font-medium text-fg hover:bg-surface-2"
             >{t.chat.editCancel}</button>
-            <button
+            <Button variant="primary" size="sm"
               type="button"
               onClick={submit}
               disabled={!draft.trim()}
-              className="h-7 rounded-[7px] border-0 bg-accent px-3 text-[12px] font-semibold text-white disabled:opacity-50"
-            >{t.chat.editSubmit}</button>
+            >{t.chat.editSubmit}</Button>
           </div>
         </div>
       </div>

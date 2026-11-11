@@ -10,6 +10,7 @@
  *   フォルダは中身ごと移るので確認を出す。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/icons";
 import { DocumentsUploadQueue, DropOverlay } from "@/components/uploads/uploads";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -592,16 +593,15 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           </button>
         )}
         {kb && kb.kind === "org" && <KbShareButton kbId={kb.id} kbName={kb.name} />}
-        <button
+        <Button variant="secondary" size="sm"
           onClick={() => onAsk(kbId)}
           title={kb ? "このナレッジベースに質問" : "質問する"}
-          className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
         >
           <Icon name="chat" size={13} />
           <span className="max-lg:hidden">{kb ? "このナレッジベースに質問" : "質問する"}</span>
-        </button>
+        </Button>
         {canEditFolders && (
-          <button
+          <Button variant="secondary" size="sm"
             onClick={() => {
               setQuery("");
               setSearch("");
@@ -609,24 +609,22 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               setCreating("");
             }}
             title="新しいフォルダ"
-            className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
           >
             <Icon name="folder" size={13} />
             <span className="max-md:hidden">フォルダ</span>
-          </button>
+          </Button>
         )}
         {target && (
           <span className="relative">
-            <button
+            <Button variant="primary" size="sm"
               onClick={() => setAddMenu((x) => !x)}
               aria-haspopup="menu"
               aria-expanded={addMenu}
-              className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-0 bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
             >
               <Icon name="plus" size={13} />
               追加
               <Icon name="chevronDown" size={11} />
-            </button>
+            </Button>
             {addMenu && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setAddMenu(false)} />

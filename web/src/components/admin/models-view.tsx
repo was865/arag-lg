@@ -6,6 +6,9 @@ import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Icon } from "@/components/icons";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Field, inputClass } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { components, paths } from "@/lib/api/schema";
 import {
@@ -34,9 +37,8 @@ function errMessage(e: unknown, fallback: string): string {
   return m ?? fallback;
 }
 
-const field =
-  "h-9 w-full rounded-[9px] border-[0.5px] border-divider-strong bg-surface px-3 text-[13.5px] text-fg outline-none focus:border-accent disabled:opacity-60";
-const ghostBtn = "h-8 rounded-lg px-2.5 text-[12.5px] font-medium text-fg-2 hover:bg-divider hover:text-fg";
+const field = inputClass;
+const ghostBtn = buttonVariants({ variant: "ghost", size: "sm" });
 
 export function ModelsView() {
   const push = useToast();
@@ -138,7 +140,7 @@ export function ModelsView() {
       <AdminHeader current="models" />
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto flex max-w-[1000px] flex-col gap-5 px-[18px] pb-12 pt-4 max-md:px-3">
-          {error && <p className="m-0 text-[12.5px] text-danger">{error}</p>}
+          {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           {!data && !error && (
             <div className="grid h-60 place-items-center">
               <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
@@ -149,7 +151,7 @@ export function ModelsView() {
               {!data.encryption_ready && (
                 <div
                   role="alert"
-                  className="flex gap-2.5 rounded-[12px] border-[0.5px] border-danger/40 bg-danger-soft px-4 py-3 text-[12.5px] leading-[1.7] text-fg-2"
+                  className="flex gap-2.5 rounded-card border-[0.5px] border-danger/40 bg-danger-soft px-4 py-3 text-footnote leading-[1.7] text-fg-2"
                 >
                   <span className="mt-0.5 text-danger">
                     <Icon name="alert" size={15} />
@@ -158,7 +160,7 @@ export function ModelsView() {
                     <b className="text-fg">API キーを登録できません。</b>
                     暗号化の鍵 <code className="font-mono">ARAG_SECRET_KEY</code> がサーバに設定されていません。
                     鍵を作って <code className="font-mono">.env</code> に書き、API とワーカーを再起動してください。
-                    <pre className="m-0 mt-1.5 overflow-x-auto rounded-md bg-surface px-2.5 py-1.5 font-mono text-[11.5px]">
+                    <pre className="m-0 mt-1.5 overflow-x-auto rounded-md bg-surface px-2.5 py-1.5 font-mono text-caption">
                       cd api &amp;&amp; uv run python -c &quot;from cryptography.fernet import Fernet;
                       print(Fernet.generate_key().decode())&quot;
                     </pre>
@@ -166,7 +168,7 @@ export function ModelsView() {
                 </div>
               )}
 
-              <section className="rounded-[12px] border-[0.5px] border-divider bg-surface">
+              <section className="rounded-card border-[0.5px] border-divider bg-surface">
                 <SectionHead
                   title="接続（API キー）"
                   hint="キーは暗号化して保存し、画面には末尾 4 文字だけを表示します。"
@@ -174,7 +176,7 @@ export function ModelsView() {
                     <button
                       onClick={() => setCredDialog("new")}
                       disabled={!data.encryption_ready}
-                      className="flex h-8 items-center gap-1.5 rounded-lg bg-fg px-3 text-[12.5px] font-semibold text-bg disabled:opacity-40"
+                      className="flex h-8 items-center gap-1.5 rounded-control bg-fg px-3 text-footnote font-semibold text-bg disabled:opacity-40"
                     >
                       <Icon name="plus" size={12} />
                       接続を追加
@@ -182,7 +184,7 @@ export function ModelsView() {
                   }
                 />
                 {data.credentials.length === 0 ? (
-                  <p className="m-0 px-4 pb-5 pt-1 text-[12.5px] text-muted">
+                  <p className="m-0 px-4 pb-5 pt-1 text-footnote text-muted">
                     まだありません。接続を追加しない間は、サーバの環境変数のキーを使います。
                   </p>
                 ) : (
@@ -194,12 +196,12 @@ export function ModelsView() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span className="break-all text-[13.5px] font-semibold text-fg">{c.label}</span>
-                            <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">
+                            <span className="break-all text-body font-semibold text-fg">{c.label}</span>
+                            <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
                               {providerLabel(c.provider)}
                             </span>
                           </div>
-                          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11.5px] text-muted">
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 text-caption text-muted">
                             <span className="font-mono">{c.key_hint ? `••••${c.key_hint}` : "キーなし"}</span>
                             {c.base_url && <span className="truncate font-mono">{c.base_url}</span>}
                             <span>モデル {c.models} 件</span>
@@ -223,14 +225,14 @@ export function ModelsView() {
                 )}
               </section>
 
-              <section className="rounded-[12px] border-[0.5px] border-divider bg-surface">
+              <section className="rounded-card border-[0.5px] border-divider bg-surface">
                 <SectionHead
                   title="モデル一覧"
                   hint="会話で選べるモデルです。使える先頭のものが既定になります。変更は次の質問から効きます。.env のモデルを画面で編集するには「一覧に登録」を押してください。"
                   action={
                     <button
                       onClick={() => setModelDialog({ row: null })}
-                      className="flex h-8 items-center gap-1.5 rounded-lg bg-fg px-3 text-[12.5px] font-semibold text-bg"
+                      className="flex h-8 items-center gap-1.5 rounded-control bg-fg px-3 text-footnote font-semibold text-bg"
                     >
                       <Icon name="plus" size={12} />
                       モデルを追加
@@ -238,7 +240,7 @@ export function ModelsView() {
                   }
                 />
                 {data.models.length === 0 ? (
-                  <p className="m-0 px-4 pb-5 pt-1 text-[12.5px] text-muted">
+                  <p className="m-0 px-4 pb-5 pt-1 text-footnote text-muted">
                     まだありません。モデルを追加すると、会話の入力欄で選べるようになります。
                   </p>
                 ) : (
@@ -280,28 +282,28 @@ export function ModelsView() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[13.5px] font-semibold text-fg">{m.label}</span>
-                              <span className="font-mono text-[11px] text-muted-2">{m.id}</span>
+                              <span className="text-body font-semibold text-fg">{m.label}</span>
+                              <span className="font-mono text-caption text-muted-2">{m.id}</span>
                               {m.is_default && (
-                                <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-semibold text-accent">
+                                <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-caption font-semibold text-accent">
                                   既定
                                 </span>
                               )}
                               {m.source === "env" && (
-                                <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted">
+                                <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
                                   .env
                                 </span>
                               )}
                               {m.tags.map((t) => (
                                 <span
                                   key={t}
-                                  className="rounded-md border-[0.5px] border-divider-strong px-1.5 py-[1px] text-[10.5px] text-muted"
+                                  className="rounded-md border-[0.5px] border-divider-strong px-1.5 py-[1px] text-caption text-muted"
                                 >
                                   {t}
                                 </span>
                               ))}
                             </div>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11.5px] text-muted">
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-caption text-muted">
                               <span className="font-mono">{m.model}</span>
                               <span>
                                 {m.credential_label ??
@@ -393,8 +395,8 @@ function SectionHead({ title, hint, action }: { title: string; hint: string; act
   return (
     <div className="flex items-start gap-3 px-4 pb-2 pt-3.5">
       <div className="min-w-0 flex-1">
-        <h2 className="m-0 text-[14px] font-semibold text-fg">{title}</h2>
-        <p className="m-0 mt-0.5 text-[11.5px] leading-[1.6] text-muted">{hint}</p>
+        <h2 className="m-0 text-callout font-semibold text-fg">{title}</h2>
+        <p className="m-0 mt-0.5 text-caption leading-[1.6] text-muted">{hint}</p>
       </div>
       {action}
     </div>
@@ -417,14 +419,14 @@ function Availability({ model }: { model: Model }) {
 }
 
 function CheckResult({ check }: { check: Check | "running" }) {
-  if (check === "running") return <p className="m-0 mt-1 text-[11.5px] text-muted">確認しています…</p>;
+  if (check === "running") return <p className="m-0 mt-1 text-caption text-muted">確認しています…</p>;
   return check.ok ? (
-    <p className="m-0 mt-1 flex items-center gap-1 text-[11.5px] text-fg-2">
+    <p className="m-0 mt-1 flex items-center gap-1 text-caption text-fg-2">
       <Icon name="check" size={11} />
       応答がありました（{(check.latency_ms / 1000).toFixed(1)} 秒）
     </p>
   ) : (
-    <p className="m-0 mt-1 flex items-start gap-1 break-all text-[11.5px] text-danger">
+    <p className="m-0 mt-1 flex items-start gap-1 break-all text-caption text-danger">
       <span className="mt-[2px] shrink-0">
         <Icon name="alert" size={11} />
       </span>
@@ -444,62 +446,31 @@ function Shell({
   onSubmit: () => void;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
   return (
-    <div
-      className="fixed inset-0 z-[240] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 max-md:items-end max-md:p-0"
-      onClick={onClose}
-    >
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit();
-        }}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90dvh] w-[460px] max-w-full animate-pop-in flex-col gap-3 overflow-y-auto rounded-[16px] border-[0.5px] border-divider-strong bg-surface p-5 shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0] max-md:pb-[max(20px,env(safe-area-inset-bottom))]"
-      >
-        <h3 className="m-0 text-[15px] font-bold text-fg">{title}</h3>
-        {children}
-      </form>
-    </div>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title={title} size="sm" className="max-h-[90dvh]">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit();
+          }}
+          className="flex min-h-0 flex-col"
+        >
+          <DialogBody className="flex flex-col gap-3 pb-1">{children}</DialogBody>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function Buttons({ busy, label, onClose }: { busy: boolean; label: string; onClose: () => void }) {
   return (
-    <div className="mt-1 flex justify-end gap-2">
-      <button
-        type="button"
-        onClick={onClose}
-        className="h-9 rounded-[9px] px-3.5 text-[13px] font-medium text-fg hover:bg-divider"
-      >
-        キャンセル
-      </button>
-      <button
-        type="submit"
-        disabled={busy}
-        className="h-9 rounded-[9px] bg-accent px-4 text-[13px] font-semibold text-white hover:brightness-105 disabled:opacity-60"
-      >
+    <DialogFooter className="px-0 pb-4 pt-2">
+      <Button onClick={onClose}>キャンセル</Button>
+      <Button type="submit" variant="primary" disabled={busy}>
         {busy ? "保存しています…" : label}
-      </button>
-    </div>
-  );
-}
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-[12px] font-medium text-fg-2">
-      {label}
-      {children}
-      {hint && <span className="text-[11px] font-normal leading-[1.5] text-muted">{hint}</span>}
-    </label>
+      </Button>
+    </DialogFooter>
   );
 }
 
@@ -589,7 +560,7 @@ function CredentialDialog({
           className={cn(field, "font-mono")}
         />
       </Field>
-      {error && <p className="m-0 text-[12px] text-danger">{error}</p>}
+      {error && <p className="m-0 text-footnote text-danger">{error}</p>}
       <Buttons busy={busy} label={initial ? "保存" : "追加"} onClose={onClose} />
     </Shell>
   );
@@ -748,10 +719,10 @@ function ModelDialog({
           rows={3}
           spellCheck={false}
           onChange={(e) => setKwargs(e.target.value)}
-          className={cn(field, "h-auto py-2 font-mono text-[12.5px]")}
+          className={cn(field, "h-auto py-2 font-mono text-footnote")}
         />
       </Field>
-      {error && <p className="m-0 text-[12px] text-danger">{error}</p>}
+      {error && <p className="m-0 text-footnote text-danger">{error}</p>}
       <Buttons busy={busy} label={editing ? "保存" : "追加"} onClose={onClose} />
     </Shell>
   );

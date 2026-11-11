@@ -4,6 +4,7 @@
  * - 章は 50 件ずつ読み、末尾が見えたら続きを読む（R4）。目次から未読の章へ飛ぶときはそこまで読み足す。
  * - 「この文書に質問」で検索範囲をこの文書に絞ってチャットへ戻る（R9）。 */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { OriginalPreview } from "@/components/documents/original-preview";
 import { RenderedSectionBody } from "@/components/sources/rendered-section-body";
@@ -65,6 +66,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
   return (
     <div
       role="dialog"
+      // eslint-disable-next-line no-restricted-syntax -- 文書ビューアは画面全体を置き換える独立したビューで、ダイアログの見た目に収まらない
       aria-modal="true"
       aria-label={doc.filename}
       className="fixed inset-0 z-[200] grid animate-overlay-in grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] bg-bg"
@@ -108,16 +110,16 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
         >
           <Icon name="download" size={14} />
         </a>
-        <button
+        <Button variant="primary" size="md"
           disabled={!ready}
           onClick={() => onAsk(doc)}
           title={ready ? undefined : "解析が終わると質問できます"}
-          className="inline-flex h-[32px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent px-3 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50 max-md:px-2.5"
+          className="max-md:px-2.5"
         >
           <Icon name="chat" size={13} />
           <span className="max-md:hidden">この文書に質問</span>
           <span className="hidden max-md:inline">質問</span>
-        </button>
+        </Button>
       </header>
 
       <div className="flex items-center gap-1 border-b-[0.5px] border-divider px-4 max-md:px-2">

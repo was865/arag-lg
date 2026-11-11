@@ -5,6 +5,7 @@
  * admin は中身を読めなくても共有リストは管理できる（Q1 案 A）。自分を足す操作は監査ログに残る。
  */
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { CreateKbDialog } from "@/components/access/create-kb-dialog";
 import { KbShareDialog } from "@/components/access/kb-share-dialog";
@@ -50,13 +51,12 @@ export function KbsView() {
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="kbs">
         {kbs && <span className="font-mono text-[11px] text-muted max-md:hidden">{kbs.length} 件</span>}
-        <button
+        <Button variant="primary" size="sm"
           onClick={() => setCreating(true)}
-          className="inline-flex h-[30px] items-center gap-1.5 rounded-lg bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
         >
           <Icon name="plus" size={13} />
           作成
-        </button>
+        </Button>
       </AdminHeader>
 
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
@@ -117,13 +117,13 @@ export function KbsView() {
                 </span>
                 <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{k.role ? k.document_count : "—"}</span>
                 <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{formatDate(k.created_at)}</span>
-                <button
+                <Button variant="secondary" size="sm"
                   onClick={() => setSharing(k)}
-                  className="inline-flex h-7 items-center gap-1.5 justify-self-end rounded-md border-[0.5px] border-divider-strong px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
+                  className="justify-self-end"
                 >
                   <Icon name="group" size={12} />
                   共有
-                </button>
+                </Button>
               </div>
             ))
           )}

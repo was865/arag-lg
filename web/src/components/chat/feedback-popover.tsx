@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
 import { FEEDBACK_REASON_TAGS, type FeedbackReasonTag } from "@/lib/feedback-types";
@@ -84,13 +85,12 @@ export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
         >
           {t.chat.feedbackCancel}
         </button>
-        <button
+        <Button variant="primary" size="sm"
           type="button"
           onClick={() => onSubmit({ reasonTags: [...tags], comment })}
-          className="rounded-md bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:opacity-90"
         >
           {t.chat.feedbackSubmit}
-        </button>
+        </Button>
       </div>
     </div>
   );
