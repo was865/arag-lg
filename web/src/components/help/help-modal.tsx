@@ -8,6 +8,7 @@ import { Dialog, DialogFrame } from "@/components/ui/dialog";
 import { keyParts, SHORTCUT_GROUPS, SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import type { WorkspaceStats } from "@/lib/workspace-stats";
+import { IconButton } from "@/components/ui/button";
 
 type Tab = "overview" | "workflow" | "features" | "shortcuts" | "tips";
 
@@ -40,12 +41,12 @@ export function HelpModal({
       >
         <aside className="flex min-w-0 flex-col border-r-[0.5px] border-divider bg-surface-2 p-[18px_12px_14px] max-md:flex-row max-md:items-center max-md:gap-2 max-md:border-b-[0.5px] max-md:border-r-0 max-md:p-2.5 max-md:pt-[max(10px,env(safe-area-inset-top))]">
           <div className="mb-2.5 flex items-center gap-2.5 border-b-[0.5px] border-divider px-2 pb-3.5 pt-0.5 max-md:m-0 max-md:shrink-0 max-md:border-b-0 max-md:border-r-[0.5px] max-md:px-1 max-md:pb-0 max-md:pr-2.5">
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-white">
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white">
               <BrandMark size={15} />
             </div>
             <div className="max-md:hidden">
-              <div className="text-[14px] font-bold tracking-[-0.01em] text-fg">ARag</div>
-              <div className="mt-px font-mono text-[10.5px] text-muted">ヘルプ</div>
+              <div className="text-callout font-bold tracking-[-0.01em] text-fg">ARag</div>
+              <div className="mt-px font-mono text-mini text-muted">ヘルプ</div>
             </div>
           </div>
           <nav
@@ -60,7 +61,7 @@ export function HelpModal({
                 aria-selected={tab === tb.id}
                 onClick={() => setTab(tb.id)}
                 className={cn(
-                  "flex items-center gap-2.5 whitespace-nowrap rounded-lg border-0 bg-transparent px-2.5 py-2 text-left text-[13px] font-medium transition-colors max-md:shrink-0 max-md:text-[12.5px]",
+                  "flex items-center gap-2.5 whitespace-nowrap rounded-control border-0 bg-transparent px-2.5 py-2 text-left text-body font-medium transition-colors max-md:shrink-0 max-md:text-footnote",
                   tab === tb.id
                     ? "bg-surface font-semibold text-fg shadow-e1 [&_svg]:text-accent"
                     : "text-fg-2 hover:bg-divider hover:text-fg",
@@ -76,27 +77,19 @@ export function HelpModal({
               <ReplayButton onClick={onReplayTour} />
             </div>
           )}
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            className="hidden h-[30px] w-[30px] shrink-0 place-items-center rounded-lg text-muted hover:bg-divider hover:text-fg max-md:grid"
-          >
+          <IconButton label="閉じる" tooltip={false} onClick={onClose} className="hidden max-md:inline-flex">
             <CloseIcon />
-          </button>
+          </IconButton>
         </aside>
 
         <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
           <header className="flex items-center justify-between border-b-[0.5px] border-divider px-7 pb-3.5 pt-[18px] max-md:px-4 max-md:pb-3 max-md:pt-3.5">
-            <h2 className="m-0 text-[18px] font-bold tracking-[-0.015em] text-fg max-md:text-[16px]">
+            <h2 className="m-0 text-title font-bold tracking-[-0.015em] text-fg max-md:text-headline">
               {TABS.find((tb) => tb.id === tab)?.label}
             </h2>
-            <button
-              onClick={onClose}
-              aria-label="閉じる"
-              className="grid h-[30px] w-[30px] place-items-center rounded-lg text-muted hover:bg-divider hover:text-fg max-md:hidden"
-            >
+            <IconButton label="閉じる" tooltip={false} onClick={onClose} className="max-md:hidden">
               <CloseIcon />
-            </button>
+            </IconButton>
           </header>
           <div className="overflow-y-auto px-7 pb-7 pt-[22px] max-md:px-4 max-md:pb-[max(24px,env(safe-area-inset-bottom))] max-md:pt-4">
             {tab === "overview" && <Overview onJump={setTab} stats={stats} onReplayTour={onReplayTour} />}
@@ -111,7 +104,7 @@ export function HelpModal({
   );
 }
 
-const lead = "m-0 text-[13.5px] leading-[1.65] text-fg-2 [&_strong]:font-semibold [&_strong]:text-fg";
+const lead = "m-0 text-body leading-[1.65] text-fg-2 [&_strong]:font-semibold [&_strong]:text-fg";
 
 // ── 概要 ─────────────────────────────────────────────────────────────────
 
@@ -140,11 +133,11 @@ function Overview({
   ];
   return (
     <div className="flex flex-col gap-[22px]">
-      <div className="flex flex-col gap-3.5 rounded-[14px] border-[0.5px] border-divider-strong bg-gradient-to-b from-surface-2 to-surface p-[22px_24px_24px] max-md:p-4">
-        <div className="self-start rounded-full border-[0.5px] border-accent/55 bg-accent/[0.08] px-[9px] py-[3px] font-mono text-[10px] font-bold tracking-[0.12em] text-accent">
+      <div className="flex flex-col gap-3.5 rounded-sheet border-[0.5px] border-divider-strong bg-gradient-to-b from-surface-2 to-surface p-[22px_24px_24px] max-md:p-4">
+        <div className="self-start rounded-full border-[0.5px] border-accent/55 bg-accent/[0.08] px-[9px] py-[3px] font-mono text-mini font-bold tracking-[0.12em] text-accent">
           AGENTIC RAG
         </div>
-        <h3 className="m-0 text-[22px] font-bold leading-[1.25] tracking-[-0.02em] text-fg max-md:text-[19px]">
+        <h3 className="m-0 text-display font-bold leading-[1.25] tracking-[-0.02em] text-fg max-md:text-title">
           社内の文書を調べて、出典付きで答えます。
         </h3>
         <p className={cn(lead, "max-w-[58ch]")}>
@@ -153,13 +146,13 @@ function Overview({
           <strong>根拠の箇所を示した回答</strong>を返します。資料に無いことは推測せず、見つからないと答えます。
           日本語の文書に最適化していますが、英語の文書や日英をまたぐ質問にも答えます。
         </p>
-        <div className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border-[0.5px] border-divider bg-divider">
+        <div className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-card border-[0.5px] border-divider bg-divider">
           {hero.map((s) => (
             <div key={s.l} className="min-w-0 bg-surface px-3.5 py-3 max-md:px-2.5">
-              <div className="truncate font-mono text-[19px] font-bold tracking-[-0.02em] text-accent max-md:text-[16px]">
+              <div className="truncate font-mono text-title font-bold tracking-[-0.02em] text-accent max-md:text-headline">
                 {s.n}
               </div>
-              <div className="mt-0.5 truncate text-[11px] text-muted">{s.l}</div>
+              <div className="mt-0.5 truncate text-caption text-muted">{s.l}</div>
             </div>
           ))}
         </div>
@@ -170,12 +163,12 @@ function Overview({
           <button
             key={c.n}
             onClick={() => onJump(c.t)}
-            className="group/jc flex items-center gap-3.5 rounded-xl border-[0.5px] border-divider-strong bg-surface px-4 py-3.5 text-left transition-[border-color,background,transform] hover:-translate-y-px hover:border-accent hover:bg-accent-soft"
+            className="group/jc flex items-center gap-3.5 rounded-card border-[0.5px] border-divider-strong bg-surface px-4 py-3.5 text-left transition-[border-color,background,transform] hover:-translate-y-px hover:border-accent hover:bg-accent-soft"
           >
-            <div className="font-mono text-[11px] font-semibold tracking-[0.04em] text-muted">{c.n}</div>
+            <div className="font-mono text-caption font-semibold tracking-[0.04em] text-muted">{c.n}</div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13.5px] font-semibold tracking-[-0.005em] text-fg">{c.title}</div>
-              <div className="mt-[3px] text-[11.5px] leading-[1.5] text-muted">{c.desc}</div>
+              <div className="text-body font-semibold tracking-[-0.005em] text-fg">{c.title}</div>
+              <div className="mt-[3px] text-caption leading-[1.5] text-muted">{c.desc}</div>
             </div>
             <span className="inline-flex text-accent opacity-60 transition-[transform,opacity] group-hover/jc:translate-x-[3px] group-hover/jc:opacity-100">
               <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
@@ -226,14 +219,14 @@ function Workflow() {
       <ol className="m-0 ml-3 flex list-none flex-col border-l-[0.5px] border-dashed border-divider-strong p-0">
         {STEPS.map((s) => (
           <li key={s.n} className="grid grid-cols-[56px_minmax(0,1fr)] pb-[22px] last:pb-0 max-md:grid-cols-[40px_minmax(0,1fr)]">
-            <div className="-ml-[19px] grid h-[38px] w-[38px] place-items-center rounded-full border-[1.5px] border-accent bg-surface font-mono text-[11.5px] font-bold tracking-[-0.01em] text-accent">
+            <div className="-ml-[19px] grid h-[38px] w-[38px] place-items-center rounded-full border-[1.5px] border-accent bg-surface font-mono text-caption font-bold tracking-[-0.01em] text-accent">
               {s.n}
             </div>
             <div className="pl-1 pt-1.5">
-              <div className="text-[15px] font-semibold tracking-[-0.01em] text-fg">{s.title}</div>
-              <p className="my-1.5 mb-2.5 text-[13px] leading-[1.65] text-fg-2">{s.body}</p>
-              <div className="flex items-start gap-2.5 rounded-[0_8px_8px_0] border-l-2 border-accent bg-surface-2 px-3 py-2.5 text-[12px] leading-[1.6] text-fg-2">
-                <span className="shrink-0 pt-px font-mono text-[10px] font-bold tracking-[0.08em] text-accent">TIP</span>
+              <div className="text-headline font-semibold tracking-[-0.01em] text-fg">{s.title}</div>
+              <p className="my-1.5 mb-2.5 text-body leading-[1.65] text-fg-2">{s.body}</p>
+              <div className="flex items-start gap-2.5 rounded-[0_8px_8px_0] border-l-2 border-accent bg-surface-2 px-3 py-2.5 text-footnote leading-[1.6] text-fg-2">
+                <span className="shrink-0 pt-px font-mono text-mini font-bold tracking-[0.08em] text-accent">TIP</span>
                 <span>{s.hint}</span>
               </div>
             </div>
@@ -289,14 +282,14 @@ function Features() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-xl border-[0.5px] border-divider-strong bg-surface p-3.5"
+            className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-card border-[0.5px] border-divider-strong bg-surface p-3.5"
           >
-            <div className="grid h-9 w-9 place-items-center rounded-[9px] bg-accent/[0.08] text-accent">
+            <div className="grid h-9 w-9 place-items-center rounded-control bg-accent/[0.08] text-accent">
               <FeatIcon name={f.icon} />
             </div>
             <div>
-              <div className="text-[13.5px] font-semibold tracking-[-0.005em] text-fg">{f.title}</div>
-              <p className="m-0 mt-1 text-[12.5px] leading-[1.6] text-muted">{f.body}</p>
+              <div className="text-body font-semibold tracking-[-0.005em] text-fg">{f.title}</div>
+              <p className="m-0 mt-1 text-footnote leading-[1.6] text-muted">{f.body}</p>
             </div>
           </div>
         ))}
@@ -317,22 +310,22 @@ function Shortcuts() {
       <div className="flex flex-col gap-4">
         {SHORTCUT_GROUPS.map((g) => (
           <div key={g.title} className="flex flex-col gap-2">
-            <div className="font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-accent">{g.title}</div>
-            <div className="overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong">
+            <div className="font-mono text-mini font-bold uppercase tracking-[0.1em] text-accent">{g.title}</div>
+            <div className="overflow-hidden rounded-card border-[0.5px] border-divider-strong">
               {g.items.map((it) => (
                 <div
                   key={it.keys}
-                  className="grid grid-cols-[180px_minmax(0,1fr)] items-center border-b-[0.5px] border-divider bg-surface px-3.5 py-2.5 text-[13px] last:border-b-0 max-md:grid-cols-[130px_minmax(0,1fr)]"
+                  className="grid grid-cols-[180px_minmax(0,1fr)] items-center border-b-[0.5px] border-divider bg-surface px-3.5 py-2.5 text-body last:border-b-0 max-md:grid-cols-[130px_minmax(0,1fr)]"
                 >
                   <div className="flex items-center gap-1">
                     {keyParts(it.keys).map((k, j, all) => (
                       <span key={j} className="flex items-center gap-1">
                         <Kbd>{k}</Kbd>
-                        {j < all.length - 1 && <span className="font-mono text-[11px] text-muted-2">+</span>}
+                        {j < all.length - 1 && <span className="font-mono text-caption text-muted-2">+</span>}
                       </span>
                     ))}
                   </div>
-                  <div className="text-[12.5px] text-fg-2">{it.label}</div>
+                  <div className="text-footnote text-fg-2">{it.label}</div>
                 </div>
               ))}
             </div>
@@ -386,7 +379,7 @@ function Tips() {
         {TIPS.map((tip) => (
           <div
             key={tip.title}
-            className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-xl border-[0.5px] border-divider-strong bg-surface p-3.5"
+            className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-card border-[0.5px] border-divider-strong bg-surface p-3.5"
           >
             <div
               className={cn(
@@ -407,23 +400,23 @@ function Tips() {
             <div>
               <div
                 className={cn(
-                  "font-mono text-[10px] font-bold tracking-[0.1em]",
+                  "font-mono text-mini font-bold tracking-[0.1em]",
                   tip.kind === "do" ? "text-accent" : "text-[#C0533A]",
                 )}
               >
                 {tip.kind === "do" ? "DO" : "DON'T"}
               </div>
-              <div className="mt-0.5 text-[13.5px] font-semibold tracking-[-0.005em] text-fg">{tip.title}</div>
-              <p className="m-0 mt-1.5 text-[12px] leading-[1.6] text-muted">{tip.body}</p>
+              <div className="mt-0.5 text-body font-semibold tracking-[-0.005em] text-fg">{tip.title}</div>
+              <p className="m-0 mt-1.5 text-footnote leading-[1.6] text-muted">{tip.body}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-1 flex items-center justify-between gap-3.5 rounded-xl border-[0.5px] border-accent/40 bg-accent/[0.05] px-[18px] py-3.5 max-md:flex-col max-md:items-start">
+      <div className="mt-1 flex items-center justify-between gap-3.5 rounded-card border-[0.5px] border-accent/40 bg-accent/[0.05] px-[18px] py-3.5 max-md:flex-col max-md:items-start">
         <div>
-          <div className="text-[13.5px] font-semibold tracking-[-0.005em] text-fg">まずは試してみる</div>
-          <div className="mt-0.5 text-[11.5px] leading-[1.5] text-muted">
+          <div className="text-body font-semibold tracking-[-0.005em] text-fg">まずは試してみる</div>
+          <div className="mt-0.5 text-caption leading-[1.5] text-muted">
             新しいスレッドの下にあるヒントから、エージェントの動きを体験できます。
           </div>
         </div>
@@ -431,10 +424,10 @@ function Tips() {
           {keyParts(SHORTCUT_LABEL.newThread).map((k, j, all) => (
             <span key={j} className="flex items-center gap-1">
               <Kbd>{k}</Kbd>
-              {j < all.length - 1 && <span className="font-mono text-[11px] text-muted-2">+</span>}
+              {j < all.length - 1 && <span className="font-mono text-caption text-muted-2">+</span>}
             </span>
           ))}
-          <span className="ml-2 text-[12px] text-muted">で新しいスレッド</span>
+          <span className="ml-2 text-footnote text-muted">で新しいスレッド</span>
         </div>
       </div>
     </div>
@@ -447,7 +440,7 @@ function ReplayButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center justify-between rounded-[7px] border-0 bg-transparent px-2.5 py-[7px] text-left text-[12px] text-muted transition-colors hover:bg-divider hover:text-fg-2 max-md:border-[0.5px] max-md:border-divider-strong max-md:py-2.5"
+      className="flex w-full items-center justify-between rounded-control border-0 bg-transparent px-2.5 py-[7px] text-left text-footnote text-muted transition-colors hover:bg-divider hover:text-fg-2 max-md:border-[0.5px] max-md:border-divider-strong max-md:py-2.5"
     >
       <span>はじめてのガイドをもう一度見る</span>
       <svg viewBox="0 0 16 16" width="11" height="11">
@@ -467,7 +460,7 @@ function CloseIcon() {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-grid h-[22px] min-w-[22px] place-items-center rounded-[5px] border-[0.5px] border-b-[1.5px] border-divider-strong bg-surface px-1.5 font-mono text-[11px] font-semibold text-fg-2 shadow-[0_1px_0_var(--divider)]">
+    <kbd className="inline-grid h-[22px] min-w-[22px] place-items-center rounded-control border-[0.5px] border-b-[1.5px] border-divider-strong bg-surface px-1.5 font-mono text-caption font-semibold text-fg-2 shadow-[0_1px_0_var(--divider)]">
       {children}
     </kbd>
   );

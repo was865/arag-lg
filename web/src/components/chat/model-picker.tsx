@@ -3,10 +3,11 @@
 // ModelPicker：Composer の「モデル」ボタンに錨定するモデル選択ポップオーバー。
 // 設定モーダルを開かずその場で切替できる軽量経路として、chat / agents の双方から使う。
 
-import { OptionBadge, Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { ModelOption } from "@/lib/types";
 import { useT } from "@/i18n/context";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   open: boolean;
@@ -41,8 +42,8 @@ export function ModelPicker({ open, onOpenChange, children, models, value, onCha
                 label={m.label}
                 badge={
                   <>
-                    {m.tag && <OptionBadge tone="accent">{m.tag}</OptionBadge>}
-                    {unavailable && <OptionBadge>{t.modals.modelUnavailable}</OptionBadge>}
+                    {m.tag && <Badge tone="accent">{m.tag}</Badge>}
+                    {unavailable && <Badge tone="outline">{t.modals.modelUnavailable}</Badge>}
                   </>
                 }
                 hint={m.desc}

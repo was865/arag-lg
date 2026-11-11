@@ -44,18 +44,18 @@ export function TipCarousel({ tips, onFill }: TipCarouselProps) {
       <button
         type="button"
         onClick={() => onFill(tip.fill)}
-        className="group flex h-[224px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-divider-strong bg-surface px-6 py-7 text-center transition-[transform,border-color,box-shadow] hover:-translate-y-px hover:border-accent hover:shadow-e2 max-md:h-[232px] max-md:px-5 max-md:py-6"
+        className="group flex h-[224px] w-full flex-col items-center justify-center gap-3 rounded-sheet border border-divider-strong bg-surface px-6 py-7 text-center transition-[transform,border-color,box-shadow] hover:-translate-y-px hover:border-accent hover:shadow-e2 max-md:h-[232px] max-md:px-5 max-md:py-6"
       >
-        <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-accent/10 text-accent">
+        <span className="grid h-11 w-11 place-items-center rounded-sheet bg-accent/10 text-accent">
           <Icon name={tip.icon} size={20} />
         </span>
-        <span className="flex h-[22px] items-center whitespace-nowrap text-[15px] font-bold text-fg">{tip.title}</span>
-        <span className="flex h-[42px] max-w-[420px] items-center justify-center overflow-hidden text-[13px] leading-[1.55] text-muted max-md:h-[62px]">
+        <span className="flex h-[22px] items-center whitespace-nowrap text-headline font-bold text-fg">{tip.title}</span>
+        <span className="flex h-[42px] max-w-[420px] items-center justify-center overflow-hidden text-body leading-[1.55] text-muted max-md:h-[62px]">
           <span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] max-md:[-webkit-line-clamp:3]">
             {tip.body}
           </span>
         </span>
-        <span className="mt-1 inline-flex h-[18px] max-w-full items-center gap-1 truncate text-[12px] font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="mt-1 inline-flex h-[18px] max-w-full items-center gap-1 truncate text-footnote font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
           {tip.fill}
         </span>
       </button>

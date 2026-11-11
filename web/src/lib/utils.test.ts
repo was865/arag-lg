@@ -8,6 +8,10 @@ describe("cn", () => {
   it("文字の段階どうしは後勝ち", () => {
     expect(cn("text-footnote", "text-body")).toBe("text-body");
   });
+  it("mini・display も文字の段階として扱う", () => {
+    expect(cn("text-mini text-muted", "text-accent")).toBe("text-mini text-accent");
+    expect(cn("text-caption", "text-display")).toBe("text-display");
+  });
   it("角丸の段階どうしは後勝ち", () => {
     expect(cn("rounded-control", "rounded-full")).toBe("rounded-full");
   });

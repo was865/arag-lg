@@ -118,7 +118,7 @@ export function DailyChart({ data }: { data: DailyPoint[] }) {
       {hp && hover !== null && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute top-0 z-10 min-w-[150px] rounded-lg border-[0.5px] border-divider-strong bg-surface-elev px-3 py-2 text-[12px] shadow-e2"
+          className="pointer-events-none absolute top-0 z-10 min-w-[150px] rounded-control border-[0.5px] border-divider-strong bg-surface-elev px-3 py-2 text-footnote shadow-e2"
           style={{
             left: Math.min(Math.max(0, PAD.left + band * hover + band / 2 - 75), Math.max(0, width - 160)),
           }}
@@ -148,7 +148,7 @@ function Row({ color, label, value }: { color: string; label: string; value: num
 
 export function ChartLegend() {
   return (
-    <div className="flex items-center gap-3 text-[11.5px] text-muted">
+    <div className="flex items-center gap-3 text-caption text-muted">
       {(
         [
           ["var(--chart-1)", "回答あり"],

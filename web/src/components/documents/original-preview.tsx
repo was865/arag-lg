@@ -5,6 +5,7 @@
 import type { Dictionary } from "@/i18n/dictionary";
 import { useT } from "@/i18n/context";
 import { isImage, isPdf } from "@/lib/file-types";
+import { Button } from "@/components/ui/button";
 
 const PDF_VIEW_PARAMS = "toolbar=0&navpanes=0&statusbar=0&view=FitH";
 
@@ -21,19 +22,18 @@ export function UnsupportedPreview({ docId, onShowParsed }: { docId: string; onS
   return (
     <div className="grid h-full place-items-center p-8 text-center">
       <div className="max-w-[380px]">
-        <div className="mb-1.5 text-[13px] font-semibold text-fg">{t.documents.unsupportedTitle}</div>
-        <div className="mb-4 text-[12px] leading-[1.6] text-muted">{t.documents.unsupportedDescription}</div>
+        <div className="mb-1.5 text-body font-semibold text-fg">{t.documents.unsupportedTitle}</div>
+        <div className="mb-4 text-footnote leading-[1.6] text-muted">{t.documents.unsupportedDescription}</div>
         <div className="flex items-center justify-center gap-2">
           <a
             href={originalUrl(docId)}
             download
-            className="inline-flex items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-fg hover:bg-surface-2"
+            className="inline-flex items-center gap-1.5 rounded-control border-[0.5px] border-divider-strong bg-surface px-3 py-1.5 text-footnote font-medium text-fg hover:bg-surface-2"
           >{t.documents.unsupportedDownload}</a>
           {onShowParsed && (
-            <button
+            <Button variant="secondary" size="sm"
               onClick={onShowParsed}
-              className="inline-flex items-center rounded-lg border-[0.5px] border-divider-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-fg hover:bg-surface-2"
-            >{t.sources.showCitedText}</button>
+            >{t.sources.showCitedText}</Button>
           )}
         </div>
       </div>
@@ -58,7 +58,7 @@ export function OriginalPreview({ docId, filename, pdfPage, onShowParsed }: Orig
     return (
       <div className="grid h-full place-items-center p-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={filename} className="max-h-full max-w-full rounded-lg border-[0.5px] border-divider" />
+        <img src={url} alt={filename} className="max-h-full max-w-full rounded-control border-[0.5px] border-divider" />
       </div>
     );
   }

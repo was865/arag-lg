@@ -3,9 +3,8 @@
 // ThemeToggle：浅色/深色主题切换按钮（chat 顶栏与 agent 顶栏共用）。
 // 图标用 Icon sun/moon（描边风格），文案走 i18n（workspace.toLight/toDark/themeToggleAriaLabel）。
 
-import { Icon } from "@/components/icons";
+import { IconButton } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { cn } from "@/lib/utils";
 
 export interface ThemeToggleProps {
   /** 当前是否深色模式。 */
@@ -20,17 +19,13 @@ export interface ThemeToggleProps {
 export function ThemeToggle({ dark, onToggle, className }: ThemeToggleProps) {
   const { t } = useT();
   return (
-    <button
-      type="button"
-      onClick={onToggle}
+    <IconButton
+      label={t.workspace.themeToggleAriaLabel}
+      tooltip={false}
       title={dark ? t.workspace.toLight : t.workspace.toDark}
-      aria-label={t.workspace.themeToggleAriaLabel}
-      className={cn(
-        "grid h-[30px] w-[30px] place-items-center rounded-lg border-0 bg-transparent text-muted hover:bg-divider hover:text-fg",
-        className,
-      )}
-    >
-      <Icon name={dark ? "sun" : "moon"} size={14} />
-    </button>
+      icon={dark ? "sun" : "moon"}
+      onClick={onToggle}
+      className={className}
+    />
   );
 }

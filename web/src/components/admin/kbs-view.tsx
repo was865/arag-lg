@@ -18,6 +18,7 @@ import { ROLE_LABEL } from "@/lib/access/shares";
 import { ApiError } from "@/lib/chat/api";
 import { formatDate } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
+import { SearchField } from "@/components/ui/input";
 
 export function KbsView() {
   const push = useToast();
@@ -50,7 +51,7 @@ export function KbsView() {
   return (
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="kbs">
-        {kbs && <span className="font-mono text-[11px] text-muted max-md:hidden">{kbs.length} 件</span>}
+        {kbs && <span className="font-mono text-caption text-muted max-md:hidden">{kbs.length} 件</span>}
         <Button variant="primary" size="sm"
           onClick={() => setCreating(true)}
         >
@@ -60,20 +61,18 @@ export function KbsView() {
       </AdminHeader>
 
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
-        <label className="mx-auto flex h-8 max-w-[1000px] items-center gap-2 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent">
-          <Icon name="search" size={13} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="名前で探す"
-            className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
-          />
-        </label>
+        <SearchField
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
+          placeholder="名前で探す"
+          className="mx-auto max-w-[1000px]"
+        />
       </div>
 
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[1000px] px-[18px] pb-10 pt-2 max-md:px-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+          <div className="grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
             <span>名前</span>
             <span>あなたの役割</span>
             <span className="text-right">文書</span>
@@ -85,7 +84,7 @@ export function KbsView() {
               <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : shown.length === 0 ? (
-            <p className="py-16 text-center text-[13px] text-muted">
+            <p className="py-16 text-center text-body text-muted">
               {kbs.length === 0 ? "共有のナレッジベースはまだありません" : "条件に合うナレッジベースはありません"}
             </p>
           ) : (
@@ -93,30 +92,30 @@ export function KbsView() {
               <div
                 key={k.id}
                 className={cn(
-                  "grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2",
+                  "grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] items-center gap-3 rounded-control px-2 py-2 hover:bg-surface-2",
                   "max-md:grid-cols-[minmax(0,1fr)_auto]",
                 )}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-surface-2 text-muted">
                     <Icon name={k.shared_with_everyone ? "building" : "lock"} size={14} />
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-[13px] font-medium text-fg">
+                    <div className="truncate text-body font-medium text-fg">
                       {k.name}
-                      {k.status === "archived" && <span className="ml-1.5 text-[11px] font-normal text-muted">アーカイブ</span>}
+                      {k.status === "archived" && <span className="ml-1.5 text-caption font-normal text-muted">アーカイブ</span>}
                     </div>
-                    <div className="truncate text-[11.5px] text-muted">
+                    <div className="truncate text-caption text-muted">
                       {k.shared_with_everyone ? "社内の全員が閲覧" : "限られた部門・人だけ"}
                       <span className="hidden max-md:inline"> · {k.role ? ROLE_LABEL[k.role] : "共有リスト外"}</span>
                     </div>
                   </div>
                 </div>
-                <span className={cn("text-[12px] max-md:hidden", k.role ? "text-fg-2" : "text-muted")}>
+                <span className={cn("text-footnote max-md:hidden", k.role ? "text-fg-2" : "text-muted")}>
                   {k.role ? ROLE_LABEL[k.role] : "—（内容は閲覧不可）"}
                 </span>
-                <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{k.role ? k.document_count : "—"}</span>
-                <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{formatDate(k.created_at)}</span>
+                <span className="text-right font-mono text-caption text-muted max-md:hidden">{k.role ? k.document_count : "—"}</span>
+                <span className="text-right font-mono text-caption text-muted max-md:hidden">{formatDate(k.created_at)}</span>
                 <Button variant="secondary" size="sm"
                   onClick={() => setSharing(k)}
                   className="justify-self-end"
@@ -127,7 +126,7 @@ export function KbsView() {
               </div>
             ))
           )}
-          <p className="m-0 mt-4 px-2 text-[11.5px] leading-[1.6] text-muted">
+          <p className="m-0 mt-4 px-2 text-caption leading-[1.6] text-muted">
             管理者はすべての共有ナレッジベースの「共有」を変えられますが、共有リストに入っていないナレッジベースの中身は見られません。自分を共有リストに加えると、監査ログに残ります。
           </p>
         </div>

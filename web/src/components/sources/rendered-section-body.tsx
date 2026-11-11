@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 
-const proseCls = "whitespace-pre-wrap text-[12.5px] leading-[1.65] text-fg-2 [overflow-wrap:anywhere]";
+const proseCls = "whitespace-pre-wrap text-footnote leading-[1.65] text-fg-2 [overflow-wrap:anywhere]";
 
 export function SectionImage({ src, alt }: { src: string; alt: string }) {
   const { t } = useT();
@@ -19,7 +19,7 @@ export function SectionImage({ src, alt }: { src: string; alt: string }) {
       ? interpolate(t.sources.imageLoadFailedWithAlt, { alt })
       : t.sources.imageLoadFailed;
     return (
-      <div className="rounded-[8px] border-[0.5px] border-divider bg-surface-2 px-3 py-4 text-center text-[11.5px] text-muted">
+      <div className="rounded-[8px] border-[0.5px] border-divider bg-surface-2 px-3 py-4 text-center text-caption text-muted">
         {msg}
       </div>
     );

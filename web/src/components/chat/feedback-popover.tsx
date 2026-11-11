@@ -6,6 +6,7 @@ import { Popover, PopoverAnchor, PopoverClose, PopoverContent } from "@/componen
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
 import { FEEDBACK_REASON_TAGS, type FeedbackReasonTag } from "@/lib/feedback-types";
+import { Textarea } from "@/components/ui/input";
 
 interface Initial {
   reasonTags: FeedbackReasonTag[];
@@ -92,13 +93,13 @@ function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit
           </button>
         ))}
       </div>
-      <textarea
+      <Textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder={t.chat.feedbackCommentPlaceholder}
         rows={2}
         maxLength={1000}
-        className="mb-2.5 w-full resize-none rounded-control border-[0.5px] border-divider-strong bg-surface-2 px-2.5 py-2 text-footnote text-fg outline-none placeholder:text-muted focus:border-accent"
+        className="mb-2.5 bg-surface-2"
       />
       <div className="flex justify-end gap-2">
         <PopoverClose asChild>

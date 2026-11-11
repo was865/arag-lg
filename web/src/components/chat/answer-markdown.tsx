@@ -22,11 +22,11 @@ function citeBtnClass(style: CitationStyle) {
   const base =
     "inline-flex cursor-pointer items-center justify-center border-0 font-mono leading-none transition-[background,transform] duration-100 hover:-translate-y-px";
   if (style === "chip")
-    return cn(base, "mx-0.5 h-[18px] rounded-[5px] border border-accent-soft bg-surface px-[5px] text-[10.5px] font-semibold text-accent hover:bg-accent-soft");
+    return cn(base, "mx-0.5 h-[18px] rounded-control border border-accent-soft bg-surface px-[5px] text-mini font-semibold text-accent hover:bg-accent-soft");
   if (style === "pill")
-    return cn(base, "mx-0.5 h-[18px] rounded-full bg-accent px-[7px] text-[10.5px] font-semibold text-white");
+    return cn(base, "mx-0.5 h-[18px] rounded-full bg-accent px-[7px] text-mini font-semibold text-white");
   // numbered (superscript)
-  return cn(base, "mx-px h-[14px] min-w-[14px] rounded-[4px] bg-accent-soft px-[3px] align-super text-[9.5px] font-bold text-accent hover:bg-accent hover:text-white");
+  return cn(base, "mx-px h-[14px] min-w-[14px] rounded-[4px] bg-accent-soft px-[3px] align-super text-mini font-bold text-accent hover:bg-accent hover:text-white");
 }
 
 /** 引用番号ボタン。クリックで該当出典を開く（onCite）。 */
@@ -57,7 +57,7 @@ function AnswerImage({ src, alt }: { src: string; alt: string }) {
   }
   if (failed) {
     return (
-      <span className="text-[12px] text-muted">
+      <span className="text-footnote text-muted">
         {interpolate(t.chat.imageLoadError, { alt: alt ? alt : "" })}
       </span>
     );
@@ -77,22 +77,22 @@ function AnswerImage({ src, alt }: { src: string; alt: string }) {
 // 見出し/段落/リスト/コード/表/区切り/画像をデザイントークンに合わせて装飾する。
 // チャット本文の既定 14.5px に合わせ、見出しは MarkdownView より一段小さく抑える。
 const ANSWER_PROSE = [
-  "text-[14.5px] leading-[1.7] text-fg-2 [overflow-wrap:anywhere]",
+  "text-callout leading-[1.7] text-fg-2 [overflow-wrap:anywhere]",
   "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-  "[&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-[17px] [&_h1]:font-bold [&_h1]:tracking-[-0.005em] [&_h1]:text-fg",
-  "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-[15.5px] [&_h2]:font-bold [&_h2]:tracking-[-0.005em] [&_h2]:text-fg",
-  "[&_h3]:mt-3.5 [&_h3]:mb-1.5 [&_h3]:text-[14.5px] [&_h3]:font-semibold [&_h3]:text-fg",
-  "[&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-[13.5px] [&_h4]:font-semibold [&_h4]:text-fg",
+  "[&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-title [&_h1]:font-bold [&_h1]:tracking-[-0.005em] [&_h1]:text-fg",
+  "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-headline [&_h2]:font-bold [&_h2]:tracking-[-0.005em] [&_h2]:text-fg",
+  "[&_h3]:mt-3.5 [&_h3]:mb-1.5 [&_h3]:text-callout [&_h3]:font-semibold [&_h3]:text-fg",
+  "[&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-body [&_h4]:font-semibold [&_h4]:text-fg",
   "[&_p]:my-2",
   "[&_strong]:font-semibold [&_strong]:text-fg",
   "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
   "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
   "[&_li]:my-0.5 [&_li]:marker:text-muted",
   "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-divider-strong [&_blockquote]:pl-3 [&_blockquote]:text-muted",
-  "[&_code]:rounded [&_code]:bg-surface-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12.5px]",
+  "[&_code]:rounded [&_code]:bg-surface-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-footnote",
   "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:border-[0.5px] [&_pre]:border-divider [&_pre]:bg-surface-2 [&_pre]:p-3",
-  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[12.5px]",
-  "[&_table]:my-3 [&_table]:block [&_table]:w-fit [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-[12.5px]",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-footnote",
+  "[&_table]:my-3 [&_table]:block [&_table]:w-fit [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-footnote",
   "[&_th]:border-[0.5px] [&_th]:border-divider [&_th]:bg-surface-2 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-fg",
   "[&_td]:border-[0.5px] [&_td]:border-divider [&_td]:px-2 [&_td]:py-1",
   "[&_hr]:my-4 [&_hr]:border-divider",

@@ -37,12 +37,12 @@ export function AgentActivity({
   const current = runningSteps.find((s) => s.parentId) ?? runningSteps[0];
 
   return (
-    <div className="overflow-hidden rounded-[14px] border-[0.5px] border-divider-strong bg-surface-2">
+    <div className="overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface-2">
       <button
         onClick={() => setOpen(!isOpen)}
         className="flex w-full items-center justify-between border-0 bg-transparent px-3.5 py-2.5 text-left hover:bg-surface max-md:px-3"
       >
-        <span className="inline-flex items-center gap-2 text-[12px] font-semibold text-fg">
+        <span className="inline-flex items-center gap-2 text-footnote font-semibold text-fg">
           {running ? (
             <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
           ) : (
@@ -50,7 +50,7 @@ export function AgentActivity({
           )}
           {running ? (current?.summary ?? t.chat.agentRunning) : t.chat.agentDone}
         </span>
-        <span className="inline-flex items-center gap-2 font-mono text-[11px] text-muted">
+        <span className="inline-flex items-center gap-2 font-mono text-caption text-muted">
           {topLevel.length}{t.chat.stepUnit} · {formatMs(totalMs)}
           <span className={cn("transition-transform", isOpen && "rotate-180")}>
             <svg viewBox="0 0 16 16" width="11" height="11">

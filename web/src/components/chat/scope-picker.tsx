@@ -1,11 +1,12 @@
 "use client";
 
 import { Icon } from "@/components/icons";
-import { OptionBadge, Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
 import { useKbs } from "@/hooks/use-kbs";
 import { Switch } from "@/components/ui/switch";
 import type { ScopePreset, ScopeValue } from "@/lib/types";
 import { useT } from "@/i18n/context";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   open: boolean;
@@ -51,7 +52,7 @@ export function ScopePicker({ open, onOpenChange, children, value, onChange, att
       >
       <div className="overflow-y-auto p-1.5">
         {/* 実検索範囲 = ナレッジベース。ここの選択だけが retrieve の kb_ids に反映される。 */}
-        <div className="px-2.5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.07em] text-muted-2">{t.chat.scopeKbSection}</div>
+        <div className="px-2.5 pb-1 pt-2 text-mini font-bold uppercase tracking-[0.07em] text-muted-2">{t.chat.scopeKbSection}</div>
         {[{ scope: allKbsScope, archived: false }, ...kbs.map((kb) => ({ scope: kbScope(kb), archived: kb.status === "archived" }))].map(({ scope: s, archived }) => (
           <PopoverOption
             key={s.id}
@@ -60,7 +61,7 @@ export function ScopePicker({ open, onOpenChange, children, value, onChange, att
             label={s.label}
             // archived KB は既定検索から外れるが、明示選択すれば検索される（バックエンドが補完）。
             // 利用者が「なぜ全体検索に出ないか」を理解できるよう状態を明示する。
-            badge={archived && <OptionBadge>{t.chat.scopeArchivedBadge}</OptionBadge>}
+            badge={archived && <Badge tone="outline">{t.chat.scopeArchivedBadge}</Badge>}
             hint={s.desc}
             onClick={() => { onChange({ ...s, includeArchived: value.includeArchived }); onClose(); }}
           />
@@ -92,7 +93,7 @@ export function ScopePicker({ open, onOpenChange, children, value, onChange, att
               selected={value.id === p.id}
               icon={<Icon name={p.iconName} size={15} />}
               label={p.label}
-              badge={isFiles && attachmentCount > 0 && <OptionBadge tone="accent">{attachmentCount}</OptionBadge>}
+              badge={isFiles && attachmentCount > 0 && <Badge tone="accent">{attachmentCount}</Badge>}
               hint={disabled ? t.chat.noFilesUploaded : p.desc}
               onClick={() => {
                 // includeArchived は検索範囲の修飾子なので KB/プリセット選択をまたいで保持する。

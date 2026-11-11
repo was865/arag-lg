@@ -8,12 +8,16 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  size = "sm",
   className,
 }: {
   label: string;
   value: T;
-  options: readonly (readonly [T, string])[];
+  /** 表示は文字だけでなく件数などを添えてもよい */
+  options: readonly (readonly [T, React.ReactNode])[];
   onChange: (v: T) => void;
+  /** sm は設定の行の中、md はツールバー */
+  size?: "sm" | "md";
   className?: string;
 }) {
   return (
@@ -26,7 +30,8 @@ export function Segmented<T extends string>({
           aria-checked={value === v}
           onClick={() => onChange(v)}
           className={cn(
-            "h-6 flex-1 whitespace-nowrap rounded-[6px] px-2.5 text-footnote font-medium transition-colors",
+            "inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-2.5 text-footnote font-medium transition-colors",
+            size === "md" ? "h-7" : "h-6",
             value === v ? "bg-surface text-fg shadow-e1" : "text-muted hover:text-fg",
           )}
         >

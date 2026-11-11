@@ -46,6 +46,9 @@ import {
   type StatusTone,
 } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
+import { SearchField } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Segmented } from "@/components/ui/segmented";
 
 const PAGE = 100;
 /** ライブラリ内のドラッグ（文書の移動）。OS からのファイルのドロップと区別する。 */
@@ -530,16 +533,16 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           onClick={onOpenMenu}
           className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
         />
-        <nav aria-label="場所" className="flex min-w-0 flex-1 items-center gap-0.5 text-[13.5px]">
+        <nav aria-label="場所" className="flex min-w-0 flex-1 items-center gap-0.5 text-body">
           {crumbs.length === 0 ? (
-            <h1 className="m-0 truncate text-[13.5px] font-semibold text-fg">{kbLabel(kb)}</h1>
+            <h1 className="m-0 truncate text-body font-semibold text-fg">{kbLabel(kb)}</h1>
           ) : (
             <>
               <button
                 onClick={() => onOpenFolder(null)}
                 {...dropTarget("crumb:root", null)}
                 className={cn(
-                  "min-w-0 shrink truncate rounded-md px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:max-w-[80px]",
+                  "min-w-0 shrink truncate rounded-control px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:max-w-[80px]",
                   dropOn === "crumb:root" && "bg-accent-soft text-accent",
                 )}
               >
@@ -551,13 +554,13 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                   <span key={f.id} className="flex min-w-0 items-center gap-0.5">
                     <Icon name="chevronRight" size={12} className="shrink-0 text-muted-2" />
                     {last ? (
-                      <h1 className="m-0 truncate px-1.5 text-[13.5px] font-semibold text-fg">{f.name}</h1>
+                      <h1 className="m-0 truncate px-1.5 text-body font-semibold text-fg">{f.name}</h1>
                     ) : (
                       <button
                         onClick={() => onOpenFolder(f.id)}
                         {...dropTarget(`crumb:${f.id}`, f.id)}
                         className={cn(
-                          "min-w-0 truncate rounded-md px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:hidden",
+                          "min-w-0 truncate rounded-control px-1.5 py-0.5 font-medium text-muted hover:bg-divider hover:text-fg max-md:hidden",
                           dropOn === `crumb:${f.id}` && "bg-accent-soft text-accent",
                         )}
                       >
@@ -570,14 +573,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             </>
           )}
           {stats && crumbs.length === 0 && (
-            <span className="ml-2 shrink-0 font-mono text-[11px] text-muted max-md:hidden">
+            <span className="ml-2 shrink-0 font-mono text-caption text-muted max-md:hidden">
               {stats.documents.toLocaleString("ja-JP")} 件 · {formatBytes(stats.total_bytes)}
             </span>
           )}
           {kb && !kb.canWrite && (
-            <span className="ml-2 shrink-0 rounded-full border-[0.5px] border-divider-strong px-1.5 py-px text-[10px] font-semibold text-muted">
-              閲覧のみ
-            </span>
+            <Badge className="ml-2">閲覧のみ</Badge>
           )}
         </nav>
         {docs && docs.length > 0 && (
@@ -586,7 +587,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             aria-pressed={selecting}
             title="複数の文書を選ぶ"
             className={cn(
-              "inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] px-2.5 text-[12px] font-medium",
+              "inline-flex h-[30px] items-center gap-1.5 rounded-control border-[0.5px] px-2.5 text-footnote font-medium",
               selecting ? "border-accent bg-accent-soft text-accent" : "border-divider-strong text-fg hover:bg-divider",
             )}
           >
@@ -660,45 +661,33 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       </header>
 
       <div className="flex flex-wrap items-center gap-2 border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
-        <label className="flex h-8 min-w-[200px] flex-1 items-center gap-2 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent max-md:min-w-0">
-          <Icon name="search" size={13} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="文書名で探す"
-            className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
-          />
-          {query && (
-            <IconButton size="icon-sm" label="検索語を消す" tooltip={false} icon="close" iconSize={12} onClick={() => setQuery("")} />
-          )}
-        </label>
-        <div role="tablist" className="flex shrink-0 rounded-lg bg-surface-2 p-0.5">
-          {(
+        <SearchField
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
+          placeholder="文書名で探す"
+          className="min-w-[200px] flex-1 max-md:min-w-0"
+        />
+        <Segmented
+          label="状態で絞り込む"
+          size="md"
+          value={filter}
+          onChange={setFilter}
+          className="shrink-0"
+          options={(
             [
               ["all", "すべて", null],
               ["busy", "処理中", busyCount],
               ["error", "失敗", errorCount],
             ] as const
-          ).map(([key, label, n]) => (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={filter === key}
-              onClick={() => setFilter(key)}
-              className={cn(
-                "inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium",
-                filter === key ? "bg-surface text-fg shadow-e1" : "text-muted hover:text-fg",
-              )}
-            >
+          ).map(([key, label, n]) => [
+            key,
+            <>
               {label}
-              {n ? (
-                <span className={cn("font-mono text-[10.5px]", key === "error" ? "text-danger" : "text-accent")}>
-                  {n}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
+              {n ? <span className={cn("font-mono text-mini", key === "error" ? "text-danger" : "text-accent")}>{n}</span> : null}
+            </>,
+          ] as const)}
+        />
       </div>
 
       <div className="min-h-0 overflow-y-auto">
@@ -728,7 +717,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             <div
               className={cn(
                 ROW_GRID,
-                "border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden",
+                "border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden",
               )}
             >
               <span>名前</span>
@@ -739,13 +728,13 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               <span />
             </div>
             {!browsing && kbId && (search || filter !== "all") && (
-              <div className="px-2 pb-1 pt-2 text-[11.5px] text-muted">
+              <div className="px-2 pb-1 pt-2 text-caption text-muted">
                 {kbLabel(kb)} 全体から探しています
               </div>
             )}
 
             {creating !== null && (
-              <div className={cn(ROW_GRID, "rounded-lg px-2 py-2")}>
+              <div className={cn(ROW_GRID, "rounded-control px-2 py-2")}>
                 <div className="flex min-w-0 items-center gap-2.5">
                   <FolderIcon />
                   <input
@@ -759,7 +748,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                       if (e.key === "Enter") void createFolder();
                       if (e.key === "Escape") setCreating(null);
                     }}
-                    className="w-full max-w-[360px] rounded-md border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-[13px] text-fg outline-none"
+                    className="w-full max-w-[360px] rounded-control border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-body text-fg outline-none"
                   />
                 </div>
               </div>
@@ -771,7 +760,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                 {...dropTarget(`folder:${f.id}`, f.id)}
                 className={cn(
                   ROW_GRID,
-                  "group/row rounded-lg px-2 py-2 hover:bg-surface-2",
+                  "group/row rounded-control px-2 py-2 hover:bg-surface-2",
                   dropOn === `folder:${f.id}` && "bg-accent-soft outline outline-1 outline-accent",
                 )}
               >
@@ -788,7 +777,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                     <button
                       onClick={() => onOpenFolder(f.id)}
                       title={f.name}
-                      className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-fg hover:text-accent"
+                      className="min-w-0 flex-1 truncate text-left text-body font-medium text-fg hover:text-accent"
                     >
                       {f.name}
                       <span className="ml-2 hidden font-normal text-muted max-md:inline">
@@ -797,10 +786,10 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                     </button>
                   )}
                 </div>
-                <span className="text-[12px] text-muted max-md:hidden">{f.document_count} 件</span>
+                <span className="text-footnote text-muted max-md:hidden">{f.document_count} 件</span>
                 <span className="max-md:hidden" />
                 <span className="max-md:hidden" />
-                <span className="text-right font-mono text-[11.5px] text-muted max-md:hidden">
+                <span className="text-right font-mono text-caption text-muted max-md:hidden">
                   {formatDate(f.created_at)}
                 </span>
                 {canEditFolders ? (
@@ -824,12 +813,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             ))}
 
             {listEmpty && (
-              <div className="py-10 text-center text-[13px] text-muted">
+              <div className="py-10 text-center text-body text-muted">
                 {browsing ? (
                   <>
                     このフォルダは空です
                     {target && (
-                      <span className="mt-1 block text-[12px] text-muted-2">
+                      <span className="mt-1 block text-footnote text-muted-2">
                         ファイルをドロップすると「{here?.name}」に追加します
                       </span>
                     )}
@@ -863,7 +852,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                   }}
                   className={cn(
                     ROW_GRID,
-                    "group/row rounded-lg px-2 py-2",
+                    "group/row rounded-control px-2 py-2",
                     selecting && "cursor-pointer select-none",
                     checked ? "bg-accent-soft" : "hover:bg-surface-2",
                   )}
@@ -878,7 +867,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                         e.stopPropagation();
                         pickRow(d.id, e.shiftKey);
                       }}
-                      className="group/check relative grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+                      className="group/check relative grid h-8 w-8 shrink-0 place-items-center rounded-control"
                       style={
                         selecting
                           ? undefined
@@ -910,12 +899,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                         <button
                           onClick={() => !selecting && onOpenDocument(d)}
                           title={d.filename}
-                          className="block max-w-full truncate text-left text-[13px] font-medium text-fg hover:text-accent"
+                          className="block max-w-full truncate text-left text-body font-medium text-fg hover:text-accent"
                         >
                           {d.filename}
                         </button>
                       )}
-                      <div className="flex items-center gap-1.5 truncate text-[11px] text-muted">
+                      <div className="flex items-center gap-1.5 truncate text-caption text-muted">
                         {!kbId && <span className="truncate">{kbNames.get(d.kb_id) ?? ""}</span>}
                         {kbId && !browsing && d.folder_id && (
                           <span className="inline-flex min-w-0 items-center gap-1 truncate">
@@ -939,7 +928,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                       </div>
                     </div>
                   </div>
-                  <span className={cn("inline-flex items-center gap-1.5 text-[12px] max-md:hidden", TONE[st.tone])}>
+                  <span className={cn("inline-flex items-center gap-1.5 text-footnote max-md:hidden", TONE[st.tone])}>
                     {busy && (
                       <span className="h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
                     )}
@@ -948,19 +937,19 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                     {st.tone === "danger" && d.writable && d.job_id && (
                       <button
                         onClick={() => void retry(d)}
-                        className="ml-0.5 rounded px-1 text-[11px] font-semibold text-accent hover:underline"
+                        className="ml-0.5 rounded px-1 text-caption font-semibold text-accent hover:underline"
                       >
                         再実行
                       </button>
                     )}
                   </span>
-                  <span className="text-right font-mono text-[11.5px] text-muted max-md:hidden">
+                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
                     {d.page_count ?? "—"}
                   </span>
-                  <span className="text-right font-mono text-[11.5px] text-muted max-md:hidden">
+                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
                     {formatBytes(d.size)}
                   </span>
-                  <span className="text-right font-mono text-[11.5px] text-muted max-md:hidden">
+                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
                     {formatDate(d.created_at)}
                   </span>
                   <RowMenu
@@ -1007,13 +996,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             })}
             {cursor && (
               <div className="pt-4 text-center">
-                <button
+                <Button variant="secondary" size="md" className="px-4"
                   onClick={() => void loadMore()}
                   disabled={loadingMore}
-                  className="h-8 rounded-lg border-[0.5px] border-divider-strong bg-surface px-4 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-60"
                 >
                   {loadingMore ? "読み込み中…" : "さらに読み込む"}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -1066,7 +1054,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
 
 function FolderIcon() {
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent">
       <Icon name="folder" size={15} />
     </span>
   );
@@ -1094,7 +1082,7 @@ function RenameInput({
         if (e.key === "Enter") onCommit();
         if (e.key === "Escape") onCancel();
       }}
-      className="w-full rounded-md border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-[13px] text-fg outline-none"
+      className="w-full rounded-control border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-body text-fg outline-none"
     />
   );
 }
@@ -1140,14 +1128,14 @@ function EmptyLibrary({ canUpload, onPick }: { canUpload: boolean; onPick: () =>
         onClick={onPick}
         className="flex w-full max-w-[520px] flex-col items-center gap-3 rounded-[16px] border-2 border-dashed border-divider-strong bg-surface-2 px-8 py-12 text-center enabled:hover:border-accent enabled:hover:bg-accent-soft disabled:cursor-default"
       >
-        <span className="grid h-12 w-12 place-items-center rounded-[14px] bg-accent-soft text-accent">
+        <span className="grid h-12 w-12 place-items-center rounded-sheet bg-accent-soft text-accent">
           <Icon name="database" size={20} />
         </span>
-        <span className="text-[15px] font-semibold text-fg">
+        <span className="text-headline font-semibold text-fg">
           {canUpload ? "文書を追加して、質問に使いましょう" : "このナレッジベースにはまだ文書がありません"}
         </span>
         {canUpload && (
-          <span className="text-[12.5px] leading-[1.6] text-muted">
+          <span className="text-footnote leading-[1.6] text-muted">
             ここにドラッグ＆ドロップするか、クリックして選んでください。
             <br />
             PDF・Word・Excel・PowerPoint・テキスト・画像に対応。追加すると自動で解析され、検索できるようになります。
@@ -1163,7 +1151,7 @@ function CheckBox({ checked }: { checked: boolean }) {
     <span
       aria-hidden
       className={cn(
-        "grid h-[18px] w-[18px] place-items-center rounded-[5px] border-[1.5px]",
+        "grid h-[18px] w-[18px] place-items-center rounded-control border-[1.5px]",
         checked ? "border-accent bg-accent text-white" : "border-divider-strong bg-surface text-transparent",
       )}
     >
@@ -1193,32 +1181,28 @@ function BulkBar({
   onRemove: () => void;
   onClear: () => void;
 }) {
-  const btn =
-    "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12.5px] font-medium disabled:cursor-not-allowed disabled:opacity-45";
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex justify-center px-3 pb-[max(14px,env(safe-area-inset-bottom))]">
       <div
         role="toolbar"
         aria-label="選択した文書の操作"
-        className="pointer-events-auto flex max-w-full animate-pop-in items-center gap-1 rounded-[14px] border-[0.5px] border-divider-strong bg-surface p-1.5 pl-3.5 shadow-e3"
+        className="pointer-events-auto flex max-w-full animate-pop-in items-center gap-1 rounded-sheet border-[0.5px] border-divider-strong bg-surface p-1.5 pl-3.5 shadow-e3"
       >
-        <span className="mr-1 shrink-0 whitespace-nowrap text-[12.5px] font-semibold text-fg">
+        <span className="mr-1 shrink-0 whitespace-nowrap text-footnote font-semibold text-fg">
           {count} 件を選択
         </span>
-        <button onClick={onSelectAll} disabled={busy || count === total} className={cn(btn, "text-fg-2 hover:bg-divider max-md:hidden")}>
+        <Button variant="ghost" onClick={onSelectAll} disabled={busy || count === total} className="text-fg-2 max-md:hidden">
           すべて選択
-        </button>
-        <button onClick={onMove} disabled={busy || count === 0 || !canMove} className={cn(btn, "text-fg hover:bg-divider")}>
+        </Button>
+        <Button variant="ghost" onClick={onMove} disabled={busy || count === 0 || !canMove}>
           <Icon name="folder" size={13} />
           移動
-        </button>
-        <button onClick={onRemove} disabled={busy || !canRemove} className={cn(btn, "text-danger hover:bg-danger-soft")}>
+        </Button>
+        <Button variant="danger-ghost" onClick={onRemove} disabled={busy || !canRemove}>
           <Icon name="trash" size={13} />
           ごみ箱へ
-        </button>
-        <button onClick={onClear} aria-label="選択を解除" className={cn(btn, "w-8 justify-center px-0 text-muted hover:bg-divider hover:text-fg")}>
-          <Icon name="close" size={13} />
-        </button>
+        </Button>
+        <IconButton label="選択を解除" tooltip={false} icon="close" onClick={onClear} className="h-8 w-8" />
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import { refreshKbs, useKbs } from "@/hooks/use-kbs";
 import { useDepartments } from "@/hooks/use-departments";
 import { CreateKbDialog } from "@/components/access/create-kb-dialog";
 import { useT } from "@/i18n/context";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -169,7 +170,7 @@ export function Sidebar(props: SidebarProps) {
           type="search"
           aria-label={t.sidebar.searchPlaceholder}
           placeholder={t.sidebar.searchPlaceholder}
-          className="h-[30px] w-full rounded-lg border-0 bg-transparent pl-[30px] pr-2.5 text-[12.5px] text-fg outline-none placeholder:text-muted-2 focus:bg-surface focus:shadow-[0_0_0_1px_var(--divider-strong)]"
+          className="h-[30px] w-full rounded-control border-0 bg-transparent pl-[30px] pr-2.5 text-footnote text-fg outline-none placeholder:text-muted-2 focus:bg-surface focus:shadow-[0_0_0_1px_var(--divider-strong)]"
         />
       </div>
 
@@ -182,7 +183,7 @@ export function Sidebar(props: SidebarProps) {
         <>
         <div className="mb-2" data-tour="kb-section">
           <div className="flex items-center justify-between px-2 pb-1 pt-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">{t.sidebar.kbHeading}</span>
+            <span className="text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">{t.sidebar.kbHeading}</span>
             {canCreateKb && (
               <IconButton size="icon-sm"
                 onClick={() => setCreatingKb(true)}
@@ -230,7 +231,7 @@ export function Sidebar(props: SidebarProps) {
           {onOpenTrash && <button
             onClick={onOpenTrash}
             className={cn(
-              "my-px flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors",
+              "my-px flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-footnote transition-colors",
               trashActive ? "bg-surface text-fg shadow-e1" : "bg-transparent text-muted hover:bg-divider hover:text-fg",
             )}
           >
@@ -257,7 +258,7 @@ export function Sidebar(props: SidebarProps) {
 
         {!searching && groups.map((g) => (
           <div key={g.label} className="mb-2">
-            <div className="px-2 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
+            <div className="px-2 pb-1 pt-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
               {g.label}
             </div>
             {/* map の要素名はここだけ th とする（外側 useT() の t.sidebar.* を同スコープで
@@ -337,7 +338,7 @@ function KbRow({ icon, label, count, readOnly, restricted, archived, active, onC
     <button
       onClick={onClick}
       className={cn(
-        "my-px flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors",
+        "my-px flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-footnote transition-colors",
         // 選択強調は背景のみ（ThreadRow と同じ規約。font-weight は CJK 合成太字を避けるため使わない）。
         active ? "bg-surface text-fg shadow-e1" : "bg-transparent text-fg-2 hover:bg-divider",
       )}
@@ -353,17 +354,13 @@ function KbRow({ icon, label, count, readOnly, restricted, archived, active, onC
         </span>
       )}
       {readOnly && (
-        <span className="shrink-0 rounded-full bg-divider px-1.5 py-px text-[9.5px] font-semibold text-muted">
-          {t.sidebar.kbReadOnlyBadge}
-        </span>
+        <Badge>{t.sidebar.kbReadOnlyBadge}</Badge>
       )}
       {/* 归档(archived)状態は検索範囲ドロップダウンと表示を揃える（同じ KB が画面ごとに違って見えるのを防ぐ）。 */}
       {archived && (
-        <span className="shrink-0 rounded-full border-[0.5px] border-divider-strong px-1.5 py-px text-[9.5px] font-semibold text-muted-2">
-          {t.sidebar.kbArchivedBadge}
-        </span>
+        <Badge tone="outline">{t.sidebar.kbArchivedBadge}</Badge>
       )}
-      {count != null && <span className="shrink-0 font-mono text-[10.5px] text-muted">{count}</span>}
+      {count != null && <span className="shrink-0 font-mono text-mini text-muted">{count}</span>}
     </button>
   );
 }

@@ -155,7 +155,7 @@ export function Composer({
   const submitState = composerSubmitState({ value, attachments, running, hasImage: Boolean(image) });
   const pending = submitState.pending || imageBusy;
   const canSubmit = submitState.canSubmit && !imageBusy;
-  const toolBtn = "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-2 text-[12px] font-medium text-muted hover:bg-divider hover:text-fg max-md:h-8";
+  const toolBtn = "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border-0 bg-transparent px-2 text-footnote font-medium text-muted hover:bg-divider hover:text-fg max-md:h-8";
 
   // 追加条件チップ: 末尾に snippet を追記し、カーソルを末尾へ置いてフォーカス。
   const insertSnippet = (snippet: string) => {
@@ -197,7 +197,7 @@ export function Composer({
       <div
         data-tour="composer"
         className={cn(
-          "rounded-[16px] border border-divider-strong bg-surface shadow-e2 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow-2)] max-md:rounded-[14px]",
+          "rounded-[16px] border border-divider-strong bg-surface shadow-e2 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow-2)] max-md:rounded-sheet",
         )}
       >
         {onRemoveAttachment && (
@@ -205,7 +205,7 @@ export function Composer({
         )}
         {(image || imageBusy) && (
           <div className="flex items-center gap-2 px-3 pt-3">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface-2">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface-2">
               {image ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL の縮小表示
                 <img src={image.dataUrl} alt={t.chat.imageAttached} className="h-full w-full object-cover" />
@@ -226,11 +226,11 @@ export function Composer({
                 </button>
               )}
             </div>
-            <span className="min-w-0 text-[11.5px] leading-[1.45] text-muted">{imageBusy ? t.chat.imagePreparing : t.chat.imageHint}</span>
+            <span className="min-w-0 text-caption leading-[1.45] text-muted">{imageBusy ? t.chat.imagePreparing : t.chat.imageHint}</span>
           </div>
         )}
         {dragging && (
-          <div className="px-4 pt-3 text-[12px] font-medium text-accent">{t.chat.imageDrop}</div>
+          <div className="px-4 pt-3 text-footnote font-medium text-accent">{t.chat.imageDrop}</div>
         )}
         {onPickImage && (
           <input
@@ -280,7 +280,7 @@ export function Composer({
             }
           }}
           className={cn(
-            "max-h-[180px] min-h-[24px] w-full resize-none border-0 bg-transparent px-4 pb-1 pt-3.5 text-[14.5px] leading-[1.5] text-fg outline-none placeholder:text-muted-2 max-md:px-3.5 max-md:text-[16px]",
+            "max-h-[180px] min-h-[24px] w-full resize-none border-0 bg-transparent px-4 pb-1 pt-3.5 text-callout leading-[1.5] text-fg outline-none placeholder:text-muted-2 max-md:px-3.5 max-md:text-[16px]",
             running && "text-muted",
           )}
         />
@@ -331,7 +331,7 @@ export function Composer({
           )}
           {/* 书式ヒント（空白态・agents）: 識別码アイコン + 対応する入力種別。 */}
           {showLeadingHint && (
-            <span className="inline-flex h-7 min-w-0 shrink items-center gap-1.5 rounded-[7px] px-2 text-[12px] font-medium text-muted-2 max-md:hidden">
+            <span className="inline-flex h-7 min-w-0 shrink items-center gap-1.5 rounded-control px-2 text-footnote font-medium text-muted-2 max-md:hidden">
               <Icon name="hash" size={13} />
               <span className="truncate">{leadingHint}</span>
             </span>
@@ -395,7 +395,7 @@ export function Composer({
               onClick={onStop}
               title={t.chat.stopTitle}
               aria-label={t.chat.stopTitle}
-              className="grid h-8 w-8 shrink-0 animate-[ar-hl-pulse_1.6s_ease-in-out_infinite] place-items-center rounded-lg border-0 bg-accent text-white max-md:h-[34px] max-md:w-[34px]"
+              className="grid h-8 w-8 shrink-0 animate-[ar-hl-pulse_1.6s_ease-in-out_infinite] place-items-center rounded-control border-0 bg-accent text-white max-md:h-[34px] max-md:w-[34px]"
             >
               <svg viewBox="0 0 16 16" width="10" height="10">
                 <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor" />
@@ -408,7 +408,7 @@ export function Composer({
               title={pending ? t.chat.pendingSubmitTitle : undefined}
               aria-label={t.chat.sendTitle}
               className={cn(
-                "grid h-8 w-8 shrink-0 place-items-center rounded-lg border-0 text-white transition-[background,filter] max-md:h-[34px] max-md:w-[34px]",
+                "grid h-8 w-8 shrink-0 place-items-center rounded-control border-0 text-white transition-[background,filter] max-md:h-[34px] max-md:w-[34px]",
                 canSubmit ? "bg-accent hover:brightness-105" : "cursor-not-allowed bg-divider text-muted-2",
               )}
             >
@@ -419,7 +419,7 @@ export function Composer({
           )}
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-2 text-center text-[11px] text-muted-2 max-md:hidden">
+      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-2 text-center text-caption text-muted-2 max-md:hidden">
         {running ? (
           <span><kbd>{SHORTCUT_LABEL.stop}</kbd>{t.chat.cancelHintText}</span>
         ) : pending ? (

@@ -14,6 +14,7 @@ export const sources = {
 
   // Meta bar
   metaPath: "パス",
+  viewModeLabel: "表示形式",
   viewHtml: "HTML整形",
   viewText: "解析テキスト",
 

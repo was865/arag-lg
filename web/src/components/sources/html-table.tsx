@@ -43,7 +43,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   const [sheetOpen, setSheetOpen] = useState(false);
 
   if (!model) {
-    return <div className={cn("whitespace-pre-wrap text-[12.5px] leading-[1.65] text-fg-2 [overflow-wrap:anywhere]", className)}>{html}</div>;
+    return <div className={cn("whitespace-pre-wrap text-footnote leading-[1.65] text-fg-2 [overflow-wrap:anywhere]", className)}>{html}</div>;
   }
 
   const wide = overflow.left || overflow.right;
@@ -52,7 +52,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   const stickFirst = wide && model.rows.length > 1 && model.rows.every((r) => r.cells[0]?.colspan === 1);
 
   const table = (sheet: boolean) => (
-    <table className="w-full border-separate border-spacing-0 text-[11.5px] leading-[1.55]">
+    <table className="w-full border-separate border-spacing-0 text-caption leading-[1.55]">
       <tbody>
         {model.rows.map((row, ri) => {
           const last = ri === model.rows.length - 1;
@@ -73,7 +73,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
                       // 区切りは細い横線と縦線だけ（外枠はラッパが持つ）
                       !last && "border-b-[0.5px] border-divider",
                       ci < row.cells.length - 1 && "border-r-[0.5px] border-divider",
-                      c.header ? "bg-surface-2 text-left text-[11px] font-semibold text-fg" : "bg-surface text-fg-2",
+                      c.header ? "bg-surface-2 text-left text-caption font-semibold text-fg" : "bg-surface text-fg-2",
                       // 数値・短い語は 1 行に収め、長い文だけ読みやすい幅で折り返す
                       fit === "long" ? "min-w-[9em] max-w-[24em] [overflow-wrap:anywhere]" : "whitespace-nowrap",
                       right && "text-right tabular-nums",
@@ -95,7 +95,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   return (
     <div
       className={cn(
-        "group/tbl relative min-w-0 overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface",
+        "group/tbl relative min-w-0 overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface",
         className,
       )}
     >
@@ -124,7 +124,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
           onClick={() => setSheetOpen(true)}
           title={t.sources.expandTable}
           aria-label={t.sources.expandTable}
-          className="absolute right-1.5 top-1.5 z-[2] grid h-6 w-6 place-items-center rounded-[6px] bg-surface-elev text-muted opacity-0 shadow-e1 ring-[0.5px] ring-divider-strong transition-opacity duration-150 hover:text-fg focus-visible:opacity-100 group-hover/tbl:opacity-100 max-md:opacity-100"
+          className="absolute right-1.5 top-1.5 z-[2] grid h-6 w-6 place-items-center rounded-control bg-surface-elev text-muted opacity-0 shadow-e1 ring-[0.5px] ring-divider-strong transition-opacity duration-150 hover:text-fg focus-visible:opacity-100 group-hover/tbl:opacity-100 max-md:opacity-100"
         >
           <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden>
             <path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />

@@ -62,7 +62,7 @@ export function ListField({
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body text-fg">
           {label}
           {badge && (
-            <span className="rounded-[4px] bg-divider px-1.5 font-mono text-[10.5px] text-muted">{badge}</span>
+            <span className="rounded-[4px] bg-divider px-1.5 font-mono text-mini text-muted">{badge}</span>
           )}
           {changed && <span aria-label="既定から変更" className="h-1.5 w-1.5 rounded-full bg-accent" />}
         </div>

@@ -6,6 +6,7 @@ import type { RerankHit, ToolCall, ToolName, ToolStatus, ToolView } from "@/lib/
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import type { Dictionary } from "@/i18n/dictionary";
+import { Badge } from "@/components/ui/badge";
 
 const LOG_DETAIL_MAX = 8;
 const VERIFY_DETAIL_MAX = 5;
@@ -161,16 +162,16 @@ function StatusIcon({ status, t }: { status: ToolStatus; t: Dictionary }) {
       </span>
     );
   return (
-    <span className="grid h-[14px] w-[14px] place-items-center rounded-full bg-[#B83A1F] text-[9px] font-bold text-white" aria-label={t.chat.statusError}>
+    <span className="grid h-[14px] w-[14px] place-items-center rounded-full bg-danger text-mini font-bold text-white" aria-label={t.chat.statusError}>
       !
     </span>
   );
 }
 
 const preCls =
-  "m-0 whitespace-pre-wrap break-words rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-[11px] leading-[1.55] text-fg-2";
+  "m-0 whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-caption leading-[1.55] text-fg-2";
 
-const sectionLabelCls = "mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted";
+const sectionLabelCls = "mb-1 text-mini font-semibold uppercase tracking-[0.06em] text-muted";
 
 function hasInputData(input: Record<string, unknown>): boolean {
   return Object.keys(input).length > 0;
@@ -208,7 +209,7 @@ function parseRetrieveResult(text: unknown): RetrieveHit[] {
 
 function KeyValueGrid({ rows }: { rows: { k: string; v: React.ReactNode }[] }) {
   return (
-    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-[3px] rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-[11.5px] leading-[1.55]">
+    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-[3px] rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-caption leading-[1.55]">
       {rows.map((r) => (
         <div key={r.k} className="contents">
           <span className="text-muted-2">{r.k}</span>
@@ -246,7 +247,7 @@ function hasTokenUsage(output: Record<string, unknown>): boolean {
 
 function ModelBlock({ model }: { model: string }) {
   return (
-    <div className="rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-[12px] leading-[1.55] text-fg">
+    <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-footnote leading-[1.55] text-fg">
       {model}
     </div>
   );
@@ -293,9 +294,9 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   }
   if (step.name === "retrieve" && typeof step.input.query === "string") {
     return (
-      <div className="rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
-        <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-2">query</div>
-        <div className="text-[12.5px] leading-[1.5] text-fg">{step.input.query}</div>
+      <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
+        <div className="mb-1 font-mono text-mini uppercase tracking-[0.06em] text-muted-2">query</div>
+        <div className="text-footnote leading-[1.5] text-fg">{step.input.query}</div>
       </div>
     );
   }
@@ -303,7 +304,7 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     const ref = step.input.ref;
     const document = step.input.document;
     return (
-      <div className="space-y-[3px] rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-[11.5px] leading-[1.6] text-fg-2">
+      <div className="space-y-[3px] rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-caption leading-[1.6] text-fg-2">
         {ref != null && (
           <div>
             <span className="text-muted-2">{t.chat.sourceLabel}</span>
@@ -326,9 +327,9 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
       <div className="space-y-2">
         {rows.length > 0 && <KeyValueGrid rows={rows} />}
         {typeof step.input.query === "string" && (
-          <div className="rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
-            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-2">query</div>
-            <div title={step.input.query} className="line-clamp-3 break-words text-[12.5px] leading-[1.5] text-fg [overflow-wrap:anywhere]">{step.input.query}</div>
+          <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
+            <div className="mb-1 font-mono text-mini uppercase tracking-[0.06em] text-muted-2">query</div>
+            <div title={step.input.query} className="line-clamp-3 break-words text-footnote leading-[1.5] text-fg [overflow-wrap:anywhere]">{step.input.query}</div>
           </div>
         )}
       </div>
@@ -355,22 +356,22 @@ function VerifyDetailRow({ detail, index, t }: { detail: VerifyDetail; index: nu
     <div className={cn("px-3 py-2.5", index > 0 && "border-t-[0.5px] border-divider")}>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className={cn(
-          "rounded-full px-2 py-px text-[10.5px] font-semibold",
+          "rounded-full px-2 py-px text-mini font-semibold",
           verifyVerdictChipClass(verdict),
         )}>
           {verifyVerdictLabel(verdict, t)}
         </span>
         {citedNums.length > 0 && (
-          <span className="font-mono text-[10.5px] text-muted-2">
+          <span className="font-mono text-mini text-muted-2">
             {t.chat.verifyCitations}: {citedNums.map((n) => `[${n}]`).join(" ")}
           </span>
         )}
       </div>
-      <div className="mt-1 whitespace-pre-wrap break-words text-[12px] leading-[1.5] text-fg-2">
+      <div className="mt-1 whitespace-pre-wrap break-words text-footnote leading-[1.5] text-fg-2">
         {detail.text}
       </div>
       {detail.reason && (
-        <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[10.5px] leading-[1.5] text-muted-2">
+        <div className="mt-1 whitespace-pre-wrap break-words font-mono text-mini leading-[1.5] text-muted-2">
           {t.chat.verifyReason}: {detail.reason}
         </div>
       )}
@@ -406,12 +407,12 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         {(output.selected as RerankHit[]).map((s) => (
           <div
             key={s.id}
-            className="grid grid-cols-[80px_42px_1fr] items-center gap-2.5 text-[11.5px] max-md:grid-cols-[90px_38px_1fr] max-md:gap-2"
+            className="grid grid-cols-[80px_42px_1fr] items-center gap-2.5 text-caption max-md:grid-cols-[90px_38px_1fr] max-md:gap-2"
           >
             <div className="h-[5px] overflow-hidden rounded-full bg-divider">
               <span className="block h-full rounded-full bg-accent" style={{ width: `${s.score * 100}%` }} />
             </div>
-            <span className="font-mono text-[11px] font-semibold text-accent">{s.score.toFixed(2)}</span>
+            <span className="font-mono text-caption font-semibold text-accent">{s.score.toFixed(2)}</span>
             <span className="truncate text-fg-2">{s.title}</span>
           </div>
         ))}
@@ -426,7 +427,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
           ? (output.terms as unknown[]).map(String)
           : String(step.input.query ?? "").split(/\s+/).filter(Boolean);
         return (
-          <div className="flex items-start gap-1.5 rounded-lg bg-surface-2 px-2.5 py-2 text-[11.5px] leading-[1.6] text-fg-2">
+          <div className="flex items-start gap-1.5 rounded-control bg-surface-2 px-2.5 py-2 text-caption leading-[1.6] text-fg-2">
             <Icon name="info" size={12} className="mt-[3px] shrink-0 text-muted" />
             <span>
               {interpolate(output.fallback === "codes" ? t.chat.keywordRelax : t.chat.keywordFallback, {
@@ -436,7 +437,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
           </div>
         );
       }
-      return <div className="px-1 py-1 text-[11.5px] text-muted">{t.chat.noCandidates}</div>;
+      return <div className="px-1 py-1 text-caption text-muted">{t.chat.noCandidates}</div>;
     }
     // スコアは非負前提（dense=cosine, sparse=BM25/dot）。リスト内最大値でバー幅を正規化。
     const max = Math.max(...hits.map((h) => h.score), 1e-9);
@@ -445,12 +446,12 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         {hits.map((h, i) => (
           <div
             key={i}
-            className="grid grid-cols-[64px_42px_1fr] items-center gap-2.5 text-[11.5px] max-md:grid-cols-[54px_38px_1fr] max-md:gap-2"
+            className="grid grid-cols-[64px_42px_1fr] items-center gap-2.5 text-caption max-md:grid-cols-[54px_38px_1fr] max-md:gap-2"
           >
             <div className="h-[5px] overflow-hidden rounded-full bg-divider">
               <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.max(4, (h.score / max) * 100)}%` }} />
             </div>
-            <span className="font-mono text-[11px] font-semibold text-accent">{h.score.toFixed(2)}</span>
+            <span className="font-mono text-caption font-semibold text-accent">{h.score.toFixed(2)}</span>
             <span className="truncate text-fg-2">
               <span className="text-fg">{h.title}</span>
               {h.heading && <span className="text-muted-2"> — {h.heading}</span>}
@@ -471,17 +472,17 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     return (
       <div className="flex flex-col gap-2">
         <KeyValueGrid rows={[{ k: t.chat.expandCount, v: String(output.count ?? expanded.length) }]} />
-        <div className="overflow-hidden rounded-lg border-[0.5px] border-divider bg-code-bg">
+        <div className="overflow-hidden rounded-control border-[0.5px] border-divider bg-code-bg">
           {expanded.map((h, i) => (
             <div key={`${h.id}-${i}`} className={cn("px-3 py-2.5", i > 0 && "border-t-[0.5px] border-divider")}>
               <div className="flex min-w-0 items-center gap-2">
-                <span className="font-mono text-[11px] font-semibold tabular-nums text-accent">{h.score.toFixed(2)}</span>
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-fg">{h.title}</span>
-                <span className="shrink-0 font-mono text-[10.5px] text-muted-2">p.{h.page}</span>
-                <span className="shrink-0 font-mono text-[10.5px] text-muted-2">{h.expandedChars}ch</span>
+                <span className="font-mono text-caption font-semibold tabular-nums text-accent">{h.score.toFixed(2)}</span>
+                <span className="min-w-0 flex-1 truncate text-footnote font-medium text-fg">{h.title}</span>
+                <span className="shrink-0 font-mono text-mini text-muted-2">p.{h.page}</span>
+                <span className="shrink-0 font-mono text-mini text-muted-2">{h.expandedChars}ch</span>
               </div>
-              {h.heading && <div className="mt-0.5 truncate font-mono text-[10.5px] text-muted-2">{h.heading}</div>}
-              {h.preview && <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-[11.5px] leading-[1.5] text-fg-2">{h.preview}</div>}
+              {h.heading && <div className="mt-0.5 truncate font-mono text-mini text-muted-2">{h.heading}</div>}
+              {h.preview && <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-caption leading-[1.5] text-fg-2">{h.preview}</div>}
             </div>
           ))}
         </div>
@@ -498,16 +499,16 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
           { k: "kept", v: `${String(output.kept ?? 0)} / ${String(output.total ?? candidates.length)}` },
           { k: "retry", v: output.needRetry ? "yes" : "no" },
         ]} />
-        <div className="overflow-hidden rounded-lg border-[0.5px] border-divider bg-code-bg">
+        <div className="overflow-hidden rounded-control border-[0.5px] border-divider bg-code-bg">
           {candidates.map((c, i) => (
-            <div key={`${c.chunkId}-${i}`} className={cn("grid grid-cols-[58px_42px_1fr] items-start gap-2.5 px-3 py-2.5 text-[11.5px]", i > 0 && "border-t-[0.5px] border-divider")}>
-              <span className={cn("rounded-full px-2 py-px text-center text-[10.5px] font-semibold", c.kept ? "bg-accent-soft text-accent" : "bg-divider text-muted")}>
+            <div key={`${c.chunkId}-${i}`} className={cn("grid grid-cols-[58px_42px_1fr] items-start gap-2.5 px-3 py-2.5 text-caption", i > 0 && "border-t-[0.5px] border-divider")}>
+              <span className={cn("rounded-full px-2 py-px text-center text-mini font-semibold", c.kept ? "bg-accent-soft text-accent" : "bg-divider text-muted")}>
                 {c.kept ? "kept" : "skip"}
               </span>
-              <span className="font-mono text-[11px] font-semibold tabular-nums text-accent">{c.score.toFixed(2)}</span>
+              <span className="font-mono text-caption font-semibold tabular-nums text-accent">{c.score.toFixed(2)}</span>
               <span className="min-w-0">
                 <span className="block truncate text-fg">{c.title}</span>
-                {c.heading && <span className="block truncate font-mono text-[10.5px] text-muted-2">{c.heading}</span>}
+                {c.heading && <span className="block truncate font-mono text-mini text-muted-2">{c.heading}</span>}
               </span>
             </div>
           ))}
@@ -520,7 +521,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     const hits = parseRetrieveResult(output.result);
     if (hits.length) {
       return (
-        <div className="overflow-hidden rounded-lg border-[0.5px] border-divider bg-code-bg">
+        <div className="overflow-hidden rounded-control border-[0.5px] border-divider bg-code-bg">
           {hits.map((h, i) => (
             <div
               key={`${h.n}-${i}`}
@@ -529,12 +530,12 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
                 i > 0 && "border-t-[0.5px] border-divider",
               )}
             >
-              <span className="pt-px font-mono text-[11px] font-semibold text-accent">[{h.n}]</span>
+              <span className="pt-px font-mono text-caption font-semibold text-accent">[{h.n}]</span>
               <div className="min-w-0">
-                <div className="truncate text-[12.5px] font-medium text-fg">{h.title}</div>
-                <div className="truncate font-mono text-[10.5px] text-muted-2">{h.heading}</div>
+                <div className="truncate text-footnote font-medium text-fg">{h.title}</div>
+                <div className="truncate font-mono text-mini text-muted-2">{h.heading}</div>
                 {h.snippet && (
-                  <div className="mt-1 line-clamp-3 whitespace-pre-wrap text-[11.5px] leading-[1.5] text-fg-2">
+                  <div className="mt-1 line-clamp-3 whitespace-pre-wrap text-caption leading-[1.5] text-fg-2">
                     {h.snippet}
                   </div>
                 )}
@@ -546,7 +547,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     }
     // パースに失敗（"該当する資料は見つかりませんでした。" 等）した場合は本文をそのまま見せる。
     return (
-      <div className="rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-[12px] leading-[1.55] text-fg-2">
+      <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
         {output.result}
       </div>
     );
@@ -560,12 +561,12 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     const detailBlock = details.length > 0 && (
       <div>
         <div className={sectionLabelCls}>{t.chat.sectionVerifyDetails}</div>
-        <div className="overflow-hidden rounded-lg border-[0.5px] border-divider bg-code-bg">
+        <div className="overflow-hidden rounded-control border-[0.5px] border-divider bg-code-bg">
           {details.slice(0, VERIFY_DETAIL_MAX).map((detail, i) => (
             <VerifyDetailRow key={`${detail.verdict}-${i}`} detail={detail} index={i} t={t} />
           ))}
           {details.length > VERIFY_DETAIL_MAX && (
-            <div className="border-t-[0.5px] border-divider px-3 py-2.5 text-[11.5px] text-muted-2">
+            <div className="border-t-[0.5px] border-divider px-3 py-2.5 text-caption text-muted-2">
               {interpolate(t.chat.moreItems, { n: details.length - VERIFY_DETAIL_MAX })}
             </div>
           )}
@@ -576,9 +577,9 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
       return (
         <div className="flex flex-col gap-2">
           {hasTokenUsage(output) && <KeyValueGrid rows={tokenRows(output, t)} />}
-          <div className="rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-[12px] leading-[1.55] text-fg-2">
+          <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
             {message}
-            {verifyError && <div className="mt-1 font-mono text-[10.5px] text-muted-2">{verifyError}</div>}
+            {verifyError && <div className="mt-1 font-mono text-mini text-muted-2">{verifyError}</div>}
           </div>
           {detailBlock}
         </div>
@@ -587,10 +588,10 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     return (
       <div className="flex flex-col gap-2">
         {hasTokenUsage(output) && <KeyValueGrid rows={tokenRows(output, t)} />}
-        <ul className="flex flex-col gap-1.5 rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
+        <ul className="flex flex-col gap-1.5 rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
           {claims.map((c, i) => (
-            <li key={i} className="grid grid-cols-[14px_1fr] gap-2 text-[12px] leading-[1.5] text-fg-2">
-              <span className="pt-px text-center font-mono text-[11px] font-semibold text-[#B83A1F]">!</span>
+            <li key={i} className="grid grid-cols-[14px_1fr] gap-2 text-footnote leading-[1.5] text-fg-2">
+              <span className="pt-px text-center font-mono text-caption font-semibold text-danger">!</span>
               <span className="min-w-0 whitespace-pre-wrap break-words">{c}</span>
             </li>
           ))}
@@ -607,7 +608,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         {typeof output.draft === "string" && (
           <div>
             <div className={sectionLabelCls}>{t.chat.sectionDraft}</div>
-            <div className="whitespace-pre-wrap break-words rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-[12px] leading-[1.55] text-muted">
+            <div className="whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-muted">
               {output.draft}
             </div>
           </div>
@@ -615,7 +616,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         {typeof output.revised === "string" && (
           <div>
             <div className={sectionLabelCls}>{t.chat.sectionRevised}</div>
-            <div className="whitespace-pre-wrap break-words rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-[12px] leading-[1.55] text-fg-2">
+            <div className="whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
               {output.revised}
             </div>
           </div>
@@ -627,7 +628,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   // work_calendar は整形済みの事実テキスト（{result:"..."}）。そのまま可読表示する。
   if (step.name === "work_calendar" && typeof output.result === "string") {
     return (
-      <div className="whitespace-pre-wrap break-words rounded-lg border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-[12px] leading-[1.55] text-fg-2">
+      <div className="whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
         {output.result}
       </div>
     );
@@ -647,8 +648,8 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
         onClick={expandable ? onToggle : undefined}
         aria-expanded={expandable ? expanded : undefined}
         className={cn(
-          "grid w-full grid-cols-[16px_16px_auto_auto_1fr_auto_16px] items-center gap-2.5 border-0 px-3.5 py-[9px] text-left text-[12.5px] text-fg",
-          "max-md:grid-cols-[16px_16px_1fr_auto_16px] max-md:gap-2 max-md:px-3 max-md:text-[12px]",
+          "grid w-full grid-cols-[16px_16px_auto_auto_1fr_auto_16px] items-center gap-2.5 border-0 px-3.5 py-[9px] text-left text-footnote text-fg",
+          "max-md:grid-cols-[16px_16px_1fr_auto_16px] max-md:gap-2 max-md:px-3 max-md:text-footnote",
           expandable ? "cursor-pointer hover:bg-surface" : "cursor-default",
           step.status === "running" && "bg-accent-soft",
         )}
@@ -659,12 +660,12 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
             {TOOL_ICONS[step.name]}
           </svg>
         </span>
-        <span className="font-mono text-[11.5px] font-semibold text-fg">{step.name}</span>
-        <span className="max-w-[110px] truncate rounded-full bg-divider px-[7px] py-px text-[11px] text-muted max-md:hidden">
+        <span className="font-mono text-caption font-semibold text-fg">{step.name}</span>
+        <span className="max-w-[110px] truncate rounded-full bg-divider px-[7px] py-px text-caption text-muted max-md:hidden">
           {step.label}
         </span>
-        <span className="min-w-0 truncate text-[12px] text-muted max-md:hidden">{step.summary}</span>
-        <span className="font-mono text-[11px] tabular-nums text-muted">{stepDurationLabel(step)}</span>
+        <span className="min-w-0 truncate text-footnote text-muted max-md:hidden">{step.summary}</span>
+        <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
         {expandable ? (
           <span className={cn("text-muted transition-transform", expanded && "rotate-180")}>
             <svg viewBox="0 0 16 16" width="11" height="11">
@@ -717,9 +718,9 @@ function ToolStepTimeline({ step, expanded, onToggle, isLast, t }: { step: ToolC
             expandable ? "cursor-pointer" : "cursor-default",
           )}
         >
-          <span className="font-mono text-[11.5px] font-semibold text-fg">{step.name}</span>
-          <span className="min-w-0 flex-1 truncate text-[12px] text-muted">{step.summary}</span>
-          <span className="font-mono text-[11px] tabular-nums text-muted">{stepDurationLabel(step)}</span>
+          <span className="font-mono text-caption font-semibold text-fg">{step.name}</span>
+          <span className="min-w-0 flex-1 truncate text-footnote text-muted">{step.summary}</span>
+          <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
         </button>
         {expandable && expanded && (
           <div className="flex flex-col gap-2 pt-2">
@@ -780,7 +781,7 @@ function ToolStepLog({ steps, dict }: { steps: ToolCall[]; dict: Dictionary }) {
   const fmtT = (ms: number) => `+${Math.floor(ms / 1000).toString().padStart(2, "0")}.${(ms % 1000).toString().padStart(3, "0").slice(0, 3)}`;
 
   return (
-    <div className="max-h-80 overflow-y-auto bg-code-bg px-4 pb-3.5 pt-2.5 font-mono text-[11px] leading-[1.65] text-fg-2 max-md:max-h-[260px] max-md:px-3 max-md:text-[10.5px]">
+    <div className="max-h-80 overflow-y-auto bg-code-bg px-4 pb-3.5 pt-2.5 font-mono text-caption leading-[1.65] text-fg-2 max-md:max-h-[260px] max-md:px-3 max-md:text-mini">
       {lines.map((l, i) => (
         <div key={i} className="flex gap-3 py-px">
           <span className="shrink-0 text-muted-2">{fmtT(l.t)}</span>
@@ -834,7 +835,7 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
         onClick={expandable ? onToggle : undefined}
         aria-expanded={expandable ? expanded : undefined}
         className={cn(
-          "flex w-full items-center gap-2.5 border-0 bg-transparent py-[3px] text-left text-[11.5px] text-fg-2",
+          "flex w-full items-center gap-2.5 border-0 bg-transparent py-[3px] text-left text-caption text-fg-2",
           expandable ? "cursor-pointer hover:text-fg" : "cursor-default",
         )}
       >
@@ -842,12 +843,10 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
         <span className="grid place-items-center text-muted-2">
           <svg viewBox="0 0 16 16" width="12" height="12">{TOOL_ICONS[step.name]}</svg>
         </span>
-        <span className="font-mono text-[11px] font-semibold text-fg-2">{step.name}</span>
-        <span className="max-w-[150px] shrink-0 truncate rounded-full bg-divider px-[6px] py-px text-[10.5px] text-muted max-md:hidden">
-          {step.label}
-        </span>
+        <span className="font-mono text-caption font-semibold text-fg-2">{step.name}</span>
+        <Badge className="block max-w-[150px] truncate font-normal max-md:hidden">{step.label}</Badge>
         <span className="min-w-0 flex-1 truncate text-muted">{step.summary}</span>
-        <span className="font-mono text-[10.5px] tabular-nums text-muted-2">{stepDurationLabel(step)}</span>
+        <span className="font-mono text-mini tabular-nums text-muted-2">{stepDurationLabel(step)}</span>
         {expandable ? (
           <span className={cn("text-muted-2 transition-transform", expanded && "rotate-180")}>
             <svg viewBox="0 0 16 16" width="10" height="10">

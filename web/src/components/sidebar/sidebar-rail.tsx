@@ -53,7 +53,7 @@ export function SidebarRailButton({ icon, label, onClick, active = false, emphas
       title={label}
       data-active={active ? "true" : "false"}
       className={cn(
-        "grid h-8 w-8 place-items-center rounded-lg border-0 bg-transparent",
+        "grid h-8 w-8 place-items-center rounded-control border-0 bg-transparent",
         active
           ? "bg-accent-soft text-accent"
           : emphasis

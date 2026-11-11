@@ -39,7 +39,7 @@ export function ResetPasswordForm({
   };
 
   const toLogin = (
-    <a href="/login" className="text-[12.5px] font-medium text-accent no-underline hover:underline">
+    <a href="/login" className="text-footnote font-medium text-accent no-underline hover:underline">
       ログイン画面へ
     </a>
   );

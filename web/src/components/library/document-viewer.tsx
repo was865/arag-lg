@@ -74,16 +74,16 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
       <header className="flex h-[56px] items-center gap-2.5 border-b-[0.5px] border-divider px-4 max-md:h-[52px] max-md:gap-1.5 max-md:px-2">
         <IconButton label="閉じる" icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
         <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg max-md:hidden"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-control max-md:hidden"
           style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
         >
           <Icon name={meta.iconName} size={15} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 truncate text-[14px] font-semibold text-fg" title={doc.filename}>
+          <h2 className="m-0 truncate text-callout font-semibold text-fg" title={doc.filename}>
             {doc.filename}
           </h2>
-          <div className="truncate text-[11px] text-muted">{facts.join(" · ")}</div>
+          <div className="truncate text-caption text-muted">{facts.join(" · ")}</div>
         </div>
         <IconButton asChild label="原本を新しいタブで開く" className="h-8 w-8">
           <a href={originalUrl(doc.id)} target="_blank" rel="noopener">
@@ -128,7 +128,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
             onClick={() => setTab(key)}
             aria-pressed={tab === key}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2.5 text-[12.5px] font-medium",
+              "-mb-px border-b-2 px-3 py-2.5 text-footnote font-medium",
               tab === key ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg",
             )}
           >
@@ -155,20 +155,19 @@ function NotReady({ status, onShowOriginal }: { status: string; onShowOriginal: 
   return (
     <div className="grid h-full place-items-center p-8 text-center">
       <div className="max-w-[360px]">
-        <div className="mb-1.5 text-[13.5px] font-semibold text-fg">
+        <div className="mb-1.5 text-body font-semibold text-fg">
           {failed ? "この文書は解析できませんでした" : "解析しています"}
         </div>
-        <div className="mb-4 text-[12px] leading-[1.6] text-muted">
+        <div className="mb-4 text-footnote leading-[1.6] text-muted">
           {failed
             ? "ライブラリの行のメニューから解析し直せます。原本はそのまま読めます。"
             : "解析が終わると、章ごとの整形表示と目次がここに出ます。"}
         </div>
-        <button
+        <Button variant="secondary" size="sm"
           onClick={onShowOriginal}
-          className="inline-flex items-center rounded-lg border-[0.5px] border-divider-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-fg hover:bg-surface-2"
         >
           原本を見る
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -269,11 +268,11 @@ function ParsedPane({
   const indents = outline ? outlineIndent(outline) : [];
   const toc = (
     <nav aria-label="目次" className="flex flex-col gap-px p-2">
-      <div className="px-2 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.07em] text-muted-2">目次</div>
+      <div className="px-2 pb-1.5 pt-1 text-mini font-bold uppercase tracking-[0.07em] text-muted-2">目次</div>
       {outline === null ? (
-        <div className="px-2 py-1 text-[12px] text-muted">読み込み中…</div>
+        <div className="px-2 py-1 text-footnote text-muted">読み込み中…</div>
       ) : outline.length === 0 ? (
-        <div className="px-2 py-1 text-[12px] text-muted">見出しはありません</div>
+        <div className="px-2 py-1 text-footnote text-muted">見出しはありません</div>
       ) : (
         outline.map((s, i) => (
           <button
@@ -282,12 +281,12 @@ function ParsedPane({
             aria-current={active === s.id ? "location" : undefined}
             style={{ paddingLeft: 8 + indents[i]! * 12 }}
             className={cn(
-              "flex w-full items-baseline gap-2 rounded-md py-1.5 pr-2 text-left text-[12px] leading-[1.45]",
+              "flex w-full items-baseline gap-2 rounded-control py-1.5 pr-2 text-left text-footnote leading-[1.45]",
               active === s.id ? "bg-accent-soft font-medium text-fg" : "text-fg-2 hover:bg-divider",
             )}
           >
             <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{headingOf(s.heading_path) || "（見出しなし）"}</span>
-            {s.page_start != null && <span className="shrink-0 font-mono text-[10.5px] text-muted-2">p.{s.page_start}</span>}
+            {s.page_start != null && <span className="shrink-0 font-mono text-mini text-muted-2">p.{s.page_start}</span>}
           </button>
         ))
       )}
@@ -312,11 +311,11 @@ function ParsedPane({
           {sections.map((s) => (
             <section key={s.id} data-section-id={s.id} className="border-b-[0.5px] border-divider py-5 last:border-b-0">
               <SectionHeading section={s} />
-              <RenderedSectionBody body={pipeTablesToHtml(resolveAssets(s.text, docId))} className="text-[13.5px]" />
+              <RenderedSectionBody body={pipeTablesToHtml(resolveAssets(s.text, docId))} className="text-body" />
             </section>
           ))}
           {error ? (
-            <div className="py-6 text-center text-[12.5px] text-danger">
+            <div className="py-6 text-center text-footnote text-danger">
               {error}
               <button
                 onClick={() => {
@@ -333,7 +332,7 @@ function ParsedPane({
               <span className="h-5 w-5 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : sections.length === 0 ? (
-            <div className="py-16 text-center text-[13px] text-muted">本文がありません</div>
+            <div className="py-16 text-center text-body text-muted">本文がありません</div>
           ) : null}
         </div>
       </div>
@@ -355,14 +354,14 @@ function SectionHeading({ section: s }: { section: SectionOut }) {
   if (!title && !pages) return null;
   return (
     <div className="mb-2.5">
-      {parts.length > 0 && <div className="mb-0.5 truncate text-[11px] text-muted-2">{parts.join(" › ")}</div>}
+      {parts.length > 0 && <div className="mb-0.5 truncate text-caption text-muted-2">{parts.join(" › ")}</div>}
       <div className="flex items-baseline gap-2">
         {title && (
-          <h3 className={cn("m-0 min-w-0 flex-1 font-bold text-fg", s.level <= 1 ? "text-[17px]" : s.level === 2 ? "text-[15px]" : "text-[14px]")}>
+          <h3 className={cn("m-0 min-w-0 flex-1 font-bold text-fg", s.level <= 1 ? "text-title" : s.level === 2 ? "text-headline" : "text-callout")}>
             {title}
           </h3>
         )}
-        {pages && <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-2">{pages}</span>}
+        {pages && <span className="ml-auto shrink-0 font-mono text-mini text-muted-2">{pages}</span>}
       </div>
     </div>
   );
@@ -431,20 +430,20 @@ function TextOriginal({ docId, kind }: { docId: string; kind: string }) {
     );
   }
   if ("error" in state) {
-    return <div className="grid h-full place-items-center text-[12.5px] text-danger">原本を読み込めませんでした</div>;
+    return <div className="grid h-full place-items-center text-footnote text-danger">原本を読み込めませんでした</div>;
   }
   const mono = kind !== "markdown";
   return (
     <div className="h-full overflow-auto">
       {state.truncated && (
-        <div className="sticky top-0 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2 text-[11.5px] text-muted">
+        <div className="sticky top-0 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2 text-caption text-muted">
           大きいファイルのため、先頭 {formatBytes(TEXT_LIMIT)} だけを表示しています。全体はダウンロードしてご覧ください。
         </div>
       )}
       <pre
         className={cn(
           "m-0 mx-auto max-w-[900px] whitespace-pre-wrap px-8 py-6 text-fg-2 [overflow-wrap:anywhere] max-md:px-4",
-          mono ? "font-mono text-[12px] leading-[1.6]" : "font-sans text-[13.5px] leading-[1.75]",
+          mono ? "font-mono text-footnote leading-[1.6]" : "font-sans text-body leading-[1.75]",
         )}
       >
         {state.text}

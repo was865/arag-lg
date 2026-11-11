@@ -31,7 +31,7 @@ function getMermaid() {
 let seq = 0;
 
 const codeFallbackCls =
-  "my-1 overflow-x-auto rounded-[8px] border-[0.5px] border-divider bg-surface-2 p-3 font-mono text-[12px]";
+  "my-1 overflow-x-auto rounded-[8px] border-[0.5px] border-divider bg-surface-2 p-3 font-mono text-footnote";
 
 // 描画結果は対象 code 付きで持ち、code 変更時の同期リセットを避ける
 // （古い code の結果は照合で無視する）。

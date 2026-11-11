@@ -75,15 +75,15 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
   const card = (
     <>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="font-mono text-[10.5px] font-bold tracking-[0.08em] text-accent">
+        <span className="font-mono text-mini font-bold tracking-[0.08em] text-accent">
           {index + 1} / {TOUR_STEPS.length}
         </span>
-        {index === 0 && name && <span className="truncate text-[11.5px] text-muted">{name} さん、ようこそ</span>}
+        {index === 0 && name && <span className="truncate text-caption text-muted">{name} さん、ようこそ</span>}
       </div>
-      <div id="tour-title" className="text-[14px] font-bold tracking-[-0.01em] text-fg">
+      <div id="tour-title" className="text-callout font-bold tracking-[-0.01em] text-fg">
         {step.title}
       </div>
-      <p className="m-0 mt-1.5 text-[13px] leading-[1.6] text-muted">{step.body}</p>
+      <p className="m-0 mt-1.5 text-body leading-[1.6] text-muted">{step.body}</p>
       <div className="mt-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5" aria-hidden>
           {TOUR_STEPS.map((s, i) => (
@@ -95,19 +95,17 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
         </div>
         <div className="flex items-center gap-1.5">
           {index === 0 ? (
-            <button
+            <Button variant="ghost" size="sm" className="text-muted hover:text-fg"
               onClick={onClose}
-              className="rounded-lg px-2.5 py-1.5 text-[12.5px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
             >
               スキップ
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button variant="ghost" size="sm" className="text-muted hover:text-fg"
               onClick={() => setIndex(index - 1)}
-              className="rounded-lg px-2.5 py-1.5 text-[12.5px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
             >
               戻る
-            </button>
+            </Button>
           )}
           <Button variant="primary" size="sm"
             autoFocus
@@ -121,7 +119,7 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
   );
 
   const cardCls =
-    "animate-pop-in rounded-[14px] border-[0.5px] border-divider-strong bg-surface p-4 shadow-[0_20px_60px_rgba(0,0,0,0.3)] motion-reduce:animate-none";
+    "animate-pop-in rounded-sheet border-[0.5px] border-divider-strong bg-surface p-4 shadow-[0_20px_60px_rgba(0,0,0,0.3)] motion-reduce:animate-none";
 
   return (
     <div

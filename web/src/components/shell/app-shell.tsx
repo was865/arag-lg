@@ -49,8 +49,8 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "group/shell grid h-dvh overflow-hidden bg-bg text-[14px]",
-        compact && "text-[13px]",
+        "group/shell grid h-dvh overflow-hidden bg-bg text-callout",
+        compact && "text-body",
         "grid-cols-[1fr]",
         "tablet:grid-cols-[260px_minmax(0,1fr)] tablet:data-[sb=collapsed]:grid-cols-[48px_minmax(0,1fr)]",
         "wide:grid-cols-[260px_minmax(0,1fr)] wide:data-[sb=collapsed]:grid-cols-[48px_minmax(0,1fr)]",

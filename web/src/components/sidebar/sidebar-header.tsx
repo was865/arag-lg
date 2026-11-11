@@ -17,8 +17,8 @@ export interface SidebarHeaderProps {
 export function SidebarHeader({ onToggle, closeLabel }: SidebarHeaderProps) {
   return (
     <div className="flex items-center justify-between py-3 pl-[14px] pr-3 pb-2">
-      <div className="flex items-center gap-2 text-[14px] font-bold tracking-[-0.01em]">
-          <div className="grid h-[22px] w-[22px] place-items-center rounded-md bg-accent text-white">
+      <div className="flex items-center gap-2 text-callout font-bold tracking-[-0.01em]">
+          <div className="grid h-[22px] w-[22px] place-items-center rounded-control bg-accent text-white">
             <BrandMark size={14} />
           </div>
           <span>ARag</span>

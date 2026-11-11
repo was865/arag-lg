@@ -8,7 +8,9 @@ import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { OriginalPreview, originalTabLabel } from "@/components/documents/original-preview";
 import type { CitationMap, Source, SourceType } from "@/lib/types";
-import { IconButton } from "@/components/ui/button";
+import { IconButton, Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Segmented } from "@/components/ui/segmented";
 
 export type RightPanelAction = "open-source" | "download" | "share";
 
@@ -87,14 +89,14 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
     return (
       <div className={cn(panelCls, "grid-rows-[auto_1fr]")}>
         <div className="flex h-[52px] items-center justify-between border-b-[0.5px] border-divider px-4 max-md:px-3.5">
-          <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-fg">{t.sources.panelTitle}</span>
+          <span className="inline-flex items-center gap-2 text-body font-semibold text-fg">{t.sources.panelTitle}</span>
           <IconButton label={t.sources.closePanelTitle} onClick={onClose}>
             <svg viewBox="0 0 16 16" width="12" height="12">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
             </svg>
           </IconButton>
         </div>
-        <div className="grid place-items-center px-6 text-center text-[12.5px] leading-[1.6] text-muted">
+        <div className="grid place-items-center px-6 text-center text-footnote leading-[1.6] text-muted">
           {t.sources.emptyState}
         </div>
       </div>
@@ -107,13 +109,13 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
       {/* Head（+ どのターンの出典かを示す文脈ラベル）を 1 グリッドセルにまとめる。 */}
       <div className="min-w-0">
         <div className="flex h-[52px] items-center justify-between border-b-[0.5px] border-divider px-4 max-md:px-3.5">
-          <div className="inline-flex min-w-0 items-center gap-2 text-[13px] font-semibold text-fg">
+          <div className="inline-flex min-w-0 items-center gap-2 text-body font-semibold text-fg">
             <svg viewBox="0 0 16 16" width="13" height="13">
               <path d="M3 3h10v10H3z" stroke="currentColor" strokeWidth="1.4" fill="none" />
               <path d="M6 6h4M6 8.5h4M6 11h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
             <span>{t.sources.panelTitle}</span>
-            <span className="rounded-full bg-divider px-1.5 py-px font-mono text-[10.5px] text-muted">{sources.length}</span>
+            <Badge className="font-mono font-normal">{sources.length}</Badge>
           </div>
           <div className="flex gap-0.5">
             <IconButton label={t.sources.openInNewTab} onClick={() => onAction("open-source", active)}>
@@ -129,7 +131,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
           </div>
         </div>
         {contextQuery && (
-          <div className="truncate border-b-[0.5px] border-divider px-4 py-2 text-[11.5px] text-muted max-md:px-3.5">
+          <div className="truncate border-b-[0.5px] border-divider px-4 py-2 text-caption text-muted max-md:px-3.5">
             {interpolate(t.sources.contextLabel, { query: contextQuery })}
           </div>
         )}
@@ -143,12 +145,12 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
             title={s.title}
             onClick={() => onSetActive(s.id)}
             className={cn(
-              "flex w-full items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[12px]",
+              "flex w-full items-center gap-2 rounded-control px-2.5 py-1.5 text-left text-footnote",
               // 選択強調は背景/影/色のみ。font-weight を上げると CJK が合成太字でちぐはぐになる。
               s.id === active.id ? "bg-surface text-fg shadow-e1" : "bg-transparent text-fg-2 hover:bg-divider hover:text-fg",
             )}
           >
-            <span className="shrink-0 font-mono text-[10px] font-semibold text-accent">[{citationNum(s.id)}]</span>
+            <span className="shrink-0 font-mono text-mini font-semibold text-accent">[{citationNum(s.id)}]</span>
             <span className={cn("grid place-items-center", s.id === active.id ? "text-fg" : "text-muted")}>
               <SourceIcon type={s.type} />
             </span>
@@ -159,25 +161,18 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
 
       {/* Meta */}
       <div className="flex min-w-0 flex-col gap-1 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2.5 max-md:px-3.5">
-        <div className="flex items-baseline gap-2 text-[11px]">
-          <span className="min-w-[32px] font-mono text-[9.5px] uppercase tracking-[0.05em] text-muted-2">{t.sources.metaPath}</span>
-          <code className="break-all font-mono text-[11px] text-fg-2">{active.path}</code>
+        <div className="flex items-baseline gap-2 text-caption">
+          <span className="min-w-[32px] font-mono text-mini uppercase tracking-[0.05em] text-muted-2">{t.sources.metaPath}</span>
+          <code className="break-all font-mono text-caption text-fg-2">{active.path}</code>
         </div>
         {active && (
-          <div className="mt-1 flex gap-1">
-            {([["html", t.sources.viewHtml], ["text", t.sources.viewText], ["original", originalLabel]] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={cn(
-                  "rounded-[7px] px-2.5 py-1 text-[11.5px] font-medium",
-                  effectiveMode === mode ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:bg-divider",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label={t.sources.viewModeLabel}
+            value={effectiveMode}
+            onChange={setViewMode}
+            options={[["html", t.sources.viewHtml], ["text", t.sources.viewText], ["original", originalLabel]] as const}
+            className="mt-1 self-start"
+          />
         )}
       </div>
 
@@ -196,7 +191,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
           <span className="pt-[3px] text-accent">
             <SourceIcon type={active.type} />
           </span>
-          <h2 className="m-0 min-w-0 text-[16px] font-bold leading-[1.35] tracking-[-0.01em] text-fg [overflow-wrap:anywhere]">{active.title}</h2>
+          <h2 className="m-0 min-w-0 text-headline font-bold leading-[1.35] tracking-[-0.01em] text-fg [overflow-wrap:anywhere]">{active.title}</h2>
         </div>
         {active.sections.map((sec) => {
           const isHl = sec.id === highlightSectionId;
@@ -205,19 +200,19 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
               key={sec.id}
               ref={isHl ? hlRef : null}
               className={cn(
-                "relative mb-2.5 min-w-0 rounded-[10px] border-[0.5px] border-transparent px-3.5 py-3 transition-[background,box-shadow]",
+                "relative mb-2.5 min-w-0 rounded-card border-[0.5px] border-transparent px-3.5 py-3 transition-[background,box-shadow]",
                 isHl && "animate-hl-pulse border-accent bg-accent-soft",
               )}
             >
               {isHl && (
-                <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-accent px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-white">
+                <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-accent px-1.5 py-0.5 text-mini font-semibold uppercase tracking-[0.04em] text-white">
                   <svg viewBox="0 0 12 12" width="9" height="9">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   {t.sources.citedSection}
                 </div>
               )}
-              <h3 className="mb-1.5 min-w-0 text-[12.5px] font-bold tracking-[-0.005em] text-fg [overflow-wrap:anywhere]">{sec.heading}</h3>
+              <h3 className="mb-1.5 min-w-0 text-footnote font-bold tracking-[-0.005em] text-fg [overflow-wrap:anywhere]">{sec.heading}</h3>
               {effectiveMode === "text" ? (
                 <PlainSectionBody body={sec.body} />
               ) : (
@@ -232,14 +227,14 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
 
       {/* Foot */}
       <div className="flex min-w-0 items-center gap-1.5 border-t-[0.5px] border-divider px-3.5 py-2.5 max-md:flex-wrap max-md:gap-y-2">
-        <button className="inline-flex h-[26px] items-center gap-[5px] rounded-[7px] border-[0.5px] border-divider-strong bg-surface px-2.5 text-[11.5px] font-medium text-fg-2 hover:bg-surface-2" onClick={() => onAction("download", active)}>
+        <Button variant="secondary" size="sm" onClick={() => onAction("download", active)}>
           <svg viewBox="0 0 16 16" width="11" height="11">
             <path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {t.sources.download}
-        </button>
+        </Button>
 {canShare && (
-        <button className="inline-flex h-[26px] items-center gap-[5px] rounded-[7px] border-[0.5px] border-divider-strong bg-surface px-2.5 text-[11.5px] font-medium text-fg-2 hover:bg-surface-2" onClick={() => onAction("share", active)}>
+        <Button variant="secondary" size="sm" onClick={() => onAction("share", active)}>
           <svg viewBox="0 0 16 16" width="11" height="11">
             <circle cx="4" cy="8" r="1.5" fill="currentColor" />
             <circle cx="12" cy="4" r="1.5" fill="currentColor" />
@@ -247,11 +242,11 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
             <path d="M5.3 7.3 10.7 4.7M5.3 8.7l5.4 2.6" stroke="currentColor" strokeWidth="1.3" />
           </svg>
           {t.sources.share}
-        </button>
+        </Button>
         )}
         <div className="flex-1 max-md:hidden" />
         {typeof active.score === "number" && (
-          <span className="font-mono text-[11px] text-muted max-md:ml-auto">
+          <span className="font-mono text-caption text-muted max-md:ml-auto">
             {t.sources.relevance} <strong className="text-accent">{active.score.toFixed(2)}</strong>
           </span>
         )}
