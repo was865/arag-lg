@@ -26,7 +26,7 @@ export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n:
   const { t } = useT();
   if (items.length === 0) return null;
   return (
-    <aside aria-label={t.chat.evidenceHeading} className="flex min-w-0 flex-col gap-2">
+    <aside aria-label={t.chat.evidenceHeading} className="flex min-w-0 flex-col gap-2 @[760px]:sticky @[760px]:top-4 @[760px]:max-h-[calc(100dvh-230px)] @[760px]:self-start @[760px]:-ml-1.5 @[760px]:overflow-y-auto @[760px]:pb-1 @[760px]:pl-1.5 @[760px]:pr-1">
       <h3 className="m-0 flex items-center justify-between text-mini font-semibold uppercase tracking-[0.08em] text-muted-2">
         <span>{t.chat.evidenceHeading}</span>
         <span className="nums">{interpolate(t.chat.evidenceCount, { n: String(items.length) })}</span>

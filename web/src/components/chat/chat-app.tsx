@@ -163,6 +163,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
+  // 会話を少しでも下へ送ったか（上部バーの区切り線は、送ったときだけ出す）
+  const [scrolled, setScrolled] = useState(false);
 
   const refreshThreads = useCallback(async () => {
     try {
@@ -283,6 +285,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     if (!el) return;
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     setAwayFromBottom(!stickToBottom.current);
+    setScrolled(el.scrollTop > 4);
   };
   const jumpToLatest = () => {
     const el = scrollRef.current;
@@ -300,6 +303,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     setRightPanelOpen(false);
     stickToBottom.current = true;
     setAwayFromBottom(false);
+    setScrolled(false);
     if (isMobile) setSidebarCollapsed(true);
   };
 
@@ -698,7 +702,9 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           <header
             className={cn(
               "sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] px-[18px] max-md:gap-1 max-md:px-2.5",
-              home ? "border-transparent bg-transparent" : "border-divider bg-bg",
+              // 区切り線は中身が下へ流れたときだけ淡く出す（上端にいる間は線を引かない）
+              "transition-[border-color] duration-(--duration-mid)",
+              home ? "border-transparent bg-transparent" : scrolled ? "border-divider bg-bg" : "border-transparent bg-bg",
             )}
           >
             <IconButton

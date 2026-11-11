@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** 淡く明滅する棒 1 本 */
 export function Skeleton({ className }: { className?: string }) {
-  return <span aria-hidden className={cn("block animate-soft-pulse rounded-[5px] bg-divider-strong/70 motion-reduce:animate-none", className)} />;
+  return <span aria-hidden className={cn("block animate-soft-pulse rounded-[5px] bg-fg/10 motion-reduce:animate-none", className)} />;
 }
 
 const WIDTHS = ["w-[46%]", "w-[62%]", "w-[38%]", "w-[54%]", "w-[70%]", "w-[42%]"];

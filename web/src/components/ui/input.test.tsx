@@ -23,7 +23,12 @@ describe("Input / Select / Textarea", () => {
     expect(html).toContain("font-mono");
   });
   it("Select と Textarea も同じ見た目になる", () => {
-    expect(renderToStaticMarkup(<Select size="sm"><option>a</option></Select>)).toContain("h-7");
+    const sel = renderToStaticMarkup(<Select size="sm"><option>a</option></Select>);
+    expect(sel).toContain("h-7");
+    // OS の矢印は使わず、自前の矢印と右の余白を持つ
+    expect(sel).toContain("appearance-none");
+    expect(sel).toContain("select-chevron");
+    expect(sel).toContain("pr-7");
     const ta = renderToStaticMarkup(<Textarea rows={2} />);
     expect(ta).toContain("<textarea");
     expect(ta).not.toContain("h-9"); // 複数行は高さを固定しない

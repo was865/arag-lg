@@ -10,7 +10,7 @@ import { IconButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const FRAME =
-  "rounded-control border-[0.5px] border-divider-strong bg-surface text-fg outline-none transition-[border-color,box-shadow] placeholder:text-muted-2 focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50";
+  "rounded-control border-[0.5px] border-divider-strong bg-surface text-fg outline-none transition-[border-color,box-shadow] placeholder:text-muted-2 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20 disabled:opacity-50";
 
 export const inputVariants = cva(FRAME, {
   variants: {
@@ -34,7 +34,8 @@ export function Input({ size, className, ...props }: Omit<React.ComponentProps<"
 }
 
 export function Select({ size, className, ...props }: Omit<React.ComponentProps<"select">, "size"> & { size?: Size }) {
-  return <select className={cn(inputVariants({ size }), className)} {...props} />;
+  // OS の矢印は右端に詰まり、テーマにも合わないので、自前の矢印（select-chevron）を右に余白を取って置く
+  return <select className={cn(inputVariants({ size }), "select-chevron cursor-pointer appearance-none pr-7", className)} {...props} />;
 }
 
 /** 複数行。高さは rows で決めるので、size からは文字と余白だけを使う */
