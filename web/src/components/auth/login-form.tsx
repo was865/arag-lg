@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AuthCard, FIELD, Field, LinkButton, Notice, PRIMARY, Spinner } from "@/components/auth/auth-card";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { safeNext } from "@/lib/auth/guard";
+import { Button } from "@/components/ui/button";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -136,18 +137,16 @@ export function LoginForm({ next }: { next: string | null }) {
                 maxLength={128}
                 className={`${FIELD} pr-16`}
               />
-              <button
-                type="button"
+              <Button variant="ghost" size="sm" className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 text-caption text-muted hover:text-fg"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 rounded-md px-2 text-[11.5px] font-medium text-muted hover:bg-divider hover:text-fg"
               >
                 {showPw ? "隠す" : "表示"}
-              </button>
+              </Button>
             </div>
           </Field>
         )}
         {mode === "signin" && (
-          <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-muted">
+          <label className="flex cursor-pointer items-center gap-2 text-footnote text-muted">
             <input
               type="checkbox"
               checked={remember}

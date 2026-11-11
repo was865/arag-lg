@@ -7,20 +7,24 @@ import { ConfirmModal } from "@/components/modals/confirm-modal";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { Button, ICON, IconButton } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { OptionBadge, Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
 import { ListField, ListGroup, ListItem } from "@/components/ui/list";
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 
 const TYPE = [
+  ["text-display", "大見出し 22", "11,490 件"],
   ["text-title", "タイトル 19", "ナレッジベース"],
   ["text-headline", "見出し 15", "設定"],
   ["text-callout", "チャット本文 14", "MX-17 の保証期間は納品日から 12 か月です。"],
   ["text-body", "本文 13", "表示名・パスワード・ログイン中の端末"],
   ["text-footnote", "補助 12.5", "3 件の資料 · 2 分前に更新"],
   ["text-caption", "注記 11.5", "外観の設定はこの端末にだけ保存されます。"],
+  ["text-mini", "ラベル 10.5", "閲覧のみ · アーカイブ"],
 ] as const;
 
 const RADIUS = [
@@ -62,13 +66,14 @@ export function Gallery() {
 function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
   const [seg, setSeg] = useState<"numbered" | "chip" | "pill">("numbered");
   const [on, setOn] = useState(true);
+  const [q, setQ] = useState("MX-17");
   return (
     <section className={cn(theme, "flex flex-col gap-8 bg-bg-2 px-6 py-6 text-fg")}>
       <p className="m-0 text-caption font-medium uppercase tracking-[0.06em] text-muted">
         {theme === "theme-light" ? "ライト" : "ダーク"}
       </p>
 
-      <Block title="文字の段階（6 段）">
+      <Block title="文字の段階（8 段）">
         <div className="flex flex-col gap-2.5">
           {TYPE.map(([cls, name, sample]) => (
             <div key={cls} className="flex items-baseline gap-4">
@@ -111,6 +116,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
               追加
             </Button>
             <Button variant="danger">削除</Button>
+            <Button variant="danger-ghost">ごみ箱へ</Button>
             <Button variant="plain">変更…</Button>
             <IconButton label="閉じる" icon="close" iconSize={ICON.sm} />
             <IconButton label="その他" icon="more" />
@@ -166,12 +172,41 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             </PopoverTrigger>
             <PopoverContent align="start" title="モデル" className="w-[280px]">
               <div className="p-1.5">
-                <PopoverOption selected label="Qwen3 8B" badge={<OptionBadge tone="accent">推奨</OptionBadge>} hint="GPU 機の会話モデル" />
+                <PopoverOption selected label="Qwen3 8B" badge={<Badge tone="accent">推奨</Badge>} hint="GPU 機の会話モデル" />
                 <PopoverOption label="DeepSeek" hint="外部 API" />
-                <PopoverOption disabled label="GPT" badge={<OptionBadge>未設定</OptionBadge>} />
+                <PopoverOption disabled label="GPT" badge={<Badge tone="outline">未設定</Badge>} />
               </div>
             </PopoverContent>
           </Popover>
+        </div>
+      </Block>
+
+      <Block title="入力欄・ラベル">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input size="sm" placeholder="sm 28" className="w-28" />
+            <Input size="md" placeholder="md 32" className="w-28" />
+            <Input size="lg" placeholder="lg 36" className="w-28" />
+            <Input size="xl" placeholder="xl 40" className="w-28" />
+            <Select size="md" defaultValue="member">
+              <option value="member">メンバー</option>
+              <option value="admin">管理者</option>
+            </Select>
+          </div>
+          <SearchField value={q} onChange={(e) => setQ(e.target.value)} onClear={() => setQ("")} placeholder="文書名で探す" />
+          <Textarea rows={2} placeholder="補足（任意）" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge>閲覧のみ</Badge>
+            <Badge tone="outline">アーカイブ</Badge>
+            <Badge tone="accent">推奨</Badge>
+            <Badge tone="solid">新着</Badge>
+            <Badge tone="danger" mono>
+              取消
+            </Badge>
+            <Badge tone="accent" mono>
+              実行中
+            </Badge>
+          </div>
         </div>
       </Block>
 

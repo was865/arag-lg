@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { IconButton } from "@/components/ui/button";
+import { IconButton, Button } from "@/components/ui/button";
 import type { Source } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
@@ -38,7 +38,7 @@ interface Props {
 }
 
 const chipCls =
-  "inline-flex items-center gap-[5px] rounded-full border-[0.5px] border-divider-strong bg-surface px-2 py-[3px] font-mono text-[11px] text-muted";
+  "inline-flex items-center gap-[5px] rounded-full border-[0.5px] border-divider-strong bg-surface px-2 py-[3px] font-mono text-caption text-muted";
 
 export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, onDownloadHtml, onRegenerate, onOpenSources, sourcesActive, onFeedback, onFeedbackDetail, feedback, feedbackDisabled }: Props) {
   const { t } = useT();
@@ -150,15 +150,15 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
 export function CancelledNotice({ onRetry }: { onRetry: () => void }) {
   const { t } = useT();
   return (
-    <div className="flex items-center gap-2.5 rounded-[10px] border-[0.5px] border-dashed border-divider-strong bg-surface-2 px-3.5 py-2.5 text-[13px] text-muted">
+    <div className="flex items-center gap-2.5 rounded-card border-[0.5px] border-dashed border-divider-strong bg-surface-2 px-3.5 py-2.5 text-body text-muted">
       <svg viewBox="0 0 16 16" width="14" height="14">
         <rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.4" fill="none" />
         <path d="M6 6l4 4M10 6l-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
       <span>{t.chat.cancelledNotice}</span>
-      <button className="ml-auto border-0 bg-transparent py-1 text-[12.5px] font-semibold text-accent hover:underline" onClick={onRetry}>
+      <Button variant="plain" size="sm" className="ml-auto font-semibold" onClick={onRetry}>
         {t.chat.retryRun}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -167,7 +167,7 @@ export function CancelledNotice({ onRetry }: { onRetry: () => void }) {
 export function UncitedNotice() {
   const { t } = useT();
   return (
-    <div className="flex items-start gap-2.5 rounded-[10px] border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-muted">
+    <div className="flex items-start gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2.5 text-footnote text-muted">
       <svg viewBox="0 0 16 16" width="14" height="14" className="mt-px shrink-0" aria-hidden>
         <path d="M8 2.5l6 10.5H2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
         <path d="M8 6.5v3M8 11.2v.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -184,16 +184,16 @@ export function UncitedNotice() {
 export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: () => void }) {
   const { t } = useT();
   return (
-    <div role="alert" className="flex items-center gap-2.5 rounded-[10px] border-[0.5px] border-danger/40 bg-danger-soft px-3.5 py-2.5 text-[13px] text-danger">
+    <div role="alert" className="flex items-center gap-2.5 rounded-card border-[0.5px] border-danger/40 bg-danger-soft px-3.5 py-2.5 text-body text-danger">
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" fill="none" />
         <path d="M8 4.8v3.6M8 10.8v.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
       {/* 「モデルごとの理由」のように複数行で届くことがある */}
       <span className="min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]">{message || t.chat.runFailedNotice}</span>
-      <button className="shrink-0 border-0 bg-transparent py-1 text-[12.5px] font-semibold text-accent hover:underline" onClick={onRetry}>
+      <Button variant="plain" size="sm" className="font-semibold" onClick={onRetry}>
         {t.chat.retryRun}
-      </button>
+      </Button>
     </div>
   );
 }

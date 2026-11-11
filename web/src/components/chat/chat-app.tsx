@@ -51,7 +51,8 @@ import { checkImageFile, imageFromUrl, shrinkImage, type QueryImage } from "@/li
 import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspace-stats";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
-import { IconButton } from "@/components/ui/button";
+import { IconButton, Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 // 認証を使わない開発構成（ARAG_DEV_USER_ID）のときの表示用の利用者
 const DEV_USER: AppUser = {
@@ -664,7 +665,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </IconButton>
-            <div className="flex min-w-0 flex-1 items-center gap-2 text-[13.5px] font-semibold text-fg max-md:gap-1.5 max-md:text-[13px]">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-body font-semibold text-fg max-md:gap-1.5 max-md:text-body">
               {phase === "empty" ? (
                 <span className="font-medium text-muted">
                   {activeId ? (activeThread?.title ?? "") : t.workspace.headerNewThread}
@@ -673,14 +674,18 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 <>
                   <span className="min-w-0 flex-1 truncate">{title.slice(0, 80) || t.workspace.headerThreadFallback}</span>
                   {phase === "cancelled" && (
-                    <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-danger-soft px-[7px] py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em] text-danger">
+                    <Badge tone="danger" mono className="ml-1.5 py-0.5">
                       {t.workspace.badgeCancelled}
-                    </span>
+                    </Badge>
                   )}
                   {phase === "running" && (
-                    <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-accent-soft px-[7px] py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em] text-accent before:h-[5px] before:w-[5px] before:rounded-full before:bg-accent before:[animation:ar-pulse_1.2s_ease-in-out_infinite]">
+                    <Badge
+                      tone="accent"
+                      mono
+                      className="ml-1.5 py-0.5 before:h-[5px] before:w-[5px] before:rounded-full before:bg-accent before:[animation:ar-pulse_1.2s_ease-in-out_infinite]"
+                    >
                       {conv?.reconnecting ? t.chat.reconnecting : t.workspace.badgeRunning}
-                    </span>
+                    </Badge>
                   )}
                 </>
               )}
@@ -688,7 +693,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             <div className="flex items-center gap-1.5 max-md:gap-0.5">
               {phase !== "empty" && !rightPanelOpen && (citeTurn?.sources.length ?? 0) > 0 && (
                 <button
-                  className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border border-accent bg-transparent px-2.5 text-[12px] font-medium text-accent hover:bg-accent-soft max-md:h-8 max-md:px-2.5 max-md:text-[11.5px]"
+                  className="inline-flex h-[30px] items-center gap-1.5 rounded-control border border-accent bg-transparent px-2.5 text-footnote font-medium text-accent hover:bg-accent-soft max-md:h-8 max-md:px-2.5 max-md:text-caption"
                   onClick={() => openSourcesForTurn(activeCiteTurn)}
                 >
                   <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
@@ -699,15 +704,14 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 </button>
               )}
               {activeThread && phase !== "empty" && (
-                <button
+                <Button variant="ghost" size="sm" className="text-fg-2 hover:text-fg max-md:w-8 max-md:px-0"
                   onClick={() => setShareOpen(true)}
                   aria-label="共有"
                   title="共有"
-                  className="inline-flex h-[30px] items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium text-fg-2 hover:bg-divider hover:text-fg max-md:w-8 max-md:justify-center max-md:px-0"
                 >
                   <Icon name={activeThread.visibility && activeThread.visibility !== "private" ? "link" : "share"} size={13} />
                   <span className="max-md:hidden">共有</span>
-                </button>
+                </Button>
               )}
               <ThemeToggle dark={tweaks.dark} onToggle={() => setTweak("dark", !tweaks.dark)} />
             </div>
@@ -760,7 +764,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 <button
                   type="button"
                   onClick={jumpToLatest}
-                  className="pointer-events-auto absolute -top-12 left-1/2 z-10 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border-[0.5px] border-divider-strong bg-surface px-3 text-[12px] font-medium text-fg shadow-e2 hover:bg-surface-2"
+                  className="pointer-events-auto absolute -top-12 left-1/2 z-10 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border-[0.5px] border-divider-strong bg-surface px-3 text-footnote font-medium text-fg shadow-e2 hover:bg-surface-2"
                 >
                   <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
                     <path d="M8 3v10M8 13l-4-4M8 13l4-4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />

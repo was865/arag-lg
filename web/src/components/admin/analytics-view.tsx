@@ -16,6 +16,8 @@ import {
   type Period,
 } from "@/lib/admin/analytics";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 
 type Data = components["schemas"]["AnalyticsOut"];
 const client = createClient<paths>({ baseUrl: "/api" });
@@ -64,7 +66,7 @@ export function AnalyticsView() {
           <div className="md:hidden">
             <PeriodPicker value={days} onChange={setDays} />
           </div>
-          {error && <p className="m-0 text-[12.5px] text-danger">{error}</p>}
+          {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           {!data && !error ? (
             <div className="grid h-60 place-items-center">
               <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
@@ -88,19 +90,18 @@ export function AnalyticsView() {
                 action={
                   <div className="flex items-center gap-3">
                     <ChartLegend />
-                    <button
+                    <Button variant="ghost" size="sm" className="h-6 text-caption text-muted hover:text-fg"
                       onClick={() => setTable((x) => !x)}
                       aria-pressed={table}
-                      className="rounded-md px-2 py-0.5 text-[11.5px] text-muted hover:bg-divider hover:text-fg"
                     >
                       {table ? "グラフで見る" : "表で見る"}
-                    </button>
+                    </Button>
                   </div>
                 }
               >
                 {table ? (
                   <div className="max-h-[260px] overflow-y-auto">
-                    <table className="w-full text-[12px]">
+                    <table className="w-full text-footnote">
                       <thead className="sticky top-0 bg-surface text-left text-muted">
                         <tr>
                           <th className="py-1 font-medium">日付</th>
@@ -133,16 +134,16 @@ export function AnalyticsView() {
                       <Bars
                         items={data.no_answer_reasons.map((r) => ({ label: reasonLabel(r.reason), value: r.count }))}
                       />
-                      <h4 className="mb-1 mt-4 text-[11.5px] font-semibold text-muted">最近の質問</h4>
+                      <h4 className="mb-1 mt-4 text-caption font-semibold text-muted">最近の質問</h4>
                       <ul className="m-0 max-h-[240px] list-none overflow-y-auto p-0">
                         {data.recent_gaps.map((g, i) => (
                           <li
                             key={`${g.created_at}-${i}`}
-                            className="flex items-baseline gap-2 border-t-[0.5px] border-divider py-1.5 text-[12.5px] max-md:flex-wrap"
+                            className="flex items-baseline gap-2 border-t-[0.5px] border-divider py-1.5 text-footnote max-md:flex-wrap"
                           >
                             <span className="min-w-0 flex-1 break-words text-fg max-md:basis-full">{g.query}</span>
-                            <span className="shrink-0 text-[11px] text-muted">{reasonLabel(g.reason)}</span>
-                            <span className="shrink-0 font-mono text-[11px] text-muted-2">
+                            <span className="shrink-0 text-caption text-muted">{reasonLabel(g.reason)}</span>
+                            <span className="shrink-0 font-mono text-caption text-muted-2">
                               {dateTimeFmt.format(new Date(g.created_at))}
                             </span>
                           </li>
@@ -167,7 +168,7 @@ export function AnalyticsView() {
                       </div>
                       {data.feedback.top_down_tags.length > 0 && (
                         <>
-                          <h4 className="mb-1 mt-4 text-[11.5px] font-semibold text-muted">良くない理由</h4>
+                          <h4 className="mb-1 mt-4 text-caption font-semibold text-muted">良くない理由</h4>
                           <Bars
                             items={data.feedback.top_down_tags.map((x) => ({ label: tagLabel(x.tag), value: x.count }))}
                           />
@@ -182,8 +183,8 @@ export function AnalyticsView() {
                 {data.top_documents.length === 0 ? (
                   <Empty>この期間に引用された文書はありません</Empty>
                 ) : (
-                  <table className="w-full text-[12.5px]">
-                    <thead className="text-left text-[11.5px] text-muted">
+                  <table className="w-full text-footnote">
+                    <thead className="text-left text-caption text-muted">
                       <tr>
                         <th className="py-1 font-medium">文書</th>
                         <th className="w-[90px] py-1 text-right font-medium">引用</th>
@@ -204,7 +205,7 @@ export function AnalyticsView() {
                   </table>
                 )}
               </Card>
-              <p className="m-0 text-[11px] text-muted-2">
+              <p className="m-0 text-caption text-muted-2">
                 日付は UTC で区切っています。数値は完了または中断された質問を数えています。
               </p>
             </>
@@ -218,8 +219,8 @@ export function AnalyticsView() {
 function Tile({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-1 rounded-[12px] border-[0.5px] border-divider bg-surface px-4 py-3">
-      <span className="truncate text-[11.5px] text-muted">{label}</span>
-      <span className={cn("truncate font-semibold text-fg", small ? "text-[17px] leading-[28px]" : "text-[22px]")}>
+      <span className="truncate text-caption text-muted">{label}</span>
+      <span className={cn("truncate font-semibold text-fg", small ? "text-title leading-[28px]" : "text-display")}>
         {value}
       </span>
     </div>
@@ -230,7 +231,7 @@ function Card({ title, action, children }: { title: string; action?: React.React
   return (
     <section className="min-w-0 rounded-[12px] border-[0.5px] border-divider bg-surface px-4 py-3">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="m-0 flex-1 text-[13px] font-semibold text-fg">{title}</h3>
+        <h3 className="m-0 flex-1 text-body font-semibold text-fg">{title}</h3>
         {action}
       </div>
       {children}
@@ -241,8 +242,8 @@ function Card({ title, action, children }: { title: string; action?: React.React
 function Figure({ label, value, text }: { label: string; value?: number; text?: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[11.5px] text-muted">{label}</span>
-      <span className="text-[20px] font-semibold text-fg">{text ?? compact(value ?? 0)}</span>
+      <span className="text-caption text-muted">{label}</span>
+      <span className="text-display font-semibold text-fg">{text ?? compact(value ?? 0)}</span>
     </div>
   );
 }
@@ -253,7 +254,7 @@ function Bars({ items }: { items: { label: string; value: number }[] }) {
   return (
     <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
       {items.map((i) => (
-        <li key={i.label} className="grid grid-cols-[130px_minmax(0,1fr)_40px] items-center gap-2 text-[12px]">
+        <li key={i.label} className="grid grid-cols-[130px_minmax(0,1fr)_40px] items-center gap-2 text-footnote">
           <span className="truncate text-fg-2">{i.label}</span>
           <span className="h-3">
             <span
@@ -269,26 +270,18 @@ function Bars({ items }: { items: { label: string; value: number }[] }) {
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="m-0 py-6 text-center text-[12.5px] text-muted">{children}</p>;
+  return <p className="m-0 py-6 text-center text-footnote text-muted">{children}</p>;
 }
 
 function PeriodPicker({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
   return (
-    <div role="radiogroup" aria-label="期間" className="inline-flex shrink-0 rounded-lg bg-surface-2 p-0.5">
-      {PERIODS.map((p) => (
-        <button
-          key={p}
-          role="radio"
-          aria-checked={value === p}
-          onClick={() => onChange(p)}
-          className={cn(
-            "h-7 whitespace-nowrap rounded-md px-2.5 text-[12px] font-medium",
-            value === p ? "bg-surface text-fg shadow-e1" : "text-muted hover:text-fg",
-          )}
-        >
-          {p} 日
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="期間"
+      size="md"
+      value={String(value)}
+      options={PERIODS.map((p) => [String(p), `${p} 日`] as const)}
+      onChange={(v) => onChange(Number(v) as Period)}
+      className="shrink-0"
+    />
   );
 }

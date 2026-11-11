@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { libraryApi, type DocumentOut, type DocumentOverview } from "@/lib/library/api";
 import { formatBytes, formatDate, formatRows } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const HIDE_KEY = "arag.library.overview.hidden";
 
@@ -66,17 +67,16 @@ export function LibraryOverview({
   return (
     <section aria-labelledby="kb-overview-title" className="mb-3 mt-1">
       <div className="flex items-center justify-between px-2 py-1.5">
-        <h2 id="kb-overview-title" className="m-0 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
+        <h2 id="kb-overview-title" className="m-0 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
           概要
         </h2>
-        <button
+        <Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-caption text-muted hover:text-fg"
           onClick={toggle}
           aria-expanded={!hidden}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-divider hover:text-fg"
         >
           {hidden ? "表示" : "隠す"}
           <Icon name="chevronDown" size={10} className={cn("transition-transform", !hidden && "rotate-180")} />
-        </button>
+        </Button>
       </div>
       {!hidden && (
         <div className="grid gap-3">
@@ -110,7 +110,7 @@ export function LibraryOverview({
             <Card title="形式の内訳">
               <ul className="m-0 grid list-none gap-1.5 p-0">
                 {formats.map((f) => (
-                  <li key={f.label} className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2 text-[12px]">
+                  <li key={f.label} className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2 text-footnote">
                     <span className="truncate text-fg-2">{f.label}</span>
                     <span className="h-1.5 overflow-hidden rounded-full bg-divider" aria-hidden>
                       <span
@@ -118,7 +118,7 @@ export function LibraryOverview({
                         style={{ width: `${Math.max(2, (f.documents / maxDocs) * 100)}%` }}
                       />
                     </span>
-                    <span className="font-mono text-[11px] text-muted" title={formatBytes(f.bytes)}>
+                    <span className="font-mono text-caption text-muted" title={formatBytes(f.bytes)}>
                       {f.documents.toLocaleString("ja-JP")}
                     </span>
                   </li>
@@ -127,7 +127,7 @@ export function LibraryOverview({
             </Card>
             <Card title="よく引用される文書" hint="この 30 日の回答">
               {ov.top_cited.length === 0 ? (
-                <p className="m-0 py-2 text-[12px] text-muted-2">まだ回答で引用されていません</p>
+                <p className="m-0 py-2 text-footnote text-muted-2">まだ回答で引用されていません</p>
               ) : (
                 <DocList
                   items={ov.top_cited.map((c) => ({ doc: c.document, aside: `${c.citations} 回` }))}
@@ -151,23 +151,23 @@ export function LibraryOverview({
 
 function Tile({ label, value, unit, note }: { label: string; value: string; unit: string; note?: React.ReactNode }) {
   return (
-    <div className="min-w-0 rounded-[10px] border-[0.5px] border-divider bg-surface px-3 py-2.5 max-md:px-2.5 max-md:py-2">
-      <div className="truncate text-[11px] text-muted">{label}</div>
+    <div className="min-w-0 rounded-card border-[0.5px] border-divider bg-surface px-3 py-2.5 max-md:px-2.5 max-md:py-2">
+      <div className="truncate text-caption text-muted">{label}</div>
       <div className="mt-0.5 flex items-baseline gap-1">
-        <span className="text-[20px] font-semibold tabular-nums max-md:text-[17px] tracking-[-0.01em] text-fg">{value}</span>
-        <span className="text-[11px] text-muted">{unit}</span>
+        <span className="text-display font-semibold tabular-nums max-md:text-title tracking-[-0.01em] text-fg">{value}</span>
+        <span className="text-caption text-muted">{unit}</span>
       </div>
-      {note && <div className="mt-0.5 truncate text-[11px] text-muted">{note}</div>}
+      {note && <div className="mt-0.5 truncate text-caption text-muted">{note}</div>}
     </div>
   );
 }
 
 function Card({ title, hint, tone, children }: { title: string; hint?: string; tone?: "danger"; children: React.ReactNode }) {
   return (
-    <div className="min-w-0 rounded-[10px] border-[0.5px] border-divider bg-surface px-3 py-2.5">
+    <div className="min-w-0 rounded-card border-[0.5px] border-divider bg-surface px-3 py-2.5">
       <div className="mb-2 flex items-baseline gap-2">
-        <h3 className={cn("m-0 text-[12px] font-semibold", tone === "danger" ? "text-danger" : "text-fg")}>{title}</h3>
-        {hint && <span className="text-[11px] text-muted-2">{hint}</span>}
+        <h3 className={cn("m-0 text-footnote font-semibold", tone === "danger" ? "text-danger" : "text-fg")}>{title}</h3>
+        {hint && <span className="text-caption text-muted-2">{hint}</span>}
       </div>
       {children}
     </div>
@@ -181,11 +181,11 @@ function DocList({ items, onOpen }: { items: { doc: DocumentOut; aside: string }
         <li key={doc.id}>
           <button
             onClick={() => onOpen(doc)}
-            className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-md px-1.5 py-1 text-left text-[12px] hover:bg-divider"
+            className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-control px-1.5 py-1 text-left text-footnote hover:bg-divider"
           >
             <Icon name="doc" size={12} className="shrink-0 text-muted" />
             <span className="min-w-0 flex-1 truncate text-fg-2" title={doc.filename}>{doc.filename}</span>
-            <span className="shrink-0 font-mono text-[11px] text-muted">{aside}</span>
+            <span className="shrink-0 font-mono text-caption text-muted">{aside}</span>
           </button>
         </li>
       ))}

@@ -16,7 +16,7 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
-  if (broken) return <span className="text-[12px] text-muted">{t.chat.imageAttached}</span>;
+  if (broken) return <span className="text-footnote text-muted">{t.chat.imageAttached}</span>;
   return (
     <>
       <button
@@ -24,7 +24,7 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
         onClick={() => setOpen(true)}
         title={t.chat.imageEnlarge}
         aria-label={t.chat.imageEnlarge}
-        className="block overflow-hidden rounded-[10px] border-0 bg-transparent p-0"
+        className="block overflow-hidden rounded-card border-0 bg-transparent p-0"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- 認証つきの API 画像・data URL をそのまま出す */}
         <img
@@ -49,7 +49,7 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
           className="fixed inset-0 z-50 grid place-items-center bg-[rgba(20,18,15,0.72)] p-4"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- 拡大表示 */}
-          <img src={image.url} alt={t.chat.imageAttached} className="max-h-full max-w-full rounded-[10px] object-contain" />
+          <img src={image.url} alt={t.chat.imageAttached} className="max-h-full max-w-full rounded-card object-contain" />
         </div>
       )}
     </>
@@ -96,15 +96,13 @@ export function UserMessage({
             }}
             rows={Math.min(8, Math.max(2, draft.split("\n").length))}
             aria-label={t.chat.editQuestion}
-            className="w-full resize-none border-0 bg-transparent px-1.5 py-1 text-[14.5px] leading-[1.55] text-fg outline-none"
+            className="w-full resize-none border-0 bg-transparent px-1.5 py-1 text-callout leading-[1.55] text-fg outline-none"
           />
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="min-w-0 flex-1 text-[11px] text-muted">{t.chat.editHint}</span>
-            <button
-              type="button"
+            <span className="min-w-0 flex-1 text-caption text-muted">{t.chat.editHint}</span>
+            <Button variant="secondary" size="sm"
               onClick={() => { setEditing(false); setDraft(text); }}
-              className="h-7 rounded-[7px] border-[0.5px] border-divider-strong bg-surface px-3 text-[12px] font-medium text-fg hover:bg-surface-2"
-            >{t.chat.editCancel}</button>
+            >{t.chat.editCancel}</Button>
             <Button variant="primary" size="sm"
               type="button"
               onClick={submit}
@@ -129,7 +127,7 @@ export function UserMessage({
         </IconButton>
       )}
       {/* 吹き出しを peer にし、ホバー時だけ時刻（order-first で左側）を出す。 */}
-      <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-[14.5px] leading-[1.55] text-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-[14px]">
+      <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-callout leading-[1.55] text-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-callout">
         {image && (
           <div className="mb-2">
             <QueryImageThumb image={image} />
@@ -145,7 +143,7 @@ export function UserMessage({
 /** ターン間の日付セパレータ（今日/昨日/月日）。 */
 function DateSeparator({ label }: { label: string }) {
   return (
-    <div className="my-1 flex items-center gap-3 text-[11px] text-muted max-md:my-0">
+    <div className="my-1 flex items-center gap-3 text-caption text-muted max-md:my-0">
       <span className="h-px flex-1 bg-divider" />
       <span className="shrink-0">{label}</span>
       <span className="h-px flex-1 bg-divider" />
@@ -156,7 +154,7 @@ function DateSeparator({ label }: { label: string }) {
 export function AssistantMessage({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 max-md:gap-2.5">
-      <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-white shadow-[0_1px_3px_var(--accent-glow)] max-md:h-[26px] max-md:w-[26px]">
+      <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white shadow-[0_1px_3px_var(--accent-glow)] max-md:h-[26px] max-md:w-[26px]">
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
           <circle cx="12" cy="12" r="3" fill="currentColor" />
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6" />
@@ -180,7 +178,7 @@ export function StreamingAnswer({
   citationStyle: CitationStyle;
 }) {
   return (
-    <div className="text-[14.5px] text-fg-2">
+    <div className="text-callout text-fg-2">
       <AnswerMarkdown text={text} onCite={onCite} citationStyle={citationStyle} />
       {streaming && (
         <span className="ml-px inline-block h-4 w-2 animate-blink bg-accent align-[-3px]" />
@@ -199,7 +197,7 @@ export function StaticAnswer({
   citationStyle: CitationStyle;
 }) {
   return (
-    <div className="text-[14.5px] text-fg-2">
+    <div className="text-callout text-fg-2">
       <AnswerMarkdown text={text} onCite={onCite} citationStyle={citationStyle} />
     </div>
   );
@@ -256,7 +254,7 @@ export function Transcript({
                 <time
                   dateTime={turn.createdAt}
                   aria-label={t.chat.sentAt.replace("{time}", sentTime)}
-                  className="order-first shrink-0 pb-1 text-[11px] text-muted opacity-0 transition-opacity duration-100 peer-hover:opacity-100"
+                  className="order-first shrink-0 pb-1 text-caption text-muted opacity-0 transition-opacity duration-100 peer-hover:opacity-100"
                 >
                   {sentTime}
                 </time>
@@ -265,7 +263,7 @@ export function Transcript({
             <AssistantMessage>
               {isLast && isLiveLastTurn && liveAttachments.length > 0 && <UserAttachments files={liveAttachments} />}
               {running && turn.steps.length === 0 && (
-                <div className="flex items-center gap-2 text-[12.5px] text-muted">
+                <div className="flex items-center gap-2 text-footnote text-muted">
                   <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
                   {t.chat.thinking}
                 </div>

@@ -160,7 +160,7 @@ export function ModelsView() {
                     <b className="text-fg">API キーを登録できません。</b>
                     暗号化の鍵 <code className="font-mono">ARAG_SECRET_KEY</code> がサーバに設定されていません。
                     鍵を作って <code className="font-mono">.env</code> に書き、API とワーカーを再起動してください。
-                    <pre className="m-0 mt-1.5 overflow-x-auto rounded-md bg-surface px-2.5 py-1.5 font-mono text-caption">
+                    <pre className="m-0 mt-1.5 overflow-x-auto rounded-control bg-surface px-2.5 py-1.5 font-mono text-caption">
                       cd api &amp;&amp; uv run python -c &quot;from cryptography.fernet import Fernet;
                       print(Fernet.generate_key().decode())&quot;
                     </pre>
@@ -173,14 +173,13 @@ export function ModelsView() {
                   title="接続（API キー）"
                   hint="キーは暗号化して保存し、画面には末尾 4 文字だけを表示します。"
                   action={
-                    <button
+                    <Button variant="primary" size="md"
                       onClick={() => setCredDialog("new")}
                       disabled={!data.encryption_ready}
-                      className="flex h-8 items-center gap-1.5 rounded-control bg-fg px-3 text-footnote font-semibold text-bg disabled:opacity-40"
                     >
                       <Icon name="plus" size={12} />
                       接続を追加
-                    </button>
+                    </Button>
                   }
                 />
                 {data.credentials.length === 0 ? (
@@ -197,7 +196,7 @@ export function ModelsView() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span className="break-all text-body font-semibold text-fg">{c.label}</span>
-                            <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
+                            <span className="shrink-0 rounded-control bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
                               {providerLabel(c.provider)}
                             </span>
                           </div>
@@ -230,13 +229,12 @@ export function ModelsView() {
                   title="モデル一覧"
                   hint="会話で選べるモデルです。使える先頭のものが既定になります。変更は次の質問から効きます。.env のモデルを画面で編集するには「一覧に登録」を押してください。"
                   action={
-                    <button
+                    <Button variant="primary" size="md"
                       onClick={() => setModelDialog({ row: null })}
-                      className="flex h-8 items-center gap-1.5 rounded-control bg-fg px-3 text-footnote font-semibold text-bg"
                     >
                       <Icon name="plus" size={12} />
                       モデルを追加
-                    </button>
+                    </Button>
                   }
                 />
                 {data.models.length === 0 ? (
@@ -285,19 +283,19 @@ export function ModelsView() {
                               <span className="text-body font-semibold text-fg">{m.label}</span>
                               <span className="font-mono text-caption text-muted-2">{m.id}</span>
                               {m.is_default && (
-                                <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-caption font-semibold text-accent">
+                                <span className="rounded-control bg-accent-soft px-1.5 py-0.5 text-caption font-semibold text-accent">
                                   既定
                                 </span>
                               )}
                               {m.source === "env" && (
-                                <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
+                                <span className="rounded-control bg-surface-2 px-1.5 py-0.5 text-caption text-muted">
                                   .env
                                 </span>
                               )}
                               {m.tags.map((t) => (
                                 <span
                                   key={t}
-                                  className="rounded-md border-[0.5px] border-divider-strong px-1.5 py-[1px] text-caption text-muted"
+                                  className="rounded-control border-[0.5px] border-divider-strong px-1.5 py-[1px] text-caption text-muted"
                                 >
                                   {t}
                                 </span>

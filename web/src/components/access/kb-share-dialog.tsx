@@ -7,7 +7,7 @@ import { Icon, type IconName } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { inputClass } from "@/components/ui/input";
+import { inputClass, Select } from "@/components/ui/input";
 import { personLabel, remember, usePeople } from "@/hooks/use-people";
 import { accessApi, type DepartmentOut, type Person } from "@/lib/access/api";
 import {
@@ -211,7 +211,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                       <li key={c.kind === "department" ? `d:${c.dept.id}` : `u:${c.person.id}`}>
                         <button
                           onClick={() => void add(c)}
-                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-body hover:bg-divider"
+                          className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left text-body hover:bg-divider"
                         >
                           <Icon name={c.kind === "department" ? "group" : "user"} size={14} className="text-muted" />
                           <span className="min-w-0 flex-1 truncate text-fg">
@@ -266,19 +266,18 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                       </div>
                       {canManage ? (
                         <>
-                          <select
+                          <Select size="md"
                             value={s.role}
                             onChange={(e) => setRole(s, e.target.value as ShareRole)}
                             aria-label={`${label(s)} の役割`}
                             title={ROLE_HINT[s.role]}
-                            className="h-8 rounded-md border-[0.5px] border-divider-strong bg-surface px-2 text-footnote text-fg"
                           >
                             {(s.subject_type === "everyone" ? (["viewer"] as ShareRole[]) : ROLES).map((r) => (
                               <option key={r} value={r}>
                                 {ROLE_LABEL[r]}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                           <IconButton
                             onClick={() => remove(s)}
                             label={`${label(s)} を削除`}
@@ -304,12 +303,11 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                     <Icon name="building" size={14} />
                   </span>
                   <span className="min-w-0 flex-1 text-body text-muted">社内の全員</span>
-                  <button
+                  <Button variant="plain" size="sm"
                     onClick={() => setShares((xs) => [...xs, { subject_type: "everyone", subject_id: "", role: "viewer" }])}
-                    className="rounded-md px-2 py-1 text-footnote font-medium text-accent hover:bg-accent-soft"
                   >
                     全員に閲覧を許可
-                  </button>
+                  </Button>
                 </li>
               )}
             </ul>

@@ -1,11 +1,12 @@
-"use client";
-
 /**
+ * サーバー・クライアントのどちらからも使えるよう hook を使わない（"use client" を付けない）。
+ *
  * ボタン（UI 試作）。見た目は variant と size だけで決め、呼び出し側で色や大きさを足さない。
  * - primary: 画面の主な操作（1 画面に 1 つ）
  * - secondary: それ以外の操作
  * - ghost: ツールバー・一覧の中の控えめな操作
  * - danger: 削除などの取り消せない操作
+ * - danger-ghost: 一覧の中の削除など、目立たせすぎない赤い操作
  * - plain: 文字だけ（設定画面の「変更…」など）
  */
 import { Slot } from "@radix-ui/react-slot";
@@ -22,6 +23,7 @@ export const buttonVariants = cva(
         secondary: "border-[0.5px] border-divider-strong bg-surface text-fg shadow-e1 hover:bg-surface-2",
         ghost: "text-fg hover:bg-divider",
         danger: "bg-danger font-semibold text-white shadow-e1 hover:brightness-105 active:brightness-95",
+        "danger-ghost": "text-danger hover:bg-danger-soft",
         plain: "h-auto px-0 text-accent hover:opacity-75",
       },
       size: {

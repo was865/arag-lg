@@ -5,10 +5,10 @@ import createClient from "openapi-fetch";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
-import { Icon } from "@/components/icons";
 import type { components, paths } from "@/lib/api/schema";
 import { ACTION_GROUPS, actionLabel, describeTarget, toRangeQuery } from "@/lib/admin/audit";
 import { cn } from "@/lib/utils";
+import { Input, SearchField, Select } from "@/components/ui/input";
 
 type Row = components["schemas"]["AuditOut"];
 const client = createClient<paths>({ baseUrl: "/api" });
@@ -98,87 +98,84 @@ export function AuditView() {
     }
   };
 
-  const input =
-    "h-8 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-[12.5px] text-fg outline-none focus:border-accent";
   return (
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="audit" />
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-2">
-          <select
+          <Select size="md"
             aria-label="操作の種類"
             value={filters.action}
             onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
-            className={input}
           >
             {ACTION_GROUPS.map((g) => (
               <option key={g.value} value={g.value}>
                 {g.label}
               </option>
             ))}
-          </select>
-          <label className={cn(input, "flex min-w-[200px] flex-1 items-center gap-2 text-muted")}>
-            <Icon name="search" size={13} />
-            <input
-              value={actorInput}
-              onChange={(e) => setActorInput(e.target.value)}
-              placeholder="操作した人（メール・ID）"
-              className="min-w-0 flex-1 border-0 bg-transparent text-fg outline-none placeholder:text-muted-2"
-            />
-          </label>
-          <input
+          </Select>
+          <SearchField
+            value={actorInput}
+            onChange={(e) => setActorInput(e.target.value)}
+            onClear={() => setActorInput("")}
+            placeholder="操作した人（メール・ID）"
+            className="min-w-[200px] flex-1"
+          />
+          <Input
+            size="md"
             type="date"
             aria-label="開始日"
             value={filters.from}
             onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-            className={input}
+            className="w-auto"
           />
-          <span className="text-[12px] text-muted">〜</span>
-          <input
+          <span className="text-footnote text-muted">〜</span>
+          <Input
+            size="md"
             type="date"
             aria-label="終了日"
             value={filters.to}
             onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-            className={input}
+            className="w-auto"
           />
         </div>
       </div>
 
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[1100px] px-[18px] pb-10 pt-2 max-md:px-2">
-          <div className="grid grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+          <div className="grid grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
             <span>日時</span>
             <span>操作した人</span>
             <span>操作</span>
             <span>対象</span>
             <span>結果</span>
           </div>
-          {error && <p className="px-2 py-3 text-[12.5px] text-danger">{error}</p>}
+          {error && <p className="px-2 py-3 text-footnote text-danger">{error}</p>}
           {rows === null ? (
             <div className="grid h-40 place-items-center">
               <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : rows.length === 0 && !error ? (
-            <p className="py-16 text-center text-[13px] text-muted">条件に合う記録はありません</p>
+            <p className="py-16 text-center text-body text-muted">条件に合う記録はありません</p>
           ) : (
             rows.map((r) => (
-              <div key={r.id} className="rounded-lg hover:bg-surface-2">
+              <div key={r.id} className="rounded-control hover:bg-surface-2">
                 <button
                   onClick={() => setOpen((x) => (x === r.id ? null : r.id))}
                   aria-expanded={open === r.id}
-                  className="grid w-full grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] items-center gap-3 px-2 py-2 text-left text-[12.5px] max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-1"
+                  className="grid w-full grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] items-center gap-3 px-2 py-2 text-left text-footnote max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-1"
                 >
-                  <span className="font-mono text-[11.5px] text-muted max-md:order-2">{fmt.format(new Date(r.ts))}</span>
-                  <span className="truncate text-fg-2 max-md:order-3 max-md:col-span-2 max-md:text-[11.5px]">
+                  <span className="font-mono text-caption text-muted max-md:order-2">{fmt.format(new Date(r.ts))}</span>
+                  <span className="truncate text-fg-2 max-md:order-3 max-md:col-span-2 max-md:text-caption">
                     {r.actor_email ?? r.actor_id ?? "システム"}
                   </span>
                   <span className="truncate font-medium text-fg max-md:order-1">{actionLabel(r.action)}</span>
-                  <span className="truncate text-fg-2 max-md:order-4 max-md:col-span-2 max-md:text-[11.5px]">
+                  <span className="truncate text-fg-2 max-md:order-4 max-md:col-span-2 max-md:text-caption">
                     {describeTarget(r)}
                   </span>
                   <span
                     className={cn(
-                      "text-[11.5px] max-md:hidden",
+                      "text-caption max-md:hidden",
                       r.result === "ok" ? "text-muted" : "text-danger",
                     )}
                   >
@@ -186,7 +183,7 @@ export function AuditView() {
                   </span>
                 </button>
                 {open === r.id && (
-                  <dl className="m-0 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 pb-3 text-[11.5px]">
+                  <dl className="m-0 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 pb-3 text-caption">
                     {(
                       [
                         ["操作", r.action],

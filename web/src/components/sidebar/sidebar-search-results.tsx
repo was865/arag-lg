@@ -54,7 +54,7 @@ export function SidebarSearchResults({
 
   return (
     <div className="mb-2">
-      <div className="flex items-baseline justify-between px-2 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
+      <div className="flex items-baseline justify-between px-2 pb-1 pt-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
         <span>{t.sidebar.searchResults}</span>
         {state.status === "loading" && <span className="font-normal normal-case tracking-normal">{t.sidebar.searchSearching}</span>}
       </div>
@@ -63,15 +63,15 @@ export function SidebarSearchResults({
           key={r.id}
           onClick={() => onSelect(r.id)}
           className={cn(
-            "my-px block w-full rounded-md px-2 py-1.5 text-left transition-colors",
+            "my-px block w-full rounded-control px-2 py-1.5 text-left transition-colors",
             r.id === activeThreadId ? "bg-surface shadow-e1" : "hover:bg-divider",
           )}
         >
-          <span className="block truncate text-[12.5px] text-fg">
+          <span className="block truncate text-footnote text-fg">
             <Highlight text={r.title} terms={terms} />
           </span>
           {r.snippet && (
-            <span className="mt-0.5 line-clamp-2 text-[11.5px] leading-[1.45] text-muted">
+            <span className="mt-0.5 line-clamp-2 text-caption leading-[1.45] text-muted">
               {r.where && <span className="mr-1 text-muted-2">{r.where}:</span>}
               <Highlight text={r.snippet} terms={terms} />
             </span>
@@ -79,7 +79,7 @@ export function SidebarSearchResults({
         </button>
       ))}
       {rows.length === 0 && state.status !== "loading" && (
-        <div className="px-2 py-3 text-[12px] text-muted-2">
+        <div className="px-2 py-3 text-footnote text-muted-2">
           {state.status === "error" ? t.sidebar.searchFailed : t.sidebar.searchEmpty}
         </div>
       )}

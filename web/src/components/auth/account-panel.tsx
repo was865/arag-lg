@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { describeAgent } from "@/lib/auth/user";
 import { cn, relativeTime } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface SessionRow {
   id: string;
@@ -142,12 +143,12 @@ export function AccountPanel() {
     <div className="flex flex-col gap-6 px-5 py-5">
       {/* プロフィール */}
       <div className="flex items-center gap-3.5 px-1">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-[19px] font-semibold text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-title font-semibold text-white">
           {initial(user?.name, user?.email)}
         </span>
         <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold text-fg">{user?.name || "—"}</div>
-          <div className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-muted">
+          <div className="truncate text-headline font-semibold text-fg">{user?.name || "—"}</div>
+          <div className="flex min-w-0 items-center gap-1.5 text-footnote text-muted">
             <span className="truncate">{user?.email}</span>
             {user &&
               (user.emailVerified ? (
@@ -164,7 +165,7 @@ export function AccountPanel() {
 
       <ListGroup title="プロフィール">
         <ListItem>
-          <label htmlFor="account-name" className="w-24 shrink-0 text-[13px] text-fg">
+          <label htmlFor="account-name" className="w-24 shrink-0 text-body text-fg">
             表示名
           </label>
           <input
@@ -186,7 +187,7 @@ export function AccountPanel() {
       <ListGroup title="セキュリティ">
         {!pwOpen ? (
           <ListItem>
-            <span className="flex-1 text-[13px] text-fg">パスワード</span>
+            <span className="flex-1 text-body text-fg">パスワード</span>
             <Button variant="plain" onClick={() => setPwOpen(true)}>
               変更…
             </Button>
@@ -194,7 +195,7 @@ export function AccountPanel() {
         ) : (
           <form onSubmit={changePassword}>
             <ListItem>
-              <label htmlFor="pw-current" className="w-32 shrink-0 text-[13px] text-fg">
+              <label htmlFor="pw-current" className="w-32 shrink-0 text-body text-fg">
                 現在のパスワード
               </label>
               <input
@@ -209,7 +210,7 @@ export function AccountPanel() {
               />
             </ListItem>
             <ListItem>
-              <label htmlFor="pw-next" className="w-32 shrink-0 text-[13px] text-fg">
+              <label htmlFor="pw-next" className="w-32 shrink-0 text-body text-fg">
                 新しいパスワード
               </label>
               <input
@@ -226,7 +227,7 @@ export function AccountPanel() {
               />
             </ListItem>
             <ListItem>
-              <label htmlFor="pw-confirm" className="w-32 shrink-0 text-[13px] text-fg">
+              <label htmlFor="pw-confirm" className="w-32 shrink-0 text-body text-fg">
                 確認
               </label>
               <input
@@ -241,7 +242,7 @@ export function AccountPanel() {
               />
             </ListItem>
             <ListItem>
-              <span className="flex-1 text-[13px] text-fg">ほかの端末からログアウト</span>
+              <span className="flex-1 text-body text-fg">ほかの端末からログアウト</span>
               <Switch
                 label="ほかの端末からログアウト"
                 checked={pw.revoke}
@@ -278,7 +279,7 @@ export function AccountPanel() {
       >
         {sessions.state === "loading" ? (
           <ListItem>
-            <span className="text-[13px] text-muted">読み込み中…</span>
+            <span className="text-body text-muted">読み込み中…</span>
           </ListItem>
         ) : (
           <>
@@ -290,15 +291,15 @@ export function AccountPanel() {
                     <Icon name="globe" size={15} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-[13px] text-fg">
+                    <div className="flex items-center gap-2 text-body text-fg">
                       <span className="truncate">{describeAgent(s.userAgent)}</span>
                       {isCurrent && (
-                        <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10.5px] font-semibold text-accent">
+                        <Badge tone="accent">
                           この端末
-                        </span>
+                        </Badge>
                       )}
                     </div>
-                    <div className="truncate text-[11.5px] text-muted">
+                    <div className="truncate text-caption text-muted">
                       {s.ipAddress ? `${s.ipAddress} · ` : ""}
                       {isCurrent ? "使用中" : `${relativeTime(new Date(s.updatedAt))}に利用`}
                     </div>

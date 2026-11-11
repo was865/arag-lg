@@ -53,7 +53,7 @@ function stripMathDelimiters(text: string): string {
 export function TeXBlock({ text }: { text: string }) {
   const html = renderTexToHtml(stripMathDelimiters(text), true);
   if (!html) {
-    return <div className="whitespace-pre-wrap text-[12.5px] leading-[1.65] text-fg-2 [overflow-wrap:anywhere]">{text}</div>;
+    return <div className="whitespace-pre-wrap text-footnote leading-[1.65] text-fg-2 [overflow-wrap:anywhere]">{text}</div>;
   }
   return (
     <div

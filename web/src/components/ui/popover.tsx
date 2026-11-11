@@ -96,17 +96,3 @@ export function PopoverOption({
     </button>
   );
 }
-
-/** 選択行の横に付ける小さなラベル（「推奨」「未設定」「アーカイブ」など） */
-export function OptionBadge({ tone = "muted", children }: { tone?: "accent" | "muted"; children: React.ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full border-[0.5px] px-1.5 py-px text-[9.5px] font-bold",
-        tone === "accent" ? "border-accent/40 text-accent" : "border-divider-strong text-muted",
-      )}
-    >
-      {children}
-    </span>
-  );
-}

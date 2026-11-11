@@ -11,7 +11,7 @@ import { ApiError } from "@/lib/chat/api";
 import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, type TrashItem } from "@/lib/library/api";
 import { formatDate } from "@/lib/library/view";
-import { IconButton } from "@/components/ui/button";
+import { IconButton, Button } from "@/components/ui/button";
 
 const KIND_LABEL: Record<TrashItem["kind"], string> = {
   document: "文書",
@@ -113,11 +113,11 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
           onClick={onOpenMenu}
           className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
         />
-        <h1 className="m-0 flex-1 truncate text-[13.5px] font-semibold text-fg">
+        <h1 className="m-0 flex-1 truncate text-body font-semibold text-fg">
           ごみ箱
         </h1>
         {items && items.length > 0 && (
-          <span className="font-mono text-[11px] text-muted">
+          <span className="font-mono text-caption text-muted">
             {items.length} 件
           </span>
         )}
@@ -125,7 +125,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
 
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[900px] px-[18px] pb-10 pt-4 max-md:px-2">
-          <p className="m-0 mb-3 px-2 text-[12px] leading-[1.6] text-muted">
+          <p className="m-0 mb-3 px-2 text-footnote leading-[1.6] text-muted">
             ごみ箱の項目は検索の対象外です。期限が来ると自動で完全に削除されます。
           </p>
           {items === null ? (
@@ -137,7 +137,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
               <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-surface-2 text-muted">
                 <Icon name="trash" size={18} />
               </span>
-              <span className="text-[13.5px] font-medium text-fg">
+              <span className="text-body font-medium text-fg">
                 ごみ箱は空です
               </span>
             </div>
@@ -148,10 +148,10 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
               return (
                 <div
                   key={`${item.kind}:${item.id}`}
-                  className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-2 max-md:flex-wrap"
+                  className="flex items-center gap-3 rounded-control px-2 py-2.5 hover:bg-surface-2 max-md:flex-wrap"
                 >
                   <span
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-surface-2 text-muted"
                     style={
                       icon.color
                         ? {
@@ -165,12 +165,12 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div
-                      className="truncate text-[13px] font-medium text-fg"
+                      className="truncate text-body font-medium text-fg"
                       title={item.name}
                     >
                       {item.name}
                     </div>
-                    <div className="truncate text-[11px] text-muted">
+                    <div className="truncate text-caption text-muted">
                       {KIND_LABEL[item.kind]}
                       {item.kind !== "kb" && item.kb_name
                         ? ` · ${item.kb_name}`
@@ -186,22 +186,20 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5 max-md:ml-11">
-                    <button
+                    <Button variant="secondary" size="sm"
                       disabled={busy}
                       onClick={() => void restore(item)}
-                      className="inline-flex h-[28px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-[12px] font-medium text-fg hover:bg-surface-2 disabled:opacity-60"
                     >
                       <Icon name="refresh" size={12} />
                       元に戻す
-                    </button>
+                    </Button>
                     {item.kind !== "kb" && item.purgeable && (
-                      <button
+                      <Button variant="danger-ghost" size="sm"
                         disabled={busy}
                         onClick={() => void purge(item)}
-                        className="inline-flex h-[28px] items-center rounded-lg px-2.5 text-[12px] font-medium text-danger hover:bg-danger-soft disabled:opacity-60"
                       >
                         完全に削除
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

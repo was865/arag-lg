@@ -19,12 +19,12 @@ export function ToastViewport({ toasts, onDismiss }: Props) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto inline-flex min-w-[240px] max-w-[420px] animate-toast-in items-center gap-2.5 rounded-[10px] border-[0.5px] border-divider-strong bg-surface py-2.5 pl-[14px] pr-3 text-[13px] font-medium text-fg shadow-e2 max-md:w-full max-md:min-w-0 max-md:max-w-none"
+          className="pointer-events-auto inline-flex min-w-[240px] max-w-[420px] animate-toast-in items-center gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface py-2.5 pl-[14px] pr-3 text-body font-medium text-fg shadow-e2 max-md:w-full max-md:min-w-0 max-md:max-w-none"
         >
           <span
             className={
               "shrink-0 " +
-              (t.kind === "success" ? "text-accent" : t.kind === "error" ? "text-[#B83A1F]" : "text-muted")
+              (t.kind === "success" ? "text-accent" : t.kind === "error" ? "text-danger" : "text-muted")
             }
           >
             {t.kind === "success" && (

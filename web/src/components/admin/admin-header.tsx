@@ -21,7 +21,7 @@ export function AdminHeader({ current, children }: { current: (typeof TABS)[numb
       <Link
         href="/"
         aria-label="チャットへ戻る"
-        className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-fg no-underline hover:bg-divider"
+        className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-control text-fg no-underline hover:bg-divider"
       >
         <Icon name="chevronLeft" size={16} />
       </Link>
@@ -32,7 +32,7 @@ export function AdminHeader({ current, children }: { current: (typeof TABS)[numb
             href={t.href}
             aria-current={current === t.key ? "page" : undefined}
             className={cn(
-              "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-[13.5px] no-underline max-md:px-2",
+              "shrink-0 whitespace-nowrap rounded-control px-2.5 py-1 text-body no-underline max-md:px-2",
               current === t.key ? "bg-surface-2 font-semibold text-fg" : "font-medium text-muted hover:text-fg",
             )}
           >

@@ -26,7 +26,7 @@ export function SidebarNewButton({ label, onClick, shortcut, icon = "plus", clas
       type="button"
       onClick={onClick}
       className={cn(
-        "mx-3 mb-2 flex h-9 items-center gap-2 rounded-[10px] border border-divider-strong bg-surface px-3 text-[13px] font-medium text-fg shadow-e1 hover:bg-surface-2",
+        "mx-3 mb-2 flex h-9 items-center gap-2 rounded-card border border-divider-strong bg-surface px-3 text-body font-medium text-fg shadow-e1 hover:bg-surface-2",
         className,
       )}
     >

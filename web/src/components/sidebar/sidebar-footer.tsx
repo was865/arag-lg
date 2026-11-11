@@ -55,7 +55,7 @@ export function SidebarUserFooter({
             </div>
             <div className="min-w-0 flex-1 text-left">
               <div className="truncate text-footnote font-semibold text-fg">{user.name}</div>
-              <div className="truncate text-[10.5px] text-muted">{user.org}</div>
+              <div className="truncate text-mini text-muted">{user.org}</div>
             </div>
             <svg viewBox="0 0 16 16" width="12" height="12" className="text-muted-2" aria-hidden>
               <path d="M3 6l3 3 3-3M3 10l3 3 3-3" transform="translate(2 -2)" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -77,7 +77,7 @@ export function SidebarUserFooter({
             <>
               <MenuItem
                 onSelect={onOpenAdmin}
-                className="mb-1 gap-2.5 rounded-[9px] border-[0.5px] border-divider bg-accent-soft px-2 py-2 data-[highlighted]:border-divider-strong data-[highlighted]:bg-accent-soft"
+                className="mb-1 gap-2.5 rounded-control border-[0.5px] border-divider bg-accent-soft px-2 py-2 data-[highlighted]:border-divider-strong data-[highlighted]:bg-accent-soft"
               >
                 <span className="flex items-center gap-2.5">
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white">
@@ -85,7 +85,7 @@ export function SidebarUserFooter({
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-footnote font-semibold leading-tight text-fg">{t.sidebar.adminConsole}</span>
-                    <span className="truncate text-[10.5px] leading-tight text-muted">{t.sidebar.adminConsoleHint}</span>
+                    <span className="truncate text-mini leading-tight text-muted">{t.sidebar.adminConsoleHint}</span>
                   </span>
                   <Icon
                     name="chevronRight"

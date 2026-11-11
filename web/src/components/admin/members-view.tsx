@@ -9,7 +9,7 @@ import { useToast } from "@/components/feedback/toast-provider";
 import { Button, IconButton } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Field, Input, inputClass } from "@/components/ui/input";
+import { Field, Input, SearchField, Select } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
   ASSIGNABLE_ROLES,
@@ -127,15 +127,13 @@ export function MembersView() {
       </AdminHeader>
 
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
-        <label className="mx-auto flex h-8 max-w-[1000px] items-center gap-2 rounded-control border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent">
-          <Icon name="search" size={13} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="名前・メールで探す"
-            className="min-w-0 flex-1 border-0 bg-transparent text-body text-fg outline-none placeholder:text-muted-2"
-          />
-        </label>
+        <SearchField
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
+          placeholder="名前・メールで探す"
+          className="mx-auto max-w-[1000px]"
+        />
       </div>
 
       <div className="min-h-0 overflow-y-auto">
@@ -185,21 +183,21 @@ export function MembersView() {
                   </div>
                   <div>
                     {canRole ? (
-                      <select
+                      <Select
                         value={m.role}
                         disabled={busy === m.id}
                         aria-label={`${m.name || m.email} さんの役割`}
                         onChange={(e) =>
                           void patch(m, { role: e.target.value }, `役割を「${ROLE_LABEL[e.target.value as Role]}」にしました`)
                         }
-                        className="h-7 rounded-md border-[0.5px] border-divider-strong bg-surface px-1.5 text-footnote text-fg"
+                        size="sm"
                       >
                         {ASSIGNABLE_ROLES.map((r) => (
                           <option key={r} value={r}>
                             {ROLE_LABEL[r]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     ) : (
                       <span className="text-footnote text-fg-2">{ROLE_LABEL[m.role as Role] ?? m.role}</span>
                     )}
@@ -339,14 +337,14 @@ function InviteDialog({
               <Input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <Field label="役割">
-              <select
+              <Select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "member" | "admin")}
-                className={inputClass}
+                className="w-full"
               >
                 <option value="member">メンバー</option>
                 {canInviteAdmin && <option value="admin">管理者</option>}
-              </select>
+              </Select>
             </Field>
             {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           </DialogBody>

@@ -48,7 +48,7 @@ export function ThreadRow({
 }: ThreadRowProps) {
   if (renaming) {
     return (
-      <div className="my-px flex w-full items-center gap-2 rounded-md bg-surface px-2 py-1 shadow-e1">
+      <div className="my-px flex w-full items-center gap-2 rounded-control bg-surface px-2 py-1 shadow-e1">
         {thread.pinned && (
           <span className="shrink-0 text-accent">
             <Icon name="starFilled" size={11} />
@@ -68,7 +68,7 @@ export function ThreadRow({
               onRenameCancel();
             }
           }}
-          className="min-w-0 flex-1 border-0 bg-transparent py-1 text-[12.5px] text-fg outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent py-1 text-footnote text-fg outline-none"
         />
       </div>
     );
@@ -77,7 +77,7 @@ export function ThreadRow({
   return (
     <div
       className={cn(
-        "group/row relative my-px flex w-full items-stretch rounded-md transition-colors",
+        "group/row relative my-px flex w-full items-stretch rounded-control transition-colors",
         active ? "bg-surface shadow-e1" : "bg-transparent hover:bg-divider",
         menuOpen && "bg-divider",
       )}
@@ -86,7 +86,7 @@ export function ThreadRow({
         title={thread.title}
         onClick={onSelect}
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pl-2 pr-8 text-left text-[12.5px] transition-colors",
+          "flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pl-2 pr-8 text-left text-footnote transition-colors",
           // 選択強調は色のみ（font-weight を上げると CJK が合成太字でちぐはぐになるため使わない）。
           active ? "text-fg" : "text-fg-2",
         )}
