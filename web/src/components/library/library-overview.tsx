@@ -69,7 +69,7 @@ export function LibraryOverview({
     <section aria-labelledby="kb-overview-title" className="mb-4 mt-3">
       {/* 題と件数を 1 行に（同じ数を何度も出さない。specs/025 R46） */}
       <div className="flex flex-wrap items-end gap-x-4 gap-y-1 px-2">
-        <h2 id="kb-overview-title" className="m-0 min-w-0 flex-1 truncate font-display text-display font-bold text-fg">
+        <h2 id="kb-overview-title" className="m-0 min-w-0 flex-1 truncate font-display text-display font-bold text-fg max-md:basis-full">
           {title}
         </h2>
         <p className="m-0 flex items-baseline gap-1.5 text-caption text-muted">
