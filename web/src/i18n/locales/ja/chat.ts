@@ -24,6 +24,10 @@ export const chat = {
   storyNoSearch: "資料は検索していません",
   storyDetail: "詳細",
   storyMore: "ほか {n} 件",
+  /** 回答の下の「詳細」（所要時間・トークン数） */
+  answerDetailTitle: "この回答の詳細",
+  answerDetailTime: "所要時間",
+  answerDetailTokens: "トークン",
   /** 回答の横の根拠カード */
   evidenceHeading: "根拠",
   evidenceCount: "{n} 件",

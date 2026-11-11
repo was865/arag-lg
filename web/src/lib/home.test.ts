@@ -1,16 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GLYPH_COLORS, kbGlyph, matchesQuery, suggestionsFrom } from "@/lib/home";
+import { kbGlyph, matchesQuery, suggestionsFrom } from "@/lib/home";
 
 describe("kbGlyph（ナレッジベースの字標）", () => {
   it("名前の先頭の字を出す。「種別: 名前」の形なら名前の側の字を使う", () => {
-    expect(kbGlyph("a", "保守・点検").char).toBe("保");
-    expect(kbGlyph("b", "評価: jqara").char).toBe("J");
-    expect(kbGlyph("c", "  ").char).toBe("・");
-  });
-  it("色は id から決まり、同じ id なら毎回同じ", () => {
-    const g = kbGlyph("kb-123", "仕様書");
-    expect(GLYPH_COLORS).toContain(g.color);
-    expect(kbGlyph("kb-123", "名前を変えた").color).toBe(g.color);
+    expect(kbGlyph("保守・点検")).toBe("保");
+    expect(kbGlyph("評価: jqara")).toBe("J");
+    expect(kbGlyph("  ")).toBe("・");
   });
 });
 

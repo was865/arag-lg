@@ -3,6 +3,8 @@
 /** 初回ガイド（specs/015-help-onboarding R5）。旧版のスポットライトツアーの移植。
  *  半透明のマスクで `data-tour` の対象をくり抜いて示し、横のカードで順に説明する。
  *  対象が見えないステップ（375px で閉じたサイドバー等）は飛ばさず、スポットライト無しのカードにする。 */
+import { m } from "motion/react";
+import { DURATION, EASE } from "@/lib/motion";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { isVisibleRect, placePopover, spotlightRect, TOUR_STEPS, type Rect } from "@/lib/onboarding";
@@ -122,8 +124,11 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
     "animate-pop-in rounded-sheet border-[0.5px] border-divider-strong bg-surface p-4 shadow-[0_20px_60px_rgba(0,0,0,0.3)] motion-reduce:animate-none";
 
   return (
-    <div
-      className="fixed inset-0 z-[240] animate-overlay-in motion-reduce:animate-none"
+    <m.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: DURATION.exit, ease: EASE.in } }}
+      className="fixed inset-0 z-[240]"
       role="dialog"
       // eslint-disable-next-line no-restricted-syntax -- 画面の一部を切り抜いて強調するツアー。暗転の形が特殊なため自前で描く
       aria-modal="true"
@@ -188,6 +193,6 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
           </div>
         </div>
       )}
-    </div>
+    </m.div>
   );
 }

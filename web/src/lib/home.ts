@@ -1,16 +1,10 @@
 /** 首ページ・サイドバー・コマンドパレットの表示用の計算（specs/025 R44）。 */
 
-/** 字標の色。朱（アクセント）と紅（危険）は避け、墨・藍・緑・黄土・紫・青緑から選ぶ */
-export const GLYPH_COLORS = ["#2f4f86", "#2f8a63", "#b9770e", "#7a4f9a", "#1f7a85", "#5b6470"] as const;
-
-/** ナレッジベースの字標（色付きの四角に 1 字）。色は id から決まる（名前を変えても変わらない）。 */
-export function kbGlyph(id: string, label: string): { char: string; color: string } {
+/** ナレッジベースの字標（角丸の四角に 1 字）に出す字。色は付けない（並んだときに騒がしくなるため。specs/025 R44 見直し）。 */
+export function kbGlyph(label: string): string {
   // 「評価: jqara」のような「種別: 名前」は、並んだときに見分けが付くよう名前の側の字を使う
   const name = (label.split(/[:：]/).pop() ?? label).trim() || label.trim();
-  const first = Array.from(name)[0] ?? "・";
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.codePointAt(0)!) >>> 0;
-  return { char: first.toUpperCase(), color: GLYPH_COLORS[hash % GLYPH_COLORS.length] };
+  return (Array.from(name)[0] ?? "・").toUpperCase();
 }
 
 export interface Suggestion {

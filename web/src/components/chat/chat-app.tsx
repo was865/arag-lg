@@ -565,7 +565,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         id: `kb-${kb.id}`,
         group: "ナレッジベース",
         label: kbLabel(kb),
-        ...(kb.kind === "personal" ? { icon: "user" as const } : { glyph: kbGlyph(kb.id, kb.name) }),
+        ...(kb.kind === "personal" ? { icon: "user" as const } : { glyph: kbGlyph(kb.name) }),
         run: () => openPage({ view: "library", kbId: kb.id }),
       })),
       ...threads.map((th) => ({ id: `th-${th.id}`, group: "スレッド", label: toSummary(th).title, icon: "chat" as const, run: () => selectThread(th.id) })),
@@ -858,6 +858,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               running={running}
               scope={scope}
               focusKey={composerFocus}
+              quiet={home}
               image={queryImage}
               imageBusy={imageBusy}
               onPickImage={imageInput ? (f) => void pickImage(f) : undefined}
@@ -896,7 +897,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           }}
         />
       )}
-      {guideOpen && <OnboardingTour name={sessionUser?.name} onClose={closeGuide} />}
+      <AnimatePresence>{guideOpen && <OnboardingTour key="tour" name={sessionUser?.name} onClose={closeGuide} />}</AnimatePresence>
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showAccount={Boolean(sessionUser)} />}
       {shareOpen && activeThread && (
         <ShareDialog
@@ -905,6 +906,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           onClose={() => setShareOpen(false)}
         />
       )}
+      <AnimatePresence>
       {viewerDoc && (
         <DocumentViewer
           key={viewerDoc.id}
@@ -917,6 +919,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           onAsk={askInDocument}
         />
       )}
+      </AnimatePresence>
     </>
   );
 }

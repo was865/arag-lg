@@ -15,8 +15,8 @@ export interface PaletteItem {
   group: string;
   label: string;
   icon?: IconName;
-  /** icon の代わりに出す色付きの字標（ナレッジベース） */
-  glyph?: { char: string; color: string };
+  /** icon の代わりに出す字標（ナレッジベース） */
+  glyph?: string;
   /** 右端に出す補足（ショートカットなど） */
   hint?: string;
   run: () => void;
@@ -107,10 +107,12 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
                 {it.glyph ? (
                   <span
                     aria-hidden
-                    className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] text-mini font-bold leading-none text-white"
-                    style={{ backgroundColor: it.glyph.color }}
+                    className={cn(
+                      "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] text-mini font-bold leading-none",
+                      i === active ? "bg-bg text-fg" : "bg-divider-strong text-fg-2",
+                    )}
                   >
-                    {it.glyph.char}
+                    {it.glyph}
                   </span>
                 ) : (
                   <span className={cn("grid w-[18px] shrink-0 place-items-center", i === active ? "text-bg" : "text-muted")}>

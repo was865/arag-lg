@@ -67,6 +67,8 @@ interface Props {
   onPickRecent?: (query: string) => void;
   /** 変わるたびに入力欄へフォーカスする（ライブラリから「質問」で戻ったときなど）。0 は何もしない。 */
   focusKey?: number;
+  /** 首ページ用: 入力欄の下のキー操作の案内を出さない（実行中・保留中の案内は出す） */
+  quiet?: boolean;
   /** 質問に添える画像（specs/017）。onPickImage 未指定なら画像ボタン・貼り付け・ドロップは無効。 */
   image?: QueryImage | null;
   /** 縮小などの処理中（送信不可） */
@@ -98,6 +100,7 @@ export function Composer({
   recentQueries = [],
   onPickRecent,
   focusKey = 0,
+  quiet = false,
   image = null,
   imageBusy = false,
   onPickImage,
@@ -419,7 +422,12 @@ export function Composer({
           )}
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-2 text-center text-caption text-muted-2 max-md:hidden">
+      <div
+        className={cn(
+          "flex min-h-[26px] flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-2 text-center text-caption text-muted-2 max-md:hidden",
+          quiet && !running && !pending && "invisible",
+        )}
+      >
         {running ? (
           <span><kbd>{SHORTCUT_LABEL.stop}</kbd>{t.chat.cancelHintText}</span>
         ) : pending ? (

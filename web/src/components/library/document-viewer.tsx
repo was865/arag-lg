@@ -3,6 +3,8 @@
 /** 文書ビューア（specs/007-document-viewer）。ライブラリの上に重ねて、解析結果（章ごとの整形表示・目次）と原本を読む。
  * - 章は 50 件ずつ読み、末尾が見えたら続きを読む（R4）。目次から未読の章へ飛ぶときはそこまで読み足す。
  * - 「この文書に質問」で検索範囲をこの文書に絞ってチャットへ戻る（R9）。 */
+import { m } from "motion/react";
+import { DURATION, EASE } from "@/lib/motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
@@ -64,12 +66,16 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
   ].filter(Boolean);
 
   return (
-    <div
+    <m.div
       role="dialog"
       // eslint-disable-next-line no-restricted-syntax -- 文書ビューアは画面全体を置き換える独立したビューで、ダイアログの見た目に収まらない
       aria-modal="true"
       aria-label={doc.filename}
-      className="fixed inset-0 z-[200] grid animate-overlay-in grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] bg-bg"
+      // 少し下から上がって現れ、閉じるときは下がって消える（呼び出し側の AnimatePresence が閉じる動きを待つ）
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16, transition: { duration: DURATION.exit, ease: EASE.in } }}
+      className="fixed inset-0 z-[200] grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] bg-bg"
     >
       <header className="flex h-[56px] items-center gap-2.5 border-b-[0.5px] border-divider px-4 max-md:h-[52px] max-md:gap-1.5 max-md:px-2">
         <IconButton label="閉じる" icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
@@ -146,7 +152,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
           <NotReady status={doc.status} onShowOriginal={() => setTab("original")} />
         )}
       </div>
-    </div>
+    </m.div>
   );
 }
 

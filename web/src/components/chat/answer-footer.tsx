@@ -7,6 +7,7 @@ import type { Source } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
 import { FeedbackPopover } from "@/components/chat/feedback-popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /** 出典チップの文言。引用した箇所の数と、その文書の数（同じ文書の別箇所を [1][2] と引くことがあるため）。 */
 export function sourcesChipLabel(sources: Source[], t: { sourcesChip: string; sourcesChipDocs: string }): string | null {
@@ -52,21 +53,9 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
     else setPopoverOpen(true);
   }
   return (
-    <div className="mt-3.5 flex items-center justify-between gap-2 border-t-[0.5px] border-dashed border-divider-strong pt-3.5 max-md:flex-wrap max-md:gap-y-2">
+    // 所要時間とトークン数は技術的な情報なので、普段は出さず「詳細」の中に入れる（specs/025 R45）
+    <div className="mt-1 flex items-center justify-between gap-2 max-md:flex-wrap max-md:gap-y-2">
       <div className="flex flex-wrap gap-1.5">
-        <span className={chipCls}>
-          <svg viewBox="0 0 16 16" width="11" height="11">
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" fill="none" />
-            <path d="M8 4v4l3 2" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          </svg>
-          {(durationMs / 1000).toFixed(1)}s
-        </span>
-        <span className={chipCls}>
-          <svg viewBox="0 0 16 16" width="11" height="11">
-            <path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          {tokens >= 1000 ? `${(tokens / 1000).toFixed(1).replace(/\.0$/, "")}k` : tokens} tokens
-        </span>
         {sourcesLabel && (
         <button
           type="button"
@@ -142,6 +131,19 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
             </svg>
           </IconButton>
         </FeedbackPopover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <IconButton label={t.chat.answerDetailTitle} icon="info" iconSize={12} />
+          </PopoverTrigger>
+          <PopoverContent align="end" side="top" className="w-[200px]">
+            <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 px-3.5 py-3 text-footnote">
+              <dt className="text-muted">{t.chat.answerDetailTime}</dt>
+              <dd className="nums m-0 text-right font-mono text-fg">{(durationMs / 1000).toFixed(1)} 秒</dd>
+              <dt className="text-muted">{t.chat.answerDetailTokens}</dt>
+              <dd className="nums m-0 text-right font-mono text-fg">{tokens >= 1000 ? `${(tokens / 1000).toFixed(1).replace(/\.0$/, "")}k` : tokens}</dd>
+            </dl>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

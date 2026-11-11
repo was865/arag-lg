@@ -212,7 +212,7 @@ export function Sidebar(props: SidebarProps) {
             <>
               <KbRow
                 icon="database"
-                glyph={{ char: "全", color: "var(--fg)" }}
+                glyph="全"
                 label={t.sidebar.kbAllDocuments}
                 count={String(dataSourceCount)}
                 active={activeKbId === null}
@@ -222,7 +222,7 @@ export function Sidebar(props: SidebarProps) {
                 <KbRow
                   key={kb.id}
                   icon={kb.kind === "personal" ? "user" : kb.kind === "org" ? "building" : "group"}
-                  glyph={kb.kind === "personal" ? undefined : kbGlyph(kb.id, kb.name)}
+                  glyph={kb.kind === "personal" ? undefined : kbGlyph(kb.name)}
                   label={kb.kind === "personal" ? t.sidebar.kbPersonal : kb.name}
                   count={String(kb.documentCount)}
                   readOnly={!kb.canWrite}
@@ -349,8 +349,8 @@ export function Sidebar(props: SidebarProps) {
 
 function KbRow({ icon, glyph, label, count, readOnly, restricted, archived, active, onClick }: {
   icon: IconName;
-  /** 色付きの字標（共有 KB を見分ける。specs/025 R44）。無ければ icon を出す */
-  glyph?: { char: string; color: string };
+  /** 字標（共有 KB を名前の 1 字で見分ける。specs/025 R44）。無ければ icon を出す */
+  glyph?: string;
   label: string; count?: string; readOnly?: boolean; restricted?: boolean; archived?: boolean; active?: boolean; onClick: () => void;
 }) {
   const { t } = useT();
@@ -366,10 +366,12 @@ function KbRow({ icon, glyph, label, count, readOnly, restricted, archived, acti
       {glyph ? (
         <span
           aria-hidden
-          className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] text-mini font-bold leading-none text-bg"
-          style={{ backgroundColor: glyph.color }}
+          className={cn(
+            "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] text-mini font-bold leading-none transition-colors",
+            active ? "bg-fg text-bg" : "bg-divider-strong text-fg-2",
+          )}
         >
-          {glyph.char}
+          {glyph}
         </span>
       ) : (
         <span className={cn("grid w-[18px] place-items-center", active ? "text-accent" : "text-muted")}>

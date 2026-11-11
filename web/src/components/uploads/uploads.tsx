@@ -1,5 +1,7 @@
 "use client";
 
+import { AnimatePresence, m } from "motion/react";
+import { DURATION, EASE } from "@/lib/motion";
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { IconButton } from "@/components/ui/button";
@@ -206,10 +208,21 @@ export function UserAttachments({ files }: { files: StagedFile[] }) {
 
 export function DropOverlay({ visible }: { visible: boolean }) {
   const { t } = useT();
-  if (!visible) return null;
+  // ファイルを持ち込むと画面全体で受け止め、離すと消える（出入りとも動かす）
   return (
-    <div className="pointer-events-none fixed inset-0 z-[300] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.55)] backdrop-blur-[4px] motion-reduce:animate-none">
-      <div className="w-[420px] max-w-[80vw] animate-pop-in rounded-[18px] border-2 border-dashed border-accent bg-surface p-10 text-center text-fg shadow-e3 motion-reduce:animate-none max-md:w-[calc(100vw-48px)] max-md:p-7">
+    <AnimatePresence>
+      {visible && (
+    <m.div
+      key="drop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: DURATION.exit, ease: EASE.in } }}
+      className="pointer-events-none fixed inset-0 z-[300] grid place-items-center bg-[rgba(20,18,15,0.55)] backdrop-blur-[4px]"
+    >
+      <m.div
+        initial={{ scale: 0.94, y: 8 }}
+        animate={{ scale: 1, y: 0 }}
+        className="w-[420px] max-w-[80vw] rounded-[18px] border-2 border-dashed border-accent bg-surface p-10 text-center text-fg shadow-e3 max-md:w-[calc(100vw-48px)] max-md:p-7">
         <svg viewBox="0 0 48 48" width="40" height="40" className="mx-auto mb-3 text-accent">
           <path d="M14 28V14a4 4 0 014-4h11l9 9v17a4 4 0 01-4 4H14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinejoin="round" />
           <path d="M29 10v9h9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinejoin="round" />
@@ -217,8 +230,10 @@ export function DropOverlay({ visible }: { visible: boolean }) {
         </svg>
         <div className="mb-1.5 text-title font-bold">{t.uploads.dropTitle}</div>
         <div className="text-footnote leading-[1.5] text-muted">{t.uploads.dropSubtitle}</div>
-      </div>
-    </div>
+      </m.div>
+    </m.div>
+      )}
+    </AnimatePresence>
   );
 }
 

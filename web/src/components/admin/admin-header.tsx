@@ -25,21 +25,24 @@ export function AdminHeader({ current, children }: { current: (typeof TABS)[numb
       >
         <Icon name="chevronLeft" size={16} />
       </Link>
-      <nav aria-label="管理" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={t.href}
-            aria-current={current === t.key ? "page" : undefined}
-            className={cn(
-              "shrink-0 whitespace-nowrap rounded-control px-2.5 py-1 text-body no-underline max-md:px-2",
-              current === t.key ? "bg-surface-2 font-semibold text-fg" : "font-medium text-muted hover:text-fg",
-            )}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      {/* 区分の切り替えはセグメントと同じ見た目にする（今いる場所が白い面で浮く。specs/025 R47） */}
+      <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none]">
+        <nav aria-label="管理" className="flex shrink-0 items-center rounded-control bg-divider p-0.5">
+          {TABS.map((t) => (
+            <Link
+              key={t.key}
+              href={t.href}
+              aria-current={current === t.key ? "page" : undefined}
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-[6px] px-3 py-1 text-footnote font-medium no-underline transition-colors duration-(--duration-fast) max-md:px-2",
+                current === t.key ? "bg-surface text-fg shadow-e1" : "text-muted hover:text-fg",
+              )}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
       {children}
     </header>
   );
