@@ -84,3 +84,30 @@ export function formatRows(byExt: { ext: string; documents: number; bytes: numbe
   );
   return [...rows.slice(0, max - 1), rest];
 }
+
+/** 形式ごとの色（積み上げ棒と凡例）。朱（アクセント）とは別の、ファイルの種類を表す色。 */
+const FORMAT_COLORS: Record<string, string> = {
+  Markdown: "#6c7078", テキスト: "#8b8f97", PDF: "#c8442f", Word: "#2f5fb0", Excel: "#2f8a63", CSV: "#2f8a63",
+  PowerPoint: "#d0772a", HTML: "#7a4f9a", 画像: "#1f7a85",
+};
+
+export interface FormatSegment extends FormatRow {
+  color: string;
+  /** 棒の中の幅（%）。少ない形式も見えるよう下限を付け、合計が 100 になるよう多い形式から引く */
+  width: number;
+}
+
+/** 形式の内訳 → 1 本の積み上げ棒の区切り（specs/025 R46）。 */
+export function formatSegments(rows: FormatRow[], minWidth = 2): FormatSegment[] {
+  const total = rows.reduce((a, r) => a + r.documents, 0);
+  if (total === 0) return [];
+  const raw = rows.map((r) => Math.max(minWidth, (r.documents / total) * 100));
+  const over = raw.reduce((a, w) => a + w, 0) - 100;
+  // 下限で増えた分は、いちばん広い区切りから引く
+  const widest = raw.indexOf(Math.max(...raw));
+  return rows.map((r, i) => ({
+    ...r,
+    color: FORMAT_COLORS[r.label] ?? "#9a9da3",
+    width: Math.round((i === widest ? raw[i] - over : raw[i]) * 100) / 100,
+  }));
+}

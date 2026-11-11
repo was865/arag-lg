@@ -67,9 +67,10 @@ function stamp(iso?: string): string {
 
 const KATEX_CSS = "https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css";
 
+// 配色は画面と同じ「朱印」（globals.css の .theme-light / .theme-dark。specs/025 R47）
 const STYLE = `
-:root{--bg:#faf8f3;--fg:#1f1b16;--fg2:#3a352d;--muted:#7a736b;--line:rgba(31,27,22,.12);--soft:#f1ecdf;--accent:#c4613f;--accent-soft:rgba(196,97,63,.12)}
-@media (prefers-color-scheme: dark){:root{--bg:#16151a;--fg:#eeeae0;--fg2:#d4cfc3;--muted:#8e8a85;--line:rgba(255,255,255,.1);--soft:#1f1e24;--accent:#e08a68;--accent-soft:rgba(224,138,104,.16)}}
+:root{--bg:#f5f4f1;--fg:#17181a;--fg2:#2b2d31;--muted:#6c7078;--line:rgba(23,24,26,.12);--soft:#eeede9;--accent:#b93321;--accent-soft:rgba(210,64,43,.10)}
+@media (prefers-color-scheme: dark){:root{--bg:#111214;--fg:#ecebe7;--fg2:#d2d1cc;--muted:#9a9ca2;--line:rgba(255,255,255,.1);--soft:#1a1b1e;--accent:#f0806e;--accent-soft:rgba(238,100,80,.16)}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.8 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}

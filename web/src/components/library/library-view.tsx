@@ -572,7 +572,8 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               })}
             </>
           )}
-          {stats && crumbs.length === 0 && (
+          {/* 概要（題と件数）を出しているときは、同じ件数をここに重ねない */}
+          {stats && crumbs.length === 0 && (search || filter !== "all" || selecting || stats.documents === 0) && (
             <span className="ml-2 shrink-0 font-mono text-caption text-muted max-md:hidden">
               {stats.documents.toLocaleString("ja-JP")} 件 · {formatBytes(stats.total_bytes)}
             </span>
@@ -709,6 +710,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             {crumbs.length === 0 && !search && filter === "all" && !selecting && (
               <LibraryOverview
                 kbId={kbId}
+                title={kbLabel(kb)}
                 refreshKey={stats ? `${stats.documents}:${JSON.stringify(stats.by_status)}` : ""}
                 onOpenDocument={onOpenDocument}
                 onShowFailed={() => setFilter("error")}
@@ -914,10 +916,13 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                               .join(" / ")}
                           </span>
                         )}
-                        <span className={cn("hidden max-md:inline", TONE[st.tone])}>
-                          {(!kbId || (!browsing && d.folder_id)) && "· "}
-                          {st.label}
-                        </span>
+                        {/* 検索できる文書がほとんどなので、状態はそれ以外のときだけ出す（specs/025 R46） */}
+                        {st.tone !== "ok" && (
+                          <span className={cn("hidden max-md:inline", TONE[st.tone])}>
+                            {(!kbId || (!browsing && d.folder_id)) && "· "}
+                            {st.label}
+                          </span>
+                        )}
                         <span className="hidden max-md:inline">· {formatDate(d.created_at)}</span>
                         {d.status === "ready" && d.chunk_count > 0 && (
                           <span className="max-md:hidden">
@@ -932,8 +937,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                     {busy && (
                       <span className="h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
                     )}
-                    {st.tone === "ok" && <span className="h-1.5 w-1.5 rounded-full bg-[#3c9a5f]" />}
-                    {st.label}
+                    {st.tone === "ok" ? <span className="sr-only">{st.label}</span> : st.label}
                     {st.tone === "danger" && d.writable && d.job_id && (
                       <button
                         onClick={() => void retry(d)}

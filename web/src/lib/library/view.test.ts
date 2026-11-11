@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { KbInfo } from "@/hooks/use-kbs";
-import { docStatus, formatBytes, filterStatuses, formatDate, uploadTarget, formatRows } from "@/lib/library/view";
+import { docStatus, formatBytes, filterStatuses, formatDate, uploadTarget, formatRows, formatSegments } from "@/lib/library/view";
 
 const kb = (over: Partial<KbInfo>): KbInfo => ({
   id: "k",
@@ -81,5 +81,22 @@ describe("formatRows", () => {
       3,
     );
     expect(rows.map((r) => [r.label, r.documents])).toEqual([["PDF", 10], ["Markdown", 9], ["その他", 15]]);
+  });
+});
+
+describe("formatSegments（形式の内訳の積み上げ棒）", () => {
+  it("幅の合計は 100 で、少ない形式にも見える幅がある", () => {
+    const segs = formatSegments([
+      { label: "Markdown", documents: 11453, bytes: 0 },
+      { label: "PDF", documents: 26, bytes: 0 },
+      { label: "Word", documents: 5, bytes: 0 },
+    ]);
+    expect(Math.round(segs.reduce((a, s) => a + s.width, 0))).toBe(100);
+    expect(segs[1].width).toBeGreaterThanOrEqual(2);
+    expect(segs[0].width).toBeGreaterThan(90);
+    expect(segs[1].color).not.toBe(segs[2].color);
+  });
+  it("文書が無ければ空", () => {
+    expect(formatSegments([])).toEqual([]);
   });
 });

@@ -220,7 +220,7 @@ function Tile({ label, value, small }: { label: string; value: string; small?: b
   return (
     <div className="flex min-w-0 flex-col gap-1 rounded-[12px] border-[0.5px] border-divider bg-surface px-4 py-3">
       <span className="truncate text-caption text-muted">{label}</span>
-      <span className={cn("truncate font-semibold text-fg", small ? "text-title leading-[28px]" : "text-display")}>
+      <span className={cn("truncate font-display font-bold text-fg", small ? "text-title leading-[28px]" : "text-display")}>
         {value}
       </span>
     </div>
@@ -243,7 +243,7 @@ function Figure({ label, value, text }: { label: string; value?: number; text?: 
   return (
     <div className="flex flex-col">
       <span className="text-caption text-muted">{label}</span>
-      <span className="text-display font-semibold text-fg">{text ?? compact(value ?? 0)}</span>
+      <span className="font-display text-display font-bold text-fg">{text ?? compact(value ?? 0)}</span>
     </div>
   );
 }
