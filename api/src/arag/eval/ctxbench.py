@@ -1,7 +1,7 @@
 """文脈付与モデルの比較（所要時間・失敗率・出力の並べ表示）。DB は書き換えない。
 
 uv run python -m arag.eval.ctxbench --suite agentic_rag_demo beir_scifact jqara --docs 10 \\
-    --model openai:qwen3-8b --base-url http://10.32.1.30:8090/v1 \\
+    --model openai:qwen3-8b --base-url http://100.118.110.25:8090/v1 \\
     --kwargs '{"temperature": 0, "extra_body": {"chat_template_kwargs": {"enable_thinking": false}}}' \\
     --out ../eval/.reports/ctxbench/qwen3-8b.yaml
 
