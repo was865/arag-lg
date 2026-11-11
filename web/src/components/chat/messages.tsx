@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, IconButton } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { AnswerFooter, CancelledNotice, ErrorNotice, UncitedNotice } from "@/components/chat/answer-footer";
@@ -38,6 +39,7 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
       {open && (
         <div
           role="dialog"
+          // eslint-disable-next-line no-restricted-syntax -- 画像の拡大表示（ライトボックス）。枠のない全面表示で、Esc は自前で処理する
           aria-modal="true"
           aria-label={t.chat.imageAttached}
           onClick={() => setOpen(false)}
@@ -103,12 +105,11 @@ export function UserMessage({
               onClick={() => { setEditing(false); setDraft(text); }}
               className="h-7 rounded-[7px] border-[0.5px] border-divider-strong bg-surface px-3 text-[12px] font-medium text-fg hover:bg-surface-2"
             >{t.chat.editCancel}</button>
-            <button
+            <Button variant="primary" size="sm"
               type="button"
               onClick={submit}
               disabled={!draft.trim()}
-              className="h-7 rounded-[7px] border-0 bg-accent px-3 text-[12px] font-semibold text-white disabled:opacity-50"
-            >{t.chat.editSubmit}</button>
+            >{t.chat.editSubmit}</Button>
           </div>
         </div>
       </div>
@@ -117,17 +118,15 @@ export function UserMessage({
   return (
     <div className="group flex items-end justify-end gap-2">
       {onEdit && (
-        <button
-          type="button"
-          title={t.chat.editQuestion}
-          aria-label={t.chat.editQuestion}
+        <IconButton
+          label={t.chat.editQuestion}
           onClick={() => { setDraft(text); setEditing(true); }}
-          className="order-first mb-1 grid h-7 w-7 shrink-0 place-items-center rounded-md border-0 bg-transparent text-muted opacity-0 transition-opacity hover:bg-divider hover:text-fg focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
+          className="order-first mb-1 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
         >
           <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
             <path d="M10.5 3.2l2.3 2.3-6.6 6.6-2.9.6.6-2.9 6.6-6.6z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
           </svg>
-        </button>
+        </IconButton>
       )}
       {/* 吹き出しを peer にし、ホバー時だけ時刻（order-first で左側）を出す。 */}
       <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-[14.5px] leading-[1.55] text-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-[14px]">

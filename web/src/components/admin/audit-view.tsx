@@ -2,6 +2,7 @@
 
 /** 監査ログ（specs/011-audit-log R5）。 */
 import createClient from "openapi-fetch";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { Icon } from "@/components/icons";
@@ -207,13 +208,12 @@ export function AuditView() {
           )}
           {cursor && (
             <div className="flex justify-center pt-3">
-              <button
+              <Button variant="secondary" size="sm"
                 onClick={() => void more()}
                 disabled={loadingMore}
-                className="h-8 rounded-lg border-[0.5px] border-divider-strong px-3.5 text-[12.5px] font-medium text-fg hover:bg-divider disabled:opacity-60"
               >
                 {loadingMore ? "読み込み中…" : "さらに読み込む"}
-              </button>
+              </Button>
             </div>
           )}
         </div>

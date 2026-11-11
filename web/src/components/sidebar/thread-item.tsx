@@ -5,9 +5,9 @@
 // 内部で呼ばない）ため、chat 固有の日本語/中国語 i18n にも agents 側の純中国語文案にも
 // 同じコンポーネントで対応できる。
 
-import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
 import type { ThreadSummary } from "@/lib/types";
 
@@ -33,7 +33,9 @@ export interface ThreadRowProps {
   onRenameCommit: () => void;
   onRenameCancel: () => void;
   onSelect: () => void;
-  onOpenMenu: (rect: { left: number; top: number; bottom: number; right: number }) => void;
+  onMenuOpenChange: (open: boolean) => void;
+  /** 「⋯」メニューの中身（ThreadMenuItems）。開いているときだけ描かれる */
+  menu?: ReactNode;
   /** 行尾追加节点（如 agents 侧栏的运行中脉冲圆点）。未提供则不渲染此槽位——
    *  chat 侧沿用旧行为零变化，只有传入方（agents）会在布局中多出这一层。 */
   trailing?: ReactNode;
@@ -42,7 +44,7 @@ export interface ThreadRowProps {
 export function ThreadRow({
   thread, active, renaming, renameValue, menuOpen, labels, trailing,
   onRenameChange, onRenameCommit, onRenameCancel,
-  onSelect, onOpenMenu,
+  onSelect, onMenuOpenChange, menu,
 }: ThreadRowProps) {
   if (renaming) {
     return (
@@ -118,21 +120,32 @@ export function ThreadRow({
           {trailing}
         </span>
       )}
-      <button
-        type="button"
-        aria-label={labels.menuLabel}
-        onClick={(e) => {
-          e.stopPropagation();
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          onOpenMenu({ left: rect.left, top: rect.top, bottom: rect.bottom, right: rect.right });
-        }}
-        className={cn(
-          "absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md border-0 bg-transparent text-muted opacity-0 transition-opacity hover:bg-bg-2 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100",
-          menuOpen && "bg-bg-2 text-fg opacity-100",
-        )}
-      >
-        <Icon name="more" size={13} />
-      </button>
+      <Menu open={menuOpen} onOpenChange={onMenuOpenChange}>
+        <MenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={labels.menuLabel}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-control border-0 bg-transparent text-muted opacity-0 outline-none transition-opacity hover:bg-bg-2 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100",
+              menuOpen && "bg-bg-2 text-fg opacity-100",
+            )}
+          >
+            <Icon name="more" size={14} />
+          </button>
+        </MenuTrigger>
+        <MenuContent
+          side="right"
+          align="start"
+          className="min-w-[200px] p-1.5"
+          // 「名前を変更」で入力欄にフォーカスが移ったときは、ボタンへ戻さない（戻すと入力が確定してしまう）
+          onCloseAutoFocus={(e) => {
+            if (document.activeElement instanceof HTMLInputElement) e.preventDefault();
+          }}
+        >
+          {menu}
+        </MenuContent>
+      </Menu>
     </div>
   );
 }
@@ -147,117 +160,25 @@ export interface ThreadMenuItemsProps {
   onAddProject?: () => void;
 }
 
-/**
- * メニュー項目一覧のみを描く hook 無しの純粋子コンポーネント。
- * ThreadMenu は定位/開閉副作用（useRef/useState/useEffect）を持つため直接テストできない。
- * こちらは副作用を持たないので、関数を直接呼んでテストできる。
- */
+/** 「⋯」メニューの項目。hook を持たないので関数を直接呼んでテストできる。 */
 export function ThreadMenuItems({ thread, labels, onStar, onRename, onDelete, onAddProject }: ThreadMenuItemsProps) {
-  const itemCls =
-    "group/mi flex w-full items-center gap-3 rounded-[7px] border-0 bg-transparent px-2.5 py-2 text-left text-[13px] text-fg transition-colors hover:bg-divider";
-  const iconCls = "inline-flex w-[18px] shrink-0 items-center justify-center text-muted group-hover/mi:text-fg";
-
   return (
     <>
-      <button className={itemCls} role="menuitem" onClick={onStar}>
-        <span className={iconCls}>
-          <Icon name={thread.pinned ? "starFilled" : "star"} size={14} />
-        </span>
-        <span className="min-w-0 flex-1">{thread.pinned ? labels.unstar : labels.star}</span>
-      </button>
-      <button className={itemCls} role="menuitem" onClick={onRename}>
-        <span className={iconCls}>
-          <Icon name="pencil" size={14} />
-        </span>
-        <span className="min-w-0 flex-1">{labels.rename}</span>
-      </button>
+      <MenuItem icon={thread.pinned ? "starFilled" : "star"} onSelect={onStar}>
+        {thread.pinned ? labels.unstar : labels.star}
+      </MenuItem>
+      <MenuItem icon="pencil" onSelect={onRename}>
+        {labels.rename}
+      </MenuItem>
       {labels.addToProject && onAddProject && (
-        <button className={itemCls} role="menuitem" onClick={onAddProject}>
-          <span className={iconCls}>
-            <Icon name="inbox" size={14} />
-          </span>
-          <span className="min-w-0 flex-1">{labels.addToProject}</span>
-        </button>
+        <MenuItem icon="inbox" onSelect={onAddProject}>
+          {labels.addToProject}
+        </MenuItem>
       )}
-      <div className="mx-1.5 my-1 h-px bg-divider" />
-      <button
-        className={cn(itemCls, "text-[#B83A1F] hover:bg-[#FDEFEA] dark:hover:bg-[rgba(184,58,31,0.16)]")}
-        role="menuitem"
-        onClick={onDelete}
-      >
-        <span className="inline-flex w-[18px] shrink-0 items-center justify-center text-[#B83A1F]">
-          <Icon name="trash" size={14} />
-        </span>
-        <span className="min-w-0 flex-1">{labels.delete}</span>
-      </button>
+      <MenuSeparator />
+      <MenuItem icon="trash" danger onSelect={onDelete}>
+        {labels.delete}
+      </MenuItem>
     </>
-  );
-}
-
-export interface ThreadMenuProps {
-  thread: ThreadSummary;
-  anchor: { left: number; top: number; bottom: number; right: number };
-  labels: ThreadItemLabels;
-  onClose: () => void;
-  onStar: () => void;
-  onRename: () => void;
-  onDelete: () => void;
-  /** labels.addToProject と同時に提供されたときだけ渲染 */
-  onAddProject?: () => void;
-}
-
-export function ThreadMenu({ thread, anchor, labels, onClose, onStar, onRename, onAddProject, onDelete }: ThreadMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState<React.CSSProperties>(() => ({
-    left: anchor.right + 4,
-    top: anchor.top,
-    width: 200,
-    visibility: "hidden",
-  }));
-
-  // Re-position after mount: prefer right of trigger, fall back to left or below.
-  useEffect(() => {
-    const el = menuRef.current;
-    if (!el) return;
-    const { offsetWidth: w, offsetHeight: h } = el;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let left = anchor.right + 4;
-    if (left + w > vw - 8) left = Math.max(8, anchor.left - w - 4);
-    let top = anchor.top;
-    if (top + h > vh - 8) top = Math.max(8, vh - h - 8);
-    setStyle({ left, top, width: w });
-  }, [anchor]);
-
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return;
-      onClose();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      ref={menuRef}
-      role="menu"
-      style={style}
-      className="fixed z-[90] flex min-w-[200px] animate-pop-in flex-col rounded-xl border-[0.5px] border-divider-strong bg-surface p-1.5 shadow-e3"
-    >
-      <ThreadMenuItems
-        thread={thread}
-        labels={labels}
-        onStar={onStar}
-        onRename={onRename}
-        onDelete={onDelete}
-        onAddProject={onAddProject}
-      />
-    </div>
   );
 }

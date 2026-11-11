@@ -1,5 +1,15 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/** globals.css の @theme で足した文字・角丸の段階を tailwind-merge に教える（text-body と text-danger を別物として扱う） */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["caption", "footnote", "body", "callout", "headline", "title"],
+      radius: ["control", "card", "sheet"],
+    },
+  },
+});
 
 /** Tailwind-aware className combiner. */
 export function cn(...inputs: ClassValue[]) {

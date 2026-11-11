@@ -6,6 +6,10 @@ import { AdminHeader } from "@/components/admin/admin-header";
 import { MemberAccessDialog } from "@/components/admin/member-access-dialog";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
+import { Button, IconButton } from "@/components/ui/button";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Field, Input, inputClass } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
   ASSIGNABLE_ROLES,
@@ -113,31 +117,30 @@ export function MembersView() {
   return (
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
       <AdminHeader current="members">
-        {data && <span className="font-mono text-[11px] text-muted max-md:hidden">{data.items.length} 人</span>}
-        <button
+        {data && <span className="font-mono text-caption text-muted max-md:hidden">{data.items.length} 人</span>}
+        <Button variant="primary" size="sm"
           onClick={() => setInviting(true)}
-          className="inline-flex h-[30px] items-center gap-1.5 rounded-lg bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
         >
           <Icon name="plus" size={13} />
           招待
-        </button>
+        </Button>
       </AdminHeader>
 
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
-        <label className="mx-auto flex h-8 max-w-[1000px] items-center gap-2 rounded-lg border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent">
+        <label className="mx-auto flex h-8 max-w-[1000px] items-center gap-2 rounded-control border-[0.5px] border-divider-strong bg-surface px-2.5 text-muted focus-within:border-accent">
           <Icon name="search" size={13} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="名前・メールで探す"
-            className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
+            className="min-w-0 flex-1 border-0 bg-transparent text-body text-fg outline-none placeholder:text-muted-2"
           />
         </label>
       </div>
 
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[1000px] px-[18px] pb-10 pt-2 max-md:px-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_130px_80px_70px_32px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+          <div className="grid grid-cols-[minmax(0,1fr)_130px_80px_70px_32px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-caption font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
             <span>名前</span>
             <span>役割</span>
             <span>状態</span>
@@ -149,7 +152,7 @@ export function MembersView() {
               <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : data.items.length === 0 ? (
-            <p className="py-16 text-center text-[13px] text-muted">条件に合うメンバーはいません</p>
+            <p className="py-16 text-center text-body text-muted">条件に合うメンバーはいません</p>
           ) : (
             data.items.map((m) => {
               const st = memberStatus(m);
@@ -160,21 +163,21 @@ export function MembersView() {
                 <div
                   key={m.id}
                   className={cn(
-                    "grid grid-cols-[minmax(0,1fr)_130px_80px_70px_32px] items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2",
+                    "grid grid-cols-[minmax(0,1fr)_130px_80px_70px_32px] items-center gap-3 rounded-control px-2 py-2 hover:bg-surface-2",
                     "max-md:grid-cols-[minmax(0,1fr)_auto_32px] max-md:gap-2",
                     busy === m.id && "opacity-60",
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[11.5px] font-bold text-accent">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-caption font-bold text-accent">
                       {initialsOf(m.name, m.email)}
                     </span>
                     <div className="min-w-0">
-                      <div className="truncate text-[13px] font-medium text-fg">
+                      <div className="truncate text-body font-medium text-fg">
                         {m.name || "（名前なし）"}
-                        {me && <span className="ml-1.5 text-[11px] font-normal text-muted">（あなた）</span>}
+                        {me && <span className="ml-1.5 text-caption font-normal text-muted">（あなた）</span>}
                       </div>
-                      <div className="truncate text-[11.5px] text-muted">
+                      <div className="truncate text-caption text-muted">
                         {m.email}
                         <span className={cn("hidden max-md:inline", STATUS_TONE[st])}> · {STATUS_LABEL[st]}</span>
                       </div>
@@ -189,7 +192,7 @@ export function MembersView() {
                         onChange={(e) =>
                           void patch(m, { role: e.target.value }, `役割を「${ROLE_LABEL[e.target.value as Role]}」にしました`)
                         }
-                        className="h-7 rounded-md border-[0.5px] border-divider-strong bg-surface px-1.5 text-[12px] text-fg"
+                        className="h-7 rounded-md border-[0.5px] border-divider-strong bg-surface px-1.5 text-footnote text-fg"
                       >
                         {ASSIGNABLE_ROLES.map((r) => (
                           <option key={r} value={r}>
@@ -198,11 +201,11 @@ export function MembersView() {
                         ))}
                       </select>
                     ) : (
-                      <span className="text-[12px] text-fg-2">{ROLE_LABEL[m.role as Role] ?? m.role}</span>
+                      <span className="text-footnote text-fg-2">{ROLE_LABEL[m.role as Role] ?? m.role}</span>
                     )}
                   </div>
-                  <span className={cn("text-[12px] max-md:hidden", STATUS_TONE[st])}>{STATUS_LABEL[st]}</span>
-                  <span className="text-right font-mono text-[11px] text-muted max-md:hidden">{formatDate(m.createdAt)}</span>
+                  <span className={cn("text-footnote max-md:hidden", STATUS_TONE[st])}>{STATUS_LABEL[st]}</span>
+                  <span className="text-right font-mono text-caption text-muted max-md:hidden">{formatDate(m.createdAt)}</span>
                   <MemberMenu
                     disabled={busy === m.id}
                     canBan={canBan}
@@ -217,7 +220,7 @@ export function MembersView() {
               );
             })
           )}
-          <p className="m-0 mt-4 px-2 text-[11.5px] leading-[1.6] text-muted">
+          <p className="m-0 mt-4 px-2 text-caption leading-[1.6] text-muted">
             管理者はメンバーの招待・停止ができます。管理者の追加・変更は owner だけが行えます。
           </p>
         </div>
@@ -263,56 +266,32 @@ function MemberMenu({
   onResend: () => void;
   onAccess: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
-  const item = "flex w-full items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 text-left text-[12.5px] hover:bg-divider";
   return (
-    <span className="relative justify-self-end">
-      <button
-        disabled={disabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((x) => !x);
-        }}
-        aria-label="操作"
-        aria-expanded={open}
-        className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg disabled:invisible"
-      >
-        <Icon name="more" size={14} />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-8 z-20 w-max min-w-[160px] animate-pop-in rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
-        >
-          <button role="menuitem" className={cn(item, "text-fg")} onClick={onAccess}>
-            <Icon name="database" size={13} />
+    <span className="justify-self-end">
+      <Menu>
+        <MenuTrigger asChild>
+          <IconButton label="操作" icon="more" tooltip={false} disabled={disabled} className="disabled:invisible" />
+        </MenuTrigger>
+        <MenuContent align="end">
+          <MenuItem icon="database" onSelect={onAccess}>
             閲覧できるナレッジベース
-          </button>
+          </MenuItem>
           {canResend && (
-            <button role="menuitem" className={cn(item, "text-fg")} onClick={onResend}>
-              <Icon name="mail" size={13} />
+            <MenuItem icon="mail" onSelect={onResend}>
               パスワード設定のリンクを送る
-            </button>
+            </MenuItem>
           )}
           {!canBan ? null : banned ? (
-            <button role="menuitem" className={cn(item, "text-fg")} onClick={onUnban}>
-              <Icon name="refresh" size={13} />
+            <MenuItem icon="refresh" onSelect={onUnban}>
               再開する
-            </button>
+            </MenuItem>
           ) : (
-            <button role="menuitem" className={cn(item, "text-danger")} onClick={onBan}>
-              <Icon name="lock" size={13} />
+            <MenuItem icon="lock" danger onSelect={onBan}>
               停止する
-            </button>
+            </MenuItem>
           )}
-        </div>
-      )}
+        </MenuContent>
+      </Menu>
     </span>
   );
 }
@@ -333,12 +312,6 @@ function InviteDialog({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -354,69 +327,37 @@ function InviteDialog({
     }
   };
 
-  const field =
-    "h-9 w-full rounded-[9px] border-[0.5px] border-divider-strong bg-surface px-3 text-[13.5px] text-fg outline-none focus:border-accent";
   return (
-    <div
-      className="fixed inset-0 z-[240] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 max-md:items-end max-md:p-0"
-      onClick={onClose}
-    >
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-label="メンバーを招待"
-        onSubmit={(e) => void submit(e)}
-        onClick={(e) => e.stopPropagation()}
-        className="flex w-[420px] max-w-full animate-pop-in flex-col gap-3 rounded-[16px] border-[0.5px] border-divider-strong bg-surface p-5 shadow-e3 max-md:w-full max-md:rounded-[18px_18px_0_0] max-md:pb-[max(20px,env(safe-area-inset-bottom))]"
-      >
-        <h3 className="m-0 text-[15px] font-bold text-fg">メンバーを招待</h3>
-        <p className="m-0 text-[12px] leading-[1.6] text-muted">
-          パスワードを設定するリンクをメールで送ります（1 時間有効）。
-        </p>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-fg-2">
-          メールアドレス
-          <input
-            type="email"
-            required
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={field}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-fg-2">
-          名前
-          <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={field} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-fg-2">
-          役割
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "member" | "admin")}
-            className={field}
-          >
-            <option value="member">メンバー</option>
-            {canInviteAdmin && <option value="admin">管理者</option>}
-          </select>
-        </label>
-        {error && <p className="m-0 text-[12px] text-danger">{error}</p>}
-        <div className="mt-1 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 rounded-[9px] px-3.5 text-[13px] font-medium text-fg hover:bg-divider"
-          >
-            キャンセル
-          </button>
-          <button
-            type="submit"
-            disabled={sending}
-            className="h-9 rounded-[9px] bg-accent px-4 text-[13px] font-semibold text-white hover:brightness-105 disabled:opacity-60"
-          >
-            {sending ? "送っています…" : "招待を送る"}
-          </button>
-        </div>
-      </form>
-    </div>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title="メンバーを招待" description="パスワードを設定するリンクをメールで送ります（1 時間有効）。" size="sm">
+        <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-col">
+          <DialogBody className="flex flex-col gap-3 pb-1">
+            <Field label="メールアドレス">
+              <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+            <Field label="名前">
+              <Input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field label="役割">
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as "member" | "admin")}
+                className={inputClass}
+              >
+                <option value="member">メンバー</option>
+                {canInviteAdmin && <option value="admin">管理者</option>}
+              </select>
+            </Field>
+            {error && <p className="m-0 text-footnote text-danger">{error}</p>}
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={onClose}>キャンセル</Button>
+            <Button type="submit" variant="primary" disabled={sending}>
+              {sending ? "送っています…" : "招待を送る"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

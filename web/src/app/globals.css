@@ -55,6 +55,25 @@
   --shadow-e1: var(--shadow-1);
   --shadow-e2: var(--shadow-2);
   --shadow-e3: var(--shadow-3);
+
+  /* ── 文字・角丸の段階（UI 試作。新しい部品はこの段階だけを使う） ──────────
+     Apple の Dynamic Type を 13px 基準に縮めたもの。任意値（text-[12.5px] など）を増やさず、ここから選ぶ。 */
+  --text-caption: 11.5px; /* 補足・注記・フッター */
+  --text-caption--line-height: 1.5;
+  --text-footnote: 12.5px; /* 二次情報・表の補助列 */
+  --text-footnote--line-height: 1.5;
+  --text-body: 13px; /* 本文・行ラベル・ボタン */
+  --text-body--line-height: 1.55;
+  --text-callout: 14px; /* チャット本文 */
+  --text-callout--line-height: 1.65;
+  --text-headline: 15px; /* ダイアログ・パネルの見出し */
+  --text-headline--line-height: 1.35;
+  --text-title: 19px; /* ページ見出し */
+  --text-title--line-height: 1.3;
+
+  --radius-control: 8px; /* ボタン・入力・セグメント */
+  --radius-card: 12px; /* グループ化した一覧・カード */
+  --radius-sheet: 16px; /* ダイアログ・シート */
 }
 
 /* ── Theme palettes ─────────────────────────────────────────────────────── */

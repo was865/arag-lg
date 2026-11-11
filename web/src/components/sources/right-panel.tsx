@@ -8,6 +8,7 @@ import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { OriginalPreview, originalTabLabel } from "@/components/documents/original-preview";
 import type { CitationMap, Source, SourceType } from "@/lib/types";
+import { IconButton } from "@/components/ui/button";
 
 export type RightPanelAction = "open-source" | "download" | "share";
 
@@ -51,8 +52,6 @@ function SourceIcon({ type }: { type: SourceType }) {
   );
 }
 
-const iconBtn = "grid h-[26px] w-[26px] place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-divider hover:text-fg";
-
 type ViewMode = "html" | "text" | "original";
 
 export function RightPanel({ sources, citationMap, contextQuery, activeSourceId, highlightSectionId, onSetActive, onClose, onAction, resizable, panelWidth = 420, onResizeWidth, canShare = false }: Props) {
@@ -89,11 +88,11 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
       <div className={cn(panelCls, "grid-rows-[auto_1fr]")}>
         <div className="flex h-[52px] items-center justify-between border-b-[0.5px] border-divider px-4 max-md:px-3.5">
           <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-fg">{t.sources.panelTitle}</span>
-          <button className={iconBtn} title={t.sources.closePanelTitle} onClick={onClose}>
+          <IconButton label={t.sources.closePanelTitle} onClick={onClose}>
             <svg viewBox="0 0 16 16" width="12" height="12">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
             </svg>
-          </button>
+          </IconButton>
         </div>
         <div className="grid place-items-center px-6 text-center text-[12.5px] leading-[1.6] text-muted">
           {t.sources.emptyState}
@@ -117,16 +116,16 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
             <span className="rounded-full bg-divider px-1.5 py-px font-mono text-[10.5px] text-muted">{sources.length}</span>
           </div>
           <div className="flex gap-0.5">
-            <button className={iconBtn} title={t.sources.openInNewTab} onClick={() => onAction("open-source", active)}>
+            <IconButton label={t.sources.openInNewTab} onClick={() => onAction("open-source", active)}>
               <svg viewBox="0 0 16 16" width="12" height="12">
                 <path d="M6 3H3v10h10v-3M9 3h4v4M13 3l-6 6" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </button>
-            <button className={iconBtn} title={t.sources.closePanelTitle} onClick={onClose}>
+            </IconButton>
+            <IconButton label={t.sources.closePanelTitle} onClick={onClose}>
               <svg viewBox="0 0 16 16" width="12" height="12">
                 <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
               </svg>
-            </button>
+            </IconButton>
           </div>
         </div>
         {contextQuery && (

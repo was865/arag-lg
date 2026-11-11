@@ -1,35 +1,45 @@
 "use client";
 
+/** iOS 風のオン・オフ切り替え（Radix Switch。キーボード・スクリーンリーダーの扱いは Radix に任せる）。 */
+import * as S from "@radix-ui/react-switch";
 import { cn } from "@/lib/utils";
 
-/** iOS 風のオン・オフ切り替え（設定画面で共用）。 */
 export function Switch({
   label,
   checked,
   onChange,
+  disabled,
+  size = "md",
+  className,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
+  /** sm はポップオーバーなど狭い場所の行の中で使う */
+  size?: "sm" | "md";
+  className?: string;
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <S.Root
       aria-label={label}
-      onClick={() => onChange(!checked)}
+      checked={checked}
+      onCheckedChange={onChange}
+      disabled={disabled}
       className={cn(
-        "relative h-[22px] w-[38px] rounded-full transition-colors",
-        checked ? "bg-accent" : "bg-divider-strong",
+        "relative inline-flex shrink-0 cursor-pointer rounded-full bg-divider-strong transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-45 data-[state=checked]:bg-accent",
+        size === "sm" ? "h-4 w-7" : "h-[22px] w-[38px]",
+        className,
       )}
     >
-      <span
+      <S.Thumb
         className={cn(
-          "absolute top-[3px] h-4 w-4 rounded-full bg-white shadow-e1 transition-[left]",
-          checked ? "left-[19px]" : "left-[3px]",
+          "absolute rounded-full bg-white shadow-e1 transition-transform",
+          size === "sm"
+            ? "left-0.5 top-0.5 h-3 w-3 data-[state=checked]:translate-x-3"
+            : "left-[3px] top-[3px] h-4 w-4 data-[state=checked]:translate-x-4",
         )}
       />
-    </button>
+    </S.Root>
   );
 }

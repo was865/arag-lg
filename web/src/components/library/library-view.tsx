@@ -10,6 +10,8 @@
  *   フォルダは中身ごと移るので確認を出す。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, IconButton } from "@/components/ui/button";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Icon, type IconName } from "@/components/icons";
 import { DocumentsUploadQueue, DropOverlay } from "@/components/uploads/uploads";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -520,13 +522,14 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     >
       <DropOverlay visible={dragging && Boolean(target)} />
       <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:px-2.5">
-        <button
-          className="-ml-1 hidden h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-fg hover:bg-divider max-md:grid"
+        <IconButton
+          label="メニューを開く"
+          tooltip={false}
+          icon="menu"
+          iconSize={15}
           onClick={onOpenMenu}
-          aria-label="メニューを開く"
-        >
-          <Icon name="menu" size={15} />
-        </button>
+          className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
+        />
         <nav aria-label="場所" className="flex min-w-0 flex-1 items-center gap-0.5 text-[13.5px]">
           {crumbs.length === 0 ? (
             <h1 className="m-0 truncate text-[13.5px] font-semibold text-fg">{kbLabel(kb)}</h1>
@@ -592,16 +595,15 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           </button>
         )}
         {kb && kb.kind === "org" && <KbShareButton kbId={kb.id} kbName={kb.name} />}
-        <button
+        <Button variant="secondary" size="sm"
           onClick={() => onAsk(kbId)}
           title={kb ? "このナレッジベースに質問" : "質問する"}
-          className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
         >
           <Icon name="chat" size={13} />
           <span className="max-lg:hidden">{kb ? "このナレッジベースに質問" : "質問する"}</span>
-        </button>
+        </Button>
         {canEditFolders && (
-          <button
+          <Button variant="secondary" size="sm"
             onClick={() => {
               setQuery("");
               setSearch("");
@@ -609,59 +611,29 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               setCreating("");
             }}
             title="新しいフォルダ"
-            className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-[0.5px] border-divider-strong bg-transparent px-2.5 text-[12px] font-medium text-fg hover:bg-divider"
           >
             <Icon name="folder" size={13} />
             <span className="max-md:hidden">フォルダ</span>
-          </button>
+          </Button>
         )}
         {target && (
-          <span className="relative">
-            <button
-              onClick={() => setAddMenu((x) => !x)}
-              aria-haspopup="menu"
-              aria-expanded={addMenu}
-              className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border-0 bg-accent px-3 text-[12px] font-semibold text-white hover:brightness-105"
-            >
-              <Icon name="plus" size={13} />
-              追加
-              <Icon name="chevronDown" size={11} />
-            </button>
-            {addMenu && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setAddMenu(false)} />
-                <div
-                  role="menu"
-                  className="absolute right-0 top-9 z-30 w-[200px] animate-pop-in overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
-                >
-                  {(
-                    [
-                      ["doc", "ファイルを選ぶ", ""],
-                      ["folder", "フォルダを選ぶ", "中のフォルダ構成も再現します"],
-                    ] as const
-                  ).map(([icon, label, hint]) => (
-                    <button
-                      key={label}
-                      role="menuitem"
-                      onClick={() => {
-                        setAddMenu(false);
-                        (icon === "folder" ? dirRef : fileRef).current?.click();
-                      }}
-                      className="flex w-full items-start gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-medium text-fg hover:bg-divider"
-                    >
-                      <span className="mt-[2px]">
-                        <Icon name={icon} size={13} />
-                      </span>
-                      <span>
-                        {label}
-                        {hint && <span className="block text-[11px] font-normal text-muted">{hint}</span>}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </span>
+          <Menu open={addMenu} onOpenChange={setAddMenu}>
+            <MenuTrigger asChild>
+              <Button variant="primary" size="sm">
+                <Icon name="plus" size={13} />
+                追加
+                <Icon name="chevronDown" size={11} />
+              </Button>
+            </MenuTrigger>
+            <MenuContent align="end" className="w-[220px]">
+              <MenuItem icon="doc" onSelect={() => fileRef.current?.click()}>
+                ファイルを選ぶ
+              </MenuItem>
+              <MenuItem icon="folder" hint="中のフォルダ構成も再現します" onSelect={() => dirRef.current?.click()}>
+                フォルダを選ぶ
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         )}
         <input
           ref={fileRef}
@@ -697,9 +669,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2"
           />
           {query && (
-            <button onClick={() => setQuery("")} aria-label="検索語を消す" className="text-muted hover:text-fg">
-              <Icon name="close" size={12} />
-            </button>
+            <IconButton size="icon-sm" label="検索語を消す" tooltip={false} icon="close" iconSize={12} onClick={() => setQuery("")} />
           )}
         </label>
         <div role="tablist" className="flex shrink-0 rounded-lg bg-surface-2 p-0.5">
@@ -1138,44 +1108,25 @@ interface MenuItem {
 
 function RowMenu({ open, onToggle, items }: { open: boolean; onToggle: (open: boolean) => void; items: MenuItem[] }) {
   return (
-    <span data-row-menu className="relative justify-self-end">
-      <button
-        aria-label="操作メニュー"
-        onClick={() => onToggle(!open)}
-        className={cn(
-          "grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg",
-          !open && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100",
-        )}
-      >
-        <Icon name="more" size={15} />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-20" onClick={() => onToggle(false)} />
-          <div
-            role="menu"
-            className="absolute right-0 top-8 z-30 w-[168px] animate-pop-in overflow-hidden rounded-[10px] border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
-          >
-            {items.map((it) => (
-              <button
-                key={it.label}
-                role="menuitem"
-                onClick={() => {
-                  onToggle(false);
-                  it.onClick();
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-medium",
-                  it.danger ? "text-danger hover:bg-danger-soft" : "text-fg hover:bg-divider",
-                )}
-              >
-                <Icon name={it.icon} size={13} />
-                {it.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+    <span data-row-menu className="justify-self-end">
+      <Menu open={open} onOpenChange={onToggle}>
+        <MenuTrigger asChild>
+          <IconButton
+            label="操作メニュー"
+            icon="more"
+            tooltip={false}
+            className={cn(!open && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100")}
+          />
+        </MenuTrigger>
+        {/* ポータルの中のクリックも React では行まで伝わるので、行の選択・遷移に届かないよう止める */}
+        <MenuContent align="end" data-row-menu onClick={(e) => e.stopPropagation()}>
+          {items.map((it) => (
+            <MenuItem key={it.label} icon={it.icon} danger={it.danger} onSelect={it.onClick}>
+              {it.label}
+            </MenuItem>
+          ))}
+        </MenuContent>
+      </Menu>
     </span>
   );
 }

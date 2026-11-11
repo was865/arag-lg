@@ -38,6 +38,7 @@ export const chat = {
 
   scopeTitle: "検索範囲を選択",
   stopTitle: "実行を停止",
+  sendTitle: "送信",
   pendingSubmitTitle: "アップロード完了までお待ちください",
   cancelHintText: "で実行をキャンセル",
   pendingHint: "アップロード完了までお待ちください…",

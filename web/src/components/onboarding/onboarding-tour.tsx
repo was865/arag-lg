@@ -4,6 +4,7 @@
  *  半透明のマスクで `data-tour` の対象をくり抜いて示し、横のカードで順に説明する。
  *  対象が見えないステップ（375px で閉じたサイドバー等）は飛ばさず、スポットライト無しのカードにする。 */
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { isVisibleRect, placePopover, spotlightRect, TOUR_STEPS, type Rect } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
@@ -108,13 +109,12 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
               戻る
             </button>
           )}
-          <button
+          <Button variant="primary" size="sm"
             autoFocus
             onClick={() => (last ? onClose() : setIndex(index + 1))}
-            className="rounded-lg bg-accent px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
           >
             {last ? "はじめる" : "次へ"}
-          </button>
+          </Button>
         </div>
       </div>
     </>
@@ -127,6 +127,7 @@ export function OnboardingTour({ name, onClose }: { name?: string; onClose: () =
     <div
       className="fixed inset-0 z-[240] animate-overlay-in motion-reduce:animate-none"
       role="dialog"
+      // eslint-disable-next-line no-restricted-syntax -- 画面の一部を切り抜いて強調するツアー。暗転の形が特殊なため自前で描く
       aria-modal="true"
       aria-labelledby="tour-title"
     >

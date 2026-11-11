@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { Notice, Spinner } from "@/components/auth/auth-card";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
+import { Button } from "@/components/ui/button";
+import { ListGroup, ListItem } from "@/components/ui/list";
 import { Switch } from "@/components/ui/switch";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { describeAgent } from "@/lib/auth/user";
@@ -25,33 +27,7 @@ interface SessionRow {
 /** 端末一覧の読み込み結果。stale = ログインから時間が経っていて一覧を見せてもらえない */
 type Sessions = { state: "loading" } | { state: "ok"; rows: SessionRow[] } | { state: "stale" } | { state: "error" };
 
-const TEXT_BTN = "border-0 bg-transparent p-0 text-[13px] font-medium text-accent hover:opacity-80 disabled:opacity-40";
-const INLINE_INPUT =
-  "min-w-0 flex-1 border-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-muted-2";
-
-function Group({ title, footer, children }: { title: string; footer?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-1.5">
-      <h3 className="m-0 px-3 text-[11.5px] font-medium text-muted">{title}</h3>
-      <div className="overflow-hidden rounded-[12px] border-[0.5px] border-divider bg-surface-2">{children}</div>
-      {footer && <p className="m-0 px-3 text-[11.5px] leading-[1.55] text-muted">{footer}</p>}
-    </section>
-  );
-}
-
-/** グループ内の 1 行（行の間は細い区切り線） */
-function Item({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-[44px] items-center gap-3 px-3.5 py-2 [&+&]:border-t-[0.5px] [&+&]:border-divider",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
+const INLINE_INPUT = "min-w-0 flex-1 border-0 bg-transparent text-body text-fg outline-none placeholder:text-muted-2";
 
 function initial(name: string | undefined, email: string | undefined): string {
   return (name?.trim() || email || "?").slice(0, 1).toUpperCase();
@@ -186,8 +162,8 @@ export function AccountPanel() {
         </div>
       </div>
 
-      <Group title="プロフィール">
-        <Item>
+      <ListGroup title="プロフィール">
+        <ListItem>
           <label htmlFor="account-name" className="w-24 shrink-0 text-[13px] text-fg">
             表示名
           </label>
@@ -200,24 +176,24 @@ export function AccountPanel() {
             className={cn(INLINE_INPUT, "text-right")}
           />
           {nameChanged && (
-            <button onClick={() => void saveName()} disabled={savingName} className={TEXT_BTN}>
+            <Button variant="plain" onClick={() => void saveName()} disabled={savingName}>
               保存
-            </button>
+            </Button>
           )}
-        </Item>
-      </Group>
+        </ListItem>
+      </ListGroup>
 
-      <Group title="セキュリティ">
+      <ListGroup title="セキュリティ">
         {!pwOpen ? (
-          <Item>
+          <ListItem>
             <span className="flex-1 text-[13px] text-fg">パスワード</span>
-            <button onClick={() => setPwOpen(true)} className={TEXT_BTN}>
+            <Button variant="plain" onClick={() => setPwOpen(true)}>
               変更…
-            </button>
-          </Item>
+            </Button>
+          </ListItem>
         ) : (
           <form onSubmit={changePassword}>
-            <Item>
+            <ListItem>
               <label htmlFor="pw-current" className="w-32 shrink-0 text-[13px] text-fg">
                 現在のパスワード
               </label>
@@ -231,8 +207,8 @@ export function AccountPanel() {
                 required
                 className={INLINE_INPUT}
               />
-            </Item>
-            <Item>
+            </ListItem>
+            <ListItem>
               <label htmlFor="pw-next" className="w-32 shrink-0 text-[13px] text-fg">
                 新しいパスワード
               </label>
@@ -248,8 +224,8 @@ export function AccountPanel() {
                 maxLength={128}
                 className={INLINE_INPUT}
               />
-            </Item>
-            <Item>
+            </ListItem>
+            <ListItem>
               <label htmlFor="pw-confirm" className="w-32 shrink-0 text-[13px] text-fg">
                 確認
               </label>
@@ -263,38 +239,34 @@ export function AccountPanel() {
                 required
                 className={INLINE_INPUT}
               />
-            </Item>
-            <Item>
+            </ListItem>
+            <ListItem>
               <span className="flex-1 text-[13px] text-fg">ほかの端末からログアウト</span>
               <Switch
                 label="ほかの端末からログアウト"
                 checked={pw.revoke}
                 onChange={(v) => setPw({ ...pw, revoke: v })}
               />
-            </Item>
+            </ListItem>
             {pwError && (
               <div className="px-3.5 pb-1 pt-2">
                 <Notice tone="error">{pwError}</Notice>
               </div>
             )}
-            <Item className="justify-end gap-4">
-              <button type="button" onClick={closePassword} className={cn(TEXT_BTN, "text-muted")}>
+            <ListItem className="justify-end gap-4">
+              <Button variant="plain" onClick={closePassword} className="text-muted">
                 キャンセル
-              </button>
-              <button
-                type="submit"
-                disabled={pwBusy}
-                className="inline-flex h-7 items-center gap-1.5 rounded-full border-0 bg-accent px-3.5 text-[12.5px] font-semibold text-white hover:brightness-105 disabled:opacity-60"
-              >
+              </Button>
+              <Button type="submit" variant="primary" size="sm" disabled={pwBusy}>
                 {pwBusy && <Spinner />}
                 変更
-              </button>
-            </Item>
+              </Button>
+            </ListItem>
           </form>
         )}
-      </Group>
+      </ListGroup>
 
-      <Group
+      <ListGroup
         title="ログイン中の端末"
         footer={
           sessions.state === "stale"
@@ -305,15 +277,15 @@ export function AccountPanel() {
         }
       >
         {sessions.state === "loading" ? (
-          <Item>
+          <ListItem>
             <span className="text-[13px] text-muted">読み込み中…</span>
-          </Item>
+          </ListItem>
         ) : (
           <>
             {rows.map((s) => {
               const isCurrent = s.token === current?.token;
               return (
-                <Item key={s.id}>
+                <ListItem key={s.id}>
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-surface text-muted shadow-e1">
                     <Icon name="globe" size={15} />
                   </span>
@@ -332,30 +304,30 @@ export function AccountPanel() {
                     </div>
                   </div>
                   {!isCurrent && (
-                    <button onClick={() => void revoke(s.token)} className={cn(TEXT_BTN, "text-danger")}>
+                    <Button variant="plain" onClick={() => void revoke(s.token)} className="text-danger">
                       ログアウト
-                    </button>
+                    </Button>
                   )}
-                </Item>
+                </ListItem>
               );
             })}
             {sessions.state === "stale" && (
-              <Item>
-                <button onClick={() => void signInAgain()} className={TEXT_BTN}>
+              <ListItem>
+                <Button variant="plain" onClick={() => void signInAgain()}>
                   再ログインしてほかの端末を表示
-                </button>
-              </Item>
+                </Button>
+              </ListItem>
             )}
             {others > 0 && (
-              <Item>
-                <button onClick={() => void revokeOthers()} className={cn(TEXT_BTN, "text-danger")}>
+              <ListItem>
+                <Button variant="plain" onClick={() => void revokeOthers()} className="text-danger">
                   ほかの端末をすべてログアウト
-                </button>
-              </Item>
+                </Button>
+              </ListItem>
             )}
           </>
         )}
-      </Group>
+      </ListGroup>
     </div>
   );
 }

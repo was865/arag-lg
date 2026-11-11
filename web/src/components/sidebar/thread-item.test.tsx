@@ -1,10 +1,9 @@
 // ThreadItem 节点层测试：验证共享 ThreadRow/ThreadMenuItems 的结构与文案注入。
-// ThreadMenu 本体は useRef/useState/useEffect を持つため直接関数呼び出しは Invalid hook call
-// になる（React dispatcher が render 外では null）。菜单项の構造検証は無 hook の
-// ThreadMenuItems（ThreadMenu が内部でレンダーする純粋子コンポーネント）に対して行う。
+// メニュー本体は Radix（ui/menu）なので、項目の構成は hook を持たない ThreadMenuItems で確かめる。
 import { describe, it, expect, vi } from "vitest";
 import * as React from "react";
 import { ThreadRow, ThreadMenuItems } from "@/components/sidebar/thread-item";
+import { MenuItem } from "@/components/ui/menu";
 import { collectElements } from "@/lib/test/element-tree";
 import type { ThreadSummary } from "@/lib/types";
 
@@ -16,7 +15,7 @@ describe("ThreadRow", () => {
     const node = ThreadRow({
       thread: THREAD, active: false, renaming: false, renameValue: "", menuOpen: false,
       labels: LABELS, onRenameChange: vi.fn(), onRenameCommit: vi.fn(), onRenameCancel: vi.fn(),
-      onSelect: vi.fn(), onOpenMenu: vi.fn(),
+      onSelect: vi.fn(), onMenuOpenChange: vi.fn(),
     });
     const menuBtn = collectElements(
       node,
@@ -34,7 +33,7 @@ describe("ThreadRow", () => {
     const node = ThreadRow({
       thread: THREAD, active: false, renaming: false, renameValue: "", menuOpen: false,
       labels: LABELS, onRenameChange: vi.fn(), onRenameCommit: vi.fn(), onRenameCancel: vi.fn(),
-      onSelect: vi.fn(), onOpenMenu: vi.fn(),
+      onSelect: vi.fn(), onMenuOpenChange: vi.fn(),
     });
     const sentinelHolders = collectElements(node, (el) => (el.props as { "data-testid"?: string })["data-testid"] === "trailing-sentinel");
     expect(sentinelHolders).toHaveLength(0);
@@ -45,7 +44,7 @@ describe("ThreadRow", () => {
     const node = ThreadRow({
       thread: THREAD, active: false, renaming: false, renameValue: "", menuOpen: false,
       labels: LABELS, trailing: sentinel, onRenameChange: vi.fn(), onRenameCommit: vi.fn(), onRenameCancel: vi.fn(),
-      onSelect: vi.fn(), onOpenMenu: vi.fn(),
+      onSelect: vi.fn(), onMenuOpenChange: vi.fn(),
     });
     const found = collectElements(node, (el) => (el.props as { "data-testid"?: string })["data-testid"] === "trailing-sentinel");
     expect(found).toHaveLength(1);
@@ -56,7 +55,7 @@ describe("ThreadRow", () => {
     const node = ThreadRow({
       thread: THREAD, active: true, renaming: false, renameValue: "", menuOpen: false,
       labels: LABELS, trailing: sentinel, onRenameChange: vi.fn(), onRenameCommit: vi.fn(), onRenameCancel: vi.fn(),
-      onSelect: vi.fn(), onOpenMenu: vi.fn(),
+      onSelect: vi.fn(), onMenuOpenChange: vi.fn(),
     });
     const found = collectElements(node, (el) => (el.props as { "data-testid"?: string })["data-testid"] === "trailing-sentinel");
     expect(found).toHaveLength(0);
@@ -66,7 +65,7 @@ describe("ThreadRow", () => {
     const node = ThreadRow({
       thread: THREAD, active: false, renaming: true, renameValue: "编辑中", menuOpen: false,
       labels: LABELS, onRenameChange: vi.fn(), onRenameCommit: vi.fn(), onRenameCancel: vi.fn(),
-      onSelect: vi.fn(), onOpenMenu: vi.fn(),
+      onSelect: vi.fn(), onMenuOpenChange: vi.fn(),
     });
     const inputs = collectElements(node, (el) => el.type === "input");
     expect(inputs).toHaveLength(1);
@@ -86,7 +85,7 @@ describe("ThreadMenuItems（无 hook 的纯渲染子组件）", () => {
   };
   it("默认渲染 置顶/重命名/删除 三项，不渲染添加到项目", () => {
     const node = ThreadMenuItems(base);
-    const items = collectElements(node, (el) => (el.props as { role?: string }).role === "menuitem");
+    const items = collectElements(node, (el) => el.type === MenuItem);
     expect(items).toHaveLength(3);
   });
   it("labels.addToProject 与 onAddProject 同时提供时渲染第四项", () => {
@@ -95,7 +94,7 @@ describe("ThreadMenuItems（无 hook 的纯渲染子组件）", () => {
       labels: { ...LABELS, addToProject: "添加到项目" },
       onAddProject: vi.fn(),
     });
-    const items = collectElements(node, (el) => (el.props as { role?: string }).role === "menuitem");
+    const items = collectElements(node, (el) => el.type === MenuItem);
     expect(items).toHaveLength(4);
   });
   it("labels.addToProject のみ（onAddProject 未提供）では四项目不渲染", () => {
@@ -103,7 +102,7 @@ describe("ThreadMenuItems（无 hook 的纯渲染子组件）", () => {
       ...base,
       labels: { ...LABELS, addToProject: "添加到项目" },
     });
-    const items = collectElements(node, (el) => (el.props as { role?: string }).role === "menuitem");
+    const items = collectElements(node, (el) => el.type === MenuItem);
     expect(items).toHaveLength(3);
   });
 });

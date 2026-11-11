@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/chat/api";
 import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, type TrashItem } from "@/lib/library/api";
 import { formatDate } from "@/lib/library/view";
+import { IconButton } from "@/components/ui/button";
 
 const KIND_LABEL: Record<TrashItem["kind"], string> = {
   document: "文書",
@@ -104,13 +105,14 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <main className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg">
       <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:px-2.5">
-        <button
-          className="-ml-1 hidden h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-fg hover:bg-divider max-md:grid"
+        <IconButton
+          label="メニューを開く"
+          tooltip={false}
+          icon="menu"
+          iconSize={15}
           onClick={onOpenMenu}
-          aria-label="メニューを開く"
-        >
-          <Icon name="menu" size={15} />
-        </button>
+          className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
+        />
         <h1 className="m-0 flex-1 truncate text-[13.5px] font-semibold text-fg">
           ごみ箱
         </h1>

@@ -2,6 +2,7 @@
 
 /** 部門の管理（specs/024 R1〜R3）。作成・名前の変更・削除と、メンバー・部門管理者の割り当て。 */
 import { useCallback, useEffect, useState } from "react";
+import { Button, IconButton } from "@/components/ui/button";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -210,13 +211,12 @@ function DepartmentDetail({
           className="h-9 min-w-0 flex-1 rounded-lg border-[0.5px] border-transparent bg-transparent px-2 text-[17px] font-bold text-fg outline-none hover:border-divider-strong focus:border-accent"
         />
         {name.trim() !== dept.name && name.trim() && (
-          <button
+          <Button variant="primary" size="sm"
             type="submit"
             disabled={busy}
-            className="h-8 rounded-lg bg-accent px-3 text-[12.5px] font-semibold text-white hover:brightness-105"
           >
             保存
-          </button>
+          </Button>
         )}
         <button
           type="button"
@@ -279,7 +279,7 @@ function DepartmentDetail({
                   <option value="member">{DEPT_ROLE.member}</option>
                   <option value="manager">{DEPT_ROLE.manager}</option>
                 </select>
-                <button
+                <IconButton
                   onClick={() =>
                     void run(
                       () => accessApi.removeDepartmentMember(dept.id, m.user_id),
@@ -288,11 +288,10 @@ function DepartmentDetail({
                     )
                   }
                   disabled={busy}
-                  aria-label={`${personLabel(m.user_id, people)} さんを部門から削除`}
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
-                >
-                  <Icon name="close" size={12} />
-                </button>
+                  label={`${personLabel(m.user_id, people)} さんを部門から削除`}
+                  icon="close"
+                  iconSize={12}
+                />
               </div>
             );
           })

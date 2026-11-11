@@ -2,8 +2,9 @@
 
 /** ヘルプ（specs/015-help-onboarding R1〜R4）。旧版のレイアウト（左のナビ・概要・手順・機能カード）を移植し、
  *  文言は新版に実在する機能だけに直した。ショートカットはキー判定と同じ定義から作る。 */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BrandMark } from "@/components/icons";
+import { Dialog, DialogFrame } from "@/components/ui/dialog";
 import { keyParts, SHORTCUT_GROUPS, SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import type { WorkspaceStats } from "@/lib/workspace-stats";
@@ -31,21 +32,12 @@ export function HelpModal({
 }) {
   const [tab, setTab] = useState<Tab>("overview");
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-[230] grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.48)] p-6 motion-reduce:animate-none max-md:p-0"
-      role="dialog"
-      aria-modal="true"
-      aria-label="ヘルプ"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="grid h-[min(680px,92vh)] w-[min(960px,100%)] animate-pop-in grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-[16px] border-[0.5px] border-divider-strong bg-surface shadow-[0_30px_80px_rgba(0,0,0,0.32)] motion-reduce:animate-none max-md:h-dvh max-md:max-h-dvh max-md:w-full max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[auto_minmax(0,1fr)] max-md:rounded-none max-md:border-0">
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogFrame
+        title="ヘルプ"
+        className="grid h-[min(680px,92vh)] w-[min(960px,100%)] grid-cols-[220px_minmax(0,1fr)] max-md:h-dvh max-md:max-h-dvh max-md:w-full max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[auto_minmax(0,1fr)] max-md:rounded-none max-md:border-0"
+      >
         <aside className="flex min-w-0 flex-col border-r-[0.5px] border-divider bg-surface-2 p-[18px_12px_14px] max-md:flex-row max-md:items-center max-md:gap-2 max-md:border-b-[0.5px] max-md:border-r-0 max-md:p-2.5 max-md:pt-[max(10px,env(safe-area-inset-top))]">
           <div className="mb-2.5 flex items-center gap-2.5 border-b-[0.5px] border-divider px-2 pb-3.5 pt-0.5 max-md:m-0 max-md:shrink-0 max-md:border-b-0 max-md:border-r-[0.5px] max-md:px-1 max-md:pb-0 max-md:pr-2.5">
             <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-white">
@@ -114,8 +106,8 @@ export function HelpModal({
             {tab === "tips" && <Tips />}
           </div>
         </section>
-      </div>
-    </div>
+      </DialogFrame>
+    </Dialog>
   );
 }
 

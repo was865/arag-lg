@@ -3,7 +3,8 @@
 // SidebarHeader：侧栏顶部栏（chat 与 agent 共用）。
 // 右側の折叠/关闭按钮は桌面=折叠・移动=抽屉关闭を兼ねる（chevronLeft）。
 
-import { BrandMark, Icon } from "@/components/icons";
+import { BrandMark } from "@/components/icons";
+import { IconButton } from "@/components/ui/button";
 
 export interface SidebarHeaderProps {
   /** 折叠/关闭按钮の回调（桌面=折叠・移动=抽屉关闭）。 */
@@ -22,15 +23,12 @@ export function SidebarHeader({ onToggle, closeLabel }: SidebarHeaderProps) {
           </div>
           <span>ARag</span>
         </div>
-      <button
-        type="button"
+      <IconButton
         onClick={onToggle}
-        aria-label={closeLabel}
-        title={closeLabel}
-        className="grid h-[26px] w-[26px] place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-divider hover:text-fg"
-      >
-        <Icon name="chevronLeft" size={13} />
-      </button>
+        label={closeLabel}
+        icon="chevronLeft"
+        iconSize={13}
+      />
     </div>
   );
 }
