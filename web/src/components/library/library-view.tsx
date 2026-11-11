@@ -626,7 +626,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                 <Icon name="chevronDown" size={11} />
               </Button>
             </MenuTrigger>
-            <MenuContent align="end" className="w-[220px]">
+            <MenuContent align="end">
               <MenuItem icon="doc" onSelect={() => fileRef.current?.click()}>
                 ファイルを選ぶ
               </MenuItem>

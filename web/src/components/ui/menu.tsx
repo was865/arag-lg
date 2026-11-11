@@ -85,7 +85,7 @@ export function MenuItem({
       )}
       <span className="min-w-0 flex-1">
         {children}
-        {hint && <span className="block text-caption text-muted">{hint}</span>}
+        {hint && <span className="block whitespace-nowrap text-caption text-muted">{hint}</span>}
       </span>
       {shortcut && <kbd className="border-0 bg-transparent p-0 font-sans text-caption text-muted-2">{shortcut}</kbd>}
     </M.Item>
