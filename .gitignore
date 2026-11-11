@@ -13,3 +13,6 @@ __pycache__/
 # 検索評価の取得データ・レポート（specs/004-retrieval）
 eval/.cache/
 eval/.reports/
+
+# Claude Code の個人設定
+.claude/settings.local.json
