@@ -4,6 +4,7 @@ export const sidebar = {
 
   // header
   closeSidebar: "サイドバーを閉じる",
+  openPalette: "検索して移動",
 
   // new thread button
   newThread: "新規スレッド",

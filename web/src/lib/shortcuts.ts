@@ -2,7 +2,7 @@
  *
  * ⌘N はブラウザの新規ウィンドウに取られて止められないので、新規スレッドは ⇧⌘O（一般的なチャット UI と同じ）。
  */
-export type ShortcutAction = "new-thread" | "toggle-sidebar" | "stop" | "open-settings" | "open-help";
+export type ShortcutAction = "new-thread" | "toggle-sidebar" | "stop" | "open-settings" | "open-help" | "command-palette";
 
 type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "isComposing">;
 
@@ -19,6 +19,7 @@ export function shortcutAction(
   if (!e.shiftKey && key === "b") return "toggle-sidebar";
   if (!e.shiftKey && key === "backspace" && running) return "stop";
   if (!e.shiftKey && key === ",") return "open-settings";
+  if (!e.shiftKey && key === "k") return "command-palette";
   return null;
 }
 
@@ -40,6 +41,7 @@ export const SHORTCUT_LABEL = {
   settings: "⌘,",
   sidebar: "⌘B",
   help: "?",
+  palette: "⌘K",
 } as const;
 
 /** ヘルプの一覧（specs/015 R3）。shortcutAction と composer が実際に受け付けるキーだけ。 */
@@ -47,6 +49,7 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string; label: str
   {
     title: "基本",
     items: [
+      { keys: SHORTCUT_LABEL.palette, label: "検索して移動（スレッド・ナレッジベース・操作）" },
       { keys: SHORTCUT_LABEL.newThread, label: "新しいスレッド" },
       { keys: SHORTCUT_LABEL.sidebar, label: "サイドバーを開く・閉じる" },
       { keys: SHORTCUT_LABEL.settings, label: "設定を開く" },

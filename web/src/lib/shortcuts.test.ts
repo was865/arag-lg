@@ -19,6 +19,7 @@ describe("shortcutAction", () => {
   it("⌘,（Ctrl+,）で設定を開く", () => {
     expect(shortcutAction(key(",", { metaKey: true }), { running: false })).toBe("open-settings");
     expect(shortcutAction(key(",", { ctrlKey: true }), { running: true })).toBe("open-settings");
+    expect(shortcutAction(key("k", { metaKey: true }), { running: false })).toBe("command-palette");
   });
 
   it("? でヘルプ。入力中は文字として扱う", () => {

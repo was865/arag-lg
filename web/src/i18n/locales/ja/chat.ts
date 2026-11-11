@@ -7,7 +7,7 @@ export const chat = {
   greetingSuffix: " さん",
   metaIndexed: " 件の文書を検索できます",
   metaConnected: " 個のナレッジベース",
-  leadText: "社内の文書を調べて、出典付きで答えます。質問を入力するか、下のヒントから選んでください。",
+  leadText: "社内の文書を調べて、出典を付けて答えます。",
 
   // messages
   thinking: "回答を生成中…",

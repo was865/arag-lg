@@ -26,7 +26,8 @@ export function SidebarNewButton({ label, onClick, shortcut, icon = "plus", clas
       type="button"
       onClick={onClick}
       className={cn(
-        "mx-3 mb-2 flex h-9 items-center gap-2 rounded-card border border-divider-strong bg-surface px-3 text-body font-medium text-fg shadow-e1 hover:bg-surface-2",
+        // 墨色の主ボタン（specs/025 R40）。kbd は地に溶かす
+        "mx-3 mb-2 flex h-9 items-center gap-2 rounded-card border-0 bg-fg px-3 text-body font-semibold text-bg shadow-e1 transition-[opacity,transform] duration-(--duration-fast) hover:opacity-90 active:scale-[0.98] [&>kbd]:border-0 [&>kbd]:bg-transparent [&>kbd]:text-bg/60",
         className,
       )}
     >

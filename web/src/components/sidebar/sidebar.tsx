@@ -3,6 +3,7 @@
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
+import { kbGlyph } from "@/lib/home";
 import { IconButton } from "@/components/ui/button";
 import { SidebarHeader } from "@/components/sidebar/sidebar-header";
 import { SidebarNewButton } from "@/components/sidebar/sidebar-new-button";
@@ -32,6 +33,8 @@ interface SidebarProps {
   /** 只読工作日历を開く（未指定ならメニューに出さない）。 */
   onOpenWorkCalendar?: () => void;
   onOpenHelp?: () => void;
+  /** ⌘K のコマンドパレットを開く */
+  onOpenPalette?: () => void;
   onSignOut?: () => void;
   onToggleTheme: () => void;
   onRenameThread: (id: string, title: string) => void | Promise<void>;
@@ -144,7 +147,8 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex flex-col overflow-hidden border-r-[0.5px] border-divider bg-bg-2",
+        // 半透明 + ぼかし。広い画面では後ろの淡い光が、引き出し（狭い画面）では下の画面が透ける
+        "relative flex flex-col overflow-hidden border-r-[0.5px] border-divider bg-bg-2/65 backdrop-blur-xl max-tablet:bg-bg-2/85",
         drawerBase,
         "max-tablet:translate-x-0",
       )}
@@ -170,8 +174,19 @@ export function Sidebar(props: SidebarProps) {
           type="search"
           aria-label={t.sidebar.searchPlaceholder}
           placeholder={t.sidebar.searchPlaceholder}
-          className="h-[30px] w-full rounded-control border-0 bg-transparent pl-[30px] pr-2.5 text-footnote text-fg outline-none placeholder:text-muted-2 focus:bg-surface focus:shadow-[0_0_0_1px_var(--divider-strong)]"
+          className="h-[30px] w-full rounded-control border-0 bg-transparent pl-[30px] pr-10 text-footnote text-fg outline-none placeholder:text-muted-2 focus:bg-surface focus:shadow-[0_0_0_1px_var(--divider-strong)]"
         />
+        {props.onOpenPalette && !filter && (
+          <button
+            type="button"
+            onClick={props.onOpenPalette}
+            aria-label={t.sidebar.openPalette}
+            title={t.sidebar.openPalette}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 border-0 bg-transparent p-0 text-mini opacity-70 hover:opacity-100"
+          >
+            <kbd>{SHORTCUT_LABEL.palette}</kbd>
+          </button>
+        )}
       </div>
 
       {/* List */}
@@ -197,6 +212,7 @@ export function Sidebar(props: SidebarProps) {
             <>
               <KbRow
                 icon="database"
+                glyph={{ char: "全", color: "var(--fg)" }}
                 label={t.sidebar.kbAllDocuments}
                 count={String(dataSourceCount)}
                 active={activeKbId === null}
@@ -206,6 +222,7 @@ export function Sidebar(props: SidebarProps) {
                 <KbRow
                   key={kb.id}
                   icon={kb.kind === "personal" ? "user" : kb.kind === "org" ? "building" : "group"}
+                  glyph={kb.kind === "personal" ? undefined : kbGlyph(kb.id, kb.name)}
                   label={kb.kind === "personal" ? t.sidebar.kbPersonal : kb.name}
                   count={String(kb.documentCount)}
                   readOnly={!kb.canWrite}
@@ -330,8 +347,11 @@ export function Sidebar(props: SidebarProps) {
   );
 }
 
-function KbRow({ icon, label, count, readOnly, restricted, archived, active, onClick }: {
-  icon: IconName; label: string; count?: string; readOnly?: boolean; restricted?: boolean; archived?: boolean; active?: boolean; onClick: () => void;
+function KbRow({ icon, glyph, label, count, readOnly, restricted, archived, active, onClick }: {
+  icon: IconName;
+  /** 色付きの字標（共有 KB を見分ける。specs/025 R44）。無ければ icon を出す */
+  glyph?: { char: string; color: string };
+  label: string; count?: string; readOnly?: boolean; restricted?: boolean; archived?: boolean; active?: boolean; onClick: () => void;
 }) {
   const { t } = useT();
   return (
@@ -343,9 +363,19 @@ function KbRow({ icon, label, count, readOnly, restricted, archived, active, onC
         active ? "bg-surface text-fg shadow-e1" : "bg-transparent text-fg-2 hover:bg-divider",
       )}
     >
-      <span className={cn("grid w-4 place-items-center", active ? "text-accent" : "text-muted")}>
-        <Icon name={icon} size={13} />
-      </span>
+      {glyph ? (
+        <span
+          aria-hidden
+          className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] text-mini font-bold leading-none text-bg"
+          style={{ backgroundColor: glyph.color }}
+        >
+          {glyph.char}
+        </span>
+      ) : (
+        <span className={cn("grid w-[18px] place-items-center", active ? "text-accent" : "text-muted")}>
+          <Icon name={icon} size={13} />
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate" title={label}>{label}</span>
       {/* 鍵 = 限られた人だけが使える（全員には共有していない）。閲覧のみは文字だけ（specs/024 R14） */}
       {restricted && (

@@ -23,7 +23,7 @@ import { authClient } from "@/lib/auth/client";
 import { toAppUser } from "@/lib/auth/user";
 import { ThemeToggle } from "@/components/sidebar/theme-toggle";
 import { Composer } from "@/components/chat/composer";
-import { EmptyState } from "@/components/chat/empty-state";
+import { HomeHero, HomeSuggestions } from "@/components/chat/empty-state";
 import { Transcript } from "@/components/chat/messages";
 import { RightPanel, type RightPanelAction } from "@/components/sources/right-panel";
 import { originalUrl } from "@/components/documents/original-preview";
@@ -52,6 +52,10 @@ import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspac
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { IconButton, Button } from "@/components/ui/button";
+import { m } from "motion/react";
+import { CommandPalette, type PaletteItem } from "@/components/command-palette";
+import { kbGlyph } from "@/lib/home";
+import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { Badge } from "@/components/ui/badge";
 
 // 認証を使わない開発構成（ARAG_DEV_USER_ID）のときの表示用の利用者
@@ -130,6 +134,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [composerFocus, setComposerFocus] = useState(0);
+  // ⌘K の候補。開いた時点の一覧を持つ（null = 閉じている）
+  const [palette, setPalette] = useState<PaletteItem[] | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   // 質問に添える画像（specs/017）。imageInput は API が図の説明用モデルを持つときだけ true
@@ -255,6 +261,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   }
   const citeTurn = turns[activeCiteTurn] ?? lastTurn;
   const rightPanelShown = rightPanelOpen && phase !== "empty" && page.view === "chat";
+  // 首ページ: スレッドが空で、開こうとしているスレッドの読み込み中でもないとき
+  const home = phase === "empty" && !(activeId && !conv?.loaded);
 
   // モバイルに切り替わったらサイドバーを閉じる
   const [wasMobile, setWasMobile] = useState(isMobile);
@@ -541,6 +549,27 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
 
   // キーボード操作（Esc で右パネルを閉じる、⇧⌘O 新規、⌘B サイドバー、⌘⌫ 停止）。
   // 最新の状態を見るため、登録は 1 回にして処理は ref から呼ぶ
+  /** ⌘K の候補: 操作 → ナレッジベース → スレッド（開く操作の中で、今の一覧から作る） */
+  const paletteItems = (): PaletteItem[] => {
+    const isAdmin = sessionUser?.role === "owner" || sessionUser?.role === "admin";
+    return [
+      { id: "new", group: "操作", label: "新しいスレッド", icon: "plus", hint: SHORTCUT_LABEL.newThread, run: () => { selectThread(null); setComposerValue(""); } },
+      { id: "library", group: "操作", label: "すべての文書を開く", icon: "database", run: () => openPage({ view: "library", kbId: null }) },
+      { id: "theme", group: "操作", label: tweaks.dark ? "ライトモードにする" : "ダークモードにする", icon: tweaks.dark ? "sun" : "moon", run: () => setTweak("dark", !tweaks.dark) },
+      { id: "settings", group: "操作", label: "設定を開く", icon: "cog", hint: SHORTCUT_LABEL.settings, run: () => setSettingsOpen(true) },
+      { id: "help", group: "操作", label: "ヘルプを開く", icon: "info", hint: SHORTCUT_LABEL.help, run: () => setHelpOpen(true) },
+      ...(isAdmin ? [{ id: "admin", group: "操作", label: "管理コンソールを開く", icon: "shield" as const, run: () => router.push("/admin/members") }] : []),
+      ...kbs.map((kb) => ({
+        id: `kb-${kb.id}`,
+        group: "ナレッジベース",
+        label: kbLabel(kb),
+        ...(kb.kind === "personal" ? { icon: "user" as const } : { glyph: kbGlyph(kb.id, kb.name) }),
+        run: () => openPage({ view: "library", kbId: kb.id }),
+      })),
+      ...threads.map((th) => ({ id: `th-${th.id}`, group: "スレッド", label: toSummary(th).title, icon: "chat" as const, run: () => selectThread(th.id) })),
+    ];
+  };
+
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     onKeyRef.current = (e) => {
@@ -558,6 +587,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
       } else if (action === "toggle-sidebar") setSidebarCollapsed((c) => !c);
       else if (action === "open-settings") setSettingsOpen(true);
       else if (action === "open-help") setHelpOpen(true);
+      else if (action === "command-palette") setPalette((p) => (p ? null : paletteItems()));
       else stopRun();
     };
   });
@@ -611,6 +641,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             onSignOut={sessionUser ? () => void signOut() : undefined}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenHelp={() => setHelpOpen(true)}
+            onOpenPalette={() => setPalette(paletteItems())}
             onOpenAdmin={
               sessionUser?.role === "owner" || sessionUser?.role === "admin"
                 ? () => router.push("/admin/members")
@@ -717,15 +748,28 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             </div>
           </header>
 
-          <div className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[1fr_auto] overflow-hidden">
-            <div ref={scrollRef} onScroll={onChatScroll} className="overflow-x-hidden overflow-y-auto">
+          {/* 首ページ（home）は 挨拶 / 入力欄 / 質問の候補 の 3 段で入力欄を中央に置く（specs/025 R44）。
+              狭い画面では挨拶のすぐ下に入力欄を置く（キーボードに隠れない）。会話になると入力欄は下端へ滑る。 */}
+          <div
+            className={cn(
+              "relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] overflow-hidden",
+              home
+                ? "grid-rows-[minmax(0,1fr)_auto_minmax(0,1.2fr)] bg-[radial-gradient(60%_42%_at_50%_0%,var(--accent-soft),transparent_70%)] max-md:grid-rows-[auto_auto_minmax(0,1fr)]"
+                : "grid-rows-[1fr_auto]",
+            )}
+          >
+            <div
+              ref={scrollRef}
+              onScroll={onChatScroll}
+              className={cn("overflow-x-hidden overflow-y-auto", home && "flex items-end justify-center")}
+            >
               {phase === "empty" ? (
                 activeId && !conv?.loaded ? (
                   <div className="grid h-full place-items-center">
                     <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
                   </div>
                 ) : (
-                  <EmptyState user={user} stats={stats} onFillComposer={(v) => setComposerValue(v)} />
+                  <HomeHero user={user} />
                 )
               ) : (
                 <div
@@ -773,6 +817,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 </button>
               </div>
             )}
+            <m.div layout="position" className={cn("min-w-0", home && "mx-auto w-full max-w-[760px]")}>
             <Composer
               value={composerValue}
               onChange={setComposerValue}
@@ -799,12 +844,25 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                 push(interpolate(t.feedback.scopeChanged, { label: s.label }), "info");
               }}
             />
+            </m.div>
+            {home && (
+              <div className="min-h-0 overflow-y-auto">
+                <HomeSuggestions
+                  stats={stats}
+                  onFillComposer={(v) => {
+                    setComposerValue(v);
+                    setComposerFocus((k) => k + 1);
+                  }}
+                />
+              </div>
+            )}
           </div>
         </main>
         )}
         </div>
       </AppShell>
       {confirmDialog}
+      {palette && <CommandPalette items={palette} onClose={() => setPalette(null)} />}
       {helpOpen && (
         <HelpModal
           onClose={() => setHelpOpen(false)}
