@@ -261,7 +261,7 @@ export function Transcript({
               {running && turn.steps.length === 0 && (
                 <div className="flex items-center gap-2 text-footnote text-muted">
                   <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
-                  {t.chat.thinking}
+                  <span className="text-shimmer font-medium">{t.chat.thinking}</span>
                 </div>
               )}
               <AgentActivity

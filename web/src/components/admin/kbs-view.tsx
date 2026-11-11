@@ -4,6 +4,7 @@
  * 共有のナレッジベースの管理（specs/024 R10）。
  * admin は中身を読めなくても共有リストは管理できる（Q1 案 A）。自分を足す操作は監査ログに残る。
  */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -80,9 +81,7 @@ export function KbsView() {
             <span />
           </div>
           {kbs === null ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton />
           ) : shown.length === 0 ? (
             <p className="py-16 text-center text-body text-muted">
               {kbs.length === 0 ? "共有のナレッジベースはまだありません" : "条件に合うナレッジベースはありません"}

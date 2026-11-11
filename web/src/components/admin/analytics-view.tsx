@@ -1,6 +1,7 @@
 "use client";
 
 /** 利用状況の分析（specs/012-analytics R5）。 */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import createClient from "openapi-fetch";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -68,9 +69,7 @@ export function AnalyticsView() {
           </div>
           {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           {!data && !error ? (
-            <div className="grid h-60 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton rows={4} />
           ) : data && t ? (
             <>
               <section aria-label="概要" className="grid grid-cols-5 gap-3 max-lg:grid-cols-3 max-md:grid-cols-2">

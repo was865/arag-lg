@@ -9,6 +9,7 @@
  * - 文書の削除はごみ箱へ移すだけ（戻せる）なので確認は出さず、トーストで知らせる。
  *   フォルダは中身ごと移るので確認を出す。
  */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
@@ -520,7 +521,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
 
   return (
     <main
-      className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] overflow-hidden bg-bg"
+      className="relative grid min-h-0 min-w-0 animate-fade-in grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] overflow-hidden bg-bg motion-reduce:animate-none"
       {...dragProps}
     >
       <DropOverlay visible={dragging && Boolean(target)} />
@@ -700,9 +701,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
         />
 
         {docs === null ? (
-          <div className="grid h-40 place-items-center">
-            <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-          </div>
+          <ListSkeleton />
         ) : listEmpty && !search && filter === "all" && !folderId ? (
           <EmptyLibrary canUpload={Boolean(target)} onPick={() => fileRef.current?.click()} />
         ) : (

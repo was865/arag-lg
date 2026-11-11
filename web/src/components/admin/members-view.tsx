@@ -1,6 +1,7 @@
 "use client";
 
 /** メンバー管理（specs/010-admin-members）。一覧・招待・役割の変更・停止と再開。 */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { MemberAccessDialog } from "@/components/admin/member-access-dialog";
@@ -146,9 +147,7 @@ export function MembersView() {
             <span />
           </div>
           {data === null ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton />
           ) : data.items.length === 0 ? (
             <p className="py-16 text-center text-body text-muted">条件に合うメンバーはいません</p>
           ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 /** 監査ログ（specs/011-audit-log R5）。 */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import createClient from "openapi-fetch";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -152,9 +153,7 @@ export function AuditView() {
           </div>
           {error && <p className="px-2 py-3 text-footnote text-danger">{error}</p>}
           {rows === null ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton />
           ) : rows.length === 0 && !error ? (
             <p className="py-16 text-center text-body text-muted">条件に合う記録はありません</p>
           ) : (

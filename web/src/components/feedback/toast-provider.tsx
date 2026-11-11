@@ -23,11 +23,11 @@ export function useToast(): PushToast {
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const { toasts, push, dismiss } = useToasts();
+  const { toasts, push, dismiss, pause, resume } = useToasts();
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <ToastViewport toasts={toasts} onDismiss={dismiss} />
+      <ToastViewport toasts={toasts} onDismiss={dismiss} onPause={pause} onResume={resume} />
     </ToastContext.Provider>
   );
 }

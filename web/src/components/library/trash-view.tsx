@@ -2,6 +2,7 @@
 
 /** ごみ箱。削除した文書・フォルダ・ナレッジベースを一覧し、元に戻す／完全に削除する。
  * 完全な削除は取り消せないので確認を出す（文書のみ。フォルダ・KB は期限が来たら自動で消える）。 */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -129,9 +130,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
             ごみ箱の項目は検索の対象外です。期限が来ると自動で完全に削除されます。
           </p>
           {items === null ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton />
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-surface-2 text-muted">

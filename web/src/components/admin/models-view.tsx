@@ -1,6 +1,7 @@
 "use client";
 
 /** LLM の接続（API キー）とモデル目録（specs/013-llm-keys R8）。 */
+import { ListSkeleton } from "@/components/ui/skeleton";
 import createClient from "openapi-fetch";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -142,9 +143,7 @@ export function ModelsView() {
         <div className="mx-auto flex max-w-[1000px] flex-col gap-5 px-[18px] pb-12 pt-4 max-md:px-3">
           {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           {!data && !error && (
-            <div className="grid h-60 place-items-center">
-              <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-            </div>
+            <ListSkeleton rows={4} />
           )}
           {data && (
             <>

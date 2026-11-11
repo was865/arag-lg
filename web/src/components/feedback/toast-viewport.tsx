@@ -14,9 +14,12 @@ import { DURATION, EASE, stackStyle } from "@/lib/motion";
 interface Props {
   toasts: Toast[];
   onDismiss: (id: string) => void;
+  /** 束にポインタやフォーカスがある間は自動で消さない */
+  onPause?: () => void;
+  onResume?: () => void;
 }
 
-export function ToastViewport({ toasts, onDismiss }: Props) {
+export function ToastViewport({ toasts, onDismiss, onPause, onResume }: Props) {
   const { t: dict } = useT();
   const [expanded, setExpanded] = useState(false);
   // 広げた束の隙間をポインタが通るたびに閉じないよう、少し待ってから閉じる
@@ -24,10 +27,14 @@ export function ToastViewport({ toasts, onDismiss }: Props) {
   const open = () => {
     clearTimeout(leaveTimer.current);
     setExpanded(true);
+    onPause?.();
   };
   const close = () => {
     clearTimeout(leaveTimer.current);
-    leaveTimer.current = setTimeout(() => setExpanded(false), 150);
+    leaveTimer.current = setTimeout(() => {
+      setExpanded(false);
+      onResume?.();
+    }, 150);
   };
   const isOpen = expanded && toasts.length > 1;
   return (

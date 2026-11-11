@@ -6,6 +6,7 @@
  *   （生成中の run の購読を保つため）。再読み込みすると active-run から続きを表示する。
  * - 文書の管理画面・設定・認証は P4 で移植する。
  */
+import { TranscriptSkeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/shell/app-shell";
@@ -779,16 +780,16 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
             >
               {phase === "empty" ? (
                 activeId && !conv?.loaded ? (
-                  <div className="grid h-full place-items-center">
-                    <span className="h-6 w-6 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
-                  </div>
+                  <TranscriptSkeleton />
                 ) : (
                   <HomeHero user={user} />
                 )
               ) : (
                 <div
+                  // スレッドを切り替えたら、中身を短く淡く出す（specs/025 R30）
+                  key={activeId ?? "new"}
                   className={cn(
-                    "mx-auto flex max-w-[1020px] flex-col gap-6 px-8 pb-[60px] pt-7 max-md:max-w-none max-md:gap-[18px] max-md:px-3.5 max-md:pb-20 max-md:pt-[18px]",
+                    "mx-auto flex max-w-[1020px] animate-fade-in flex-col gap-6 px-8 pb-[60px] pt-7 motion-reduce:animate-none max-md:max-w-none max-md:gap-[18px] max-md:px-3.5 max-md:pb-20 max-md:pt-[18px]",
                     tweaks.density === "compact" && "gap-4 px-5 pb-10 pt-[18px]",
                   )}
                 >
