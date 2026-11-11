@@ -23,8 +23,9 @@
      `monospace` に落とすと OS 任せの未管理 CJK 回退になり（PingFang 指定も font-synthesis:none も
      html:lang() 切替も全て無視され）字重がムラになる。var(--font-cjk) を挟み、CJK だけは sans と
      同じ受管ネイティブ書体（zh=PingFang / ja=Hiragino）へ回す。 */
-  /* 見出し用の明朝（specs/025 R41）。挨拶・大きな数字・文書の題だけに使い、画面の文字はゴシックのまま */
-  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  /* 見出し用の書体（specs/025 R41）。明朝はやめ、画面と同じゴシックを太く・字間を詰めて使う（Apple の大見出しと同じ考え方）。
+     名前だけ分けておき、挨拶・大きな数字・題に font-display を付ける。 */
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, var(--font-cjk), monospace;
 
   /* The shell switches column layout at these widths (tablet → overlay drawer,
@@ -80,8 +81,10 @@
   --text-title--line-height: 1.3;
   --text-display: 22px; /* ログイン画面の見出し・指標の大きな数字 */
   --text-display--line-height: 1.25;
-  --text-hero: 34px; /* 首ページの挨拶・ページを代表する数字（明朝で使う） */
-  --text-hero--line-height: 1.25;
+  --text-display--letter-spacing: -0.02em;
+  --text-hero: 32px; /* 首ページの挨拶・ページを代表する数字 */
+  --text-hero--line-height: 1.2;
+  --text-hero--letter-spacing: -0.025em;
 
   --radius-control: 8px; /* ボタン・入力・セグメント */
   --radius-card: 12px; /* グループ化した一覧・カード */

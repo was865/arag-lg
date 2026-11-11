@@ -3,7 +3,7 @@
 /** 共有されたスレッドの読み取り専用表示（specs/008-thread-share R6）。 */
 import Link from "next/link";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
-import { BrandMark, Icon } from "@/components/icons";
+import { BrandTile, Icon } from "@/components/icons";
 import type { components } from "@/lib/api/schema";
 import { VISIBILITY_OPTIONS } from "@/lib/share";
 import { formatDate } from "@/lib/library/view";
@@ -23,9 +23,7 @@ export function SharedThread({ thread }: { thread: SharedThreadData }) {
       <header className="sticky top-0 z-[5] border-b-[0.5px] border-divider bg-bg/90 backdrop-blur">
         <div className="mx-auto flex h-[52px] max-w-[860px] items-center gap-2.5 px-6 max-md:px-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 text-body font-semibold text-fg no-underline">
-            <span className="grid h-6 w-6 place-items-center rounded-control bg-accent text-white">
-              <BrandMark size={13} />
-            </span>
+            <BrandTile size={24} />
             ARag
           </Link>
           <span className="text-muted-2">/</span>

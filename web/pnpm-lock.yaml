@@ -172,9 +172,6 @@ importers:
       '@fontsource/noto-sans-jp':
         specifier: ^5.3.1
         version: 5.3.1
-      '@fontsource/shippori-mincho':
-        specifier: 5.3.0
-        version: 5.3.0
       '@radix-ui/react-dialog':
         specifier: 1.1.15
         version: 1.1.15(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -516,9 +513,6 @@ packages:
 
   '@fontsource/noto-sans-jp@5.3.1':
     resolution: {integrity: sha512-9NNBB/M9PextLYVXGSfIaLZsPnrt5UDw8g2B6T0M775H2yb/oekApSjuS1XKOP7FPcMMEnTavR5rJGDM66qKtA==}
-
-  '@fontsource/shippori-mincho@5.3.0':
-    resolution: {integrity: sha512-S41kRxQuubAaYss+LeXu0IOc02RQwsPaJbR1cWZx4VV15hXaYZViH3WAve9HpDVFqKYd/BVk86Bg7lp9ytV3KQ==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -4261,8 +4255,6 @@ snapshots:
   '@fontsource/inter@5.3.0': {}
 
   '@fontsource/noto-sans-jp@5.3.1': {}
-
-  '@fontsource/shippori-mincho@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

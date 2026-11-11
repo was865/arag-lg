@@ -3,7 +3,7 @@
 /** ヘルプ（specs/015-help-onboarding R1〜R4）。旧版のレイアウト（左のナビ・概要・手順・機能カード）を移植し、
  *  文言は新版に実在する機能だけに直した。ショートカットはキー判定と同じ定義から作る。 */
 import { useState } from "react";
-import { BrandMark } from "@/components/icons";
+import { BrandTile } from "@/components/icons";
 import { Dialog, DialogFrame } from "@/components/ui/dialog";
 import { keyParts, SHORTCUT_GROUPS, SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
@@ -41,9 +41,7 @@ export function HelpModal({
       >
         <aside className="flex min-w-0 flex-col border-r-[0.5px] border-divider bg-surface-2 p-[18px_12px_14px] max-md:flex-row max-md:items-center max-md:gap-2 max-md:border-b-[0.5px] max-md:border-r-0 max-md:p-2.5 max-md:pt-[max(10px,env(safe-area-inset-top))]">
           <div className="mb-2.5 flex items-center gap-2.5 border-b-[0.5px] border-divider px-2 pb-3.5 pt-0.5 max-md:m-0 max-md:shrink-0 max-md:border-b-0 max-md:border-r-[0.5px] max-md:px-1 max-md:pb-0 max-md:pr-2.5">
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white">
-              <BrandMark size={15} />
-            </div>
+            <BrandTile size={28} />
             <div className="max-md:hidden">
               <div className="text-callout font-bold tracking-[-0.01em] text-fg">ARag</div>
               <div className="mt-px font-mono text-mini text-muted">ヘルプ</div>

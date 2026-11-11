@@ -327,22 +327,39 @@ const glyphs = {
 
 export type IconName = keyof typeof glyphs;
 
-/** ARag brand mark — a single-storey "a" with a superscript citation square.
- *
- * The bowl and stem form the initial; the small filled square at the upper
- * right echoes the numbered citation markers in answers. Geometry is centred
- * on the stroked bounding box so the mark sits optically centred in a tile.
- * Uses `currentColor`, so the surrounding tile sets the tint (typically
- * `text-white` on an accent tile). 24×24 grid. */
-export function BrandMark({ size = 18, className }: { size?: number; className?: string }) {
+/**
+ * ARag のブランド印: 小文字の「a」と、右上の引用の四角。
+ * 円と縦棒で「a」を作り、右上の小さな四角は回答の引用番号を表す。線は太めにして小さくても潰れないようにする。
+ * 「a」は currentColor、四角は既定でアクセント色（dotClassName で変えられる）。24×24 の格子。
+ */
+export function BrandMark({ size = 18, className, dotClassName = "fill-accent" }: { size?: number; className?: string; dotClassName?: string }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" aria-hidden="true">
-      {/* bowl + stem */}
-      <circle cx="9.55" cy="13.45" r="5.2" stroke="currentColor" strokeWidth="2.6" />
-      <path d="M14.75 8.25V18.65" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      {/* citation square */}
-      <rect x="16.95" y="4.05" width="4" height="4" rx="1.2" fill="currentColor" />
+      <circle cx="9.7" cy="13.6" r="4.9" stroke="currentColor" strokeWidth="3" />
+      <path d="M14.6 8.6V18.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <rect x="16.9" y="3.6" width="4.4" height="4.4" rx="1.3" className={dotClassName} />
     </svg>
+  );
+}
+
+/**
+ * ブランド印を載せたタイル（アプリのアイコンと同じ形）。
+ * 墨色の角丸に地色の「a」、引用の四角だけがアクセント色（specs/025 R41）。色は 1 か所だけにして落ち着かせる。
+ */
+export function BrandTile({ size = 24, className }: { size?: number; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-grid shrink-0 place-items-center bg-fg text-bg shadow-e1 ${className ?? ""}`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.28),
+        backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%)",
+      }}
+    >
+      <BrandMark size={Math.round(size * 0.66)} />
+    </span>
   );
 }
 

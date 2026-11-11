@@ -41,7 +41,7 @@ export function LibraryOverview({
   kbId, title, refreshKey, onOpenDocument, onShowFailed,
 }: {
   kbId: string | null;
-  /** 明朝で出す題（ナレッジベースの名前） */
+  /** 大きく出す題（ナレッジベースの名前） */
   title: string;
   refreshKey: string;
   onOpenDocument: (doc: DocumentOut) => void;

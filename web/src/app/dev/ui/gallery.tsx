@@ -2,7 +2,7 @@
 
 /** UI 部品の見本帳。ライトとダークを左右に並べ、段階（文字・角丸・アイコン）と部品を一度に確認する。 */
 import { useState } from "react";
-import { Icon } from "@/components/icons";
+import { BrandTile, Icon } from "@/components/icons";
 import { ConfirmModal } from "@/components/modals/confirm-modal";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { Button, ICON, IconButton } from "@/components/ui/button";
@@ -20,8 +20,8 @@ import { useToast } from "@/components/feedback/toast-provider";
 import { DURATION } from "@/lib/motion";
 
 const TYPE = [
-  ["font-display text-hero font-bold", "挨拶 34 明朝", "こんにちは、検証さん。"],
-  ["font-display text-display font-bold", "大見出し 22 明朝", "11,490 件"],
+  ["font-display text-hero font-bold", "挨拶 32", "こんにちは、検証さん。"],
+  ["font-display text-display font-bold", "大見出し 22", "11,490 件"],
   ["text-title", "タイトル 19", "ナレッジベース"],
   ["text-headline", "見出し 15", "設定"],
   ["text-callout", "チャット本文 14", "MX-17 の保証期間は納品日から 12 か月です。"],
@@ -103,7 +103,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
         {theme === "theme-light" ? "ライト" : "ダーク"}
       </p>
 
-      <Block title="文字の段階（9 段。上の 2 つは明朝）">
+      <Block title="文字の段階（9 段。上の 2 つは太く、字間を詰める）">
         <div className="flex flex-col gap-2.5">
           {TYPE.map(([cls, name, sample]) => (
             <div key={cls} className="flex items-baseline gap-4">
@@ -114,7 +114,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
         </div>
       </Block>
 
-      <Block title="色と印（朱は引用の印・送信・注意だけに使う）">
+      <Block title="色・印・ロゴ（朱は引用の印・送信・注意だけに使う）">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
             {COLORS.map(([cls, name]) => (
@@ -131,10 +131,11 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             <Seal n={2} className="align-[2px]" />。
           </p>
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-start font-display text-hero font-bold leading-none">
+            <span className="inline-flex items-center gap-2 text-headline font-semibold tracking-[-0.015em]">
+              <BrandTile size={24} />
               ARag
-              <Seal className="ml-0.5 mt-1 h-2.5 min-w-2.5 px-0" />
             </span>
+            <BrandTile size={44} />
             <Seal n={3} size="md" />
             <div className="flex items-center gap-2 rounded-card border-[0.5px] border-divider-strong bg-surface px-3 py-2 shadow-e2">
               <Seal n={1} />

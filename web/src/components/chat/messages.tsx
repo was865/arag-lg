@@ -153,18 +153,12 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
+/**
+ * アシスタントの発言。アバターは置かない: 右寄せの吹き出しが利用者、左端から始まる本文が回答、と位置だけで見分けが付く。
+ * 先頭の「検索の過程」の行が回答の見出しを兼ねる（specs/025 R45）。
+ */
 export function AssistantMessage({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 max-md:gap-2.5">
-      <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white shadow-[0_1px_3px_var(--accent-glow)] max-md:h-[26px] max-md:w-[26px]">
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
-          <circle cx="12" cy="12" r="3" fill="currentColor" />
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6" />
-        </svg>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3.5 max-md:gap-3">{children}</div>
-    </div>
-  );
+  return <div className="flex min-w-0 flex-col gap-3.5 max-md:gap-3">{children}</div>;
 }
 
 /** 生成中の回答: 届いた文字が淡く現れ、末尾で印が呼吸する（specs/025 R20）。 */

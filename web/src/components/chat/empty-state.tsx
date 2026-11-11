@@ -29,13 +29,13 @@ function greeting(t: Dictionary, h: number) {
   return t.chat.greetingEvening;
 }
 
-/** 挨拶（明朝の大きな見出し）と一言。入力欄のすぐ上に置く。 */
+/** 挨拶（大きな見出し）と一言。入力欄のすぐ上に置く。 */
 export function HomeHero({ user }: { user: AppUser }) {
   const { t } = useT();
   const hour = useHour();
   return (
     <div className="w-full min-w-0 px-6 pb-6 text-center max-md:px-[18px] max-md:pb-4 max-md:pt-8">
-      <h1 className="m-0 animate-fade-up font-display text-hero font-bold tracking-[0.01em] text-fg [text-wrap:balance] [word-break:keep-all] motion-reduce:animate-none max-md:text-[clamp(22px,6.8vw,28px)]">
+      <h1 className="m-0 animate-fade-up font-display text-hero font-bold text-fg [text-wrap:balance] [word-break:keep-all] motion-reduce:animate-none max-md:text-[clamp(22px,6.8vw,28px)]">
         {greeting(t, hour)}{t.chat.greetingConnector}{user.firstName}{t.chat.greetingSuffix}。
       </h1>
       <p className="m-0 mt-2.5 text-callout text-muted max-md:text-body">{t.chat.leadText}</p>

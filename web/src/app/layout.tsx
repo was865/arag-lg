@@ -14,8 +14,6 @@ import "@fontsource/noto-sans-jp/400.css";
 import "@fontsource/noto-sans-jp/500.css";
 import "@fontsource/noto-sans-jp/600.css";
 import "@fontsource/noto-sans-jp/700.css";
-// 見出し用の明朝（挨拶・大きな数字・文書の題）。太字だけを読み込む。
-import "@fontsource/shippori-mincho/700.css";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 

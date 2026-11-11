@@ -1,6 +1,6 @@
 /** 認証画面の共通部品（カード・入力欄・ボタン）。 */
 import type { ReactNode } from "react";
-import { BrandMark } from "@/components/icons";
+import { BrandTile } from "@/components/icons";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { inputVariants } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -24,9 +24,7 @@ export function AuthCard({ title, description, children, footer }: {
       />
       <div className="relative flex w-[400px] max-w-full flex-col rounded-[18px] border-[0.5px] border-divider-strong bg-surface px-9 pb-7 pt-9 shadow-e3 max-md:px-6">
         <div className="mb-6 flex items-center gap-2 text-callout font-semibold text-fg">
-          <span className="grid h-7 w-7 place-items-center rounded-control bg-accent text-white">
-            <BrandMark size={15} />
-          </span>
+          <BrandTile size={28} />
           ARag
         </div>
         <h1 className="m-0 mb-1.5 font-display text-display font-bold text-fg">{title}</h1>
