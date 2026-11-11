@@ -10,6 +10,7 @@
  */
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Icon, type IconName } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
@@ -28,6 +29,7 @@ export const buttonVariants = cva(
         md: "h-8 rounded-control px-3.5 text-body",
         lg: "h-10 rounded-control px-4 text-callout",
         icon: "h-7 w-7 rounded-control text-muted hover:text-fg",
+        "icon-sm": "h-6 w-6 rounded-control text-muted hover:text-fg",
       },
     },
     compoundVariants: [{ variant: "plain", className: "h-auto px-0" }],
@@ -48,4 +50,32 @@ export function Button({
 }: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot : "button";
   return <Comp type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+}
+
+/**
+ * アイコンだけのボタン。label は読み上げとツールチップの両方に使うので必須。
+ * 既定は ghost（ツールバー・一覧の行の中）。
+ */
+export function IconButton({
+  label,
+  icon,
+  iconSize = ICON.md,
+  variant = "ghost",
+  size = "icon",
+  tooltip = true,
+  children,
+  ...props
+}: Omit<React.ComponentProps<typeof Button>, "aria-label"> & {
+  label: string;
+  icon?: IconName;
+  iconSize?: number;
+  size?: "icon" | "icon-sm";
+  /** false のときは title を付けない（隣に同じ文字がある場合など） */
+  tooltip?: boolean;
+}) {
+  return (
+    <Button aria-label={label} title={tooltip ? label : undefined} variant={variant} size={size} {...props}>
+      {icon ? <Icon name={icon} size={iconSize} /> : children}
+    </Button>
+  );
 }

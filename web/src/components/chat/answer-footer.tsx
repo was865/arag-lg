@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/button";
 import type { Source } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
@@ -38,7 +39,6 @@ interface Props {
 
 const chipCls =
   "inline-flex items-center gap-[5px] rounded-full border-[0.5px] border-divider-strong bg-surface px-2 py-[3px] font-mono text-[11px] text-muted";
-const btnCls = "grid h-7 w-7 place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-divider hover:text-fg";
 
 export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, onDownloadHtml, onRegenerate, onOpenSources, sourcesActive, onFeedback, onFeedbackDetail, feedback, feedbackDisabled }: Props) {
   const { t } = useT();
@@ -90,58 +90,58 @@ export function AnswerFooter({ tokens, durationMs, sources, onCopy, onDownload, 
         )}
       </div>
       <div className="flex gap-0.5 max-md:ml-auto">
-        <button className={btnCls} title={t.chat.copyTitle} onClick={onCopy}>
+        <IconButton label={t.chat.copyTitle} onClick={onCopy}>
           <svg viewBox="0 0 16 16" width="12" height="12">
             <rect x="5" y="3" width="9" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" fill="none" />
             <path d="M3 11V4.5A1.5 1.5 0 014.5 3H10" stroke="currentColor" strokeWidth="1.4" fill="none" />
           </svg>
-        </button>
-        <button className={btnCls} title={t.chat.downloadMarkdownTitle} onClick={onDownload}>
+        </IconButton>
+        <IconButton label={t.chat.downloadMarkdownTitle} onClick={onDownload}>
           <svg viewBox="0 0 16 16" width="12" height="12">
             <path d="M8 3v7M5 7.5L8 10.5l3-3M3.5 12.5h9" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </button>
-        <button className={btnCls} title={t.chat.downloadHtmlTitle} onClick={onDownloadHtml}>
+        </IconButton>
+        <IconButton label={t.chat.downloadHtmlTitle} onClick={onDownloadHtml}>
           <svg viewBox="0 0 16 16" width="12" height="12">
             <path d="M2.5 3.5h11v9h-11z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
             <path d="M2.5 6h11" stroke="currentColor" strokeWidth="1.3" />
             <path d="M4.3 4.7h.01M5.6 4.7h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
-        </button>
-        <button className={btnCls} title={t.chat.regenerateTitle} onClick={onRegenerate}>
+        </IconButton>
+        <IconButton label={t.chat.regenerateTitle} onClick={onRegenerate}>
           <svg viewBox="0 0 16 16" width="12" height="12">
             <path d="M13 8a5 5 0 11-1.5-3.5L13 6V3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </button>
-        <button
-          className={cn(btnCls, feedback?.rating === "up" && "text-accent", feedbackDisabled && "cursor-not-allowed opacity-40")}
-          title={t.chat.feedbackUpTitle}
+        </IconButton>
+        <IconButton
+          label={t.chat.feedbackUpTitle}
+          aria-pressed={feedback?.rating === "up"}
+          className={cn(feedback?.rating === "up" && "text-accent hover:text-accent")}
           disabled={feedbackDisabled}
           onClick={() => onFeedback("up")}
         >
           <svg viewBox="0 0 16 16" width="12" height="12" fill={feedback?.rating === "up" ? "currentColor" : "none"}>
             <path d="M3 8h2v6H3zM5 8l3-5c0-1 1.5-1 1.5 0V7h3.5a1 1 0 011 1.3l-1.3 4a1 1 0 01-1 .7H5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
           </svg>
-        </button>
-        <div className="relative">
-          <button
-            className={cn(btnCls, feedback?.rating === "down" && "text-[#B83A1F]", feedbackDisabled && "cursor-not-allowed opacity-40")}
-            title={t.chat.feedbackDownTitle}
+        </IconButton>
+        <FeedbackPopover
+          open={popoverOpen}
+          onOpenChange={setPopoverOpen}
+          initial={feedback?.rating === "down" ? { reasonTags: feedback.reasonTags, comment: feedback.comment } : null}
+          onSubmit={(v) => { onFeedbackDetail(v); setPopoverOpen(false); }}
+        >
+          <IconButton
+            label={t.chat.feedbackDownTitle}
+            aria-pressed={feedback?.rating === "down"}
+            className={cn(feedback?.rating === "down" && "text-danger hover:text-danger")}
             disabled={feedbackDisabled}
             onClick={handleDown}
           >
             <svg viewBox="0 0 16 16" width="12" height="12" style={{ transform: "rotate(180deg)" }} fill={feedback?.rating === "down" ? "currentColor" : "none"}>
               <path d="M3 8h2v6H3zM5 8l3-5c0-1 1.5-1 1.5 0V7h3.5a1 1 0 011 1.3l-1.3 4a1 1 0 01-1 .7H5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
             </svg>
-          </button>
-          {popoverOpen && (
-            <FeedbackPopover
-              initial={feedback?.rating === "down" ? { reasonTags: feedback.reasonTags, comment: feedback.comment } : null}
-              onSubmit={(v) => { onFeedbackDetail(v); setPopoverOpen(false); }}
-              onClose={() => setPopoverOpen(false)}
-            />
-          )}
-        </div>
+          </IconButton>
+        </FeedbackPopover>
       </div>
     </div>
   );

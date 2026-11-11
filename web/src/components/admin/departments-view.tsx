@@ -2,7 +2,7 @@
 
 /** 部門の管理（specs/024 R1〜R3）。作成・名前の変更・削除と、メンバー・部門管理者の割り当て。 */
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -279,7 +279,7 @@ function DepartmentDetail({
                   <option value="member">{DEPT_ROLE.member}</option>
                   <option value="manager">{DEPT_ROLE.manager}</option>
                 </select>
-                <button
+                <IconButton
                   onClick={() =>
                     void run(
                       () => accessApi.removeDepartmentMember(dept.id, m.user_id),
@@ -288,11 +288,10 @@ function DepartmentDetail({
                     )
                   }
                   disabled={busy}
-                  aria-label={`${personLabel(m.user_id, people)} さんを部門から削除`}
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
-                >
-                  <Icon name="close" size={12} />
-                </button>
+                  label={`${personLabel(m.user_id, people)} さんを部門から削除`}
+                  icon="close"
+                  iconSize={12}
+                />
               </div>
             );
           })

@@ -3,11 +3,12 @@
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
+import { IconButton } from "@/components/ui/button";
 import { SidebarHeader } from "@/components/sidebar/sidebar-header";
 import { SidebarNewButton } from "@/components/sidebar/sidebar-new-button";
 import { SidebarRail, SidebarRailButton } from "@/components/sidebar/sidebar-rail";
 import { SidebarUserFooter } from "@/components/sidebar/sidebar-footer";
-import { ThreadRow, ThreadMenu } from "@/components/sidebar/thread-item";
+import { ThreadRow, ThreadMenuItems } from "@/components/sidebar/thread-item";
 import { SidebarSearchResults } from "@/components/sidebar/sidebar-search-results";
 import { useThreadSearch } from "@/hooks/use-thread-search";
 import { cn } from "@/lib/utils";
@@ -54,11 +55,6 @@ interface SidebarProps {
 const drawerBase =
   "max-tablet:fixed max-tablet:inset-y-0 max-tablet:left-0 max-tablet:z-[60] max-tablet:w-[284px] max-tablet:max-w-[86vw] max-tablet:border-r-0 max-tablet:shadow-[8px_0_32px_rgba(0,0,0,0.18)] max-tablet:transition-transform max-tablet:duration-[240ms] max-tablet:ease-[cubic-bezier(0.2,0.8,0.2,1)]";
 
-interface MenuAnchor {
-  id: string;
-  rect: { left: number; top: number; bottom: number; right: number };
-}
-
 export function Sidebar(props: SidebarProps) {
   const {
     collapsed, onToggle, threads, activeThreadId, onSelectThread, onNewChat,
@@ -67,7 +63,7 @@ export function Sidebar(props: SidebarProps) {
   } = props;
   const { t } = useT();
   const [filter, setFilter] = useState("");
-  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   // アクセス可能 KB。共有 KB があるときだけサイドバーに内訳を列挙する。
@@ -119,7 +115,7 @@ export function Sidebar(props: SidebarProps) {
   ].filter((g) => g.items.length > 0);
 
   const beginRename = (t: ThreadSummary) => {
-    setMenuAnchor(null);
+    setMenuId(null);
     setRenameId(t.id);
     setRenameValue(t.title);
   };
@@ -133,12 +129,16 @@ export function Sidebar(props: SidebarProps) {
     if (!original || next === original.title) return;
     await onRenameThread(id, next);
   };
+  const labels = {
+    menuLabel: t.sidebar.threadMenuLabel,
+    star: t.sidebar.star, unstar: t.sidebar.unstar,
+    rename: t.sidebar.rename, delete: t.sidebar.delete,
+    addToProject: t.sidebar.addToProject,
+  };
   const cancelRename = () => {
     setRenameId(null);
     setRenameValue("");
   };
-
-  const menuThread = menuAnchor ? threads.find((t) => t.id === menuAnchor.id) ?? null : null;
 
   return (
     <aside
@@ -184,14 +184,12 @@ export function Sidebar(props: SidebarProps) {
           <div className="flex items-center justify-between px-2 pb-1 pt-2">
             <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">{t.sidebar.kbHeading}</span>
             {canCreateKb && (
-              <button
+              <IconButton size="icon-sm"
                 onClick={() => setCreatingKb(true)}
-                aria-label={t.sidebar.kbCreate}
-                title={t.sidebar.kbCreate}
-                className="grid h-5 w-5 place-items-center rounded text-muted hover:bg-divider hover:text-fg"
-              >
-                <Icon name="plus" size={11} />
-              </button>
+                label={t.sidebar.kbCreate}
+                icon="plus"
+                iconSize={11}
+              />
             )}
           </div>
           {hasSharedKbs ? (
@@ -271,18 +269,25 @@ export function Sidebar(props: SidebarProps) {
                 active={th.id === activeThreadId}
                 renaming={renameId === th.id}
                 renameValue={renameValue}
-                menuOpen={menuAnchor?.id === th.id}
-                labels={{
-                  menuLabel: t.sidebar.threadMenuLabel,
-                  star: t.sidebar.star, unstar: t.sidebar.unstar,
-                  rename: t.sidebar.rename, delete: t.sidebar.delete,
-                  addToProject: t.sidebar.addToProject,
-                }}
+                menuOpen={menuId === th.id}
+                labels={labels}
                 onRenameChange={setRenameValue}
                 onRenameCommit={commitRename}
                 onRenameCancel={cancelRename}
                 onSelect={() => onSelectThread(th.id)}
-                onOpenMenu={(rect) => setMenuAnchor({ id: th.id, rect })}
+                onMenuOpenChange={(o) => setMenuId(o ? th.id : null)}
+                menu={
+                  menuId === th.id && (
+                    <ThreadMenuItems
+                      thread={th}
+                      labels={labels}
+                      onStar={() => onToggleStar(th.id, !th.pinned)}
+                      onRename={() => beginRename(th)}
+                      onAddProject={onAddToProject ? () => onAddToProject(th.id) : undefined}
+                      onDelete={() => onDeleteThread(th.id)}
+                    />
+                  )
+                }
                 trailing={
                   th.running ? (
                     <span
@@ -320,35 +325,6 @@ export function Sidebar(props: SidebarProps) {
         />
       )}
 
-      {menuAnchor && menuThread && (
-        <ThreadMenu
-          thread={menuThread}
-          anchor={menuAnchor.rect}
-          labels={{
-            menuLabel: t.sidebar.threadMenuLabel,
-            star: t.sidebar.star, unstar: t.sidebar.unstar,
-            rename: t.sidebar.rename, delete: t.sidebar.delete,
-            addToProject: t.sidebar.addToProject,
-          }}
-          onClose={() => setMenuAnchor(null)}
-          onStar={() => {
-            const target = menuThread;
-            setMenuAnchor(null);
-            onToggleStar(target.id, !target.pinned);
-          }}
-          onRename={() => beginRename(menuThread)}
-          onAddProject={onAddToProject ? () => {
-            const target = menuThread;
-            setMenuAnchor(null);
-            onAddToProject(target.id);
-          } : undefined}
-          onDelete={() => {
-            const target = menuThread;
-            setMenuAnchor(null);
-            onDeleteThread(target.id);
-          }}
-        />
-      )}
     </aside>
   );
 }

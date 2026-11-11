@@ -5,7 +5,9 @@ import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { ConfirmModal } from "@/components/modals/confirm-modal";
 import { SettingsModal } from "@/components/settings/settings-modal";
-import { Button, ICON } from "@/components/ui/button";
+import { Button, ICON, IconButton } from "@/components/ui/button";
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { OptionBadge, Popover, PopoverContent, PopoverOption, PopoverTrigger } from "@/components/ui/popover";
 import { ListField, ListGroup, ListItem } from "@/components/ui/list";
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
@@ -110,9 +112,9 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             </Button>
             <Button variant="danger">削除</Button>
             <Button variant="plain">変更…</Button>
-            <Button variant="ghost" size="icon" aria-label="閉じる">
-              <Icon name="close" size={ICON.sm} />
-            </Button>
+            <IconButton label="閉じる" icon="close" iconSize={ICON.sm} />
+            <IconButton label="その他" icon="more" />
+            <IconButton size="icon-sm" label="追加" icon="plus" iconSize={ICON.sm} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" size="sm">
@@ -126,6 +128,50 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
               無効
             </Button>
           </div>
+        </div>
+      </Block>
+
+      <Block title="メニュー・ポップオーバー（画面全体のテーマで表示）">
+        <div className="flex flex-wrap items-center gap-2">
+          <Menu>
+            <MenuTrigger asChild>
+              <Button>
+                メニュー
+                <Icon name="chevronDown" size={ICON.sm} />
+              </Button>
+            </MenuTrigger>
+            <MenuContent align="start">
+              <MenuLabel>taro@example.com</MenuLabel>
+              <MenuItem icon="cog" shortcut="⌘,">
+                設定
+              </MenuItem>
+              <MenuItem icon="folder" hint="中のフォルダ構成も再現します">
+                フォルダを選ぶ
+              </MenuItem>
+              <MenuItem icon="pencil" disabled>
+                名前を変更
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem icon="trash" danger>
+                ごみ箱へ移動
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button>
+                ポップオーバー
+                <Icon name="chevronDown" size={ICON.sm} />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" title="モデル" className="w-[280px]">
+              <div className="p-1.5">
+                <PopoverOption selected label="Qwen3 8B" badge={<OptionBadge tone="accent">推奨</OptionBadge>} hint="GPU 機の会話モデル" />
+                <PopoverOption label="DeepSeek" hint="外部 API" />
+                <PopoverOption disabled label="GPT" badge={<OptionBadge>未設定</OptionBadge>} />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </Block>
 

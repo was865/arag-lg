@@ -1,23 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverAnchor, PopoverClose, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";
 import { FEEDBACK_REASON_TAGS, type FeedbackReasonTag } from "@/lib/feedback-types";
 
+interface Initial {
+  reasonTags: FeedbackReasonTag[];
+  comment: string | null;
+}
+
 interface Props {
-  initial: { reasonTags: FeedbackReasonTag[]; comment: string | null } | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** 錨定先（👎 ボタン）。開くかどうかは呼び出し側が決める（取り消しのときは開かない） */
+  children: React.ReactNode;
+  initial: Initial | null;
   onSubmit: (v: { reasonTags: FeedbackReasonTag[]; comment: string }) => void;
-  onClose: () => void;
 }
 
 /** 👎 押下時の理由タグ（複数選択）+ 任意コメントの軽量ポップオーバー。 */
-export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
+export function FeedbackPopover({ open, onOpenChange, children, initial, onSubmit }: Props) {
+  const { t } = useT();
+  // Slot で子（ボタン）に渡るので、型は Anchor の既定（div）に合わせる
+  const anchorRef = useRef<HTMLDivElement>(null);
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverAnchor asChild ref={anchorRef}>
+        {children}
+      </PopoverAnchor>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        aria-label={t.chat.feedbackDownReasonTitle}
+        className="w-72 p-3.5"
+        // 錨は Trigger ではないので、閉じたら自分で 👎 ボタンへフォーカスを戻す
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          anchorRef.current?.focus();
+        }}
+      >
+        {/* 閉じると中身ごと消えるので、開くたびに initial から始まる */}
+        <FeedbackForm initial={initial} onSubmit={onSubmit} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit: Props["onSubmit"] }) {
   const { t } = useT();
   const [tags, setTags] = useState<Set<FeedbackReasonTag>>(new Set(initial?.reasonTags ?? []));
   const [comment, setComment] = useState(initial?.comment ?? "");
-  const ref = useRef<HTMLDivElement>(null);
 
   // 理由タグ → 表示ラベル。
   const labelOf: Record<FeedbackReasonTag, string> = {
@@ -28,15 +63,6 @@ export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
     other: t.chat.feedbackReasonOther,
   };
 
-  // Escape と外側クリックで閉じる。
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDown);
-    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onDown); };
-  }, [onClose]);
-
   function toggle(tag: FeedbackReasonTag) {
     setTags((prev) => {
       const next = new Set(prev);
@@ -46,20 +72,17 @@ export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
   }
 
   return (
-    <div
-      ref={ref}
-      role="dialog"
-      className="absolute right-0 top-9 z-20 w-72 rounded-xl border-[0.5px] border-divider-strong bg-surface p-3.5 shadow-lg"
-    >
-      <p className="mb-2 text-[12.5px] font-semibold text-fg">{t.chat.feedbackDownReasonTitle}</p>
+    <>
+      <p className="mb-2 text-footnote font-semibold text-fg">{t.chat.feedbackDownReasonTitle}</p>
       <div className="mb-2.5 flex flex-wrap gap-1.5">
         {FEEDBACK_REASON_TAGS.map((tag) => (
           <button
             key={tag}
             type="button"
+            aria-pressed={tags.has(tag)}
             onClick={() => toggle(tag)}
             className={cn(
-              "rounded-full border-[0.5px] px-2.5 py-1 text-[11.5px] transition-colors",
+              "rounded-full border-[0.5px] px-2.5 py-1 text-caption transition-colors",
               tags.has(tag)
                 ? "border-accent bg-accent-soft text-accent"
                 : "border-divider-strong bg-surface text-muted hover:text-fg",
@@ -75,16 +98,14 @@ export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
         placeholder={t.chat.feedbackCommentPlaceholder}
         rows={2}
         maxLength={1000}
-        className="mb-2.5 w-full resize-none rounded-lg border-[0.5px] border-divider-strong bg-surface-2 px-2.5 py-2 text-[12.5px] text-fg outline-none placeholder:text-muted focus:border-accent"
+        className="mb-2.5 w-full resize-none rounded-control border-[0.5px] border-divider-strong bg-surface-2 px-2.5 py-2 text-footnote text-fg outline-none placeholder:text-muted focus:border-accent"
       />
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md px-2.5 py-1 text-[12px] text-muted hover:text-fg"
-        >
-          {t.chat.feedbackCancel}
-        </button>
+        <PopoverClose asChild>
+          <Button variant="ghost" size="sm" className="text-muted">
+            {t.chat.feedbackCancel}
+          </Button>
+        </PopoverClose>
         <Button variant="primary" size="sm"
           type="button"
           onClick={() => onSubmit({ reasonTags: [...tags], comment })}
@@ -92,6 +113,6 @@ export function FeedbackPopover({ initial, onSubmit, onClose }: Props) {
           {t.chat.feedbackSubmit}
         </Button>
       </div>
-    </div>
+    </>
   );
 }

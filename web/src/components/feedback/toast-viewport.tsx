@@ -2,6 +2,7 @@
 
 import type { Toast } from "@/lib/types";
 import { useT } from "@/i18n/context";
+import { IconButton } from "@/components/ui/button";
 
 interface Props {
   toasts: Toast[];
@@ -46,15 +47,14 @@ export function ToastViewport({ toasts, onDismiss }: Props) {
             )}
           </span>
           <span className="flex-1">{t.msg}</span>
-          <button
-            className="grid h-[22px] w-[22px] place-items-center rounded-[5px] border-0 bg-transparent text-muted hover:bg-divider hover:text-fg"
+          <IconButton size="icon-sm"
             onClick={() => onDismiss(t.id)}
-            aria-label={dict.feedback.closeAriaLabel}
+            label={dict.feedback.closeAriaLabel}
           >
             <svg viewBox="0 0 12 12" width="10" height="10">
               <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
             </svg>
-          </button>
+          </IconButton>
         </div>
       ))}
     </div>

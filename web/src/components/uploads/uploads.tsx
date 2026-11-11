@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
+import { IconButton } from "@/components/ui/button";
 import { getFileMeta } from "@/lib/file-types";
 import { cn, formatFileSize } from "@/lib/utils";
 import type { IngestStage, StagedFile } from "@/lib/types";
@@ -147,15 +148,14 @@ function AttachmentChip({ file, onRemove, onRetry }: { file: StagedFile; onRemov
         {file.status === "processing" && <IngestStepper stage={file.stage} />}
       </div>
       {uploadActionFor(file.status) !== "none" && (
-        <button
-          className="grid h-[22px] w-[22px] place-items-center rounded-[5px] border-0 bg-transparent text-muted hover:bg-divider hover:text-fg"
+        <IconButton size="icon-sm"
           onClick={() => onRemove(file.id)}
-          aria-label={uploadActionFor(file.status) === "remove" ? t.uploads.ariaRemove : t.uploads.ariaCancel}
+          label={uploadActionFor(file.status) === "remove" ? t.uploads.ariaRemove : t.uploads.ariaCancel}
         >
           <svg viewBox="0 0 12 12" width="10" height="10">
             <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
           </svg>
-        </button>
+        </IconButton>
       )}
     </div>
   );

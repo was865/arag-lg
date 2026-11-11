@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { inputClass } from "@/components/ui/input";
 import { personLabel, remember, usePeople } from "@/hooks/use-people";
@@ -279,13 +279,12 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                               </option>
                             ))}
                           </select>
-                          <button
+                          <IconButton
                             onClick={() => remove(s)}
-                            aria-label={`${label(s)} を削除`}
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg"
-                          >
-                            <Icon name="close" size={12} />
-                          </button>
+                            label={`${label(s)} を削除`}
+                            icon="close"
+                            iconSize={12}
+                          />
                         </>
                       ) : (
                         <span className="shrink-0 text-footnote text-muted">{ROLE_LABEL[s.role]}</span>

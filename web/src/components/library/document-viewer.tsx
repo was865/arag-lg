@@ -4,7 +4,7 @@
  * - 章は 50 件ずつ読み、末尾が見えたら続きを読む（R4）。目次から未読の章へ飛ぶときはそこまで読み足す。
  * - 「この文書に質問」で検索範囲をこの文書に絞ってチャットへ戻る（R9）。 */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { OriginalPreview } from "@/components/documents/original-preview";
 import { RenderedSectionBody } from "@/components/sources/rendered-section-body";
@@ -72,13 +72,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
       className="fixed inset-0 z-[200] grid animate-overlay-in grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] bg-bg"
     >
       <header className="flex h-[56px] items-center gap-2.5 border-b-[0.5px] border-divider px-4 max-md:h-[52px] max-md:gap-1.5 max-md:px-2">
-        <button
-          onClick={onClose}
-          aria-label="閉じる"
-          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-fg hover:bg-divider"
-        >
-          <Icon name="chevronLeft" size={16} />
-        </button>
+        <IconButton label="閉じる" icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
         <span
           className="grid h-8 w-8 shrink-0 place-items-center rounded-lg max-md:hidden"
           style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
@@ -91,25 +85,16 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
           </h2>
           <div className="truncate text-[11px] text-muted">{facts.join(" · ")}</div>
         </div>
-        <a
-          href={originalUrl(doc.id)}
-          target="_blank"
-          rel="noopener"
-          aria-label="原本を新しいタブで開く"
-          title="原本を新しいタブで開く"
-          className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-lg text-muted hover:bg-divider hover:text-fg"
-        >
-          <Icon name="external" size={14} />
-        </a>
-        <a
-          href={originalUrl(doc.id)}
-          download={doc.filename}
-          aria-label="ダウンロード"
-          title="ダウンロード"
-          className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-lg text-muted hover:bg-divider hover:text-fg"
-        >
-          <Icon name="download" size={14} />
-        </a>
+        <IconButton asChild label="原本を新しいタブで開く" className="h-8 w-8">
+          <a href={originalUrl(doc.id)} target="_blank" rel="noopener">
+            <Icon name="external" size={14} />
+          </a>
+        </IconButton>
+        <IconButton asChild label="ダウンロード" className="h-8 w-8">
+          <a href={originalUrl(doc.id)} download={doc.filename}>
+            <Icon name="download" size={14} />
+          </a>
+        </IconButton>
         <Button variant="primary" size="md"
           disabled={!ready}
           onClick={() => onAsk(doc)}
@@ -124,17 +109,13 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
 
       <div className="flex items-center gap-1 border-b-[0.5px] border-divider px-4 max-md:px-2">
         {ready && (
-          <button
-            onClick={() => setOutlineOpen((x) => !x)}
-            aria-label="目次"
+          <IconButton
+            label="目次"
+            icon="menu"
             aria-expanded={outlineOpen}
-            className={cn(
-              "mr-1 hidden h-[30px] w-[30px] place-items-center rounded-md text-muted hover:bg-divider hover:text-fg",
-              tab === "parsed" && "max-md:grid",
-            )}
-          >
-            <Icon name="menu" size={14} />
-          </button>
+            onClick={() => setOutlineOpen((x) => !x)}
+            className={cn("mr-1 hidden", tab === "parsed" && "max-md:inline-flex")}
+          />
         )}
         {(
           [

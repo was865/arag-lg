@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ModelPicker } from "@/components/chat/model-picker";
 import { ScopePicker } from "@/components/chat/scope-picker";
+import { Popover, PopoverContent, PopoverTrigger, PopoverOption } from "@/components/ui/popover";
 import { AttachmentTray } from "@/components/uploads/uploads";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -106,15 +107,26 @@ export function Composer({
   const imageRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const scopeRef = useRef<HTMLButtonElement>(null);
-  const modelRef = useRef<HTMLButtonElement>(null);
-  const recentRef = useRef<HTMLButtonElement>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const { t } = useT();
   // 内蔵 ModelPicker を使うか（agents）／外部経路に委ねるか（chat=設定モーダル）
   const hasInlineModelPicker = Boolean(models && onSelectModel);
+  const modelButton = (
+    <button
+      type="button"
+      onClick={hasInlineModelPicker ? undefined : onChangeModel}
+      disabled={running}
+      className="inline-flex h-7 shrink items-center gap-1.5 whitespace-nowrap rounded-control border-0 bg-transparent px-2.5 text-footnote font-medium text-fg-2 hover:bg-divider hover:text-fg data-[state=open]:bg-divider data-[state=open]:text-fg max-md:max-w-[36vw] max-md:overflow-hidden max-md:text-ellipsis max-md:px-2 max-md:text-caption"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+      {model.label}
+      <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden>
+        <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
 
   // 内容に合わせて高さを変える。幅が変わると折り返しも変わるので、幅の変化でも測り直す
   useEffect(() => {
@@ -274,7 +286,7 @@ export function Composer({
         />
         <div className="flex items-center gap-1 px-2 pb-2 pt-1 max-md:gap-0.5 max-md:px-1.5">
           {onAttachFiles && (
-            <button type="button" className={toolBtn} title={t.chat.attachTitle} disabled={running} onClick={() => fileRef.current?.click()}>
+            <button type="button" className={toolBtn} title={t.chat.attachTitle} aria-label={t.chat.attachTitle} disabled={running} onClick={() => fileRef.current?.click()}>
               <Icon name="paperclip" size={13} />
             </button>
           )}
@@ -292,31 +304,29 @@ export function Composer({
           )}
           {scope && onChangeScope && (
             <>
-              <button
-                ref={scopeRef}
-                type="button"
-                data-tour="scope"
-                className={cn(toolBtn, scopeOpen && "bg-divider text-fg")}
-                title={t.chat.scopeTitle}
-                disabled={running}
-                onClick={() => setScopeOpen((o) => !o)}
-              >
-                <span className="inline-flex items-center">
-                  <Icon name={scope.iconName} size={13} />
-                </span>
-                <span className="max-md:max-w-[80px] max-md:truncate">{scope.label}</span>
-                <svg viewBox="0 0 16 16" width="9" height="9">
-                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
               <ScopePicker
                 open={scopeOpen}
-                anchorRef={scopeRef}
+                onOpenChange={setScopeOpen}
                 value={scope}
                 onChange={onChangeScope}
-                onClose={() => setScopeOpen(false)}
                 attachmentCount={attachments.filter((a) => a.status === "ready").length}
-              />
+              >
+                <button
+                  type="button"
+                  data-tour="scope"
+                  className={cn(toolBtn, "data-[state=open]:bg-divider data-[state=open]:text-fg")}
+                  title={t.chat.scopeTitle}
+                  disabled={running}
+                >
+                  <span className="inline-flex items-center">
+                    <Icon name={scope.iconName} size={13} />
+                  </span>
+                  <span className="max-md:max-w-[80px] max-md:truncate">{scope.label}</span>
+                  <svg viewBox="0 0 16 16" width="9" height="9" aria-hidden>
+                    <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </ScopePicker>
             </>
           )}
           {/* 书式ヒント（空白态・agents）: 識別码アイコン + 対応する入力種別。 */}
@@ -343,62 +353,48 @@ export function Composer({
           {/* 最近（agents）: 直近クエリのポップオーバー。行を増やさず高さ固定。 */}
           {showRecent && (
             <>
-              <button
-                ref={recentRef}
-                type="button"
-                className={cn(toolBtn, recentOpen && "bg-divider text-fg")}
-                title="最近の質問"
-                disabled={running}
-                onClick={() => setRecentOpen((o) => !o)}
-              >
-                <Icon name="clock" size={13} />
-                <span className="max-md:hidden">履歴</span>
-              </button>
               <RecentPopover
                 open={recentOpen}
-                anchorRef={recentRef}
+                onOpenChange={setRecentOpen}
                 queries={recentQueries}
                 onPick={(q) => {
                   onPickRecent!(q);
                   setRecentOpen(false);
                   taRef.current?.focus();
                 }}
-                onClose={() => setRecentOpen(false)}
-              />
+              >
+                <button
+                  type="button"
+                  className={cn(toolBtn, "data-[state=open]:bg-divider data-[state=open]:text-fg")}
+                  title="最近の質問"
+                  disabled={running}
+                >
+                  <Icon name="clock" size={13} />
+                  <span className="max-md:hidden">履歴</span>
+                </button>
+              </RecentPopover>
             </>
           )}
           <div className="min-w-0 flex-1" />
-          <button
-            ref={modelRef}
-            type="button"
-            onClick={hasInlineModelPicker ? () => setModelOpen((o) => !o) : onChangeModel}
-            disabled={running}
-            className={cn(
-              "inline-flex h-7 shrink items-center gap-1.5 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-2.5 text-[12px] font-medium text-fg-2 hover:bg-divider hover:text-fg max-md:max-w-[36vw] max-md:overflow-hidden max-md:text-ellipsis max-md:px-2 max-md:text-[11.5px]",
-              modelOpen && "bg-divider text-fg",
-            )}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            {model.label}
-            <svg viewBox="0 0 16 16" width="10" height="10">
-              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {hasInlineModelPicker && (
+          {hasInlineModelPicker ? (
             <ModelPicker
               open={modelOpen}
-              anchorRef={modelRef}
+              onOpenChange={setModelOpen}
               models={models!}
               value={model.id}
               onChange={(m) => onSelectModel!(m)}
-              onClose={() => setModelOpen(false)}
-            />
+            >
+              {modelButton}
+            </ModelPicker>
+          ) : (
+            modelButton
           )}
           {running ? (
             <button
               type="button"
               onClick={onStop}
               title={t.chat.stopTitle}
+              aria-label={t.chat.stopTitle}
               className="grid h-8 w-8 shrink-0 animate-[ar-hl-pulse_1.6s_ease-in-out_infinite] place-items-center rounded-lg border-0 bg-accent text-white max-md:h-[34px] max-md:w-[34px]"
             >
               <svg viewBox="0 0 16 16" width="10" height="10">
@@ -410,6 +406,7 @@ export function Composer({
               type="submit"
               disabled={!canSubmit}
               title={pending ? t.chat.pendingSubmitTitle : undefined}
+              aria-label={t.chat.sendTitle}
               className={cn(
                 "grid h-8 w-8 shrink-0 place-items-center rounded-lg border-0 text-white transition-[background,filter] max-md:h-[34px] max-md:w-[34px]",
                 canSubmit ? "bg-accent hover:brightness-105" : "cursor-not-allowed bg-divider text-muted-2",
@@ -448,68 +445,43 @@ export function Composer({
   );
 }
 
-/** 「最近」ポップオーバー: 直近クエリを一覧し、点选で入力欄へ投入する。
- *  ModelPicker と同系の錨定/外側クリック閉じ（右揃え・上向き）を踏襲する。 */
+/** 「最近」ポップオーバー: 直近クエリを一覧し、選ぶと入力欄へ入れる。 */
 function RecentPopover({
   open,
-  anchorRef,
+  onOpenChange,
+  children,
   queries,
   onPick,
-  onClose,
 }: {
   open: boolean;
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
   queries: string[];
   onPick: (query: string) => void;
-  onClose: () => void;
 }) {
-  const [pos, setPos] = useState({ left: 0, bottom: 0 });
-
-  useEffect(() => {
-    if (!open || !anchorRef.current) return;
-    const r = anchorRef.current.getBoundingClientRect();
-    setPos({ left: Math.max(8, r.left), bottom: window.innerHeight - r.top + 6 });
-  }, [open, anchorRef]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    const onDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest(".recent-pop") && !anchorRef.current?.contains(target)) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onDown);
-    };
-  }, [open, onClose, anchorRef]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="recent-pop fixed z-[150] flex max-h-[320px] w-[320px] animate-pop-in flex-col overflow-hidden rounded-[14px] border-[0.5px] border-divider-strong bg-surface shadow-e3 max-md:w-[min(320px,calc(100vw-20px))]"
-      style={{ left: pos.left, bottom: pos.bottom }}
-    >
-      <div className="border-b-[0.5px] border-divider px-3.5 py-2.5 text-[12px] font-semibold text-muted">
-        最近的查询
-      </div>
-      <div className="overflow-y-auto p-1.5">
-        {queries.map((q, i) => (
-          <button
-            key={`${i}-${q}`}
-            type="button"
-            onClick={() => onPick(q)}
-            title={q}
-            className="flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-divider"
-          >
-            <Icon name="clock" size={13} className="shrink-0 text-muted-2" />
-            <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{q}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        title="最近の質問"
+        className="max-h-[320px] w-[320px]"
+        // 選んだあとは入力欄にフォーカスを移すので、ボタンへ戻さない
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="overflow-y-auto p-1.5">
+          {queries.map((q, i) => (
+            <PopoverOption
+              key={`${i}-${q}`}
+              title={q}
+              icon={<Icon name="clock" size={13} className="text-muted-2" />}
+              label={<span className="font-normal">{q}</span>}
+              onClick={() => onPick(q)}
+            />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

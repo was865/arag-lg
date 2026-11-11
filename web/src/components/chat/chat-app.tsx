@@ -51,6 +51,7 @@ import { checkImageFile, imageFromUrl, shrinkImage, type QueryImage } from "@/li
 import { EMPTY_STATS, normalizeStats, type WorkspaceStats } from "@/lib/workspace-stats";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
+import { IconButton } from "@/components/ui/button";
 
 // 認証を使わない開発構成（ARAG_DEV_USER_ID）のときの表示用の利用者
 const DEV_USER: AppUser = {
@@ -653,15 +654,16 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         ) : (
         <main className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg">
           <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:gap-1 max-md:px-2.5">
-            <button
-              className="-ml-1 hidden h-[34px] w-[34px] shrink-0 place-items-center rounded-lg border-0 bg-transparent text-fg hover:bg-divider max-md:grid"
+            <IconButton
+              label={t.workspace.openMenuAriaLabel}
+              tooltip={false}
+              className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
               onClick={() => setSidebarCollapsed(false)}
-              aria-label={t.workspace.openMenuAriaLabel}
             >
               <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
                 <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
-            </button>
+            </IconButton>
             <div className="flex min-w-0 flex-1 items-center gap-2 text-[13.5px] font-semibold text-fg max-md:gap-1.5 max-md:text-[13px]">
               {phase === "empty" ? (
                 <span className="font-medium text-muted">

@@ -6,7 +6,8 @@ import { AdminHeader } from "@/components/admin/admin-header";
 import { MemberAccessDialog } from "@/components/admin/member-access-dialog";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, inputClass } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -265,56 +266,32 @@ function MemberMenu({
   onResend: () => void;
   onAccess: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
-  const item = "flex w-full items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 text-left text-footnote hover:bg-divider";
   return (
-    <span className="relative justify-self-end">
-      <button
-        disabled={disabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((x) => !x);
-        }}
-        aria-label="操作"
-        aria-expanded={open}
-        className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-divider hover:text-fg disabled:invisible"
-      >
-        <Icon name="more" size={14} />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-8 z-20 w-max min-w-[160px] animate-pop-in rounded-card border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
-        >
-          <button role="menuitem" className={cn(item, "text-fg")} onClick={onAccess}>
-            <Icon name="database" size={13} />
+    <span className="justify-self-end">
+      <Menu>
+        <MenuTrigger asChild>
+          <IconButton label="操作" icon="more" tooltip={false} disabled={disabled} className="disabled:invisible" />
+        </MenuTrigger>
+        <MenuContent align="end">
+          <MenuItem icon="database" onSelect={onAccess}>
             閲覧できるナレッジベース
-          </button>
+          </MenuItem>
           {canResend && (
-            <button role="menuitem" className={cn(item, "text-fg")} onClick={onResend}>
-              <Icon name="mail" size={13} />
+            <MenuItem icon="mail" onSelect={onResend}>
               パスワード設定のリンクを送る
-            </button>
+            </MenuItem>
           )}
           {!canBan ? null : banned ? (
-            <button role="menuitem" className={cn(item, "text-fg")} onClick={onUnban}>
-              <Icon name="refresh" size={13} />
+            <MenuItem icon="refresh" onSelect={onUnban}>
               再開する
-            </button>
+            </MenuItem>
           ) : (
-            <button role="menuitem" className={cn(item, "text-danger")} onClick={onBan}>
-              <Icon name="lock" size={13} />
+            <MenuItem icon="lock" danger onSelect={onBan}>
               停止する
-            </button>
+            </MenuItem>
           )}
-        </div>
-      )}
+        </MenuContent>
+      </Menu>
     </span>
   );
 }

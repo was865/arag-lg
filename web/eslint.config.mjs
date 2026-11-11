@@ -17,6 +17,10 @@ const eslintConfig = defineConfig([
           selector: "JSXAttribute[name.name='aria-modal']",
           message: "モーダルは @/components/ui/dialog の Dialog / DialogContent / DialogFrame を使ってください。",
         },
+        {
+          selector: "JSXAttribute[name.name='role'][value.value=/^menu(item)?$/]",
+          message: "メニューは @/components/ui/menu の Menu / MenuContent / MenuItem を使ってください。",
+        },
       ],
     },
   },
