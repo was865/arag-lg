@@ -1,6 +1,8 @@
 export const feedback = {
   // toast-viewport — close button
   closeAriaLabel: "閉じる",
+  /** トーストの束の読み上げ名 */
+  regionLabel: "通知",
 
   // workspace.tsx — run / agent
   runFailed: "実行に失敗しました",

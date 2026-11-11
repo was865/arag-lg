@@ -32,7 +32,7 @@ export function PopoverContent({
         collisionPadding={collisionPadding}
         className={cn(
           floatingSurface,
-          "flex max-h-[min(480px,var(--radix-popover-content-available-height))] max-w-[calc(100vw-20px)] flex-col overflow-hidden",
+          "flex max-h-[min(480px,var(--radix-popover-content-available-height))] max-w-[calc(100vw-20px)] origin-(--radix-popover-content-transform-origin) flex-col overflow-hidden",
           className,
         )}
         {...props}

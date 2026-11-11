@@ -6,6 +6,11 @@ describe("buttonVariants", () => {
   it("既定は secondary・md", () => {
     expect(buttonVariants()).toBe(buttonVariants({ variant: "secondary", size: "md" }));
   });
+  it("押すとわずかに縮む（視差効果を減らす設定では縮まない）", () => {
+    const cls = buttonVariants();
+    expect(cls).toContain("active:scale-[0.97]");
+    expect(cls).toContain("motion-reduce:active:scale-100");
+  });
   it("danger-ghost は塗りなしの赤い文字", () => {
     const cls = buttonVariants({ variant: "danger-ghost" });
     expect(cls).toContain("text-danger");

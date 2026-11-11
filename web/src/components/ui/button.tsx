@@ -15,7 +15,7 @@ import { Icon, type IconName } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-[background-color,filter,opacity] outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:pointer-events-none disabled:opacity-45",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-[background-color,filter,opacity,transform] duration-(--duration-fast) outline-none active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:ring-2 focus-visible:ring-accent/50 disabled:pointer-events-none disabled:opacity-45",
   {
     variants: {
       variant: {

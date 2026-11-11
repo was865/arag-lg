@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
+import { useToast } from "@/components/feedback/toast-provider";
+import { DURATION } from "@/lib/motion";
 
 const TYPE = [
   ["text-display", "大見出し 22", "11,490 件"],
@@ -25,6 +27,20 @@ const TYPE = [
   ["text-footnote", "補助 12.5", "3 件の資料 · 2 分前に更新"],
   ["text-caption", "注記 11.5", "外観の設定はこの端末にだけ保存されます。"],
   ["text-mini", "ラベル 10.5", "閲覧のみ · アーカイブ"],
+] as const;
+
+const MOTION = [
+  ["速い", DURATION.fast, "ホバー・押下"],
+  ["中", DURATION.mid, "メニュー・カード"],
+  ["遅い", DURATION.slow, "ダイアログ・画面の切り替え"],
+  ["消える", DURATION.exit, "閉じるとき（出るより短く）"],
+] as const;
+
+const TOASTS = [
+  ["3 件の文書を追加しました", "success"],
+  ["x01-部品台帳.xlsx を処理しています", "info"],
+  ["共有リンクをコピーしました", "success"],
+  ["アップロードできませんでした", "error"],
 ] as const;
 
 const RADIUS = [
@@ -67,6 +83,8 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
   const [seg, setSeg] = useState<"numbered" | "chip" | "pill">("numbered");
   const [on, setOn] = useState(true);
   const [q, setQ] = useState("MX-17");
+  const toast = useToast();
+  const [n, setN] = useState(0);
   return (
     <section className={cn(theme, "flex flex-col gap-8 bg-bg-2 px-6 py-6 text-fg")}>
       <p className="m-0 text-caption font-medium uppercase tracking-[0.06em] text-muted">
@@ -206,6 +224,32 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             <Badge tone="accent" mono>
               実行中
             </Badge>
+          </div>
+        </div>
+      </Block>
+
+      <Block title="動き（時間 3 段 + 消える）">
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-4 gap-y-1">
+            {MOTION.map(([name, sec, use]) => (
+              <div key={name} className="contents">
+                <code className="font-mono text-caption text-muted">{name}</code>
+                <code className="font-mono text-caption nums">{sec * 1000}ms</code>
+                <span className="text-caption text-muted-2">{use}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => {
+                const [msg, kind] = TOASTS[n % TOASTS.length];
+                toast(msg, kind, 6000);
+                setN(n + 1);
+              }}
+            >
+              通知を出す
+            </Button>
+            <span className="text-caption text-muted">何回か押すと束になる。束に乗せると広がる。</span>
           </div>
         </div>
       </Block>

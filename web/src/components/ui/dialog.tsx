@@ -45,7 +45,7 @@ export function DialogContent({
     <D.Portal>
       <D.Overlay
         className={cn(
-          "fixed inset-0 grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none max-md:items-end max-md:p-0",
+          "fixed inset-0 grid place-items-center data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none! max-md:items-end max-md:p-0",
           layer === "top" ? "z-[250]" : "z-[230]",
           size === "full" && "p-4 max-md:p-0",
         )}
@@ -53,7 +53,9 @@ export function DialogContent({
         <D.Content
           role={alert ? "alertdialog" : "dialog"}
           className={cn(
-            "flex max-h-[86vh] max-w-full animate-pop-in flex-col overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none motion-reduce:animate-none",
+            "flex max-h-[86vh] max-w-full flex-col overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none motion-reduce:animate-none!",
+            // 広い画面は拡大しながら、狭い画面（シート）は下から出入りする（specs/025 R11）
+            "data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out max-md:data-[state=open]:animate-sheet-in max-md:data-[state=closed]:animate-sheet-out",
             "max-md:max-h-[90dvh] max-md:w-full max-md:rounded-b-none",
             WIDTH[size],
             className,
@@ -99,14 +101,14 @@ export function DialogFrame({
     <D.Portal>
       <D.Overlay
         className={cn(
-          "fixed inset-0 grid animate-overlay-in place-items-center bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none max-md:p-0",
+          "fixed inset-0 grid place-items-center data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out bg-[rgba(20,18,15,0.35)] p-6 motion-reduce:animate-none! max-md:p-0",
           layer === "top" ? "z-[250]" : "z-[230]",
         )}
       >
         <D.Content
           aria-describedby={undefined}
           className={cn(
-            "max-w-full animate-pop-in overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none motion-reduce:animate-none",
+            "max-w-full overflow-hidden rounded-sheet border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out motion-reduce:animate-none!",
             className,
           )}
           {...props}

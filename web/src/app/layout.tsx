@@ -3,6 +3,7 @@ import { THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/co
 import { getDictionary } from "@/i18n/dictionary";
 import { LocaleProvider } from "@/i18n/context";
 import { ToastProvider } from "@/components/feedback/toast-provider";
+import { MotionProvider } from "@/components/motion-provider";
 // 自前ホストの書体（Latin/数字 = Inter、日本語 = Noto Sans JP）。実ウェイトのみ読み込む。
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
@@ -57,7 +58,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body>
         <LocaleProvider locale="ja" dict={getDictionary()}>
-          <ToastProvider>{children}</ToastProvider>
+          <MotionProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </MotionProvider>
         </LocaleProvider>
       </body>
     </html>

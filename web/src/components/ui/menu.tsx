@@ -22,9 +22,12 @@ export const Menu = M.Root;
 export const MenuTrigger = M.Trigger;
 export const MenuGroup = M.Group;
 
-/** 浮かぶ面（メニュー・ポップオーバー）の共通の見た目。ダイアログ（230 / 250）の上に出す */
+/**
+ * 浮かぶ面（メニュー・ポップオーバー）の共通の見た目。ダイアログ（230 / 250）の上に出す。
+ * 開くときは開いた位置（ボタンの角）から広がり、閉じるときは縮んで消える（specs/025 R11）。
+ */
 export const floatingSurface =
-  "z-[260] animate-pop-in rounded-card border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none motion-reduce:animate-none";
+  "z-[260] rounded-card border-[0.5px] border-divider-strong bg-surface shadow-e3 outline-none data-[state=open]:animate-menu-in data-[state=closed]:animate-menu-out motion-reduce:animate-none!";
 
 export function MenuContent({
   className,
@@ -37,7 +40,11 @@ export function MenuContent({
       <M.Content
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
-        className={cn(floatingSurface, "flex min-w-[180px] flex-col p-1", className)}
+        className={cn(
+          floatingSurface,
+          "flex min-w-[180px] origin-(--radix-dropdown-menu-content-transform-origin) flex-col p-1",
+          className,
+        )}
         {...props}
       />
     </M.Portal>

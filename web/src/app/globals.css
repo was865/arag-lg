@@ -298,7 +298,63 @@
   }
 }
 
+/* 開閉の動き（specs/025）。閉じる側は Radix の Presence が終わるまで待つ */
+@keyframes ar-menu-in {
+  from {
+    transform: scale(0.94) translateY(-4px);
+    opacity: 0;
+  }
+}
+@keyframes ar-menu-out {
+  to {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+}
+@keyframes ar-overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ar-dialog-in {
+  from {
+    transform: translateY(8px) scale(0.96);
+    opacity: 0;
+  }
+}
+@keyframes ar-dialog-out {
+  to {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+}
+@keyframes ar-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes ar-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+
 @theme {
+  /* 動きの値（specs/025。lib/motion.ts と同じ値） */
+  --duration-fast: 120ms;
+  --duration-mid: 200ms;
+  --duration-slow: 320ms;
+  --ease-spring: cubic-bezier(0.3, 1.3, 0.5, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --animate-menu-in: ar-menu-in var(--duration-mid) var(--ease-spring);
+  --animate-menu-out: ar-menu-out 140ms var(--ease-in) forwards;
+  /* 暗転は中のダイアログ・シートより先に消えないよう、いちばん長い閉じる動き（シート 200ms）に合わせる */
+  --animate-overlay-out: ar-overlay-out 200ms var(--ease-in) forwards;
+  --animate-dialog-in: ar-dialog-in var(--duration-slow) var(--ease-spring);
+  --animate-dialog-out: ar-dialog-out 140ms var(--ease-in) forwards;
+  --animate-sheet-in: ar-sheet-in var(--duration-slow) var(--ease-out);
+  --animate-sheet-out: ar-sheet-out 200ms var(--ease-in) forwards;
   --animate-spin-fast: ar-spin 0.7s linear infinite;
   --animate-blink: ar-blink 1s step-end infinite;
   --animate-soft-pulse: ar-pulse 1.4s ease-in-out infinite;
