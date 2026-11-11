@@ -7,6 +7,7 @@
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icons";
+import { useTilt } from "@/hooks/use-tilt";
 import { USAGE_TIPS } from "@/lib/data";
 import { getFileMeta } from "@/lib/file-types";
 import { suggestionsFrom, type Suggestion } from "@/lib/home";
@@ -60,7 +61,7 @@ function useSuggestions(): Suggestion[] | null {
 }
 
 const CARD =
-  "group flex min-w-0 animate-fade-up flex-col justify-between gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface/70 p-3 text-left shadow-e1 transition-[transform,box-shadow,background-color] duration-(--duration-mid) ease-out hover:-translate-y-0.5 hover:bg-surface hover:shadow-e2 motion-reduce:animate-none motion-reduce:hover:translate-y-0";
+  "tilt group relative flex min-w-0 animate-fade-in flex-col justify-between gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface/70 p-3 text-left shadow-e1  hover:bg-surface hover:shadow-e2 motion-reduce:animate-none";
 
 /** 入力欄の下: 文書から作った質問の候補（無ければ使い方のヒント）と件数。押すと入力欄に入る（送信はしない）。 */
 export function HomeSuggestions({
@@ -73,6 +74,7 @@ export function HomeSuggestions({
 }) {
   const { t } = useT();
   const suggestions = useSuggestions();
+  const tilt = useTilt();
   const meta = stats
     ? [
         [stats.indexedDocumentCount.toLocaleString("ja-JP"), t.chat.metaIndexed],
@@ -86,7 +88,7 @@ export function HomeSuggestions({
           ? suggestions.map((s, i) => {
               const meta = getFileMeta(s.filename);
               return (
-                <button key={s.id} type="button" onClick={() => onFillComposer(s.text)} className={CARD} style={{ animationDelay: `${i * 60}ms` }}>
+                <button key={s.id} type="button" onClick={() => onFillComposer(s.text)} className={CARD} {...tilt} style={{ animationDelay: `${i * 60}ms` }}>
                   <span className="text-footnote font-medium leading-[1.55] text-fg">{s.text}</span>
                   <span className="flex min-w-0 items-center gap-1.5 text-mini text-muted">
                     <span className="shrink-0" style={{ color: meta.color }}>
@@ -99,7 +101,7 @@ export function HomeSuggestions({
             })
           : suggestions &&
             USAGE_TIPS.slice(0, 3).map((tip, i) => (
-              <button key={tip.title} type="button" onClick={() => onFillComposer(tip.fill)} className={CARD} style={{ animationDelay: `${i * 60}ms` }}>
+              <button key={tip.title} type="button" onClick={() => onFillComposer(tip.fill)} className={CARD} {...tilt} style={{ animationDelay: `${i * 60}ms` }}>
                 <span className="text-footnote font-medium leading-[1.55] text-fg">{tip.fill}</span>
                 <span className="flex min-w-0 items-center gap-1.5 text-mini text-muted">
                   <Icon name={tip.icon} size={12} />

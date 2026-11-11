@@ -201,6 +201,8 @@ export function Composer({
         data-tour="composer"
         className={cn(
           "rounded-[16px] border border-divider-strong bg-surface shadow-e2 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow-2)] max-md:rounded-sheet",
+          // 回答を作っている間は、ふちを光が回る
+          running && "composer-glow",
         )}
       >
         {onRemoveAttachment && (

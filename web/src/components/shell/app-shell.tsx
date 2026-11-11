@@ -49,8 +49,9 @@ export function AppShell({
   return (
     <div
       className={cn(
-        // 左上の淡い朱の光は、半透明のサイドバー越しに見える（specs/025 R44）
-        "group/shell grid h-dvh overflow-hidden bg-bg bg-[radial-gradient(520px_320px_at_0%_0%,var(--accent-soft),transparent_70%)] text-callout",
+        // isolate で重なりの単位を作り、首ページの漂う光（-z-10 の canvas）をこの地のすぐ上に挟む。
+        // 光は半透明のサイドバー越しにも見える（specs/025 R44）
+        "group/shell isolate grid h-dvh overflow-hidden bg-bg text-callout",
         compact && "text-body",
         "grid-cols-[1fr]",
         "tablet:grid-cols-[260px_minmax(0,1fr)] tablet:data-[sb=collapsed]:grid-cols-[48px_minmax(0,1fr)]",

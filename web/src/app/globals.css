@@ -476,3 +476,87 @@
     color: var(--muted);
   }
 }
+
+/* ── 回答を作っている間、入力欄のふちを光が回る（specs/025 見直し） ──────────────
+   角度を CSS の登録済みプロパティにして、円錐グラデーションを回す。ふちの 1.5px だけを残すよう mask で中を抜く。
+   ::after は同じ光をぼかした「にじみ」。 */
+@property --glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ar-glow-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+.composer-glow {
+  position: relative;
+}
+.composer-glow::before,
+.composer-glow::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 0%,
+    transparent 52%,
+    color-mix(in oklab, var(--accent-ui) 70%, transparent) 70%,
+    color-mix(in oklab, var(--accent-ui) 55%, white) 82%,
+    color-mix(in oklab, var(--accent-ui) 70%, transparent) 92%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: ar-glow-spin 2.6s linear infinite;
+  pointer-events: none;
+}
+.composer-glow::after {
+  inset: -3px;
+  padding: 3px;
+  filter: blur(7px);
+  opacity: 0.55;
+}
+
+/* ── ポインタに合わせてわずかに傾くカード（tvOS のポスターと同じ考え方。lib/ambient の tiltFor） ──
+   --rx / --ry は傾き、--mx / --my は光の当たる位置。動きを減らす設定では傾けない。 */
+.tilt {
+  transform: perspective(720px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.18s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  will-change: transform;
+}
+.tilt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.22), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+  pointer-events: none;
+}
+.tilt[data-tilting]::after {
+  opacity: 1;
+}
+.theme-dark .tilt::after {
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.08), transparent 60%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-glow::before,
+  .composer-glow::after {
+    animation: none;
+    opacity: 0;
+  }
+  .tilt {
+    transform: none;
+  }
+}

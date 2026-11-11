@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { libraryApi, type DocumentOut, type DocumentOverview } from "@/lib/library/api";
 import { formatBytes, formatDate, formatRows, formatSegments } from "@/lib/library/view";
 import { getFileMeta, isSpreadsheet } from "@/lib/file-types";
+import { useTilt } from "@/hooks/use-tilt";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -150,13 +151,15 @@ export function LibraryOverview({
 function CitedCard({ doc, citations, index, onOpen }: { doc: DocumentOut; citations: number; index: number; onOpen: (d: DocumentOut) => void }) {
   const meta = getFileMeta(doc.filename);
   const sheet = isSpreadsheet(doc.filename);
+  const tilt = useTilt();
   return (
     <button
       type="button"
       onClick={() => onOpen(doc)}
       title={doc.filename}
       style={{ animationDelay: `${index * 50}ms` }}
-      className="group flex min-w-0 animate-fade-up flex-col overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface p-0 text-left shadow-e1 outline-none transition-[transform,box-shadow] duration-(--duration-mid) ease-out hover:-translate-y-0.5 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:animate-none motion-reduce:hover:translate-y-0"
+      {...tilt}
+      className="tilt group relative flex min-w-0 animate-fade-in flex-col overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface p-0 text-left shadow-e1 outline-none hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:animate-none"
     >
       <span className="relative block h-[72px] border-b-[0.5px] border-divider bg-surface-2 px-3 py-2.5" aria-hidden>
         {sheet ? (

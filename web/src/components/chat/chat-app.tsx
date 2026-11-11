@@ -56,6 +56,7 @@ import { IconButton, Button } from "@/components/ui/button";
 import { AnimatePresence, m } from "motion/react";
 import { DURATION } from "@/lib/motion";
 import { CommandPalette, type PaletteItem } from "@/components/command-palette";
+import { AmbientGlow } from "@/components/ambient-glow";
 import { kbGlyph } from "@/lib/home";
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { Badge } from "@/components/ui/badge";
@@ -693,12 +694,12 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
         <main
           className={cn(
             "grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg",
-            // 首ページの淡い光は上部バーの下で切れないよう、main 全体に敷く（バーは透明にする）。
-            // 色帯が出ないよう薄くし、途中の濃さを刻んでなだらかに消す。
-            home &&
-              "bg-[radial-gradient(70%_55%_at_50%_-8%,color-mix(in_srgb,var(--accent)_10%,transparent)_0%,color-mix(in_srgb,var(--accent)_6%,transparent)_35%,color-mix(in_srgb,var(--accent)_2%,transparent)_65%,transparent_100%)]",
+            // 首ページでは地を透かして、後ろで漂う光（AmbientGlow）を見せる
+            home && "bg-transparent",
           )}
         >
+          {/* 首ページの後ろでゆっくり漂う光。サイドバーの下まで広げ、半透明のサイドバー越しにも見せる */}
+          {home && <AmbientGlow className="fixed inset-0 -z-10" />}
           <header
             className={cn(
               "sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] px-[18px] max-md:gap-1 max-md:px-2.5",
