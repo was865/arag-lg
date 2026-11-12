@@ -39,3 +39,20 @@ class StepClock:
             }
         )
         self.emit({"type": "step", "step": self.step.model_dump()})
+
+
+def record_system(emit: Any, step_id: str, kind: str, label: str, summary: str, **detail: Any) -> None:
+    """後ろで行った処理を「システムの処理」のステップとして記録に残す（後端の動きは原則すべて記録に出す）。
+
+    detail の input は入力に、output は出力にそのまま入れる。画面では 1 つの畳んだ組にまとめて見せる。
+    """
+    step = Step(
+        id=step_id,
+        name="system",
+        label=label,
+        status="done",
+        input={"kind": kind, **detail.get("input", {})},
+        output=detail.get("output"),
+        summary=summary,
+    )
+    emit({"type": "step", "step": step.model_dump()})

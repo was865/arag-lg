@@ -64,3 +64,5 @@ class RunContext:
     primer: Primer | None = None
     # いま呼んでいるモデルの表示名（「考えた過程」のステップに出す）
     model_label: str = ""
+    # このターンで失敗した table_query の指定（source・where・compute・table）→ 返した誤り（specs/026 T12）
+    table_failures: dict[tuple[str, str, str, int], str] = field(default_factory=dict)

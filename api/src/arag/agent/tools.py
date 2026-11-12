@@ -91,10 +91,12 @@ async def table_query(
         source: 表のある資料の出典番号（例 "1"）かセクション ID
         where: 行の条件。列名と比較で書く（例 "在庫 < 発注点"、"単価 >= 10000 and \"HP-300\" in 適用機種"）。
             省略すると全行
-        compute: 行ごとに計算する式（例 "(発注点 - 在庫) * 単価"）。結果と合計・平均が返る。省略可
+        compute: 行ごとに計算する式（例 "(発注点 - 在庫) * 単価"）。結果と合計・平均が返る。
+            集計関数 max(列)・min(列)・sum(式)・avg(式)・count() も使え、該当行全体の値が返る
+            （max / min はその値の行も）。省略可
         table: 資料に表が複数あるときの番号（1 から）
     """
-    return await op_table_query(runtime.context, source, where, compute, table)
+    return await op_table_query(runtime.context, source, where, compute, table, emit=_emit(runtime))
 
 
 @tool

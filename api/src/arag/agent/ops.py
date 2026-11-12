@@ -6,7 +6,7 @@
 import re
 import time
 import uuid
-from typing import Any
+from typing import Any, NamedTuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.agent.citations import format_material, wrap_material
 from arag.agent.context import Emit, RunContext
-from arag.agent.steps import Step, StepClock
-from arag.agent.table import TableError, describe_tables, parse_tables, run_query
+from arag.agent.steps import Step, StepClock, record_system
+from arag.agent.table import EXAMPLES, TableError, describe_tables, error_hint, parse_tables, run_query
 from arag.agent.table import render as render_table
 from arag.db.models import Content, Document, Section
 from arag.logging import get_logger
@@ -477,29 +477,77 @@ async def op_read_section(ctx: RunContext, section: str) -> str:
     return format_material(num, c) + note
 
 
+class _Failure(NamedTuple):
+    """table_query の失敗（モデルに返す文）。"""
+
+    text: str
+
+
+REPEAT_BLOCKED_NOTE = (
+    "同じ指定では失敗する（前回この指定で失敗した: {error}）。"
+    "式を変えるか、表の値を書き写して calculate を使ってください。"
+)
+
+
 async def op_table_query(
-    ctx: RunContext, source: str, where: str = "", compute: str = "", table: int = 1
+    ctx: RunContext,
+    source: str,
+    where: str = "",
+    compute: str = "",
+    table: int = 1,
+    *,
+    emit: Emit | None = None,
 ) -> str:
-    """資料の表から、条件に合う行と合計を計算で求める（specs/026 R12・R13）。"""
+    """資料の表から、条件に合う行と合計を計算で求める（specs/026 R12・R13）。
+
+    失敗した指定はターンの間覚えておき、同じ指定でもう一度呼ばれたら計算せずに止める（T12）。
+    """
+    key = (source.strip(), where.strip(), compute.strip(), table)
+    if (prev := ctx.table_failures.get(key)) is not None:
+        note = REPEAT_BLOCKED_NOTE.format(error=prev[:300])
+        if emit is not None:
+            record_system(
+                emit,
+                f"system-repeat-blocked-{len(ctx.table_failures)}",
+                "repeat_blocked",
+                "同じ指定の繰り返しを止めた",
+                "前に失敗した table_query と同じ指定で呼ばれたため、計算せずに式を変えるよう返した",
+                input={"source": key[0], "where": key[1], "compute": key[2], "table": key[3]},
+                output={"note": note},
+            )
+        return note
+    out = await _table_query(ctx, source, where, compute, table)
+    if isinstance(out, _Failure):
+        ctx.table_failures[key] = out.text
+        return out.text
+    return out
+
+
+async def _table_query(ctx: RunContext, source: str, where: str, compute: str, table: int) -> str | _Failure:
     found = await _visible_section(ctx, source)
     if found is None:
-        return (
+        return _Failure(
             f'資料「{source}」は見つかりません。source には、表のある資料の出典番号（例 "1"）か'
             "セクション ID を指定してください。"
         )
     sec, doc = found
     tables = parse_tables(sec.text)
     if not tables:
-        return (
+        return _Failure(
             f"「{doc.filename}」のこの箇所に表はありません。"
             "表のある資料の出典番号を指定するか、search で表を探してください。"
         )
     if not 1 <= table <= len(tables):
-        return f"table は 1〜{len(tables)} で指定してください。\n{describe_tables(tables)}"
+        return _Failure(
+            f"table は 1〜{len(tables)} で指定してください。\n{describe_tables(tables)}\n{EXAMPLES}"
+        )
+    target = tables[table - 1]
     try:
-        result = run_query(tables[table - 1], where, compute)
+        result = run_query(target, where, compute)
     except TableError as e:
-        return f"表を集計できませんでした: {e}"
+        # 誤りには必ず使える列名と書き方の例を添える（R13）
+        hint = EXAMPLES if "使える列" in str(e) else error_hint(target)
+        return _Failure(f"表を集計できませんでした: {e}\n{hint}")
     body = render_table(result, where, compute)
     if len(tables) > 1:
         body += f"\n（この資料には表が {len(tables)} つあります）\n{describe_tables(tables)}"

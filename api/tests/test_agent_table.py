@@ -87,3 +87,59 @@ def test_no_condition_returns_all_rows_and_empty_result_is_stated() -> None:
     assert len(run_query(ledger()).matched) == 4
     text = render(run_query(ledger(), "在庫 > 100"), "在庫 > 100", "")
     assert "0 行" in text and "|" not in text.split("\n", 1)[-1] if "\n" in text else True
+
+
+# ── 集計関数（T11） ──
+
+
+@pytest.mark.parametrize(
+    ("compute", "value"),
+    [
+        ("max(単価)", "24800"),
+        ("MIN(単価)", "900"),
+        ("sum(在庫 * 単価)", "256220"),
+        ("avg(在庫)", "7.75"),
+        ("count()", "4"),
+        ("Sum(在庫) / COUNT()", "7.75"),
+    ],
+)
+def test_aggregate_functions_compute_one_value_over_matched_rows(compute: str, value: str) -> None:
+    r = run_query(ledger(), "", compute)
+    assert r.aggregate is not None and str(r.aggregate) == value
+    assert r.computed == []  # 行ごとの計算列は作らない
+
+
+def test_aggregate_respects_the_condition() -> None:
+    r = run_query(ledger(), "在庫 < 発注点", "sum((発注点 - 在庫) * 単価)")
+    assert str(r.aggregate) == "85540"
+
+
+def test_max_and_min_show_the_rows_that_hold_the_value() -> None:
+    r = run_query(ledger(), "", "max(単価)")
+    text = render(r, "", "max(単価)")
+    assert "max(単価) = 24800" in text
+    holder = text.split("max(単価) = 24800", 1)[1]
+    assert "P-1043" in holder and "P-1042" not in holder
+    # 先頭行（件数）は今までどおり（ステップの要約が読む）
+    assert text.startswith("表「部品台帳")
+
+
+def test_row_wise_compute_still_works_alongside_aggregates() -> None:
+    r = run_query(ledger(), "在庫 < 発注点", "(発注点 - 在庫) * 単価")
+    assert r.aggregate is None and [str(v) for v in r.computed] == ["73600", "11940"]
+
+
+@pytest.mark.parametrize("compute", ["max(単価) - 単価", "max(max(単価))", "median(単価)", "max()"])
+def test_bad_aggregates_are_rejected(compute: str) -> None:
+    with pytest.raises(TableError):
+        run_query(ledger(), "", compute)
+
+
+# ── 誤りの案内（T12） ──
+
+
+def test_every_error_carries_columns_and_an_example() -> None:
+    from arag.agent.table import error_hint
+
+    hint = error_hint(ledger())
+    assert "使える列: 部品番号" in hint and "例" in hint and "max(" in hint

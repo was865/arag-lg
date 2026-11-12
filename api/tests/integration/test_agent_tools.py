@@ -203,3 +203,34 @@ async def test_table_query_reads_the_section_table(
     assert "見つかりません" in await op_table_query(bob, sec_id.group(1), "在庫 < 発注点")
     other = re.search(r"補足.*ID: ([0-9a-f-]{36})", outline)
     assert other is not None and "表はありません" in await op_table_query(ctx, other.group(1))
+
+
+async def test_table_query_errors_guide_and_repeated_failures_are_blocked(
+    world: World, sessionmaker: async_sessionmaker[AsyncSession], qdrant_index: QdrantIndex
+) -> None:
+    """誤りには列名と例を添え、同じ指定での 2 度目の失敗は計算せずに止める（specs/026 T11・T12）。"""
+    ctx = make_ctx(sessionmaker, qdrant_index)
+    outline = await op_get_outline(ctx, world.doc_a)
+    sec_id = re.search(r"判定.*ID: ([0-9a-f-]{36})", outline)
+    assert sec_id is not None
+    async with sessionmaker() as s, s.begin():
+        sec = await s.get(Section, uuid.UUID(sec_id.group(1)))
+        assert sec is not None
+        sec.text = "台帳\n\n| 部品 | 単価 | 在庫 |\n|---|---|---|\n| P-1 | 500 | 6 |\n| P-2 | 900 | 4 |\n"
+    sid = sec_id.group(1)
+    # 集計関数は値と、その値を持つ行を返す
+    out = await op_table_query(ctx, sid, "", "max(単価)")
+    assert "max(単価) = 900" in out and "| P-2 | 900 | 4 |" in out
+    # どの誤りにも列名と書き方の例が付く
+    events = Events()
+    first = await op_table_query(ctx, sid, "在庫 <", "", emit=events)
+    assert "使える列: 部品, 単価, 在庫" in first and "書き方の例" in first
+    assert not [s for s in events.steps() if s["name"] == "system"]
+    # 同じ指定でもう一度失敗しそうな呼び出しは、計算せずに止め、記録に残す
+    again = await op_table_query(ctx, sid, "在庫 <", "", emit=events)
+    assert "同じ指定では失敗する" in again and "calculate" in again
+    blocked = [s for s in events.steps() if s["name"] == "system"]
+    assert len(blocked) == 1 and blocked[0]["input"]["kind"] == "repeat_blocked"
+    assert blocked[0]["input"]["where"] == "在庫 <" and blocked[0]["input"]["source"] == sid
+    # 指定を変えれば、また計算する
+    assert "1 行。" in await op_table_query(ctx, sid, "在庫 < 5", "", emit=events)

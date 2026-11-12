@@ -25,7 +25,7 @@ from arag.agent.context import RunContext
 from arag.agent.numbers import numbers_in, ungrounded
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.primer import with_primer
-from arag.agent.steps import Step, StepClock
+from arag.agent.steps import Step, StepClock, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import LABELS
 from arag.prompts import load_prompt
@@ -82,23 +82,6 @@ def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
     )
     today = (now or datetime.now(TZ)).strftime("%Y年%m月%d日（%a）")
     return load_prompt("agent_system").format(today=today, citation_rule=citation, unknown_rule=unknown)
-
-
-def record_system(emit: Any, step_id: str, kind: str, label: str, summary: str, **detail: Any) -> None:
-    """後ろで行った処理を「システムの処理」のステップとして記録に残す（後端の動きは原則すべて記録に出す）。
-
-    detail の input は入力に、output は出力にそのまま入れる。画面では 1 つの畳んだ組にまとめて見せる。
-    """
-    step = Step(
-        id=step_id,
-        name="system",
-        label=label,
-        status="done",
-        input={"kind": kind, **detail.get("input", {})},
-        output=detail.get("output"),
-        summary=summary,
-    )
-    emit({"type": "step", "step": step.model_dump()})
 
 
 def _turn_start(messages: list[AnyMessage]) -> int:

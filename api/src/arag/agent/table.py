@@ -190,7 +190,10 @@ def _eval(node: ast.expr, row: dict[str, Value], names: list[str]) -> Any:
                 return False
             left = right
         return True
-    raise TableError('読めない式です。比較（< <= > >= == !=）・and・or・not・四則・"語" in 列 が使えます')
+    raise TableError(
+        '読めない式です。比較（< <= > >= == !=）・and・or・not・四則・"語" in 列 が使えます'
+        "（集計関数 max・min・sum・avg・count は compute だけで使えます）"
+    )
 
 
 def _compare(op: ast.cmpop, a: Any, b: Any) -> bool:
@@ -219,19 +222,97 @@ def _parse(expr: str, table: Table, what: str) -> ast.expr:
         ) from e
 
 
+# ── 集計関数（compute で max(列)・min(列)・sum(式)・avg(式)・count()。大文字も可） ──
+
+AGGREGATES = {"max", "min", "sum", "avg", "count"}
+
+
+def _agg_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and not node.keywords:
+        name = node.func.id.lower()
+        return name if name in AGGREGATES else None
+    return None
+
+
+def _has_aggregate(node: ast.AST) -> bool:
+    return any(_agg_name(n) is not None for n in ast.walk(node))
+
+
+@dataclass
+class Pick:
+    """max / min の値と、その値を持つ行（該当行の中の位置）。"""
+
+    expr: str
+    value: Decimal
+    rows: list[int]
+
+
+def _eval_aggregate(
+    node: ast.expr, rows: list[dict[str, Value]], names: list[str], picks: list[Pick]
+) -> Decimal | None:
+    """集計関数を含む式を、該当行全体に対して 1 つの値として計算する。"""
+    if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+        return Decimal(str(node.value))
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub | ast.UAdd):
+        v = _eval_aggregate(node.operand, rows, names, picks)
+        return v if v is None or isinstance(node.op, ast.UAdd) else -v
+    if isinstance(node, ast.BinOp) and type(node.op) in _ARITH:
+        a = _eval_aggregate(node.left, rows, names, picks)
+        b = _eval_aggregate(node.right, rows, names, picks)
+        if a is None or b is None:
+            return None
+        try:
+            return _ARITH[type(node.op)](a, b)
+        except (DivisionByZero, InvalidOperation, ZeroDivisionError):
+            return None
+    fn = _agg_name(node)
+    if fn is None or not isinstance(node, ast.Call):
+        if isinstance(node, ast.Name):
+            raise TableError(
+                f"集計の式では、列「{node.id}」は集計関数の中に書いてください"
+                "（例 max(単価)・sum(在庫 * 単価)）"
+            )
+        raise TableError("集計の式で使えるのは max・min・sum・avg・count と四則だけです")
+    if fn == "count" and not node.args:
+        return Decimal(len(rows))
+    if len(node.args) != 1:
+        raise TableError(f"{fn} には式を 1 つだけ書いてください（例 {fn}(単価)。count は count()）")
+    arg = node.args[0]
+    if _has_aggregate(arg):
+        raise TableError("集計関数の中に集計関数は書けません")
+    vals = [(i, v) for i, row in enumerate(rows) if isinstance(v := _eval(arg, row, names), Decimal)]
+    if fn == "count":
+        return Decimal(len(vals))
+    if not vals:
+        return None
+    nums = [v for _, v in vals]
+    if fn == "sum":
+        return sum(nums, Decimal(0))
+    if fn == "avg":
+        return sum(nums, Decimal(0)) / len(nums)
+    best = max(nums) if fn == "max" else min(nums)
+    picks.append(Pick(f"{fn}({ast.unparse(arg)})", best, [i for i, v in vals if v == best]))
+    return best
+
+
 @dataclass
 class QueryResult:
     table: Table
     matched: list[list[str]]
-    computed: list[Decimal | None]  # compute の結果（行ごと。compute が無ければ空）
+    computed: list[Decimal | None]  # compute の結果（行ごと。compute が無い・集計関数のときは空）
     totals: dict[str, Decimal]  # 数値列の合計（該当行）
+    is_aggregate: bool = False  # compute が集計関数の式か
+    aggregate: Decimal | None = None  # 集計関数の式の値
+    picks: list[Pick] = field(default_factory=list)
 
 
 def run_query(table: Table, where: str = "", compute: str = "") -> QueryResult:
     names = table.aliases()
     cond = _parse(where, table, "条件") if where.strip() else None
     calc = _parse(compute, table, "計算式") if compute.strip() else None
+    is_agg = calc is not None and _has_aggregate(calc)
     matched: list[list[str]] = []
+    matched_rows: list[dict[str, Value]] = []
     computed: list[Decimal | None] = []
     sums: dict[int, Decimal] = {}
     for cells in table.rows:
@@ -239,7 +320,8 @@ def run_query(table: Table, where: str = "", compute: str = "") -> QueryResult:
         if cond is not None and not _eval(cond, row, names):
             continue
         matched.append(cells)
-        if calc is not None:
+        matched_rows.append(row)
+        if calc is not None and not is_agg:
             v = _eval(calc, row, names)
             computed.append(v if isinstance(v, Decimal) else None)
         for i, cell in enumerate(cells):
@@ -251,7 +333,17 @@ def run_query(table: Table, where: str = "", compute: str = "") -> QueryResult:
         i for i in sums if all(isinstance(to_value(r[i]), Decimal) or not r[i].strip() for r in matched)
     ]
     alias = {i: n for n, i in zip(names, sorted(set(table.names.values())), strict=True)}
-    return QueryResult(table, matched, computed, {alias[i]: sums[i] for i in sorted(numeric)})
+    picks: list[Pick] = []
+    aggregate = _eval_aggregate(calc, matched_rows, names, picks) if calc is not None and is_agg else None
+    return QueryResult(
+        table,
+        matched,
+        computed,
+        {alias[i]: sums[i] for i in sorted(numeric)},
+        is_aggregate=is_agg,
+        aggregate=aggregate,
+        picks=picks,
+    )
 
 
 def fmt(v: Decimal) -> str:
@@ -265,13 +357,14 @@ def render(result: QueryResult, where: str, compute: str) -> str:
     head = f"表「{t.title}」" if t.title else "表"
     cond = f"条件 `{where.strip()}` に合う行: " if where.strip() else "全行: "
     lines = [f"{head}（{total} 行）。{cond}{n} 行。行の選択と計算はシステムが行った（正確）。"]
+    per_row = bool(compute.strip()) and not result.is_aggregate
     if n:
-        header = t.header + ([CALC_COLUMN] if compute.strip() else [])
+        header = t.header + ([CALC_COLUMN] if per_row else [])
         lines.append("| " + " | ".join(header) + " |")
         lines.append("|" + "---|" * len(header))
         for k, cells in enumerate(result.matched[:MAX_ROWS_SHOWN]):
             row = list(cells)
-            if compute.strip():
+            if per_row:
                 v = result.computed[k]
                 row.append(fmt(v) if v is not None else "（計算不可）")
             lines.append("| " + " | ".join(row) + " |")
@@ -287,7 +380,27 @@ def render(result: QueryResult, where: str, compute: str) -> str:
             )
         if sums:
             lines.append(f"集計（該当 {n} 行）: " + " / ".join(sums))
+    if result.is_aggregate:
+        value = fmt(result.aggregate) if result.aggregate is not None else "（該当する数値なし）"
+        lines.append(f"{CALC_COLUMN}（{compute.strip()}）の結果: {value}")
+        for p in result.picks:
+            lines.append(f"{p.expr} = {fmt(p.value)} の行（{len(p.rows)} 行）:")
+            lines.append("| " + " | ".join(t.header) + " |")
+            lines.append("|" + "---|" * len(t.header))
+            lines += ["| " + " | ".join(result.matched[i]) + " |" for i in p.rows[:MAX_ROWS_SHOWN]]
     return "\n".join(lines)
+
+
+EXAMPLES = (
+    '書き方の例: where="在庫 < 発注点"・where="単価 >= 10000 and "HP-300" in 適用機種"・'
+    'compute="(発注点 - 在庫) * 単価"（行ごと）・compute="max(単価)"・compute="sum(在庫 * 単価)"・'
+    'compute="count()"（集計）'
+)
+
+
+def error_hint(table: Table) -> str:
+    """誤りに必ず添える案内（使える列名と書き方の例。specs/026 R13）。"""
+    return f"使える列: {', '.join(table.aliases())}\n{EXAMPLES}"
 
 
 def describe_tables(tables: list[Table]) -> str:
