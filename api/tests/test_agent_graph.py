@@ -51,6 +51,45 @@ async def test_search_then_answer_with_citation_cleanup() -> None:
     assert c.stats.tool_calls == 1 and c.stats.model_calls == 2
     # ターンの最初の呼び出しはツールを必ず使わせる（前のターンの記憶だけで引用なしに答えない）
     assert model.tool_choices == ["any", None]
+    # 最初の呼び出しで選べるのは検索だけ（文書一覧だけ見て答えない）
+    assert model.tool_names[0] == ["search", "keyword_search"]
+    assert len(model.tool_names[1]) == 6
+
+
+async def test_must_read_sources_before_answering() -> None:
+    """検索の後も、資料の本文を読むまではツールを必須にする。読む前の最終回答は出させない。"""
+    model = FakeToolModel(
+        messages=script(
+            tool_call("list_documents"),
+            tool_call("search", query="発注点"),
+            AIMessage(content="P-1042 です[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("P-1042 在庫 6 発注点 10")), "発注点を下回る部品は？")
+    # FakeToolModel は台本どおりに答えるので、1 回目の list_documents は本来出せない（検索だけ渡す）。
+    # ここでは 2 回目（資料をまだ読んでいない）にツールが必須になり、3 回目（読んだ後）は自由になることを見る
+    assert model.tool_choices == ["any", "any", None]
+    steps = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
+    forced = [s for s in steps if s["input"]["kind"] == "force_tool"]
+    assert [s["id"] for s in forced] == ["system-force-tool", "system-force-tool-2"]
+    assert forced[0]["input"]["tools"] == ["search", "keyword_search"]
+    assert "読んでいない" in forced[1]["summary"]
+
+
+async def test_answer_allowed_after_searches_find_nothing() -> None:
+    """3 回探しても資料が 0 件なら、それ以上は強制せず「見つからない」と答えさせる。"""
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="a"),
+            tool_call("search", query="b"),
+            tool_call("keyword_search", terms=["c"]),
+            AIMessage(content="資料が見つかりません"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    await run(agent, ctx(FakeSearch()), "q")
+    assert model.tool_choices == ["any", "any", "any", None]
 
 
 class KeywordMissSearch(FakeSearch):
@@ -89,7 +128,7 @@ async def test_step_budget_forces_final_answer_without_tools() -> None:
     c = ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3))
     state, _ = await run(agent, c, "q")
     assert state["messages"][-1].text == "まとめ[1]"
-    assert model.tool_counts == [6, 6, 0]  # 3 回目はツールなし
+    assert model.tool_counts == [2, 6, 0]  # 1 回目は検索だけ、3 回目はツールなし
     assert "最終回答" in model.calls[2][0].text
 
 

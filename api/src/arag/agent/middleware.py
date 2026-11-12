@@ -49,6 +49,10 @@ GAP_NOTE = (
 )
 GAP_REVIEW_MAX_SEARCHES = 2  # この回数を超えて検索していれば、調べ尽くしたとみなす
 SEARCH_TOOLS = {"search", "keyword_search"}
+# 資料の本文を返すツール（一覧・目次は含めない）
+READ_TOOLS = SEARCH_TOOLS | {"read_section"}
+# 資料を読むまでツールを必須にする上限（検索してもなお 0 件なら「見つからない」と答えてよい）
+FORCE_READ_MAX_ATTEMPTS = 3
 
 
 def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
@@ -139,15 +143,30 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
                 output={"note": FINAL_NOTE.strip()},
             )
         elif calls == 1 and ctx.cfg.require_citations and request.tools:
-            # 小さいモデルは追質問で前の回答だけを頼りに引用なしで答えがちなので、最初は必ずツールを使わせる
+            # RAG の最初の一歩は検索。小さいモデルは文書一覧だけ見て「こう調べてください」と答えたり、
+            # 追質問で前の回答だけを頼りに答えたりするので、最初は検索のツールだけを渡して必ず使わせる
+            first = [t for t in request.tools if _tool_name(t) in SEARCH_TOOLS] or list(request.tools)
             overrides["tool_choice"] = "any"
+            overrides["tools"] = first
+            names = [_tool_name(t) for t in first]
             record_system(
                 emit,
                 "system-force-tool",
                 "force_tool",
-                "ツールの使用を必須に",
-                "ターンの最初の呼び出しで、ツールを必ず使わせた（前の回答だけを頼りに引用なしで答えないため）",
-                input={"tool_choice": "any"},
+                "最初は検索を必須に",
+                f"ターンの最初の呼び出しで、検索（{'・'.join(names)}）を必ず使わせた",
+                input={"tool_choice": "any", "tools": names},
+            )
+        elif ctx.cfg.require_citations and request.tools and _must_read(msgs[start:]):
+            # 検索が 0 件だった・一覧や目次しか見ていないなど、資料の本文をまだ読んでいないうちは答えさせない
+            overrides["tool_choice"] = "any"
+            record_system(
+                emit,
+                f"system-force-tool-{calls}",
+                "force_tool",
+                "資料を読むまでツールを必須に",
+                f"{calls} 回目の呼び出し: まだ資料の本文を読んでいないので、ツールを必ず使わせた",
+                input={"tool_choice": "any", "calls": calls},
             )
         response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
         gap = _gap_review(ctx, msgs[start:], response, calls, bool(request.tools))
@@ -183,6 +202,17 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             {"note": GAP_NOTE, "next_tools": tools},
         )
         return redo
+
+
+def _tool_name(tool: Any) -> str:
+    return str(tool.get("name", "")) if isinstance(tool, dict) else str(getattr(tool, "name", ""))
+
+
+def _must_read(turn: list[AnyMessage]) -> bool:
+    """資料の本文（検索の結果・章）をまだ 1 件も受け取っておらず、探す余地も残っているか。"""
+    reads = [m for m in turn if isinstance(m, ToolMessage) and m.name in READ_TOOLS]
+    got = any(m.status != "error" and "<資料" in m.text for m in reads)
+    return not got and len(reads) < FORCE_READ_MAX_ATTEMPTS
 
 
 def _gap_review(

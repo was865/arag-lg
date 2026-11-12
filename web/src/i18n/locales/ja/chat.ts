@@ -154,6 +154,7 @@ export const chat = {
     max_steps: "上限",
     note: "モデルへの指示",
     tool_choice: "ツールの指定",
+    tools: "使えるツール",
     before: "整形の前",
     after: "整形の後",
     removed_numbers: "消した番号",
