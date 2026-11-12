@@ -1,5 +1,7 @@
 # 交接：用 LangGraph 重写 ARag（日语版）
 
+> **歴史的な資料（2026-11-08 着手時の計画）。** P0〜P5 の段階はすでに実装済み（`specs/001`〜）。今の決まりは `AGENTS.md`、運用は `docs/operations.md`、構成は `docs/architecture.html`。この文書は「なぜこう作ったか」（旧版との違い・ライセンスの原則・旧ソースの地図）を残すために置いている。
+
 > 给新 session 的 Claude 读。旧项目（只读参考）：`/Users/ansen/Documents/Projects/playground/a-rag`
 > 新项目就是本仓库：`/Users/ansen/Documents/Projects/playground/arag-lg`。不要改旧仓库。
 > 旧仓库基准：`main@83b37005`（`c3ae45e` 之后只多了品牌标识更新：`BrandMark` 换成「小写 a + 上标引用方块」，PWA 图标与 favicon 同步更新）。
