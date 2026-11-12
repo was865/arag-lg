@@ -161,6 +161,11 @@ def wrong_facts_found(answer: str, facts: list[list[str]]) -> list[str]:
 _DECLINE = re.compile(
     r"(記載|明記|言及|明示|記述)(が|は)?(され)?(てい)?(ありません|ない|ません|無い|なし)"
     r"|示されていな|示されていません|見つかりませんでした|見当たりません|資料に(は)?(ありません|ない|無い)"
+    # 「データが含まれていません」「資料からは確認できません」「お答えすることができません」（Gemma 4）。
+    # 「送料は含まれていません」のような補足に当たらないよう、情報を指す語や資料に続くときだけ見る
+    r"|(情報|データ|数値|記述|記載|値)(は|が|も)?(一切)?含まれてい(な|ません)"
+    r"|(資料|検索結果|文書)(の中)?(から|で|に)(は)?確認でき(な|ません)"
+    r"|お答え(する)?(こと)?(が|は)?できません"
     r"|not (explicitly |directly )?(mention|state|specif|provide|include|contain|found|cover)"
     r"|(does|do|is|are) not (mention|state|specify|provide|include|contain)"
     r"|no (information|mention|details?) (about|on|regarding)"
@@ -170,6 +175,15 @@ _DECLINE = re.compile(
 def declines(answer: str) -> bool:
     """回答が「資料に記載が無い」と述べているか。"""
     return bool(_DECLINE.search(canon(answer)))
+
+
+def score_citation_precision(case: Case, cited: set[str], *, declined: bool, wrong_found: list[str]) -> float:
+    """引用精度。答えの無い題（expect_no_answer かつ relevant_documents が空）で、資料に無いと述べ
+    （回答不能を含む）、誤りの値も書いていなければ、近い資料を引用していても 1.0 とする（2026-11-13）。
+    値を言い切った答えと、答えのある題は今までどおり引用の当たりで測る。"""
+    if case.expect_no_answer and not case.relevant_documents and declined and not wrong_found:
+        return 1.0
+    return citation_precision(cited, case.relevant_documents)
 
 
 def _coverage(matched: list[bool]) -> float:
@@ -351,9 +365,11 @@ async def run_case(
     cited = cited_documents(data)
     matched = facts_matched(answer, facts)
     no_answer = data.get("no_answer_reason") is not None
+    declined = no_answer or declines(answer)
     if case.expect_no_answer:
         # 答えの無い題は、資料に無いと答えたか（回答不能を含む）だけを見る
-        matched = [no_answer or declines(answer)]
+        matched = [declined]
+    wrong_found = wrong_facts_found(answer, [f.any for f in case.wrong_facts])
     faith: float | None = None
     unsupported: list[str] = []
     claims: list[dict[str, Any]] = []
@@ -374,7 +390,9 @@ async def run_case(
         cited_documents=cited,
         relevant_documents=case.relevant_documents,
         citation_recall=citation_recall(set(cited), case.relevant_documents),
-        citation_precision=citation_precision(set(cited), case.relevant_documents),
+        citation_precision=score_citation_precision(
+            case, set(cited), declined=declined, wrong_found=wrong_found
+        ),
         fact_coverage=_coverage(matched),
         faithfulness=faith,
         unsupported_claims=unsupported,
@@ -385,7 +403,7 @@ async def run_case(
         judge_error=judge_error,
         facts_matched=matched,
         wrong_checked=bool(case.wrong_facts),
-        wrong_facts_found=wrong_facts_found(answer, [f.any for f in case.wrong_facts]),
+        wrong_facts_found=wrong_found,
         claims=claims,
         judge_sources=sources if judge is not None else [],
         **traj,

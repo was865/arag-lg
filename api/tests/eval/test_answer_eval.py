@@ -341,3 +341,68 @@ def test_summarize_wrong_fact_rate_counts_only_cases_with_wrong_facts() -> None:
     assert summarize([_result(id="c")])["wrong_fact_rate"] is None
     md = to_markdown({"suite": "demo", "model_id": None, "summary": s, "cases": [r.__dict__ for r in rs]})
     assert "| 誤りの記述 |" in md and "- a: 600分" in md
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # hm57（Gemma 4 12B）: 「含まれていません」「お答えすることができません」
+        "提供された検索結果の中には、9月の生産台数を示す表やデータが含まれていません。お答えすることができません。",
+        # hm58（Gemma 4 12B）: 「資料からは確認できません」
+        "10月の出荷検査の不良率に関する実績は、現在の資料からは確認できません。",
+        "生産台数に関する数値は含まれていません。",
+    ],
+)
+def test_declines_detects_not_included_or_not_confirmable(answer: str) -> None:
+    assert declines(answer)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # 値を答えたうえで補足として「含まれていません」と書く回答は、断りとみなさない
+        "価格は 12,000 円です [1]。送料は含まれていません。",
+        "納期は 5 日です [1]。",
+    ],
+)
+def test_declines_ignores_incidental_phrases(answer: str) -> None:
+    assert not declines(answer)
+
+
+# 答えの無い題で「資料に無い」と答えつつ、近い資料を引用したときの引用精度（2026-11-13 の規則）
+@pytest.mark.parametrize(
+    ("answer", "reason", "wrong", "precision"),
+    [
+        # 資料に無いと述べ、近い資料を引用 → 罰しない
+        ("HP-350 の記載はありません。HP-300 は 300 L/min です [1]。", None, [], 1.0),
+        # 回答不能（no_answer_reason）も同じ
+        ("近い資料: [1]", "no_relevant_sources", [], 1.0),
+        # 値を言い切った → 引用した資料は無関係なので 0 のまま
+        ("最大吐出量は 350 L/min です [1]。", None, [], 0.0),
+        # 資料に無いと述べても、誤りの値を書いたら 0 のまま
+        ("HP-350 の記載はありません。ただし 350 L/min と思われます [1]。", None, ["350 L/min"], 0.0),
+    ],
+)
+async def test_run_case_noans_citation_precision(
+    answer: str, reason: str | None, wrong: list[str], precision: float
+) -> None:
+    api = FakeApi([("run.completed", {**COMPLETED, "answer": answer, "no_answer_reason": reason})])
+    case = Case(
+        id="n2",
+        query="HP-350 の最大吐出量は？",
+        tags=["ja", "noans"],
+        expect_no_answer=True,
+        wrong_facts=[KeyFact(any=wrong)] if wrong else [],
+    )
+    r = await run_case(api, case, kb_id="kb1", model_id=None)
+    assert r.cited_documents  # 近い資料を引用している
+    assert r.citation_precision == precision
+
+
+async def test_run_case_normal_case_precision_unchanged_by_decline() -> None:
+    """答えのある題は、「資料に無い」と述べても今までどおり引用の当たりで測る。"""
+    api = FakeApi([("run.completed", {**COMPLETED, "answer": "記載はありません [1][2]。"})])
+    case = Case(id="r", query="停止？", relevant_documents=["a.pdf"])
+    r = await run_case(api, case, kb_id="kb1", model_id=None)
+    assert r.citation_precision == citation_precision(set(r.cited_documents), ["a.pdf"])
+    assert r.citation_precision < 1.0
