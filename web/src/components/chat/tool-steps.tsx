@@ -133,6 +133,13 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
       <path d="M6 7.8l1.5 1.5L10.3 6" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  // 調べ残しの見直し（下書きを差し戻す）: 戻る矢印つきの文書
+  review: (
+    <>
+      <path d="M4 2h6l3 3v9H4V2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+      <path d="M10.5 9.5H7m0 0l1.6-1.6M7 9.5l1.6 1.6" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
   revise: (
     <>
       <path d="M10.5 3.2l2.3 2.3-6.6 6.6-2.9.6.6-2.9 6.6-6.6z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
@@ -266,6 +273,25 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   }
   if ((step.name === "verify" || step.name === "revise") && typeof step.input.model === "string") {
     return <ModelBlock model={step.input.model} />;
+  }
+  if (step.name === "review") {
+    // 差し戻した下書きを丸ごと見せる（回答の欄からは消えるが、記録には残す）
+    const rows: { k: string; v: React.ReactNode }[] = [];
+    if (typeof step.input.trigger === "string") rows.push({ k: t.chat.reviewTrigger, v: `「${step.input.trigger}」` });
+    if (typeof step.input.searches === "number") rows.push({ k: t.chat.reviewSearches, v: String(step.input.searches) });
+    return (
+      <div className="space-y-2">
+        {rows.length > 0 && <KeyValueGrid rows={rows} />}
+        {typeof step.input.draft === "string" && (
+          <div>
+            <div className={sectionLabelCls}>{t.chat.reviewDraft}</div>
+            <div className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
+              {step.input.draft.trim()}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
   if (step.name === "retrieve" && typeof step.input.query === "string") {
     return (
@@ -596,6 +622,22 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (step.name === "review" && typeof output.note === "string") {
+    const next = Array.isArray(output.next_tools) ? (output.next_tools as unknown[]).map(String) : [];
+    return (
+      <div className="space-y-2">
+        <div>
+          <div className={sectionLabelCls}>{t.chat.reviewNote}</div>
+          <div className="whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
+            {output.note}
+          </div>
+        </div>
+        <KeyValueGrid rows={[{ k: t.chat.reviewNext, v: next.length ? next.join("・") : t.chat.reviewRewrote }]} />
+        {typeof output.error === "string" && <pre className={preCls}>{output.error}</pre>}
       </div>
     );
   }

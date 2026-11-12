@@ -97,30 +97,59 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             # 小さいモデルは追質問で前の回答だけを頼りに引用なしで答えがちなので、最初は必ずツールを使わせる
             overrides["tool_choice"] = "any"
         response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
-        if not _needs_gap_review(ctx, msgs[start:], response, calls, bool(request.tools)):
+        gap = _gap_review(ctx, msgs[start:], response, calls, bool(request.tools))
+        if gap is None:
             return response
         # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち。
-        # 下書きを添えて 1 度だけ差し戻す（下書きと依頼は状態に残さず、この呼び出しの中だけで使う）
+        # 下書きを添えて 1 度だけ差し戻す。下書きと依頼は会話の状態には入れないが、
+        # 差し戻したこと（下書き・きっかけの語・依頼・その結果）は「見直し」のステップとして記録に残す
+        trigger, searches, answer = gap
         ctx.stats.gap_reviews += 1
+        clock = StepClock(
+            request.runtime.stream_writer,
+            Step(
+                id=f"review-{ctx.stats.gap_reviews}",
+                name="review",
+                label="調べ残しの見直し",
+                status="running",
+                input={"draft": answer, "trigger": trigger, "searches": searches},
+                summary="下書きを差し戻して書き直し中",
+            ),
+        )
         draft = cast(AIMessage, response.result[-1])
         retry: list[AnyMessage] = [*compact, draft, HumanMessage(GAP_NOTE)]
-        return await handler(request.override(system_message=SystemMessage(prompt), messages=retry))
+        try:
+            redo = await handler(request.override(system_message=SystemMessage(prompt), messages=retry))
+        except Exception as e:
+            clock.done("差し戻しに失敗しました", {"note": GAP_NOTE, "error": str(e)[:300]}, error=True)
+            raise
+        last = redo.result[-1] if redo.result else None
+        tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
+        clock.done(
+            f"「{trigger}」のため差し戻し → " + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
+            {"note": GAP_NOTE, "next_tools": tools},
+        )
+        return redo
 
 
-def _needs_gap_review(
+def _gap_review(
     ctx: RunContext, turn: list[AnyMessage], response: ModelResponse[Any], calls: int, has_tools: bool
-) -> bool:
-    """下書きを差し戻すか。最終回答で、調べ残しを認めていて、検索が少なく、回数にまだ余裕があるとき。"""
+) -> tuple[str, int, str] | None:
+    """下書きを差し戻すなら（きっかけの語, 検索の回数, 下書き）を返す。
+
+    最終回答で、調べ残しを認めていて、検索が少なく、回数にまだ余裕があるとき。
+    """
     if not has_tools or ctx.stats.gap_reviews or calls + 2 > ctx.cfg.max_steps:
-        return False
+        return None
     last = response.result[-1] if response.result else None
     if not isinstance(last, AIMessage) or last.tool_calls:
-        return False
+        return None
     searches = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
     if searches == 0 or searches > GAP_REVIEW_MAX_SEARCHES:
-        return False
+        return None
     _, answer = split_thinking(last.text)
-    return bool(GAP.search(answer))
+    m = GAP.search(answer)
+    return (m.group(0), searches, answer) if m else None
 
 
 _MATERIAL = re.compile(r"<資料 n=")

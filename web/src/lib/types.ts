@@ -48,6 +48,7 @@ export type ToolName =
   | "grade"
   | "verify"
   | "revise"
+  | "review"
   | "fetch_document"
   | "calculate"
   | "summarize"

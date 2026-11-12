@@ -145,8 +145,15 @@ async def test_gap_answer_after_few_searches_is_sent_back_once() -> None:
     )
     agent = build_agent(model, checkpointer=InMemorySaver())
     c = ctx(FakeSearch("HP-300 第3版", "SK-300 在庫 5"))
-    state, _ = await run(agent, c, "第3版の変更点と、関連部品の在庫は？")
+    state, custom = await run(agent, c, "第3版の変更点と、関連部品の在庫は？")
     assert state["messages"][-1].text == "変更点はトルク値です[1]。在庫は 5 個です[2]。"
+    # 差し戻しは記録に残す（下書き・きっかけの語・差し戻した依頼）。技術者があとから追えるように
+    review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"]
+    assert [s["status"] for s in review] == ["running", "done"]
+    done = review[-1]
+    assert done["input"]["draft"] == "変更点はトルク値です[1]。在庫数は資料に記載されていません。"
+    assert done["input"]["trigger"] == "記載されていません" and done["input"]["searches"] == 1
+    assert "まだ調べていない" in done["output"]["note"]
     # 見直しの依頼は 2 回目の呼び出しの中だけにあり、会話の状態（checkpoint）には残さない
     retry = model.calls[2]
     assert isinstance(retry[-1], HumanMessage) and "まだ調べていない" in retry[-1].text
