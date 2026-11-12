@@ -25,6 +25,7 @@ from arag.eval.metrics import normalize_text
 
 TERMINAL = {"run.completed", "run.failed", "run.cancelled"}
 SEARCH_TOOLS = {"search", "keyword_search"}
+NON_TOOL_STEPS = {"system", "reasoning", "review", "switch_model"}
 
 Judge = Callable[[str, str, list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]]
 
@@ -125,7 +126,8 @@ class Trajectory(TypedDict):
 
 
 def trajectory(steps: list[dict[str, Any]]) -> Trajectory:
-    top = [s for s in steps if not s.get("parent_id")]
+    # モデルが呼んだツールだけを数える（システムの処理・考えた過程・見直し・モデルの切り替えは除く）
+    top = [s for s in steps if not s.get("parent_id") and s["name"] not in NON_TOOL_STEPS]
     return {
         "tool_calls": len(top),
         "search_calls": sum(1 for s in top if s["name"] in SEARCH_TOOLS),

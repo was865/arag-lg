@@ -87,6 +87,11 @@ def test_trajectory_counts_model_tools_and_search_attempts() -> None:
         {"id": "c1:rw", "name": "rewrite_query", "parent_id": "c1", "input": {}},
         {"id": "c1:r2", "name": "retrieve", "parent_id": "c1", "input": {}},
         {"id": "c2", "name": "read_section", "parent_id": None, "input": {}},
+        # モデルのツールではないステップ（システムの処理・考えた過程・見直し・モデルの切り替え）は数えない
+        {"id": "s1", "name": "system", "parent_id": None, "input": {"kind": "force_tool"}},
+        {"id": "t1", "name": "reasoning", "parent_id": None, "input": {}},
+        {"id": "v1", "name": "review", "parent_id": None, "input": {}},
+        {"id": "m1", "name": "switch_model", "parent_id": None, "input": {}},
     ]
     assert trajectory(steps) == {"tool_calls": 2, "search_calls": 1, "retrieve_attempts": 2, "rewrites": 1}
 
