@@ -7,6 +7,7 @@ import type { Source, ToolCall, ToolView } from "@/lib/types";
 import { Icon } from "@/components/icons";
 import { searchStory } from "@/lib/chat/evidence";
 import { CitedTitlesContext } from "@/components/chat/search-detail";
+import { ActivityGlyph, activityOf, type Activity } from "@/components/chat/activity-glyph";
 import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
@@ -52,8 +53,10 @@ function StageRail({ stage, labels }: { stage: number; labels: string[] }) {
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
-  steps, sources, variant, running, expandedMap, onToggleStep,
+  steps, sources, variant, running, answering = false, expandedMap, onToggleStep,
 }: {
+  /** 回答の本文が流れ始めているか（実行中のステップが無いあいだ、考えているのか書いているのかを見分ける） */
+  answering?: boolean;
   steps: ToolCall[];
   /** この回答が引用した出典（検索の過程の「何件を引用」に使う） */
   sources?: Source[];
@@ -83,6 +86,8 @@ export function AgentActivity({
   // 推論を隠していても、考えている最中なら「実行中」より具体的に言う（検索の合間に長く考えることがある）
   const thinking = steps.some((s) => s.name === "reasoning" && s.status === "running");
 
+  // いまの動きの絵: 実行中のステップがあればその種類、無ければ「考える」か「書く」
+  const activity: Activity = current ? activityOf(current.name) : thinking || !answering ? "think" : "write";
   // 質問の理解のステップがあるターンは、系統が導く流れ（specs/026）
   const guided = steps.some((s) => s.name === "understand");
 
@@ -112,11 +117,14 @@ export function AgentActivity({
               stage={stageOf(current)}
               labels={[t.chat.stageUnderstand, t.chat.stageSearch, t.chat.stageAnswer, t.chat.stageCheck]}
             />
-            <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <ActivityGlyph activity={activity} />
+              <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
+            </span>
           </span>
         ) : running ? (
           <span className="inline-flex items-center gap-2">
-            <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+            <ActivityGlyph activity={activity} />
             <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
           </span>
         ) : story.searched > 0 ? (

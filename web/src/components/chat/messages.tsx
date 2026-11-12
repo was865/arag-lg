@@ -6,6 +6,7 @@ import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { EvidenceRail } from "@/components/chat/evidence-rail";
 import { evidenceList } from "@/lib/chat/evidence";
+import { ActivityGlyph } from "@/components/chat/activity-glyph";
 import {
   AnswerFooter,
   CancelledNotice,
@@ -267,7 +268,7 @@ export function Transcript({
               {isLast && isLiveLastTurn && liveAttachments.length > 0 && <UserAttachments files={liveAttachments} />}
               {running && turn.steps.length === 0 && (
                 <div className="flex items-center gap-2 text-footnote text-muted">
-                  <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+                  <ActivityGlyph activity="think" />
                   <span className="text-shimmer font-medium">{t.chat.thinking}</span>
                 </div>
               )}
@@ -276,6 +277,7 @@ export function Transcript({
                 sources={turn.sources}
                 variant={toolView}
                 running={running}
+                answering={turn.answer.length > 0}
                 expandedMap={expandedSteps}
                 onToggleStep={onToggleStep}
               />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseRetrieveHits } from "@/lib/chat/evidence";
 import { SearchDetail, searchHits } from "@/components/chat/search-detail";
+import { ActivityGlyph, activityOf } from "@/components/chat/activity-glyph";
 import { cn, formatMs } from "@/lib/utils";
 import { Icon } from "@/components/icons";
 import type { RerankHit, ToolCall, ToolName, ToolStatus, ToolView } from "@/lib/types";
@@ -170,11 +171,12 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
   ),
 };
 
-function StatusIcon({ status, t }: { status: ToolStatus; t: Dictionary }) {
+function StatusIcon({ status, t, name }: { status: ToolStatus; t: Dictionary; name?: ToolName }) {
   if (status === "running")
+    // 回る輪でなく、いましていること（検索・読む・計算…）の絵を動かす
     return (
       <span className="grid h-4 w-4 place-items-center" aria-label={t.chat.statusRunning}>
-        <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+        <ActivityGlyph activity={activityOf(name)} size={13} />
       </span>
     );
   if (status === "done")
@@ -827,10 +829,11 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   return <pre className={preCls}>{JSON.stringify(output, null, 2)}</pre>;
 }
 
-function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expanded: boolean; onToggle: () => void; t: Dictionary }) {
-  const expandable = isExpandable(step);
-  const showInput = hasInputData(step.input);
-  const showOutput = step.output != null;
+function ToolStepCard({ step, expanded, onToggle, t, hasChildren = false }: { step: ToolCall; expanded: boolean; onToggle: () => void; t: Dictionary; hasChildren?: boolean }) {
+  // 子（検索の明細など）を持つ段階は、開閉で子を出す。自分の入力・出力は子と同じ内容なので出さない
+  const expandable = hasChildren || isExpandable(step);
+  const showInput = !hasChildren && hasInputData(step.input);
+  const showOutput = !hasChildren && step.output != null;
   return (
     <div className="border-b-[0.5px] border-divider last:border-b-0">
       <button
@@ -844,7 +847,7 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
           step.status === "running" && "bg-accent-soft",
         )}
       >
-        <StatusIcon status={step.status} t={t} />
+        <StatusIcon status={step.status} t={t} name={step.name} />
         <span className="grid place-items-center text-accent">
           <svg viewBox="0 0 16 16" width="13" height="13">
             {TOOL_ICONS[step.name]}
@@ -868,7 +871,7 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
           <span aria-hidden className="block h-[11px] w-[11px]" />
         )}
       </button>
-      {expandable && expanded && (
+      {expandable && expanded && !hasChildren && (
         <div className="flex flex-col gap-2.5 border-t-[0.5px] border-dashed border-divider bg-surface px-3.5 pb-3.5 pl-10 pt-2 max-md:pl-3.5">
           {showInput && (
             <div>
@@ -888,15 +891,15 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
   );
 }
 
-function ToolStepTimeline({ step, expanded, onToggle, isLast, t }: { step: ToolCall; expanded: boolean; onToggle: () => void; isLast: boolean; t: Dictionary }) {
-  const expandable = isExpandable(step);
-  const showInput = hasInputData(step.input);
-  const showOutput = step.output != null;
+function ToolStepTimeline({ step, expanded, onToggle, isLast, t, hasChildren = false }: { step: ToolCall; expanded: boolean; onToggle: () => void; isLast: boolean; t: Dictionary; hasChildren?: boolean }) {
+  const expandable = hasChildren || isExpandable(step);
+  const showInput = !hasChildren && hasInputData(step.input);
+  const showOutput = !hasChildren && step.output != null;
   return (
     <div className="grid grid-cols-[22px_1fr]">
       <div className="grid grid-rows-[auto_1fr] items-start justify-items-center pt-0.5">
         <div className="grid h-[22px] w-[22px] place-items-center bg-surface-2">
-          <StatusIcon status={step.status} t={t} />
+          <StatusIcon status={step.status} t={t} name={step.name} />
         </div>
         {!isLast && <div className="min-h-4 w-[1.5px] flex-1 bg-divider-strong" />}
       </div>
@@ -915,7 +918,7 @@ function ToolStepTimeline({ step, expanded, onToggle, isLast, t }: { step: ToolC
           <span className="min-w-0 flex-1 truncate text-footnote text-muted">{step.summary}</span>
           <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
         </button>
-        {expandable && expanded && (
+        {expandable && expanded && !hasChildren && (
           <div className="flex flex-col gap-2 pt-2">
             {showInput && (
               <div>
@@ -1033,7 +1036,7 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
           expandable ? "cursor-pointer hover:text-fg" : "cursor-default",
         )}
       >
-        <StatusIcon status={step.status} t={t} />
+        <StatusIcon status={step.status} t={t} name={step.name} />
         <span className="grid place-items-center text-muted-2">
           <svg viewBox="0 0 16 16" width="12" height="12">{TOOL_ICONS[step.name]}</svg>
         </span>
@@ -1156,9 +1159,9 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
       <div className="px-3.5 pb-3 pt-2 max-md:px-3">
         {roots.map((s, i) => (
           <div key={s.id}>
-            <ToolStepTimeline step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} isLast={i === roots.length - 1} t={t} />
-            {childrenOf.has(s.id) && (
-              <div className="mb-2 ml-[22px] pl-1">
+            <ToolStepTimeline step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} isLast={i === roots.length - 1} t={t} hasChildren={childrenOf.has(s.id)} />
+            {childrenOf.has(s.id) && expandedMap[s.id] && (
+              <div className="mb-2 ml-[22px] animate-fade-up pl-1 motion-reduce:animate-none">
                 <SubSteps steps={childrenOf.get(s.id)} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
               </div>
             )}
@@ -1172,9 +1175,9 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
     <div className="flex flex-col">
       {roots.map((s) => (
         <div key={s.id}>
-          <ToolStepCard step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} />
-          {childrenOf.has(s.id) && (
-            <div className="border-b-[0.5px] border-divider bg-surface px-3.5 py-2 pl-10 max-md:pl-6">
+          <ToolStepCard step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} hasChildren={childrenOf.has(s.id)} />
+          {childrenOf.has(s.id) && expandedMap[s.id] && (
+            <div className="animate-fade-up border-b-[0.5px] border-divider bg-surface px-3.5 py-2 pl-10 motion-reduce:animate-none max-md:pl-6">
               <SubSteps steps={childrenOf.get(s.id)} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
             </div>
           )}

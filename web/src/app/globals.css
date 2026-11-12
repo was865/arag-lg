@@ -560,3 +560,60 @@
     transform: none;
   }
 }
+
+/* いまの動きを示す絵（components/chat/activity-glyph.tsx）。絵ごとの小さな動き */
+@keyframes ar-g-orbit {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(1.4px, -0.8px); }
+  50% { transform: translate(0.6px, 1.2px); }
+  75% { transform: translate(-1.2px, 0.4px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes ar-g-scan {
+  0% { transform: translateY(-1.5px); opacity: 0.2; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(5.5px); opacity: 0.2; }
+}
+@keyframes ar-g-cell {
+  0%, 100% { opacity: 0.12; }
+  35% { opacity: 0.85; }
+}
+@keyframes ar-g-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-2.6px); opacity: 1; }
+}
+@keyframes ar-g-draw {
+  0% { stroke-dashoffset: 1; }
+  55%, 85% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -1; }
+}
+@keyframes ar-g-rock {
+  0%, 100% { transform: rotate(-5deg) translateX(-0.4px); }
+  50% { transform: rotate(5deg) translateX(0.8px); }
+}
+@keyframes ar-g-twinkle {
+  0%, 100% { transform: scale(0.55) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.15) rotate(45deg); opacity: 1; }
+}
+@keyframes ar-g-slide {
+  0%, 100% { transform: translateX(-1px); }
+  50% { transform: translateX(1.2px); }
+}
+.ar-g-orbit { animation: ar-g-orbit 1.5s ease-in-out infinite; }
+.ar-g-scan { animation: ar-g-scan 1.3s ease-in-out infinite; }
+.ar-g-cell { animation: ar-g-cell 1.1s ease-in-out infinite; }
+.ar-g-dot { animation: ar-g-dot 1.1s ease-in-out infinite; }
+.ar-g-draw { stroke-dasharray: 1; animation: ar-g-draw 1.5s ease-in-out infinite; }
+.ar-g-rock { animation: ar-g-rock 0.9s ease-in-out infinite; }
+.ar-g-twinkle { animation: ar-g-twinkle 1.2s ease-in-out infinite; }
+.ar-g-slide { animation: ar-g-slide 1s ease-in-out infinite; }
+.ar-g-slide-back { animation: ar-g-slide 1s ease-in-out infinite reverse; }
+.ar-g-turn { animation: ar-spin 3.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ar-g-orbit, .ar-g-scan, .ar-g-cell, .ar-g-dot, .ar-g-draw, .ar-g-rock, .ar-g-twinkle, .ar-g-slide, .ar-g-slide-back, .ar-g-turn {
+    animation: none;
+  }
+  .ar-g-draw { stroke-dasharray: none; }
+  .ar-g-cell { opacity: 0.5; }
+}
