@@ -84,7 +84,8 @@ services:
     ipc: host
     volumes: [hf-cache:/root/.cache/huggingface]
     restart: unless-stopped
-    # vllm-vl が起動完了を待つための目印（2 つを同時に起動すると CUDA graph の取得を取り合い 15 分以上止まる）
+    # vllm-vl が起動完了を待つための目印（2 つを同時に起動すると CUDA graph の取得を取り合い 15 分以上止まる。
+    # 待つのは vllm-vl の entrypoint。depends_on だけでは Docker の自動再起動・画面からの開始で効かない）
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -105,6 +106,30 @@ services:
     depends_on:
       vllm: { condition: service_healthy, required: false }
     image: vllm/vllm-openai:v0.32.0
+    # depends_on が効くのは `docker compose up` だけで、Docker Engine の自動再起動（restart: unless-stopped）や
+    # Docker Desktop の画面の一括「開始」では 2 つが同時に起動し、CUDA graph の取得で止まる（2026-11-11・11-12 に実際に起きた）。
+    # どこから起動しても順番になるよう、コンテナの中で vllm の /health を待ってから起動する。
+    # - vllm の名前が引けるまで VLM_WAIT_DNS_SECONDS（既定 60 秒）待つ（同時起動では vllm-vl が先に立ち上がることがある）。
+    #   引けなければ vllm は動いていない（vlm だけの構成）とみなして、すぐ起動する。
+    # - 引けたら /health が 200 を返すまで、最大 VLM_WAIT_SECONDS（既定 1500 秒）待つ。待ちきれなければそのまま起動する。
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        dns_end=$$(( $$(date +%s) + $${VLM_WAIT_DNS_SECONDS:-60} ))
+        until getent hosts vllm >/dev/null 2>&1; do
+          if [ "$$(date +%s)" -ge "$$dns_end" ]; then echo "[wait] vllm が見つからないので待たずに起動する"; exec vllm serve "$$@"; fi
+          sleep 2
+        done
+        echo "[wait] vllm の起動完了（/health）を待つ"
+        end=$$(( $$(date +%s) + $${VLM_WAIT_SECONDS:-1500} ))
+        until python3 -c "import urllib.request; urllib.request.urlopen('http://vllm:8000/health', timeout=3)" 2>/dev/null; do
+          if [ "$$(date +%s)" -ge "$$end" ]; then echo "[wait] 待ちきれないので起動する"; break; fi
+          sleep 5
+        done
+        echo "[wait] vllm が起動した。vllm-vl を起動する"
+        exec vllm serve "$$@"
+      - vllm-vl
     command:
       - "--model=${VLM_HF_MODEL:-Qwen/Qwen3-VL-8B-Instruct-FP8}"
       - "--served-model-name=${VLM_SERVED_NAME:-qwen3-vl}"
