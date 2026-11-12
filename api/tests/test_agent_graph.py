@@ -417,3 +417,10 @@ async def test_summarization_is_recorded() -> None:
     assert step["name"] == "system" and step["input"]["kind"] == "summarize_history"
     assert step["input"]["messages_before"] == 6 and step["input"]["kept"] == 2
     assert "これまでの要約" in step["output"]["summary"]
+
+
+def test_send_back_notes_ask_to_keep_citation_numbers() -> None:
+    from arag.agent.middleware import GAP_NOTE, NUMBER_NOTE, TABLE_NOTE
+
+    for note in (GAP_NOTE, TABLE_NOTE, NUMBER_NOTE):
+        assert "書き直すときも" in note and "出典番号" in note

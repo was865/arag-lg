@@ -46,3 +46,13 @@ def test_history_keeps_last_turns_without_tool_results() -> None:
         "利用者: 三つ目",
         "アシスタント: 三つ目の答え",
     ]
+
+
+def test_prompt_limits_table_and_resolves_references_to_the_last_answer() -> None:
+    from arag.prompts import load_prompt
+
+    p = load_prompt("agent_understand")
+    # 表の集計は、複数の行を選ぶ・数える・集計する・比べるときだけ（1 つの値を読むだけなら false）
+    assert "1 つの値を読むだけ" in p and "false" in p
+    # 「そこ」「それ」は、まず直前の回答に出た答えを指すとみなす（hm62）
+    assert "直前のアシスタントの回答" in p and "そこのリードタイム" in p
