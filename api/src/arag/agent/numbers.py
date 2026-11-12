@@ -10,7 +10,8 @@ from decimal import Decimal, InvalidOperation
 
 _MARK = re.compile(r"\[\d+\]")
 _LIST_HEAD = re.compile(r"^\s*\d{1,2}[.)]\s", re.MULTILINE)
-_NUM = re.compile(r"(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
+# 前が英数字・小数点のときだけ数として拾わない（型番の中の数字）。\w は日本語を含むので使わない
+_NUM = re.compile(r"(?<![A-Za-z0-9.])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 # 1万8,400 / 2.5万 / 3千 / 1億2000万
 _UNIT = re.compile(r"(\d[\d,]*(?:\.\d+)?)(億|万|千)(\d[\d,]*)?")
 _UNITS = {"億": Decimal(100_000_000), "万": Decimal(10_000), "千": Decimal(1_000)}

@@ -29,3 +29,12 @@ def test_numbers_from_the_question_and_models_count_as_known() -> None:
 def test_number_extraction() -> None:
     assert numbers_in("1,2 と 1,200 と 3.50") == {"1", "2", "1200", "3.5"}
     assert "250" in numbers_in("二百五十", kanji=True) and "30" in numbers_in("三〇", kanji=True)
+
+
+def test_numbers_right_after_japanese_text_are_read() -> None:
+    # 「温度64」「9月2日」の数字は、前が日本語でも数として拾う（hm43・hm63 の誤検知）
+    assert "64" in numbers_in("軸受温度64℃") and "2" in numbers_in("9月2日")
+    assert ungrounded("軸受温度は64℃でした[1]", ["軸受温度64℃（要注意）"]) == []
+    assert ungrounded("前回は9月12日の点検です", ["前回 9月2日"]) == ["12"]
+    # 型番の中の数字は今までどおり数えない
+    assert numbers_in("SK300 と v1.25") == set()
