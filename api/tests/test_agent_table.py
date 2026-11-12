@@ -143,3 +143,14 @@ def test_every_error_carries_columns_and_an_example() -> None:
 
     hint = error_hint(ledger())
     assert "使える列: 部品番号" in hint and "例" in hint and "max(" in hint
+
+
+def test_total_rows_are_not_data_rows() -> None:
+    """表に書かれた「合計」の行を足し込むと二重に数える（hm21・hm23: 停止時間の合計が 1200 になった）。"""
+    text = "| 設備 | 停止時間（分） |\n|---|---|\n| A | 250 |\n| B | 350 |\n| 合　計 | 600 |\n| Total | 600 |"
+    t = parse_tables(text)[0]
+    assert len(t.rows) == 2 and len(t.totals) == 2
+    r = run_query(t, "", "sum(停止時間)")
+    out = render(r, "", "sum(停止時間)")
+    assert "600" in out and "1200" not in out and "合計の行 2 つは" in out
+    assert [row[0] for row in run_query(t, "", "max(停止時間)").matched] == ["A", "B"]

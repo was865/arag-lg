@@ -28,6 +28,8 @@ class Table:
     title: str
     header: list[str]
     rows: list[list[str]]
+    # 表に書かれた「合計」「小計」の行。データの行ではないので、条件・集計の対象から外す
+    totals: list[list[str]] = field(default_factory=list)
     # 式で使える名前 → 列の位置（元の見出しと、括弧の単位を除いた別名）
     names: dict[str, int] = field(default_factory=dict)
 
@@ -73,6 +75,15 @@ def _name_map(header: list[str]) -> dict[str, int]:
     return names
 
 
+_TOTAL = re.compile(r"^(合計|総計|総合計|小計|計|total|subtotal|grandtotal|sum)$", re.IGNORECASE)
+
+
+def is_total_row(cells: list[str]) -> bool:
+    """先頭の（空でない）セルが「合計」「小計」などの行。足し込むと二重に数えてしまう。"""
+    first = next((c for c in cells if c.strip()), "")
+    return bool(_TOTAL.match(re.sub(r"\s+", "", unicodedata.normalize("NFKC", first))))
+
+
 def parse_tables(text: str) -> list[Table]:
     """本文から Markdown の表を取り出す。1 セルだけの題名行は題名にし、次の行を見出しにする。"""
     lines = text.split("\n")
@@ -92,8 +103,12 @@ def parse_tables(text: str) -> list[Table]:
                 header, rows = rows[0], rows[1:]
             width = len(header)
             rows = [(r + [""] * width)[:width] for r in rows]
+            totals = [r for r in rows if is_total_row(r)]
+            rows = [r for r in rows if not is_total_row(r)]
             if header and rows:
-                tables.append(Table(title=title, header=header, rows=rows, names=_name_map(header)))
+                tables.append(
+                    Table(title=title, header=header, rows=rows, totals=totals, names=_name_map(header))
+                )
             i = j
         else:
             i += 1
@@ -357,6 +372,9 @@ def render(result: QueryResult, where: str, compute: str) -> str:
     head = f"表「{t.title}」" if t.title else "表"
     cond = f"条件 `{where.strip()}` に合う行: " if where.strip() else "全行: "
     lines = [f"{head}（{total} 行）。{cond}{n} 行。行の選択と計算はシステムが行った（正確）。"]
+    if t.totals:
+        # 表の合計の行は全行の合計。データの行としては数えず、参考として末尾に示す
+        lines[0] += f" 表に書かれた合計の行 {len(t.totals)} つは、行の選択と集計から外した。"
     per_row = bool(compute.strip()) and not result.is_aggregate
     if n:
         header = t.header + ([CALC_COLUMN] if per_row else [])
