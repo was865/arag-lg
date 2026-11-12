@@ -1,5 +1,6 @@
 """エージェントのテスト用の偽物（モデル・検索・セッション）。"""
 
+import itertools
 import json
 import uuid
 from collections.abc import Iterator, Sequence
@@ -78,6 +79,11 @@ class FakeToolModel(GenericFakeChatModel):
 
 def script(*msgs: AIMessage) -> Iterator[AIMessage]:
     return iter(msgs)
+
+
+def idle_utility() -> "FakeToolModel":
+    """質問の整理に何も足さない補助モデル（質問文のまま検索させる）。会話モデルの台本を減らさないために使う。"""
+    return FakeToolModel(messages=itertools.repeat(AIMessage(content="{}")))
 
 
 def tool_call(name: str, **args: Any) -> AIMessage:

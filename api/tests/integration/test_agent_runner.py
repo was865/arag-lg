@@ -22,7 +22,16 @@ from arag.db.models import AuditLog, Citation, Message, Run, Thread
 from arag.errors import ApiError
 from arag.settings import Settings
 
-from ..agent_fakes import FailingModel, FakeSearch, FakeToolModel, StatusError, fake_hit, script, tool_call
+from ..agent_fakes import (
+    FailingModel,
+    FakeSearch,
+    FakeToolModel,
+    StatusError,
+    fake_hit,
+    idle_utility,
+    script,
+    tool_call,
+)
 
 pytestmark = pytest.mark.integration
 ALICE = Principal(user_id="alice")
@@ -45,7 +54,8 @@ def make_deps(
     def resolve(model_id: str | None) -> ResolvedModels:
         if model_id == "broken":
             raise RuntimeError("目録にありません")
-        return ResolvedModels(id=model_id or "fake", model=model)
+        # 質問の整理（specs/026）は別の補助モデルに任せ、会話モデルの台本を減らさない
+        return ResolvedModels(id=model_id or "fake", model=model, utility=idle_utility())
 
     return RunnerDeps(
         sessionmaker=sm,
@@ -132,15 +142,19 @@ async def test_second_turn_and_branch(sessionmaker: async_sessionmaker[AsyncSess
         assert [(m.ordinal, m.answer_text) for m in msgs] == [(1, "一回目のやり直し")]
     # 分岐した実行のモデル入力に 2 ターン目は含まれない
     texts = [m.text for m in model.calls[-1]]
-    assert "質問2" not in texts and "質問1（編集）" in texts and "質問1" not in texts
+    assert "質問2" not in texts and "質問1" not in texts
+    assert any(t.startswith("質問1（編集）") for t in texts)
 
 
 async def test_cancel_saves_partial_and_next_run_works(
     sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
     class Slow(FakeSearch):
+        """2 回目（モデルのツール呼び出し）だけ遅い検索。1 回目はシステムの最初の検索。"""
+
         async def __call__(self, *a: Any) -> Any:
-            await asyncio.sleep(5)
+            if len(self.requests) == 1:
+                await asyncio.sleep(5)
             return await super().__call__(*a)
 
     model = FakeToolModel(messages=script(tool_call("search", query="a"), AIMessage(content="次の回答")))
@@ -174,10 +188,8 @@ async def test_model_unavailable_fails_with_message(
 
 
 async def test_no_sources_reason(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
-    # 0 件なので書き換え（utility 無しは会話モデル）→ 再検索 → 回答なし
-    model = FakeToolModel(
-        messages=script(tool_call("search", query="x"), AIMessage(content="別の語"), AIMessage(content=""))
-    )
+    # 0 件なので書き換え → 再検索 → 回答なし
+    model = FakeToolModel(messages=script(tool_call("search", query="x"), AIMessage(content="")))
     deps = make_deps(sessionmaker, redis, model, search=FakeSearch())
     _, run = await start(sessionmaker, "q")
     await execute_run(deps, run.id)
@@ -204,17 +216,16 @@ async def test_utility_model_rewrites_low_score_search(
     sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
     """runner が書き換え用モデルを RunContext に渡し、低スコアのとき再検索する（R17）。"""
-    model = FakeToolModel(
-        messages=script(tool_call("search", query="持ち出し"), AIMessage(content="答え[1]"))
-    )
-    utility = FakeToolModel(messages=script(AIMessage(content="社外持出し 規程")))
+    model = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
+    # 1 つ目は質問の整理（読めない出力 → 質問文のまま検索）、2 つ目が書き換え
+    utility = FakeToolModel(messages=script(AIMessage(content="？"), AIMessage(content="社外持出し 規程")))
     search = FakeSearch("無関係な本文")
     search.hits = [fake_hit("無関係な本文", score=0.05)]
     deps = make_deps(sessionmaker, redis, model, search)
     deps.resolve_models = lambda mid: ResolvedModels(id="fake", model=model, utility=utility)
     _th, run = await start(sessionmaker, "持ち出しの規定は？")
     assert await execute_run(deps, run.id) == "completed"
-    assert [r.query for r in search.requests] == ["持ち出し", "社外持出し 規程"]
+    assert [r.query for r in search.requests] == ["持ち出しの規定は？", "社外持出し 規程"]
 
 
 async def test_uncited_answer_is_no_relevant_sources(
@@ -288,8 +299,9 @@ async def test_failed_models_are_named_with_reasons(
     async with sessionmaker() as s:
         msg = await s.get(Message, run.message_id)
         assert msg is not None and "DeepSeek: 残高が不足" in msg.answer_text
-        # 最初の呼び出しでツールを必須にしたこと（システムの処理）も記録に残る
-        assert [st["name"] for st in msg.steps] == ["system", "switch_model"]
+        # 質問の整理・システムの最初の検索も記録に残る
+        names = [st["name"] for st in msg.steps]
+        assert names[:2] == ["understand", "search"] and names[-1] == "switch_model"
 
 
 async def test_thinking_becomes_a_reasoning_step(

@@ -31,65 +31,128 @@ async def run(agent: Any, c: RunContext, q: str, thread: str = "t") -> tuple[dic
     return (await agent.aget_state(cfg)).values, custom
 
 
-async def test_search_then_answer_with_citation_cleanup() -> None:
-    model = FakeToolModel(
-        messages=script(tool_call("search", query="MX-17"), AIMessage(content="停止する【1】。根拠なし[9]"))
-    )
+def top_steps(custom: list[Any]) -> list[dict[str, Any]]:
+    """モデルのツールと、システムが行った検索の親ステップ（システムの処理・質問の理解は除く）。"""
+    steps = [e["step"] for e in custom if e["type"] == "step"]
+    return [s for s in steps if s["parent_id"] is None and s["name"] not in {"system", "understand"}]
+
+
+def own_steps(custom: list[Any]) -> list[dict[str, Any]]:
+    """モデルが呼んだツールのステップ（システムの最初の検索は除く）。"""
+    return [s for s in top_steps(custom) if not s["id"].startswith("primer-")]
+
+
+# ── 最初の検索はシステムが行う（specs/026。モデルが検索するかどうかに任せない） ──
+
+
+async def test_system_searches_first_and_model_can_answer_directly() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="停止する【1】。根拠なし[9]")))
     agent = build_agent(model, checkpointer=InMemorySaver())
     c = ctx(FakeSearch("MX-17 は即時停止を推奨する。"))
     state, custom = await run(agent, c, "MX-17 はどうする？")
     assert state["messages"][-1].text == "停止する[1]。根拠なし"
-    tool_msg = next(m for m in state["messages"] if isinstance(m, ToolMessage))
-    assert '<資料 n="1"' in tool_msg.text
-    steps = [e["step"] for e in custom if e["type"] == "step"]
-    top = [s for s in steps if s["parent_id"] is None and s["name"] != "system"]
-    assert [s["status"] for s in top] == ["running", "done"] and top[0]["name"] == "search"
-    assert top[1]["summary"] == "資料 1 件"
-    assert any(s["parent_id"] == top[0]["id"] for s in steps)  # 検索の子ステップ
+    # システムの検索は「検索」のステップとして記録に出る（by=system で見分ける）
+    primer = [s for s in top_steps(custom) if s["id"] == "primer-1"]
+    assert [s["status"] for s in primer] == ["running", "done"]
+    assert primer[1]["input"] == {"query": "MX-17 はどうする？", "by": "system"}
+    assert primer[1]["summary"] == "資料 1 件"
+    assert any(e["step"]["parent_id"] == "primer-1" for e in custom if e["type"] == "step")
+    # 検索結果は質問に添えてモデルに渡すが、会話の状態には保存しない
+    human = next(m for m in model.calls[0] if isinstance(m, HumanMessage))
+    assert human.text.startswith("MX-17 はどうする？") and '<資料 n="1"' in human.text
+    assert "<検索結果>" in human.text
+    saved = next(m for m in state["messages"] if isinstance(m, HumanMessage))
+    assert saved.text == "MX-17 はどうする？"
+    assert not any(isinstance(m, ToolMessage) for m in state["messages"])
+    # ツールは強制しない（どのモデルでも同じ流れで動く）。7 つとも渡す
+    assert model.tool_choices == [None] and model.tool_counts == [7]
+    assert c.stats.primer_searches == 1 and c.stats.tool_calls == 0 and c.stats.model_calls == 1
     sys = model.calls[0][0]
-    assert isinstance(sys, SystemMessage) and "<資料" in sys.text and "必ず付ける" in sys.text
+    assert isinstance(sys, SystemMessage) and "<検索結果>" in sys.text and "必ず付ける" in sys.text
+
+
+async def test_model_can_still_search_after_primer() -> None:
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="MX-17 手順"), AIMessage(content="停止する[1]"))
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("MX-17 は即時停止を推奨する。"))
+    _, custom = await run(agent, c, "MX-17 はどうする？")
+    own = own_steps(custom)
+    assert [s["status"] for s in own] == ["running", "done"] and own[0]["name"] == "search"
+    assert "by" not in own[1]["input"]
     assert c.stats.tool_calls == 1 and c.stats.model_calls == 2
-    # ターンの最初の呼び出しはツールを必ず使わせる（前のターンの記憶だけで引用なしに答えない）
-    assert model.tool_choices == ["any", None]
-    # 最初の呼び出しで選べるのは検索だけ（文書一覧だけ見て答えない）
-    assert model.tool_names[0] == ["search", "keyword_search"]
-    assert len(model.tool_names[1]) == 6
+    # 2 回目の呼び出しでも、最初の検索結果は質問に添えたまま
+    human = next(m for m in model.calls[1] if isinstance(m, HumanMessage))
+    assert "<検索結果>" in human.text
 
 
-async def test_must_read_sources_before_answering() -> None:
-    """検索の後も、資料の本文を読むまではツールを必須にする。読む前の最終回答は出させない。"""
+def utility(*outputs: str) -> FakeToolModel:
+    return FakeToolModel(messages=script(*(AIMessage(content=o) for o in outputs)))
+
+
+async def test_followup_is_searched_with_rewritten_query() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="一回目[1]"), AIMessage(content="二回目[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("SK-300 の仕入先は Aster Seals。")
+    u = utility(
+        '{"kind": "docs", "queries": ["SK-300 の単価"], "table": false}',
+        '{"kind": "docs", "queries": ["SK-300 の仕入先"], "table": false}',
+    )
+    await run(agent, ctx(search, utility_model=u), "SK-300 の単価は？", thread="f1")
+    _, custom = await run(agent, ctx(search, utility_model=u), "それの仕入先は？", thread="f1")
+    # 追質問は指示語を含むので、整理したクエリだけで検索する（質問文では検索しない）
+    assert [r.query for r in search.requests] == ["SK-300 の単価は？", "SK-300 の単価", "SK-300 の仕入先"]
+    understood = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "understand"]
+    assert understood[-1]["output"]["queries"] == ["SK-300 の仕入先"]
+    assert understood[-1]["input"]["history"] is True
+    # 整理には直近の会話を渡す
+    asked = u.calls[1][-1].text
+    assert "SK-300 の単価は？" in asked and "それの仕入先は？" in asked
+
+
+async def test_chat_gets_no_search_results() -> None:
     model = FakeToolModel(
-        messages=script(
-            tool_call("list_documents"),
-            tool_call("search", query="発注点"),
-            AIMessage(content="P-1042 です[1]"),
-        )
+        messages=script(AIMessage(content="一回目[1]"), AIMessage(content="どういたしまして"))
     )
     agent = build_agent(model, checkpointer=InMemorySaver())
-    _, custom = await run(agent, ctx(FakeSearch("P-1042 在庫 6 発注点 10")), "発注点を下回る部品は？")
-    # FakeToolModel は台本どおりに答えるので、1 回目の list_documents は本来出せない（検索だけ渡す）。
-    # ここでは 2 回目（資料をまだ読んでいない）にツールが必須になり、3 回目（読んだ後）は自由になることを見る
-    assert model.tool_choices == ["any", "any", None]
-    steps = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
-    forced = [s for s in steps if s["input"]["kind"] == "force_tool"]
-    assert [s["id"] for s in forced] == ["system-force-tool", "system-force-tool-2"]
-    assert forced[0]["input"]["tools"] == ["search", "keyword_search"]
-    assert "読んでいない" in forced[1]["summary"]
+    search = FakeSearch("本文")
+    u = utility('{"kind": "docs", "queries": ["q"]}', '{"kind": "chat", "queries": [], "table": false}')
+    await run(agent, ctx(search, utility_model=u), "質問", thread="c1")
+    n = len(search.requests)
+    c = ctx(search, utility_model=u)
+    await run(agent, c, "ありがとう", thread="c1")
+    assert len(search.requests) == n  # 雑談では検索しない
+    human = [m for m in model.calls[-1] if isinstance(m, HumanMessage)][-1]
+    assert human.text == "ありがとう"
+    assert c.primer is not None and c.primer.kind == "chat"
 
 
-async def test_answer_allowed_after_searches_find_nothing() -> None:
-    """3 回探しても資料が 0 件なら、それ以上は強制せず「見つからない」と答えさせる。"""
-    model = FakeToolModel(
-        messages=script(
-            tool_call("search", query="a"),
-            tool_call("search", query="b"),
-            tool_call("keyword_search", terms=["c"]),
-            AIMessage(content="資料が見つかりません"),
-        )
-    )
+async def test_unreadable_understanding_falls_back_to_the_question() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
     agent = build_agent(model, checkpointer=InMemorySaver())
-    await run(agent, ctx(FakeSearch()), "q")
-    assert model.tool_choices == ["any", "any", "any", None]
+    search = FakeSearch("本文")
+    _, custom = await run(agent, ctx(search, utility_model=utility("わかりません")), "保存期間は？")
+    assert [r.query for r in search.requests] == ["保存期間は？"]
+    understood = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "understand"]
+    assert understood[-1]["status"] == "done" and "JSON" in understood[-1]["output"]["error"]
+
+
+async def test_extra_queries_are_searched_and_duplicates_dropped() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("第2版は 45 N·m。")
+    u = utility('{"kind": "docs", "queries": ["第2版 締付トルク", "第3版 締付トルク"], "table": false}')
+    c = ctx(search, utility_model=u)
+    await run(agent, c, "第2版と第3版のトルクの違いは？")
+    assert [r.query for r in search.requests] == [
+        "第2版と第3版のトルクの違いは？",
+        "第2版 締付トルク",
+        "第3版 締付トルク",
+    ]
+    assert c.primer is not None
+    # 同じ資料は 1 度だけ渡す
+    assert c.primer.text.count('<資料 n="1"') == 1 and "（資料 [1] は上と同じ）" in c.primer.text
 
 
 class KeywordMissSearch(FakeSearch):
@@ -109,7 +172,7 @@ async def test_keyword_fallback_is_explained_in_steps() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     _, custom = await run(agent, ctx(KeywordMissSearch("MX-17 は即時停止を推奨する。")), "MX-17 の異常時は？")
     done = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "done"]
-    top = next(s for s in done if s["parent_id"] is None and s["name"] != "system")
+    top = next(s for s in done if s["name"] == "keyword_search")
     assert top["summary"] == "完全一致 0 件 → セマンティック検索で資料 1 件"
     kids = [s for s in done if s["parent_id"] == top["id"]]
     assert [k["label"] for k in kids] == ["検索", "型番のみで再検索", "セマンティック検索で補完"]
@@ -128,7 +191,7 @@ async def test_step_budget_forces_final_answer_without_tools() -> None:
     c = ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3))
     state, _ = await run(agent, c, "q")
     assert state["messages"][-1].text == "まとめ[1]"
-    assert model.tool_counts == [2, 6, 0]  # 1 回目は検索だけ、3 回目はツールなし
+    assert model.tool_counts == [7, 7, 0]  # 3 回目はツールなし
     assert "最終回答" in model.calls[2][0].text
 
 
@@ -160,50 +223,43 @@ async def test_tool_failure_becomes_error_step_and_message() -> None:
     tm = next(m for m in state["messages"] if isinstance(m, ToolMessage))
     assert tm.status == "error" and "失敗" in tm.text
     errs = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "error"]
-    assert errs and c.stats.tool_errors == 1
-
-
-async def test_tool_choice_not_forced_without_citations() -> None:
-    model = FakeToolModel(messages=script(AIMessage(content="こんにちは")))
-    agent = build_agent(model, checkpointer=InMemorySaver())
-    await run(agent, ctx(FakeSearch(), cfg=AgentCfg(require_citations=False)), "こんにちは")
-    assert model.tool_choices == [None]
+    # システムの最初の検索と、モデルの検索の両方が失敗として残る
+    assert [e["id"].startswith("primer-") for e in errs] == [True, False] and c.stats.tool_errors == 2
 
 
 # ── 調べ残しの見直し（複数の資料を照合する質問で、1 回の検索だけで「資料に無い」と答えない） ──
 
 
-async def test_gap_answer_after_few_searches_is_sent_back_once() -> None:
+async def test_gap_answer_is_sent_back_once() -> None:
     model = FakeToolModel(
         messages=script(
-            tool_call("search", query="HP-300 第3版 変更点"),
             AIMessage(content="変更点はトルク値です[1]。在庫数は資料に記載されていません。"),
             tool_call("search", query="SK-300 部品台帳 在庫"),
-            AIMessage(content="変更点はトルク値です[1]。在庫は 5 個です[2]。"),
+            AIMessage(content="変更点はトルク値です[1]。在庫は SK-300 のとおりです[2]。"),
         )
     )
     agent = build_agent(model, checkpointer=InMemorySaver())
-    c = ctx(FakeSearch("HP-300 第3版", "SK-300 在庫 5"))
+    c = ctx(FakeSearch("HP-300 第3版", "SK-300 在庫"))
     state, custom = await run(agent, c, "第3版の変更点と、関連部品の在庫は？")
-    assert state["messages"][-1].text == "変更点はトルク値です[1]。在庫は 5 個です[2]。"
+    assert state["messages"][-1].text == "変更点はトルク値です[1]。在庫は SK-300 のとおりです[2]。"
     # 差し戻しは記録に残す（下書き・きっかけの語・差し戻した依頼）。技術者があとから追えるように
     review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"]
     assert [s["status"] for s in review] == ["running", "done"]
     done = review[-1]
+    assert done["input"]["kind"] == "gap" and done["label"] == "調べ残しの見直し"
     assert done["input"]["draft"] == "変更点はトルク値です[1]。在庫数は資料に記載されていません。"
     assert done["input"]["trigger"] == "記載されていません" and done["input"]["searches"] == 1
-    assert "まだ調べていない" in done["output"]["note"]
-    # 見直しの依頼は 2 回目の呼び出しの中だけにあり、会話の状態（checkpoint）には残さない
-    retry = model.calls[2]
+    assert "まだ調べていない" in done["output"]["note"] and done["output"]["next_tools"] == ["search"]
+    # 見直しの依頼はその呼び出しの中だけにあり、会話の状態（checkpoint）には残さない
+    retry = model.calls[1]
     assert isinstance(retry[-1], HumanMessage) and "まだ調べていない" in retry[-1].text
     assert not any("在庫数は資料に記載されていません" in m.text for m in state["messages"])
-    assert sum(isinstance(m, ToolMessage) for m in state["messages"]) == 2
+    assert sum(isinstance(m, ToolMessage) for m in state["messages"]) == 1
 
 
 async def test_gap_review_happens_only_once_per_turn() -> None:
     model = FakeToolModel(
         messages=script(
-            tool_call("search", query="a"),
             AIMessage(content="資料に記載されていません。"),
             AIMessage(content="やはり資料に記載されていません。"),
         )
@@ -211,24 +267,74 @@ async def test_gap_review_happens_only_once_per_turn() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     state, _ = await run(agent, ctx(FakeSearch("本文")), "q")
     assert state["messages"][-1].text == "やはり資料に記載されていません。"
-    assert len(model.calls) == 3
+    assert len(model.calls) == 2
 
 
 async def test_no_gap_review_when_answer_is_complete_or_searched_enough() -> None:
-    complete = FakeToolModel(messages=script(tool_call("search", query="a"), AIMessage(content="答え[1]")))
+    complete = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
     await run(build_agent(complete, checkpointer=InMemorySaver()), ctx(FakeSearch("本文")), "q")
-    assert len(complete.calls) == 2
+    assert len(complete.calls) == 1
 
     searched = FakeToolModel(
         messages=script(
             tool_call("search", query="a"),
             tool_call("search", query="b"),
-            tool_call("search", query="c"),
             AIMessage(content="資料に記載されていません。"),
         )
     )
     await run(build_agent(searched, checkpointer=InMemorySaver()), ctx(FakeSearch("本文")), "q")
-    assert len(searched.calls) == 4
+    assert len(searched.calls) == 3
+
+
+# ── 表の集計と数字の確認（specs/026 ④） ──
+
+TABLE = "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |"
+
+
+async def test_table_question_answered_by_eye_is_sent_back() -> None:
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="P-1042 と P-1043 です[1]"),
+            AIMessage(content="P-1042 です[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    u = utility('{"kind": "docs", "queries": ["在庫が発注点を下回る部品"], "table": true}')
+    c = ctx(FakeSearch(TABLE), utility_model=u)
+    state, custom = await run(agent, c, "在庫が発注点を下回る部品は？")
+    assert state["messages"][-1].text == "P-1042 です[1]"
+    review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"][-1]
+    assert review["input"]["kind"] == "table" and review["label"] == "表の集計の確認"
+    assert "table_query" in review["output"]["note"]
+    assert c.stats.table_reviews == 1 and len(model.calls) == 2
+
+
+async def test_numbers_missing_from_sources_are_sent_back_and_recorded() -> None:
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="単価は 17,800 円です[1]"),
+            AIMessage(content="単価は 17,800 円です[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("シールキット SK-300 の単価は 18,400 円。"))
+    _, custom = await run(agent, c, "SK-300 の単価は？")
+    review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"][-1]
+    assert review["input"]["kind"] == "numbers" and "17,800" in review["input"]["trigger"]
+    assert "17,800" in review["output"]["note"]
+    # 差し戻しても残った数字は、照合の結果として記録に残す（画面で注意として示す）
+    check = system_steps(custom)["number_check"]
+    assert check["output"]["unverified"] == ["17,800"] and "17,800" in check["summary"]
+    assert c.stats.number_reviews == 1 and len(model.calls) == 2
+
+
+async def test_numbers_found_in_sources_pass_the_check() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="単価は 18,400 円、保存は 14 日です[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("SK-300 の単価は 18400 円。保存は十四日。")), "SK-300 は？")
+    check = system_steps(custom)["number_check"]
+    assert check["output"]["unverified"] == [] and "すべて確認" in check["summary"]
+    assert len(model.calls) == 1
 
 
 # ── 後ろで行う処理も記録に残す（「システムの処理」。技術者が追えるように） ──
@@ -242,14 +348,12 @@ def system_steps(custom: list[Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-async def test_forced_tool_and_citation_cleanup_are_recorded() -> None:
-    model = FakeToolModel(
-        messages=script(tool_call("search", query="MX-17"), AIMessage(content="停止する【1】。根拠なし[9]"))
-    )
+async def test_citation_cleanup_is_recorded() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="停止する【1】。根拠なし[9]")))
     agent = build_agent(model, checkpointer=InMemorySaver())
     _, custom = await run(agent, ctx(FakeSearch("MX-17 は即時停止を推奨する。")), "MX-17 はどうする？")
     sys = system_steps(custom)
-    assert sys["force_tool"]["status"] == "done"
+    assert "force_tool" not in sys  # ツールは強制しない
     cleanup = sys["citation_cleanup"]
     assert cleanup["input"]["before"] == "停止する【1】。根拠なし[9]"
     assert cleanup["output"]["after"] == "停止する[1]。根拠なし"

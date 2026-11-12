@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 from zoneinfo import ZoneInfo
@@ -21,7 +22,9 @@ from langgraph.types import Command
 from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
+from arag.agent.numbers import numbers_in, ungrounded
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
+from arag.agent.primer import with_primer
 from arag.agent.steps import Step, StepClock
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import LABELS
@@ -47,12 +50,21 @@ GAP_NOTE = (
     "数の計算が要るなら、値をそろえてから calculate で計算してください。"
     "調べても見つからない点だけを、見つからないと書いてください。"
 )
-GAP_REVIEW_MAX_SEARCHES = 2  # この回数を超えて検索していれば、調べ尽くしたとみなす
+# モデル自身の検索がこの回数を超えていれば、調べ尽くしたとみなす（システムの最初の検索は数えない）
+GAP_REVIEW_MAX_OWN_SEARCHES = 1
 SEARCH_TOOLS = {"search", "keyword_search"}
-# 資料の本文を返すツール（一覧・目次は含めない）
-READ_TOOLS = SEARCH_TOOLS | {"read_section"}
-# 資料を読むまでツールを必須にする上限（検索してもなお 0 件なら「見つからない」と答えてよい）
-FORCE_READ_MAX_ATTEMPTS = 3
+TABLE_NOTE = (
+    "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。"
+    "回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、"
+    "必要なら compute に行ごとの計算式）。その結果どおりに答えてください。"
+)
+NUMBER_NOTE = (
+    "この下書きの数字 {numbers} は、資料にも計算結果にも見当たりません。"
+    "資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。"
+    "資料に無い数字は書かないでください。"
+)
+# 資料の中の表の行（Markdown）
+_TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$\n\s*\|[\s:\-|]+\|\s*$", re.MULTILINE)
 
 
 def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
@@ -96,8 +108,18 @@ def _turn_start(messages: list[AnyMessage]) -> int:
     return 0
 
 
+@dataclass(frozen=True, slots=True)
+class Review:
+    """下書きを差し戻す理由（specs/026 ④）。kind は記録と画面で種類を見分けるのに使う。"""
+
+    kind: str  # gap / table / numbers
+    trigger: str
+    note: str
+    label: str
+
+
 class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
-    """システムプロンプト・前のターンの資料の圧縮・回数上限での最終回答（R20）。"""
+    """システムプロンプト・最初の検索結果の添付・前のターンの資料の圧縮・回数上限・下書きの確認。"""
 
     async def awrap_model_call(
         self,
@@ -114,6 +136,15 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             else m
             for i, m in enumerate(msgs)
         ]
+        # システムが最初に検索した結果を、このターンの質問に添える（状態には保存しない）
+        if (
+            ctx.primer
+            and ctx.primer.text
+            and start < len(compact)
+            and isinstance(compact[start], HumanMessage)
+        ):
+            q = compact[start]
+            compact[start] = q.model_copy(update={"content": with_primer(q.text, ctx.primer)})
         calls = sum(1 for m in msgs[start:] if isinstance(m, AIMessage)) + 1
         ctx.stats.model_calls = calls
         emit = request.runtime.stream_writer
@@ -142,100 +173,163 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
                 input={"calls": calls, "max_steps": ctx.cfg.max_steps},
                 output={"note": FINAL_NOTE.strip()},
             )
-        elif calls == 1 and ctx.cfg.require_citations and request.tools:
-            # RAG の最初の一歩は検索。小さいモデルは文書一覧だけ見て「こう調べてください」と答えたり、
-            # 追質問で前の回答だけを頼りに答えたりするので、最初は検索のツールだけを渡して必ず使わせる
-            first = [t for t in request.tools if _tool_name(t) in SEARCH_TOOLS] or list(request.tools)
-            overrides["tool_choice"] = "any"
-            overrides["tools"] = first
-            names = [_tool_name(t) for t in first]
-            record_system(
-                emit,
-                "system-force-tool",
-                "force_tool",
-                "最初は検索を必須に",
-                f"ターンの最初の呼び出しで、検索（{'・'.join(names)}）を必ず使わせた",
-                input={"tool_choice": "any", "tools": names},
+        system = SystemMessage(prompt)
+        response = await handler(request.override(system_message=system, **overrides))
+        turn = msgs[start:]
+        has_tools = bool(request.tools) and calls < ctx.cfg.max_steps
+        # 確認: 調べ残し → 表の集計 → 数字の順に、当てはまるものを 1 つずつ差し戻す（種類ごとに 1 度）。
+        # 下書きと依頼は会話の状態には入れないが、差し戻したことは「見直し」のステップとして記録に残す
+        while (answer := _final_answer(response)) is not None:
+            review = pick_review(ctx, turn, answer, calls, has_tools)
+            if review is None:
+                break
+            searches = _searches(ctx, turn)
+            response = await self._send_back(
+                request, handler, system, compact, response, answer, review, searches
             )
-        elif ctx.cfg.require_citations and request.tools and _must_read(msgs[start:]):
-            # 検索が 0 件だった・一覧や目次しか見ていないなど、資料の本文をまだ読んでいないうちは答えさせない
-            overrides["tool_choice"] = "any"
-            record_system(
-                emit,
-                f"system-force-tool-{calls}",
-                "force_tool",
-                "資料を読むまでツールを必須に",
-                f"{calls} 回目の呼び出し: まだ資料の本文を読んでいないので、ツールを必ず使わせた",
-                input={"tool_choice": "any", "calls": calls},
-            )
-        response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
-        gap = _gap_review(ctx, msgs[start:], response, calls, bool(request.tools))
-        if gap is None:
-            return response
-        # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち。
-        # 下書きを添えて 1 度だけ差し戻す。下書きと依頼は会話の状態には入れないが、
-        # 差し戻したこと（下書き・きっかけの語・依頼・その結果）は「見直し」のステップとして記録に残す
-        trigger, searches, answer = gap
-        ctx.stats.gap_reviews += 1
+            calls += 1
+        if (answer := _final_answer(response)) is not None and _checks_numbers(ctx):
+            _record_number_check(ctx, emit, turn, answer)
+        return response
+
+    async def _send_back(
+        self,
+        request: ModelRequest[RunContext],
+        handler: Callable[[ModelRequest[RunContext]], Awaitable[ModelResponse[Any]]],
+        system: SystemMessage,
+        compact: list[AnyMessage],
+        response: ModelResponse[Any],
+        answer: str,
+        review: Review,
+        searches: int,
+    ) -> ModelResponse[Any]:
+        ctx = request.runtime.context
+        if review.kind == "gap":
+            ctx.stats.gap_reviews += 1
+        elif review.kind == "table":
+            ctx.stats.table_reviews += 1
+        else:
+            ctx.stats.number_reviews += 1
         clock = StepClock(
             request.runtime.stream_writer,
             Step(
-                id=f"review-{ctx.stats.gap_reviews}",
+                id=f"review-{ctx.stats.reviews}",
                 name="review",
-                label="調べ残しの見直し",
+                label=review.label,
                 status="running",
-                input={"draft": answer, "trigger": trigger, "searches": searches},
+                input={
+                    "kind": review.kind,
+                    "draft": answer,
+                    "trigger": review.trigger,
+                    "searches": searches,
+                },
                 summary="下書きを差し戻して書き直し中",
             ),
         )
         draft = cast(AIMessage, response.result[-1])
-        retry: list[AnyMessage] = [*compact, draft, HumanMessage(GAP_NOTE)]
+        retry: list[AnyMessage] = [*compact, draft, HumanMessage(review.note)]
         try:
-            redo = await handler(request.override(system_message=SystemMessage(prompt), messages=retry))
+            redo = await handler(request.override(system_message=system, messages=retry))
         except Exception as e:
-            clock.done("差し戻しに失敗しました", {"note": GAP_NOTE, "error": str(e)[:300]}, error=True)
+            clock.done("差し戻しに失敗しました", {"note": review.note, "error": str(e)[:300]}, error=True)
             raise
         last = redo.result[-1] if redo.result else None
         tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
         clock.done(
-            f"「{trigger}」のため差し戻し → " + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
-            {"note": GAP_NOTE, "next_tools": tools},
+            f"「{review.trigger}」のため差し戻し → "
+            + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
+            {"note": review.note, "next_tools": tools},
         )
         return redo
 
 
-def _tool_name(tool: Any) -> str:
-    return str(tool.get("name", "")) if isinstance(tool, dict) else str(getattr(tool, "name", ""))
-
-
-def _must_read(turn: list[AnyMessage]) -> bool:
-    """資料の本文（検索の結果・章）をまだ 1 件も受け取っておらず、探す余地も残っているか。"""
-    reads = [m for m in turn if isinstance(m, ToolMessage) and m.name in READ_TOOLS]
-    got = any(m.status != "error" and "<資料" in m.text for m in reads)
-    return not got and len(reads) < FORCE_READ_MAX_ATTEMPTS
-
-
-def _gap_review(
-    ctx: RunContext, turn: list[AnyMessage], response: ModelResponse[Any], calls: int, has_tools: bool
-) -> tuple[str, int, str] | None:
-    """下書きを差し戻すなら（きっかけの語, 検索の回数, 下書き）を返す。
-
-    最終回答で、調べ残しを認めていて、検索が少なく、回数にまだ余裕があるとき。
-    """
-    if not has_tools or ctx.stats.gap_reviews or calls + 2 > ctx.cfg.max_steps:
-        return None
+def _final_answer(response: ModelResponse[Any]) -> str | None:
+    """最終回答（ツール呼び出しの無い応答）の本文。そうでなければ None。"""
     last = response.result[-1] if response.result else None
     if not isinstance(last, AIMessage) or last.tool_calls:
         return None
-    searches = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
-    if searches == 0 or searches > GAP_REVIEW_MAX_SEARCHES:
+    return split_thinking(last.text)[1]
+
+
+def _searches(ctx: RunContext, turn: list[AnyMessage]) -> int:
+    """このターンの検索の回数（システムが最初に行った分を含む）。"""
+    own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
+    return own + ctx.stats.primer_searches
+
+
+def _materials(ctx: RunContext, turn: list[AnyMessage]) -> list[str]:
+    """このターンにモデルへ渡した資料（最初の検索結果とツールの結果）。"""
+    out = [str(m.text) for m in turn if isinstance(m, ToolMessage) and m.status != "error"]
+    if ctx.primer and ctx.primer.text:
+        out.append(ctx.primer.text)
+    return out
+
+
+def _checks_numbers(ctx: RunContext) -> bool:
+    # 雑談と、一般知識で補ってよい設定では照合しない
+    return ctx.cfg.admit_unknown and (ctx.primer is None or ctx.primer.kind != "chat")
+
+
+def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[str]:
+    today = datetime.now(TZ).strftime("%Y年%m月%d日")
+    return ungrounded(answer, [*_materials(ctx, turn), ctx.question, today])
+
+
+def pick_review(
+    ctx: RunContext, turn: list[AnyMessage], answer: str, calls: int, has_tools: bool
+) -> Review | None:
+    """最終回答の下書きを差し戻すなら、その理由を返す。回数に余裕が無い・雑談のときは差し戻さない。"""
+    if not has_tools or calls + 2 > ctx.cfg.max_steps:
         return None
-    _, answer = split_thinking(last.text)
-    m = GAP.search(answer)
-    return (m.group(0), searches, answer) if m else None
+    if ctx.primer is not None and ctx.primer.kind == "chat":
+        return None
+    own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
+    if not ctx.stats.gap_reviews and _searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
+        # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
+        if m := GAP.search(answer):
+            return Review("gap", m.group(0), GAP_NOTE, "調べ残しの見直し")
+    if (
+        not ctx.stats.table_reviews
+        and ctx.primer is not None
+        and ctx.primer.table
+        and not any(isinstance(m, ToolMessage) and m.name == "table_query" for m in turn)
+        and any(_TABLE_ROW.search(t) for t in _materials(ctx, turn))
+    ):
+        # 表の行を目で比べると誤る（在庫 4・発注点 4 を「下回る」と答えるなど）
+        return Review("table", "表の集計を計算していない", TABLE_NOTE, "表の集計の確認")
+    if not ctx.stats.number_reviews and _checks_numbers(ctx):
+        if missing := _ungrounded(ctx, turn, answer):
+            shown = "・".join(missing[:8])
+            return Review(
+                "numbers", f"資料に無い数字 {shown}", NUMBER_NOTE.format(numbers=shown), "数字の確認"
+            )
+    return None
+
+
+def _record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
+    """数字の照合の結果を記録に残す（見当たらない数字は画面で注意として示す）。"""
+    found = numbers_in(_MARK.sub("", answer))
+    if not found:
+        return
+    missing = _ungrounded(ctx, turn, answer)
+    record_system(
+        emit,
+        "system-number-check",
+        "number_check",
+        "数字の照合",
+        (
+            "回答の数字のうち " + "・".join(missing[:8]) + " が資料・計算結果に見当たらない"
+            if missing
+            else f"回答の数字 {len(found)} 個を資料・計算結果と照合した（すべて確認）"
+        ),
+        input={"checked": len(found)},
+        output={"unverified": missing[:20]},
+    )
 
 
 _MATERIAL = re.compile(r"<資料 n=")
+# table_query の結果の先頭（「表…（8 行）。条件 … に合う行: 2 行。」）
+_TABLE_RESULT = re.compile(r"（(\d+) 行）。[^\n]*?(\d+) 行。")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
 
 
@@ -271,6 +365,9 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         text = result.text if isinstance(result, ToolMessage) else ""
         n = len(_MATERIAL.findall(text))
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
+        if name == "table_query":
+            rows = _TABLE_RESULT.search(text)
+            summary = f"{rows.group(1)} 行中 {rows.group(2)} 行" if rows else text[:120]
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):

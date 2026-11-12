@@ -18,8 +18,10 @@ from arag.agent.ops import (
     op_list_documents,
     op_read_section,
     op_search,
+    op_table_query,
 )
 from arag.auth.principal import Principal
+from arag.db.models import Section
 from arag.ingest.index import QdrantIndex
 from arag.search.schemas import SearchRequest
 from arag.search.service import search
@@ -175,3 +177,29 @@ async def test_list_outline_and_read_section(
     assert "見つかりません" in await op_get_outline(bob, world.doc_a)
     assert "見つかりません" in await op_read_section(bob, sec_id.group(1))
     assert "見つかりません" in await op_get_outline(ctx, "なにか")
+
+
+async def test_table_query_reads_the_section_table(
+    world: World, sessionmaker: async_sessionmaker[AsyncSession], qdrant_index: QdrantIndex
+) -> None:
+    """章の本文にある表を条件で集計し、同じ章の出典番号で返す（specs/026 R12・R13）。"""
+    ctx = make_ctx(sessionmaker, qdrant_index)
+    outline = await op_get_outline(ctx, world.doc_a)
+    sec_id = re.search(r"判定.*ID: ([0-9a-f-]{36})", outline)
+    assert sec_id is not None
+    async with sessionmaker() as s, s.begin():
+        sec = await s.get(Section, uuid.UUID(sec_id.group(1)))
+        assert sec is not None
+        sec.text = "台帳\n\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1 | 6 | 10 |\n| P-2 | 4 | 4 |\n"
+    out = await op_table_query(ctx, sec_id.group(1), "在庫 < 発注点", "発注点 - 在庫")
+    assert out.startswith('<資料 n="1" 文書="a.md"') and "2 行）" in out and "1 行。" in out
+    assert "| P-1 | 6 | 10 | 4 |" in out and "P-2" not in out
+    # 読む（read_section）のと同じ出典番号になる
+    assert '<資料 n="1"' in await op_read_section(ctx, sec_id.group(1))
+    # 誤りは使える列を添えて返す。見えない利用者・表の無い章も案内する
+    assert "使える列: 部品, 在庫, 発注点" in await op_table_query(ctx, "1", "数量 < 発注点")
+    assert "table は 1〜1" in await op_table_query(ctx, "1", table=3)
+    bob = make_ctx(sessionmaker, qdrant_index, p=Principal(user_id="bob"))
+    assert "見つかりません" in await op_table_query(bob, sec_id.group(1), "在庫 < 発注点")
+    other = re.search(r"補足.*ID: ([0-9a-f-]{36})", outline)
+    assert other is not None and "表はありません" in await op_table_query(ctx, other.group(1))

@@ -173,14 +173,19 @@ def _body(v: str) -> str:
     return v.replace("</資料", "＜/資料").replace("<資料", "＜資料")
 
 
-def format_material(n: int, c: Cited) -> str:
+def wrap_material(n: int, c: Cited, body: str) -> str:
+    """本文を資料タグで包む（番号・文書名・見出しは c のもの）。"""
     attrs = f'n="{n}" 文書="{_attr(c.document_name)}" 見出し="{_attr(c.heading_path)}"'
     if c.page is not None:
         attrs += f' ページ="{c.page}"'
-    body = _body(c.text)
+    return f"<資料 {attrs}>\n{_body(body)}\n</資料>"
+
+
+def format_material(n: int, c: Cited) -> str:
+    body = c.text
     if c.context:
-        body = f"（文脈: {_body(c.context)}）\n{body}"
-    return f"<資料 {attrs}>\n{body}\n</資料>"
+        body = f"（文脈: {c.context}）\n{body}"
+    return wrap_material(n, c, body)
 
 
 _FULLWIDTH = re.compile(r"[【［]\s*([0-9０-９]+)\s*[】］]")

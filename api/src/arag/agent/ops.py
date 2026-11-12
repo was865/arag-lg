@@ -12,9 +12,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from arag.agent.citations import format_material
+from arag.agent.citations import format_material, wrap_material
 from arag.agent.context import Emit, RunContext
 from arag.agent.steps import Step, StepClock
+from arag.agent.table import TableError, describe_tables, parse_tables, run_query
+from arag.agent.table import render as render_table
 from arag.db.models import Content, Document, Section
 from arag.logging import get_logger
 from arag.prompts import load_prompt
@@ -425,19 +427,20 @@ async def op_get_outline(ctx: RunContext, document: str) -> str:
     return "\n".join(lines)
 
 
-async def op_read_section(ctx: RunContext, section: str) -> str:
-    n = _ref_number(section)
+async def _visible_section(ctx: RunContext, ref: str) -> tuple[Section, Document] | None:
+    """出典番号かセクション ID から、利用者に見える章とその文書を得る。"""
+    n = _ref_number(ref)
     cited = ctx.registry.get(n) if n is not None else None
-    sec_ids = [cited.section_id] if cited else _uuids([section])
+    sec_ids = [cited.section_id] if cited else _uuids([ref])
     if not sec_ids:
-        return f"セクション「{section}」は見つかりません（セクション ID か出典番号を指定してください）。"
+        return None
     async with ctx.sessionmaker() as s:
         sec = await s.get(Section, sec_ids[0])
         if sec is None:
-            return f"セクション「{section}」は見つかりません。"
+            return None
         scope = await _scope(s, ctx)
         if scope.empty:
-            return f"セクション「{section}」は見つかりません。"
+            return None
         q = select(Document).where(
             Document.content_hash == sec.content_hash,
             Document.deleted_at.is_(None),
@@ -447,8 +450,15 @@ async def op_read_section(ctx: RunContext, section: str) -> str:
             q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
         docs = list(await s.scalars(q.order_by(Document.created_at)))
     if not docs:
-        return f"セクション「{section}」は見つかりません。"
-    doc = next((d for d in docs if cited and d.id == cited.document_id), docs[0])
+        return None
+    return sec, next((d for d in docs if cited and d.id == cited.document_id), docs[0])
+
+
+async def op_read_section(ctx: RunContext, section: str) -> str:
+    found = await _visible_section(ctx, section)
+    if found is None:
+        return f"セクション「{section}」は見つかりません（セクション ID か出典番号を指定してください）。"
+    sec, doc = found
     text = sec.text
     note = ""
     if len(text) > SECTION_MAX_CHARS:
@@ -465,6 +475,46 @@ async def op_read_section(ctx: RunContext, section: str) -> str:
     c = ctx.registry.get(num)
     assert c is not None
     return format_material(num, c) + note
+
+
+async def op_table_query(
+    ctx: RunContext, source: str, where: str = "", compute: str = "", table: int = 1
+) -> str:
+    """資料の表から、条件に合う行と合計を計算で求める（specs/026 R12・R13）。"""
+    found = await _visible_section(ctx, source)
+    if found is None:
+        return (
+            f'資料「{source}」は見つかりません。source には、表のある資料の出典番号（例 "1"）か'
+            "セクション ID を指定してください。"
+        )
+    sec, doc = found
+    tables = parse_tables(sec.text)
+    if not tables:
+        return (
+            f"「{doc.filename}」のこの箇所に表はありません。"
+            "表のある資料の出典番号を指定するか、search で表を探してください。"
+        )
+    if not 1 <= table <= len(tables):
+        return f"table は 1〜{len(tables)} で指定してください。\n{describe_tables(tables)}"
+    try:
+        result = run_query(tables[table - 1], where, compute)
+    except TableError as e:
+        return f"表を集計できませんでした: {e}"
+    body = render_table(result, where, compute)
+    if len(tables) > 1:
+        body += f"\n（この資料には表が {len(tables)} つあります）\n{describe_tables(tables)}"
+    # 引用は章の番号にそろえる（表の結果も同じ資料の一部）
+    num = ctx.registry.add_section(
+        document_id=doc.id,
+        document_name=doc.filename,
+        section_id=sec.id,
+        heading_path=sec.heading_path,
+        page=sec.page_start,
+        text=sec.text[:SECTION_MAX_CHARS],
+    )
+    c = ctx.registry.get(num)
+    assert c is not None
+    return wrap_material(num, c, body)
 
 
 def now_ms() -> int:

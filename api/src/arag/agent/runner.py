@@ -143,7 +143,9 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
 def _classify(answer: str, ctx: RunContext) -> str | None:
     if answer.strip():
         # 調べたのに資料が 1 件も無く、引用も無い回答は「資料なし」として数える（知識ギャップの分析用）
-        if ctx.stats.tool_calls and not cited_numbers(answer):
+        chat = ctx.primer is not None and ctx.primer.kind == "chat"
+        searched = ctx.stats.tool_calls or (ctx.stats.primer_searches and not chat)
+        if searched and not cited_numbers(answer):
             if len(ctx.registry) == 0:
                 return "no_sources"
             # 資料はあったが引用の無い回答（多くは「見つからなかった」）。引用必須のときだけ数える

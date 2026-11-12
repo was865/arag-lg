@@ -22,8 +22,27 @@ class RunStats:
     model_calls: int = 0
     tool_calls: int = 0
     tool_errors: int = 0
-    # 調べ残しのある下書きを差し戻した回数（ターンに 1 回まで）
+    # 下書きを差し戻した回数（種類ごとにターンに 1 回まで。specs/026 ④）
     gap_reviews: int = 0
+    table_reviews: int = 0
+    number_reviews: int = 0
+    # システムが最初に行った検索の回数（specs/026 ②）
+    primer_searches: int = 0
+
+    @property
+    def reviews(self) -> int:
+        return self.gap_reviews + self.table_reviews + self.number_reviews
+
+
+@dataclass
+class Primer:
+    """ターンの最初にシステムが行った整理と検索の結果（会話の状態には保存しない）。"""
+
+    kind: str = "docs"
+    table: bool = False
+    queries: tuple[str, ...] = ()
+    # モデルに添える検索結果（雑談・検索なしのときは空）
+    text: str = ""
 
 
 @dataclass
@@ -42,5 +61,6 @@ class RunContext:
     # 会話モデルの切り替え（0 = 主モデル。切り替えたら実行の残りはそのモデルで続ける）
     model_index: int = 0
     model_switches: int = 0
+    primer: Primer | None = None
     # いま呼んでいるモデルの表示名（「考えた過程」のステップに出す）
     model_label: str = ""

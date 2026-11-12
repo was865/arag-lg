@@ -25,7 +25,7 @@ from arag.eval.metrics import normalize_text
 
 TERMINAL = {"run.completed", "run.failed", "run.cancelled"}
 SEARCH_TOOLS = {"search", "keyword_search"}
-NON_TOOL_STEPS = {"system", "reasoning", "review", "switch_model"}
+NON_TOOL_STEPS = {"system", "reasoning", "review", "switch_model", "understand", "read_image"}
 
 Judge = Callable[[str, str, list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]]
 
