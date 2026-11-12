@@ -116,3 +116,53 @@ export function splitForFade(text: string): string[] {
   }
   return out;
 }
+
+// ── 検索の明細（「詳細」の中。specs/025 見直し） ─────────────────────────────
+
+/** 検索の方式の表示名。mode が無ければツール名から決める。 */
+export function searchModeLabel(mode: unknown, toolName: string): string {
+  const m = typeof mode === "string" ? mode.toLowerCase() : "";
+  if (m === "hybrid") return "ハイブリッド検索";
+  if (m === "dense" || m === "vector" || m === "semantic") return "意味での検索";
+  if (m === "sparse" || m === "bm25" || m === "keyword") return "キーワード検索";
+  return toolName === "bm25_search" ? "キーワード検索" : "意味での検索";
+}
+
+/**
+ * 見出しの道筋（"文書の題 > 2. 分解"）から、その箇所の名前だけを取り出す。
+ * 文書の題はグループの見出しに出すので、行では繰り返さない。道筋が無ければ空（文書の冒頭）。
+ */
+export function sectionLabel(heading: string): string {
+  const parts = heading.split(">").map((p) => p.trim()).filter(Boolean);
+  // 1 段だけ（文書の題そのもの）なら、箇所の名前は無い
+  return parts.length <= 1 ? "" : parts.slice(1).join(" › ");
+}
+
+export interface HitGroup {
+  title: string;
+  /** この文書の中でいちばん高いスコア */
+  best: number;
+  /** 回答に引用された文書か */
+  cited: boolean;
+  sections: { label: string; score: number }[];
+}
+
+/** 検索で見つけた箇所を文書ごとにまとめる。文書はいちばん高いスコアの順、箇所もスコアの順。 */
+export function groupHits(hits: { title: string; heading: string; score: number }[], citedTitles: ReadonlySet<string> = new Set()): HitGroup[] {
+  const groups = new Map<string, HitGroup>();
+  for (const h of hits) {
+    const g = groups.get(h.title) ?? { title: h.title, best: -Infinity, cited: citedTitles.has(h.title), sections: [] };
+    g.best = Math.max(g.best, h.score);
+    g.sections.push({ label: sectionLabel(h.heading ?? ""), score: h.score });
+    groups.set(h.title, g);
+  }
+  const out = [...groups.values()];
+  for (const g of out) g.sections.sort((a, b) => b.score - a.score);
+  return out.sort((a, b) => b.best - a.best);
+}
+
+/** スコアの棒の最大値。0〜1 の類似度はそのまま（1 が満杯）、BM25 のように 1 を超えるものは一覧の最大値で割る。 */
+export function scoreScale(hits: { score: number }[]): number {
+  const max = Math.max(0, ...hits.map((h) => h.score));
+  return max > 1 ? max : 1;
+}

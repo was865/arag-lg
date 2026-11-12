@@ -6,6 +6,7 @@ import { cn, formatMs } from "@/lib/utils";
 import type { Source, ToolCall, ToolView } from "@/lib/types";
 import { Icon } from "@/components/icons";
 import { searchStory } from "@/lib/chat/evidence";
+import { CitedTitlesContext } from "@/components/chat/search-detail";
 import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
@@ -114,7 +115,9 @@ export function AgentActivity({
       )}
       {isOpen && (
         <div className="animate-fade-up overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface-2 motion-reduce:animate-none">
-          <ToolSteps steps={visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
+          <CitedTitlesContext.Provider value={new Set((sources ?? []).map((x) => x.title))}>
+            <ToolSteps steps={visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
+          </CitedTitlesContext.Provider>
         </div>
       )}
     </div>

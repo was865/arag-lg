@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evidenceList, parseRetrieveHits, plainExcerpt, searchStory, splitForFade } from "@/lib/chat/evidence";
+import { evidenceList, groupHits, parseRetrieveHits, plainExcerpt, scoreScale, searchModeLabel, sectionLabel, searchStory, splitForFade } from "@/lib/chat/evidence";
 import type { Source, ToolCall } from "@/lib/types";
 
 const src = (id: string, title: string, sections: { id: string; heading: string; body: string; page?: number }[], score?: number): Source => ({
@@ -65,5 +65,37 @@ describe("splitForFade（生成中の文字を小分けにする）", () => {
     const a = splitForFade("こんにちは、今日は");
     const b = splitForFade("こんにちは、今日はよい天気です");
     expect(b.slice(0, a.length - 1)).toEqual(a.slice(0, -1));
+  });
+});
+
+describe("検索の明細（文書ごとのまとめ）", () => {
+  const T3 = "w03-HP-300分解手順書_第3版.docx";
+  const T2 = "w02-HP-300分解手順書_第2版.docx";
+  const P3 = "HP-300 ポンプ分解・組立手順書（第3版）";
+  const hits = [
+    { title: T3, heading: `${P3} > 2. 分解`, score: 1.0 },
+    { title: T2, heading: "HP-300 ポンプ分解・組立手順書（第2版） > 2. 分解", score: 0.999 },
+    { title: T3, heading: `${P3} > 1. 準備`, score: 0.99 },
+    { title: T3, heading: P3, score: 0.95 },
+  ];
+  it("見出しの道筋から箇所の名前だけを取り出す。道筋が題だけなら空（文書の冒頭）", () => {
+    expect(sectionLabel(`${P3} > 2. 分解`)).toBe("2. 分解");
+    expect(sectionLabel(`${P3} > 2. 分解 > 2.1 外す`)).toBe("2. 分解 › 2.1 外す");
+    expect(sectionLabel(P3)).toBe("");
+    expect(sectionLabel("")).toBe("");
+  });
+  it("文書ごとにまとめ、いちばん高いスコアの順に並べる。引用した文書に印を付ける", () => {
+    const groups = groupHits(hits, new Set([T3]));
+    expect(groups.map((g) => g.title)).toEqual([T3, T2]);
+    expect(groups[0]).toMatchObject({ best: 1.0, cited: true });
+    expect(groups[0].sections.map((s) => s.label)).toEqual(["2. 分解", "1. 準備", ""]);
+    expect(groups[1].cited).toBe(false);
+  });
+  it("方式の表示名と、棒の最大値", () => {
+    expect(searchModeLabel("hybrid", "vector_search")).toBe("ハイブリッド検索");
+    expect(searchModeLabel(undefined, "bm25_search")).toBe("キーワード検索");
+    expect(searchModeLabel(undefined, "vector_search")).toBe("意味での検索");
+    expect(scoreScale(hits)).toBe(1);
+    expect(scoreScale([{ score: 12.5 }, { score: 3 }])).toBe(12.5);
   });
 });

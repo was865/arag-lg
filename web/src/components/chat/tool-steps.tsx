@@ -1,13 +1,13 @@
 "use client";
 
 import { parseRetrieveHits } from "@/lib/chat/evidence";
+import { SearchDetail, searchHits } from "@/components/chat/search-detail";
 import { cn, formatMs } from "@/lib/utils";
 import { Icon } from "@/components/icons";
 import type { RerankHit, ToolCall, ToolName, ToolStatus, ToolView } from "@/lib/types";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import type { Dictionary } from "@/i18n/dictionary";
-import { Badge } from "@/components/ui/badge";
 
 const LOG_DETAIL_MAX = 8;
 const VERIFY_DETAIL_MAX = 5;
@@ -635,10 +635,9 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
             {TOOL_ICONS[step.name]}
           </svg>
         </span>
-        <span className="font-mono text-caption font-semibold text-fg">{step.name}</span>
-        <span className="max-w-[110px] truncate rounded-full bg-divider px-[7px] py-px text-caption text-muted max-md:hidden">
-          {step.label}
-        </span>
+        {/* 日本語の名前を主に、ツール名は小さく添える */}
+        <span className="truncate text-footnote font-semibold text-fg">{step.label || step.name}</span>
+        <span className="font-mono text-mini text-muted-2 max-md:hidden">{step.label ? step.name : ""}</span>
         <span className="min-w-0 truncate text-footnote text-muted max-md:hidden">{step.summary}</span>
         <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
         {expandable ? (
@@ -801,6 +800,7 @@ function groupSteps(steps: ToolCall[]): { roots: ToolCall[]; childrenOf: Map<str
 /** 子サブステップの行。詳細があれば展開可能。card / timeline 共通。 */
 function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded: boolean; onToggle: () => void; t: Dictionary }) {
   const expandable = isExpandable(step);
+  const hits = searchHits(step);
   const showInput = hasInputData(step.input);
   const showOutput = step.output != null;
   return (
@@ -818,8 +818,8 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
         <span className="grid place-items-center text-muted-2">
           <svg viewBox="0 0 16 16" width="12" height="12">{TOOL_ICONS[step.name]}</svg>
         </span>
-        <span className="font-mono text-caption font-semibold text-fg-2">{step.name}</span>
-        <Badge className="block max-w-[150px] truncate font-normal max-md:hidden">{step.label}</Badge>
+        <span className="truncate text-caption font-semibold text-fg-2">{step.label || step.name}</span>
+        <span className="font-mono text-mini text-muted-2 max-md:hidden">{step.label ? step.name : ""}</span>
         <span className="min-w-0 flex-1 truncate text-muted">{step.summary}</span>
         <span className="font-mono text-mini tabular-nums text-muted-2">{stepDurationLabel(step)}</span>
         {expandable ? (
@@ -832,7 +832,12 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
           <span aria-hidden className="block h-[10px] w-[10px]" />
         )}
       </button>
-      {expandable && expanded && (
+      {expandable && expanded && hits && (
+        <div className="pb-2 pl-[26px] pt-1">
+          <SearchDetail step={step} hits={hits} />
+        </div>
+      )}
+      {expandable && expanded && !hits && (
         <div className="flex flex-col gap-2 pb-2 pl-[26px] pt-1">
           {showInput && (
             <div>
@@ -859,6 +864,10 @@ function SubSteps({ steps, expandedMap, onToggleStep, t }: {
   t: Dictionary;
 }) {
   if (!steps || steps.length === 0) return null;
+  // 親（資料を検索）の中身が検索 1 回だけなら、同じことを 2 段で言わず、明細をそのまま出す
+  const only = steps.length === 1 ? steps[0] : null;
+  const onlyHits = only ? searchHits(only) : null;
+  if (only && onlyHits) return <SearchDetail step={only} hits={onlyHits} />;
   return (
     <div className="flex flex-col gap-px border-l-[1.5px] border-divider pl-3 ml-[7px]">
       {steps.map((s) => (
