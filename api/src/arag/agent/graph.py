@@ -3,12 +3,16 @@
 from typing import Any
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import SummarizationMiddleware
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from arag.agent.context import RunContext
-from arag.agent.middleware import AgentPolicyMiddleware, CitationMiddleware, StepMiddleware
+from arag.agent.middleware import (
+    AgentPolicyMiddleware,
+    CitationMiddleware,
+    RecordedSummarization,
+    StepMiddleware,
+)
 from arag.agent.model_switch import ModelSwitchMiddleware
 from arag.agent.tools import TOOLS
 
@@ -24,7 +28,7 @@ def build_agent(
     summarize_at_tokens: int = 12_000,
 ) -> Any:
     middleware: list[Any] = [
-        SummarizationMiddleware(
+        RecordedSummarization(
             utility or model, trigger=("tokens", summarize_at_tokens), keep=("messages", 12)
         ),
         AgentPolicyMiddleware(),

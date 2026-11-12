@@ -288,7 +288,8 @@ async def test_failed_models_are_named_with_reasons(
     async with sessionmaker() as s:
         msg = await s.get(Message, run.message_id)
         assert msg is not None and "DeepSeek: 残高が不足" in msg.answer_text
-        assert [st["name"] for st in msg.steps] == ["switch_model"]
+        # 最初の呼び出しでツールを必須にしたこと（システムの処理）も記録に残る
+        assert [st["name"] for st in msg.steps] == ["system", "switch_model"]
 
 
 async def test_thinking_becomes_a_reasoning_step(

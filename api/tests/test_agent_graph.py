@@ -42,7 +42,7 @@ async def test_search_then_answer_with_citation_cleanup() -> None:
     tool_msg = next(m for m in state["messages"] if isinstance(m, ToolMessage))
     assert '<資料 n="1"' in tool_msg.text
     steps = [e["step"] for e in custom if e["type"] == "step"]
-    top = [s for s in steps if s["parent_id"] is None]
+    top = [s for s in steps if s["parent_id"] is None and s["name"] != "system"]
     assert [s["status"] for s in top] == ["running", "done"] and top[0]["name"] == "search"
     assert top[1]["summary"] == "資料 1 件"
     assert any(s["parent_id"] == top[0]["id"] for s in steps)  # 検索の子ステップ
@@ -70,7 +70,7 @@ async def test_keyword_fallback_is_explained_in_steps() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     _, custom = await run(agent, ctx(KeywordMissSearch("MX-17 は即時停止を推奨する。")), "MX-17 の異常時は？")
     done = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "done"]
-    top = next(s for s in done if s["parent_id"] is None)
+    top = next(s for s in done if s["parent_id"] is None and s["name"] != "system")
     assert top["summary"] == "完全一致 0 件 → セマンティック検索で資料 1 件"
     kids = [s for s in done if s["parent_id"] == top["id"]]
     assert [k["label"] for k in kids] == ["検索", "型番のみで再検索", "セマンティック検索で補完"]
@@ -190,3 +190,87 @@ async def test_no_gap_review_when_answer_is_complete_or_searched_enough() -> Non
     )
     await run(build_agent(searched, checkpointer=InMemorySaver()), ctx(FakeSearch("本文")), "q")
     assert len(searched.calls) == 4
+
+
+# ── 後ろで行う処理も記録に残す（「システムの処理」。技術者が追えるように） ──
+
+
+def system_steps(custom: list[Any]) -> dict[str, dict[str, Any]]:
+    return {
+        e["step"]["input"]["kind"]: e["step"]
+        for e in custom
+        if e["type"] == "step" and e["step"]["name"] == "system"
+    }
+
+
+async def test_forced_tool_and_citation_cleanup_are_recorded() -> None:
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="MX-17"), AIMessage(content="停止する【1】。根拠なし[9]"))
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("MX-17 は即時停止を推奨する。")), "MX-17 はどうする？")
+    sys = system_steps(custom)
+    assert sys["force_tool"]["status"] == "done"
+    cleanup = sys["citation_cleanup"]
+    assert cleanup["input"]["before"] == "停止する【1】。根拠なし[9]"
+    assert cleanup["output"]["after"] == "停止する[1]。根拠なし"
+    assert cleanup["output"]["removed_numbers"] == [9]
+    assert "[9]" in cleanup["summary"]
+
+
+async def test_step_budget_is_recorded() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="a"),
+            tool_call("search", query="b"),
+            AIMessage(content="まとめ[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3)), "q")
+    budget = system_steps(custom)["step_budget"]
+    assert budget["input"]["calls"] == 3 and budget["input"]["max_steps"] == 3
+    assert "最終回答" in budget["output"]["note"]
+
+
+async def test_prior_turn_compaction_is_recorded_once() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="a"),
+            AIMessage(content="一回目[1]"),
+            tool_call("search", query="b"),
+            AIMessage(content="二回目[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, first = await run(agent, ctx(FakeSearch("本文")), "一つ目", thread="t3")
+    assert "compact_history" not in system_steps(first)
+    _, second = await run(agent, ctx(FakeSearch("本文")), "二つ目", thread="t3")
+    compact = [
+        e for e in second if e["type"] == "step" and e["step"]["input"].get("kind") == "compact_history"
+    ]
+    assert len(compact) == 1 and compact[0]["step"]["input"]["replaced"] == 1
+
+
+async def test_summarization_is_recorded() -> None:
+    from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+    from langgraph.runtime import Runtime
+
+    from arag.agent.middleware import RecordedSummarization
+
+    events: list[Any] = []
+    mw = RecordedSummarization(
+        GenericFakeChatModel(messages=iter([AIMessage(content="これまでの要約")])),
+        trigger=("messages", 4),
+        keep=("messages", 2),
+    )
+    msgs = [
+        HumanMessage(f"質問{i}", id=f"h{i}") if i % 2 == 0 else AIMessage(f"答え{i}", id=f"a{i}")
+        for i in range(6)
+    ]
+    result = await mw.abefore_model({"messages": msgs}, Runtime(context=None, stream_writer=events.append))
+    assert result is not None
+    step = events[-1]["step"]
+    assert step["name"] == "system" and step["input"]["kind"] == "summarize_history"
+    assert step["input"]["messages_before"] == 6 and step["input"]["kept"] == 2
+    assert "これまでの要約" in step["output"]["summary"]

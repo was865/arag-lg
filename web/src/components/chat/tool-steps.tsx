@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { parseRetrieveHits } from "@/lib/chat/evidence";
 import { SearchDetail, searchHits } from "@/components/chat/search-detail";
 import { cn, formatMs } from "@/lib/utils";
@@ -131,6 +132,13 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
     <>
       <path d="M8 2.2l4.5 1.8v3.6c0 2.7-1.9 4.6-4.5 5.4-2.6-.8-4.5-2.7-4.5-5.4V4L8 2.2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
       <path d="M6 7.8l1.5 1.5L10.3 6" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  // システムの処理（後ろで行った整形・制御）: 歯車
+  system: (
+    <>
+      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M3.6 12.4l1.3-1.3M11.1 4.9l1.3-1.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </>
   ),
   // 調べ残しの見直し（下書きを差し戻す）: 戻る矢印つきの文書
@@ -267,6 +275,34 @@ function outputSectionLabel(step: ToolCall, t: Dictionary): string {
   return t.chat.sectionOutput;
 }
 
+/** システムの処理の入力・出力。短い値は表に、長い文章（整形の前後・要約など）は読める箱に出す。 */
+function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionary }) {
+  const rows: { k: string; v: React.ReactNode }[] = [];
+  const texts: [string, string][] = [];
+  for (const [k, v] of Object.entries(data)) {
+    if (k === "kind") continue;
+    if (typeof v === "string" && (v.length > 60 || v.includes("\n"))) texts.push([k, v]);
+    else rows.push({ k: systemFieldLabel(k, t), v: Array.isArray(v) ? (v.length ? v.join(", ") : "—") : String(v) });
+  }
+  return (
+    <div className="space-y-2">
+      {rows.length > 0 && <KeyValueGrid rows={rows} />}
+      {texts.map(([k, v]) => (
+        <div key={k}>
+          <div className={sectionLabelCls}>{systemFieldLabel(k, t)}</div>
+          <div className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2">
+            {v.trim()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function systemFieldLabel(key: string, t: Dictionary): string {
+  return (t.chat.systemFields as Record<string, string>)[key] ?? key;
+}
+
 function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if ((step.name === "reasoning" || step.name === "answer") && typeof step.input.model === "string") {
     return <ModelBlock model={step.input.model} />;
@@ -274,6 +310,7 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if ((step.name === "verify" || step.name === "revise") && typeof step.input.model === "string") {
     return <ModelBlock model={step.input.model} />;
   }
+  if (step.name === "system") return <SystemFields data={step.input} t={t} />;
   if (step.name === "review") {
     // 差し戻した下書きを丸ごと見せる（回答の欄からは消えるが、記録には残す）
     const rows: { k: string; v: React.ReactNode }[] = [];
@@ -626,6 +663,8 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     );
   }
 
+  if (step.name === "system") return <SystemFields data={output} t={t} />;
+
   if (step.name === "review" && typeof output.note === "string") {
     const next = Array.isArray(output.next_tools) ? (output.next_tools as unknown[]).map(String) : [];
     return (
@@ -919,11 +958,60 @@ function SubSteps({ steps, expandedMap, onToggleStep, t }: {
   );
 }
 
+/**
+ * システムの処理（引用の整形・ツールの必須化・回数の上限・前のターンの省略・会話の要約）を 1 組に畳む。
+ * 記録には全部残すが、エージェントが自分で行った段階（検索・読む・計算・見直し）の流れを邪魔しないよう、
+ * 末尾に件数だけを出し、開くと 1 件 1 行、さらに開くと中身が見える（3 段で深くなる）。
+ */
+function SystemGroup({ steps, expandedMap, onToggleStep, t }: {
+  steps: ToolCall[];
+  expandedMap: Record<string, boolean>;
+  onToggleStep: (id: string) => void;
+  t: Dictionary;
+}) {
+  const [open, setOpen] = useState(false);
+  if (steps.length === 0) return null;
+  return (
+    <div className="border-t-[0.5px] border-divider">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2.5 border-0 bg-transparent px-3.5 py-2 text-left text-caption text-muted outline-none hover:text-fg-2 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50 max-md:px-3"
+      >
+        <span className="grid place-items-center text-muted-2">
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>{TOOL_ICONS.system}</svg>
+        </span>
+        <span className="shrink-0 font-medium">{t.chat.systemGroup}</span>
+        <span className="nums shrink-0 text-muted-2">{interpolate(t.chat.systemCount, { n: String(steps.length) })}</span>
+        {/* 畳んでいる間は何をしたかを名前だけ並べる */}
+        {!open && <span className="min-w-0 flex-1 truncate text-muted-2 max-md:hidden">{steps.map((s) => s.label).join("・")}</span>}
+        <span className={cn("ml-auto text-muted-2 transition-transform", open && "rotate-180")}>
+          <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden>
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <div className="animate-fade-up px-3.5 pb-2 motion-reduce:animate-none max-md:px-3">
+          <div className="ml-[5px] flex flex-col gap-px border-l-[1.5px] border-divider pl-3">
+            {steps.map((s) => (
+              <SubStepRow key={s.id} step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) {
   const { t } = useT();
+  // 生の記録（log）は全部を時刻順に出す。ほかは、システムの処理を末尾の 1 組に畳む
   if (variant === "log") return <ToolStepLog steps={steps} dict={t} />;
 
-  const { roots, childrenOf } = groupSteps(steps);
+  const system = steps.filter((s) => s.name === "system" && !s.parentId);
+  const { roots, childrenOf } = groupSteps(steps.filter((s) => !system.includes(s)));
 
   if (variant === "timeline") {
     return (
@@ -938,6 +1026,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
             )}
           </div>
         ))}
+        <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
       </div>
     );
   }
@@ -953,6 +1042,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
           )}
         </div>
       ))}
+      <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
     </div>
   );
 }

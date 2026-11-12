@@ -6,8 +6,15 @@ from datetime import datetime
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse, ToolCallRequest
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelRequest,
+    ModelResponse,
+    SummarizationMiddleware,
+    ToolCallRequest,
+)
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
 from langgraph.types import Command
 
@@ -61,6 +68,23 @@ def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
     return load_prompt("agent_system").format(today=today, citation_rule=citation, unknown_rule=unknown)
 
 
+def record_system(emit: Any, step_id: str, kind: str, label: str, summary: str, **detail: Any) -> None:
+    """後ろで行った処理を「システムの処理」のステップとして記録に残す（後端の動きは原則すべて記録に出す）。
+
+    detail の input は入力に、output は出力にそのまま入れる。画面では 1 つの畳んだ組にまとめて見せる。
+    """
+    step = Step(
+        id=step_id,
+        name="system",
+        label=label,
+        status="done",
+        input={"kind": kind, **detail.get("input", {})},
+        output=detail.get("output"),
+        summary=summary,
+    )
+    emit({"type": "step", "step": step.model_dump()})
+
+
 def _turn_start(messages: list[AnyMessage]) -> int:
     for i in range(len(messages) - 1, -1, -1):
         if isinstance(messages[i], HumanMessage):
@@ -88,14 +112,43 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         ]
         calls = sum(1 for m in msgs[start:] if isinstance(m, AIMessage)) + 1
         ctx.stats.model_calls = calls
+        emit = request.runtime.stream_writer
+        replaced = sum(1 for m in msgs[:start] if isinstance(m, ToolMessage))
+        if replaced and calls == 1:  # 呼び出しのたびに置き換えるが、記録はターンに 1 回
+            record_system(
+                emit,
+                "system-compact",
+                "compact_history",
+                "前のターンの資料を省略",
+                f"前のターンのツール結果 {replaced} 件を、モデルには省略の案内に置き換えて渡した",
+                input={"replaced": replaced},
+                output={"placeholder": PRIOR_TOOL_PLACEHOLDER},
+            )
         prompt = system_prompt(ctx)
         overrides: dict[str, Any] = {"messages": compact}
         if calls >= ctx.cfg.max_steps:
             prompt += FINAL_NOTE
             overrides["tools"] = []
+            record_system(
+                emit,
+                f"system-budget-{calls}",
+                "step_budget",
+                "呼び出しの上限",
+                f"{calls} 回目で上限（{ctx.cfg.max_steps} 回）に達したため、ツールを外して最終回答を求めた",
+                input={"calls": calls, "max_steps": ctx.cfg.max_steps},
+                output={"note": FINAL_NOTE.strip()},
+            )
         elif calls == 1 and ctx.cfg.require_citations and request.tools:
             # 小さいモデルは追質問で前の回答だけを頼りに引用なしで答えがちなので、最初は必ずツールを使わせる
             overrides["tool_choice"] = "any"
+            record_system(
+                emit,
+                "system-force-tool",
+                "force_tool",
+                "ツールの使用を必須に",
+                "ターンの最初の呼び出しで、ツールを必ず使わせた（前の回答だけを頼りに引用なしで答えないため）",
+                input={"tool_choice": "any"},
+            )
         response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
         gap = _gap_review(ctx, msgs[start:], response, calls, bool(request.tools))
         if gap is None:
@@ -153,6 +206,7 @@ def _gap_review(
 
 
 _MATERIAL = re.compile(r"<資料 n=")
+_MARK = re.compile(r"\[(\d+)\](?!\()")
 
 
 class StepMiddleware(AgentMiddleware[Any, RunContext]):
@@ -204,10 +258,60 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             return None
         last: AIMessage = msgs[-1]
         text = last.text
-        _, answer = split_thinking(text)  # 考えた過程は「考えた過程」のステップで見せる
-        fixed = drop_repeated_tail(
-            strip_unknown(normalize_markers(answer), set(runtime.context.registry.numbers()))
-        )
+        thought, answer = split_thinking(text)  # 考えた過程は「考えた過程」のステップで見せる
+        known = set(runtime.context.registry.numbers())
+        normalized = normalize_markers(answer)
+        stripped = strip_unknown(normalized, known)
+        fixed = drop_repeated_tail(stripped)
         if fixed == text:
             return None
+        removed = sorted({int(n) for n in _MARK.findall(normalized)} - known)
+        notes = []
+        if thought:
+            notes.append(f"考えた過程 {len(thought)} 文字を回答から分けた")
+        if normalized != answer:
+            notes.append("引用の書き方をそろえた")
+        if removed:
+            notes.append("資料に無い番号 " + "".join(f"[{n}]" for n in removed) + " を消した")
+        if len(stripped) > len(fixed):
+            notes.append(f"末尾の言い直し {len(stripped) - len(fixed)} 文字を消した")
+        record_system(
+            runtime.stream_writer,
+            "system-citation-cleanup",
+            "citation_cleanup",
+            "回答の整形",
+            "・".join(notes) or "回答を整えた",
+            input={"before": text[:4000]},
+            output={
+                "after": fixed[:4000],
+                "removed_numbers": removed,
+                "tail_dropped_chars": len(stripped) - len(fixed),
+                "thinking_chars": len(thought or ""),
+            },
+        )
         return {"messages": [AIMessage(content=fixed, id=last.id, usage_metadata=last.usage_metadata)]}
+
+
+class RecordedSummarization(SummarizationMiddleware):
+    """会話が長くなったときの要約。要約したこと（何件を置き換え、どんな要約にしたか）を記録に残す。"""
+
+    async def abefore_model(self, state: Any, runtime: Runtime[Any]) -> dict[str, Any] | None:
+        before = list(state["messages"])
+        result = await super().abefore_model(state, runtime)
+        if not result:
+            return None
+        ids = {m.id for m in before}
+        after = [m for m in result["messages"] if getattr(m, "id", None) != REMOVE_ALL_MESSAGES]
+        kept = sum(1 for m in after if m.id in ids)
+        summary = "\n".join(m.text for m in after if m.id not in ids)
+        record_system(
+            runtime.stream_writer,
+            f"system-summarize-{len(before)}",
+            "summarize_history",
+            "会話の要約",
+            f"会話が長くなったため、前の {len(before) - kept} 件のメッセージを要約に置き換えた"
+            f"（{kept} 件はそのまま）",
+            input={"messages_before": len(before), "kept": kept},
+            output={"summary": summary[:4000]},
+        )
+        return result

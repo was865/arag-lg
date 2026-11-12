@@ -49,6 +49,7 @@ export type ToolName =
   | "verify"
   | "revise"
   | "review"
+  | "system"
   | "fetch_document"
   | "calculate"
   | "summarize"
