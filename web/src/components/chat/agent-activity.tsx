@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ToolSteps } from "@/components/chat/tool-steps";
 import { cn, formatMs } from "@/lib/utils";
 import type { Source, ToolCall, ToolView } from "@/lib/types";
@@ -11,6 +11,44 @@ import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
+
+/** 進行中の段階（specs/026）: 0 理解 → 1 検索 → 2 回答 → 3 確認。実行中のステップから決める。 */
+function stageOf(current: ToolCall | undefined): number {
+  if (!current) return 2; // 実行中のステップが無いあいだは、モデルが回答を書いている
+  if (current.name === "understand") return 0;
+  if (current.name === "review") return 3;
+  if (current.name === "reasoning") return 2;
+  return 1;
+}
+
+/** 段階の列。済んだ段階は静かに、今の段階だけを色と呼吸する点で示す。 */
+function StageRail({ stage, labels }: { stage: number; labels: string[] }) {
+  return (
+    <span className="inline-flex items-center gap-1" aria-hidden>
+      {labels.map((label, i) => (
+        <Fragment key={label}>
+          {i > 0 && (
+            <span
+              className={cn(
+                "h-px w-2.5 transition-colors duration-(--duration-mid)",
+                i <= stage ? "bg-accent/50" : "bg-divider-strong",
+              )}
+            />
+          )}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-caption transition-colors duration-(--duration-mid)",
+              i === stage ? "bg-accent-soft font-medium text-accent" : i < stage ? "text-fg-2" : "text-muted-2",
+            )}
+          >
+            {i === stage && <span className="h-1.5 w-1.5 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />}
+            {label}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
@@ -45,6 +83,9 @@ export function AgentActivity({
   // 推論を隠していても、考えている最中なら「実行中」より具体的に言う（検索の合間に長く考えることがある）
   const thinking = steps.some((s) => s.name === "reasoning" && s.status === "running");
 
+  // 質問の理解のステップがあるターンは、系統が導く流れ（specs/026）
+  const guided = steps.some((s) => s.name === "understand");
+
   const story = searchStory(visibleSteps, sources ?? []);
   const SHOWN = 4;
   const check = (
@@ -64,7 +105,16 @@ export function AgentActivity({
         aria-expanded={isOpen}
         className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-control border-0 bg-transparent p-0 text-left text-footnote text-muted outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
-        {running ? (
+        {running && guided ? (
+          // 系統が導く流れ: 今どの段階かを列で示し、いまの動きを横に流す
+          <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <StageRail
+              stage={stageOf(current)}
+              labels={[t.chat.stageUnderstand, t.chat.stageSearch, t.chat.stageAnswer, t.chat.stageCheck]}
+            />
+            <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
+          </span>
+        ) : running ? (
           <span className="inline-flex items-center gap-2">
             <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
             <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>

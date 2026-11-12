@@ -182,6 +182,34 @@ export function UncitedNotice() {
   );
 }
 
+/** 回答の数字のうち、資料・計算結果に見当たらなかったもの（specs/026 R16）。 */
+export function UnverifiedNumbersNotice({ numbers }: { numbers: string[] }) {
+  const { t } = useT();
+  if (numbers.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-card border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2 text-footnote text-muted">
+      <svg viewBox="0 0 16 16" width="14" height="14" className="shrink-0" aria-hidden>
+        <path d="M8 2.5l6 10.5H2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+        <path d="M8 6.5v3M8 11.2v.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      <strong className="font-semibold text-fg">{t.chat.unverifiedNumbers}</strong>
+      {numbers.slice(0, 8).map((n) => (
+        <span key={n} className="rounded-control border-[0.5px] border-divider-strong bg-surface px-1.5 py-px font-mono text-caption tabular-nums text-fg">
+          {n}
+        </span>
+      ))}
+      <span>{t.chat.unverifiedNumbersHint}</span>
+    </div>
+  );
+}
+
+/** 数字の照合のステップ（system / number_check）から、見当たらなかった数字を取り出す。 */
+export function unverifiedNumbers(steps: { name: string; input: Record<string, unknown>; output: Record<string, unknown> | null }[]): string[] {
+  const check = steps.findLast((s) => s.name === "system" && s.input.kind === "number_check");
+  const list = check?.output?.unverified;
+  return Array.isArray(list) ? list.map(String) : [];
+}
+
 /** 生成に失敗したターン（理由とやり直し）。 */
 export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: () => void }) {
   const { t } = useT();

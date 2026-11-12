@@ -50,6 +50,8 @@ export type ToolName =
   | "revise"
   | "review"
   | "system"
+  | "understand"
+  | "table_query"
   | "fetch_document"
   | "calculate"
   | "summarize"

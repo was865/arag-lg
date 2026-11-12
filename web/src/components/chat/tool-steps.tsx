@@ -134,6 +134,20 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
       <path d="M6 7.8l1.5 1.5L10.3 6" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  // 質問の理解（質問を整理して検索クエリにする）: 吹き出しと光
+  understand: (
+    <>
+      <path d="M2.5 3.5h8a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5H7l-2.8 2.2V10.5H4A1.5 1.5 0 0 1 2.5 9V3.5z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+      <path d="M13 1.8l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5.5-1.3z" fill="currentColor" />
+    </>
+  ),
+  // 表の集計（条件で行を選び、合計を計算する）: 格子
+  table_query: (
+    <>
+      <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <path d="M2 6.5h12M2 9.8h12M6.2 3v10" stroke="currentColor" strokeWidth="1.2" />
+    </>
+  ),
   // システムの処理（後ろで行った整形・制御）: 歯車
   system: (
     <>
@@ -303,6 +317,79 @@ function systemFieldLabel(key: string, t: Dictionary): string {
   return (t.chat.systemFields as Record<string, string>)[key] ?? key;
 }
 
+const boxCls = "rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 text-footnote leading-[1.55] text-fg-2";
+
+/** システムが先に行った検索の札（モデルが自分で行った検索と見分ける）。 */
+function AutoBadge({ t }: { t: Dictionary }) {
+  return (
+    <span
+      title={t.chat.bySystemHint}
+      className="shrink-0 rounded-full border-[0.5px] border-divider-strong px-1.5 py-px text-mini font-medium leading-none text-muted"
+    >
+      {t.chat.bySystem}
+    </span>
+  );
+}
+
+function isBySystem(step: ToolCall): boolean {
+  return step.input.by === "system";
+}
+
+/** Markdown の表を含む文章（table_query の結果）。表は表として、ほかの行は文章として出す。 */
+function TableText({ text }: { text: string }) {
+  const body = text.replace(/^<資料[^>]*>\n?/, "").replace(/\n?<\/資料>\s*$/, "");
+  const blocks: ({ kind: "text"; lines: string[] } | { kind: "table"; rows: string[][] })[] = [];
+  for (const line of body.split("\n")) {
+    const isRow = line.trimStart().startsWith("|");
+    const last = blocks[blocks.length - 1];
+    if (isRow) {
+      if (/^\s*\|[\s:|-]+\|\s*$/.test(line)) continue; // 区切り行
+      const cells = line.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      if (last?.kind === "table") last.rows.push(cells);
+      else blocks.push({ kind: "table", rows: [cells] });
+    } else if (line.trim()) {
+      if (last?.kind === "text") last.lines.push(line);
+      else blocks.push({ kind: "text", lines: [line] });
+    }
+  }
+  return (
+    <div className="space-y-2">
+      {blocks.map((b, i) =>
+        b.kind === "text" ? (
+          <div key={i} className="whitespace-pre-wrap break-words text-footnote leading-[1.55] text-fg-2">
+            {b.lines.join("\n")}
+          </div>
+        ) : (
+          <div key={i} className="overflow-x-auto rounded-control border-[0.5px] border-divider bg-code-bg">
+            <table className="w-full border-collapse text-caption">
+              <thead>
+                <tr>
+                  {b.rows[0].map((c, j) => (
+                    <th key={j} className="whitespace-nowrap border-b-[0.5px] border-divider-strong px-2.5 py-1.5 text-left font-semibold text-fg">
+                      {c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {b.rows.slice(1).map((r, k) => (
+                  <tr key={k} className="border-t-[0.5px] border-divider first:border-t-0">
+                    {r.map((c, j) => (
+                      <td key={j} className={cn("px-2.5 py-1.5 text-fg-2", /^-?[\d,.]+$/.test(c) && "text-right font-mono tabular-nums")}>
+                        {c}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
 function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if ((step.name === "reasoning" || step.name === "answer") && typeof step.input.model === "string") {
     return <ModelBlock model={step.input.model} />;
@@ -311,6 +398,18 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
     return <ModelBlock model={step.input.model} />;
   }
   if (step.name === "system") return <SystemFields data={step.input} t={t} />;
+  if (step.name === "understand" && typeof step.input.question === "string") {
+    return <div className={cn(boxCls, "whitespace-pre-wrap break-words")}>{step.input.question}</div>;
+  }
+  if (step.name === "table_query") {
+    const code = (v: unknown) => <code className="font-mono text-caption text-fg">{String(v)}</code>;
+    const rows = [
+      { k: t.chat.tableSource, v: `[${String(step.input.source ?? "")}]` },
+      { k: t.chat.tableWhere, v: step.input.where ? code(step.input.where) : t.chat.tableAll },
+    ];
+    if (step.input.compute) rows.push({ k: t.chat.tableCompute, v: code(step.input.compute) });
+    return <KeyValueGrid rows={rows} />;
+  }
   if (step.name === "review") {
     // 差し戻した下書きを丸ごと見せる（回答の欄からは消えるが、記録には残す）
     const rows: { k: string; v: React.ReactNode }[] = [];
@@ -665,6 +764,41 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
 
   if (step.name === "system") return <SystemFields data={output} t={t} />;
 
+  if (step.name === "understand") {
+    const queries = Array.isArray(output.queries) ? (output.queries as unknown[]).map(String) : [];
+    const chip = "rounded-full border-[0.5px] border-divider-strong bg-surface px-2 py-0.5 text-caption text-fg-2";
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className={chip}>{output.kind === "chat" ? t.chat.understandKindChat : t.chat.understandKindDocs}</span>
+          {output.table === true && <span className={chip}>{t.chat.understandTable}</span>}
+        </div>
+        {queries.length > 0 && (
+          <div>
+            <div className={sectionLabelCls}>{t.chat.understandQueries}</div>
+            <ol className="m-0 list-none space-y-1 p-0">
+              {queries.map((q, i) => (
+                <li key={i} className={cn(boxCls, "flex gap-2 py-1.5")}>
+                  <span className="font-mono text-caption text-muted-2">{i + 1}</span>
+                  <span className="min-w-0 break-words text-fg">{q}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+        {typeof output.error === "string" && (
+          <div className="text-caption text-muted">
+            {t.chat.understandError}（{output.error}）
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (step.name === "table_query" && typeof output.result === "string") {
+    return <TableText text={output.result} />;
+  }
+
   if (step.name === "review" && typeof output.note === "string") {
     const next = Array.isArray(output.next_tools) ? (output.next_tools as unknown[]).map(String) : [];
     return (
@@ -717,7 +851,10 @@ function ToolStepCard({ step, expanded, onToggle, t }: { step: ToolCall; expande
           </svg>
         </span>
         {/* 日本語の名前を主に、ツール名は小さく添える */}
-        <span className="truncate text-footnote font-semibold text-fg">{step.label || step.name}</span>
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-footnote font-semibold text-fg">
+          <span className="truncate">{step.label || step.name}</span>
+          {isBySystem(step) && <AutoBadge t={t} />}
+        </span>
         <span className="font-mono text-mini text-muted-2 max-md:hidden">{step.label ? step.name : ""}</span>
         <span className="min-w-0 truncate text-footnote text-muted max-md:hidden">{step.summary}</span>
         <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
@@ -774,6 +911,7 @@ function ToolStepTimeline({ step, expanded, onToggle, isLast, t }: { step: ToolC
           )}
         >
           <span className="font-mono text-caption font-semibold text-fg">{step.name}</span>
+          {isBySystem(step) && <AutoBadge t={t} />}
           <span className="min-w-0 flex-1 truncate text-footnote text-muted">{step.summary}</span>
           <span className="font-mono text-caption tabular-nums text-muted">{stepDurationLabel(step)}</span>
         </button>
