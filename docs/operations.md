@@ -29,7 +29,7 @@ make up                # compose で全体（postgres・qdrant・redis・api・w
 起動（GPU 機の作業ツリーで）:
 
 ```bash
-docker compose -f compose.gpu.yaml --profile llm --profile vlm up -d
+docker compose -f compose.gpu.yaml --profile llm up -d
 ```
 
 役割ごとに必要なものだけでもよい（例 `up -d tei-embed tei-rerank-ruri`）。`compose.gpu.yaml` の先頭のコメント参照。
@@ -39,10 +39,10 @@ docker compose -f compose.gpu.yaml --profile llm --profile vlm up -d
 | tei-embed | 8081 | `curl http://<GPU機>:8081/health` |
 | tei-rerank-ruri | 8084 | `curl http://<GPU機>:8084/health` |
 | docling-serve | 5001 | `curl http://<GPU機>:5001/health` |
-| vllm（会話・文脈付与） | 8090 | `curl http://<GPU機>:8090/health`、`/v1/models` |
-| vllm-vl（図の説明） | 8091 | 同上 |
+| gemma（会話・補助・文脈付与・図の説明。Gemma 4 12B） | 8093 | `curl http://<GPU機>:8093/health`、`/v1/models` |
+| vllm / vllm-vl（以前の Qwen3-8B / Qwen3-VL。比較用、`--profile qwen` / `qwen-vl`） | 8090 / 8091 | 同上。gemma を止めてから起動する |
 
-### vLLM が起動しない・止まった
+### vLLM が起動しない・止まった（以前の構成で 2 つを起動するとき）
 
 症状: `/health` が応答しない、`nvidia-smi` で GPU 100% のまま、ログが CUDA graph の取得で止まっている。原因はたいてい 2 つの vLLM の同時起動。
 

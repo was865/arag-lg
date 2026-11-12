@@ -65,8 +65,9 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
 
 ## GPU 機（`compose.gpu.yaml`）
 
-- サービスとポート: `tei-embed` :8081・`tei-rerank-ruri` :8084・`docling-serve` :5001・`vllm` :8090（`--profile llm`、Qwen3-8B）・`vllm-vl` :8091（`--profile vlm`、Qwen3-VL）。
-- 2 つの vLLM を同時に起動すると、CUDA graph の取得で止まる（`/health` が応答しないまま GPU 100%）。`vllm-vl` は entrypoint で `vllm` の `/health` を待ってから起動する。`depends_on` は `docker compose up` でしか効かない（Docker の自動再起動・Docker Desktop の画面の「開始」では効かない）ので、この待ちを外さない。
+- サービスとポート: `tei-embed` :8081・`tei-rerank-ruri` :8084・`docling-serve` :5001・`gemma` :8093（`--profile llm`。Gemma 4 12B が会話・補助・文脈付与・図の説明を 1 つで兼ねる。2026-11-13 から既定）。
+- 以前の構成（`vllm` :8090 Qwen3-8B は `--profile qwen`、`vllm-vl` :8091 Qwen3-VL は `--profile qwen-vl`）は比較用。`gemma` と同時には載らない（24GB を超える）。この 2 つを同時に起動すると CUDA graph の取得で止まるので、`vllm-vl` は entrypoint で `vllm` の `/health` を待つ（`depends_on` は `docker compose up` でしか効かない。この待ちを外さない）。
+- モデルを替えるときは harukaze_mix（69 題）で比べてから決める（`eval/.reports/`、手順は `docs/operations.md`）。Qwen3.8-27B の INT4 は 24GB では余裕が無く、長い入力で止まったので見送った（2026-11-12）。
 - VRAM 24GB に全部を同居させている。KV の量（`--kv-cache-memory-bytes`）を増やす前に `nvidia-smi` で空きを確かめる（超えても OOM にならず、WDDM が追い出して静かに遅くなる）。
 - 止まったときの戻し方は `docs/operations.md`。
 
