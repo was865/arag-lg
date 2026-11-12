@@ -22,6 +22,8 @@ class RunStats:
     model_calls: int = 0
     tool_calls: int = 0
     tool_errors: int = 0
+    # 調べ残しのある下書きを差し戻した回数（ターンに 1 回まで）
+    gap_reviews: int = 0
 
 
 @dataclass

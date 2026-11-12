@@ -129,3 +129,57 @@ async def test_tool_choice_not_forced_without_citations() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     await run(agent, ctx(FakeSearch(), cfg=AgentCfg(require_citations=False)), "こんにちは")
     assert model.tool_choices == [None]
+
+
+# ── 調べ残しの見直し（複数の資料を照合する質問で、1 回の検索だけで「資料に無い」と答えない） ──
+
+
+async def test_gap_answer_after_few_searches_is_sent_back_once() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="HP-300 第3版 変更点"),
+            AIMessage(content="変更点はトルク値です[1]。在庫数は資料に記載されていません。"),
+            tool_call("search", query="SK-300 部品台帳 在庫"),
+            AIMessage(content="変更点はトルク値です[1]。在庫は 5 個です[2]。"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("HP-300 第3版", "SK-300 在庫 5"))
+    state, _ = await run(agent, c, "第3版の変更点と、関連部品の在庫は？")
+    assert state["messages"][-1].text == "変更点はトルク値です[1]。在庫は 5 個です[2]。"
+    # 見直しの依頼は 2 回目の呼び出しの中だけにあり、会話の状態（checkpoint）には残さない
+    retry = model.calls[2]
+    assert isinstance(retry[-1], HumanMessage) and "まだ調べていない" in retry[-1].text
+    assert not any("在庫数は資料に記載されていません" in m.text for m in state["messages"])
+    assert sum(isinstance(m, ToolMessage) for m in state["messages"]) == 2
+
+
+async def test_gap_review_happens_only_once_per_turn() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("search", query="a"),
+            AIMessage(content="資料に記載されていません。"),
+            AIMessage(content="やはり資料に記載されていません。"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    state, _ = await run(agent, ctx(FakeSearch("本文")), "q")
+    assert state["messages"][-1].text == "やはり資料に記載されていません。"
+    assert len(model.calls) == 3
+
+
+async def test_no_gap_review_when_answer_is_complete_or_searched_enough() -> None:
+    complete = FakeToolModel(messages=script(tool_call("search", query="a"), AIMessage(content="答え[1]")))
+    await run(build_agent(complete, checkpointer=InMemorySaver()), ctx(FakeSearch("本文")), "q")
+    assert len(complete.calls) == 2
+
+    searched = FakeToolModel(
+        messages=script(
+            tool_call("search", query="a"),
+            tool_call("search", query="b"),
+            tool_call("search", query="c"),
+            AIMessage(content="資料に記載されていません。"),
+        )
+    )
+    await run(build_agent(searched, checkpointer=InMemorySaver()), ctx(FakeSearch("本文")), "q")
+    assert len(searched.calls) == 4

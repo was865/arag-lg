@@ -346,6 +346,10 @@ async def _stream(
         if key not in splitters:  # 次のモデル呼び出し
             await reasoning.close()
             splitters[key] = ThinkSplitter()
+            if turn.answer:
+                # 前の呼び出しで流した回答は下書き（調べ残しの差し戻し）。この呼び出しの回答で置き換える
+                turn.answer = ""
+                await sink.emit({"type": "answer.reset"})
         thought, piece, reset = splitters[key].feed(msg.text)
         if reset and turn.answer:  # 回答だと思って流した分は思考だった
             turn.answer = ""

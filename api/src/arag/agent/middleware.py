@@ -26,6 +26,22 @@ FINAL_NOTE = (
     "ここまでに得た資料だけで回答をまとめてください。足りない点は足りないと書いてください。"
 )
 PRIOR_TOOL_PLACEHOLDER = "（前のターンの資料。出典番号はこのターンでは使えないので、必要なら検索し直す）"
+# 下書きが「資料に無い」「確認が必要」などと調べ残しを認めているか（日本語・英語）
+GAP = re.compile(
+    r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|不明|"
+    r"分かりません|わかりません|確認(する|が)必要|情報(が)?不足|計算(することは|は)?でき(ません|ない)|"
+    r"not (mentioned|found|available|specified)|no information|could not find|unknown",
+    re.IGNORECASE,
+)
+GAP_NOTE = (
+    "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料"
+    "（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、"
+    "その点に絞った語で search してください。"
+    "数の計算が要るなら、値をそろえてから calculate で計算してください。"
+    "調べても見つからない点だけを、見つからないと書いてください。"
+)
+GAP_REVIEW_MAX_SEARCHES = 2  # この回数を超えて検索していれば、調べ尽くしたとみなす
+SEARCH_TOOLS = {"search", "keyword_search"}
 
 
 def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
@@ -80,7 +96,31 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         elif calls == 1 and ctx.cfg.require_citations and request.tools:
             # 小さいモデルは追質問で前の回答だけを頼りに引用なしで答えがちなので、最初は必ずツールを使わせる
             overrides["tool_choice"] = "any"
-        return await handler(request.override(system_message=SystemMessage(prompt), **overrides))
+        response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
+        if not _needs_gap_review(ctx, msgs[start:], response, calls, bool(request.tools)):
+            return response
+        # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち。
+        # 下書きを添えて 1 度だけ差し戻す（下書きと依頼は状態に残さず、この呼び出しの中だけで使う）
+        ctx.stats.gap_reviews += 1
+        draft = cast(AIMessage, response.result[-1])
+        retry: list[AnyMessage] = [*compact, draft, HumanMessage(GAP_NOTE)]
+        return await handler(request.override(system_message=SystemMessage(prompt), messages=retry))
+
+
+def _needs_gap_review(
+    ctx: RunContext, turn: list[AnyMessage], response: ModelResponse[Any], calls: int, has_tools: bool
+) -> bool:
+    """下書きを差し戻すか。最終回答で、調べ残しを認めていて、検索が少なく、回数にまだ余裕があるとき。"""
+    if not has_tools or ctx.stats.gap_reviews or calls + 2 > ctx.cfg.max_steps:
+        return False
+    last = response.result[-1] if response.result else None
+    if not isinstance(last, AIMessage) or last.tool_calls:
+        return False
+    searches = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
+    if searches == 0 or searches > GAP_REVIEW_MAX_SEARCHES:
+        return False
+    _, answer = split_thinking(last.text)
+    return bool(GAP.search(answer))
 
 
 _MATERIAL = re.compile(r"<資料 n=")

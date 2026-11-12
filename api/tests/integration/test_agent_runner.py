@@ -221,12 +221,20 @@ async def test_uncited_answer_is_no_relevant_sources(
     sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
     model = FakeToolModel(
-        messages=script(tool_call("search", query="x"), AIMessage(content="資料からは見つかりませんでした。"))
+        messages=script(
+            tool_call("search", query="x"),
+            AIMessage(content="資料からは見つかりませんでした。"),
+            # 調べ残しの差し戻しのあとも見つからない
+            AIMessage(content="資料からは見つかりませんでした。"),
+        )
     )
     deps = make_deps(sessionmaker, redis, model)
     _, run = await start(sessionmaker, "q")
     await execute_run(deps, run.id)
-    done = (await events(redis, run.id))[-1]
+    evs = await events(redis, run.id)
+    done = evs[-1]
+    # 差し戻した下書きは画面から消してから、書き直した回答を流す
+    assert any(e["type"] == "answer.reset" for e in evs)
     # モデル自身の説明を残し、理由だけ付ける
     assert done["no_answer_reason"] == "no_relevant_sources"
     assert done["answer"] == "資料からは見つかりませんでした。"
