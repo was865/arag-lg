@@ -13,7 +13,7 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.ops import op_search
+from arag.agent.ops import op_search, weak_result
 from arag.agent.steps import Step, StepClock
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
 
@@ -132,5 +132,11 @@ class PrimerMiddleware(AgentMiddleware[Any, RunContext]):
             return None
         if extra:
             texts += await asyncio.gather(*(_search(ctx, emit, start + i, q) for i, q in enumerate(extra)))
-        ctx.primer = Primer(kind=u.kind, table=u.table, queries=u.queries, text=merge_results(texts))
+        ctx.primer = Primer(
+            kind=u.kind,
+            table=u.table,
+            queries=u.queries,
+            text=merge_results(texts),
+            weak=bool(texts) and all(weak_result(t) for t in texts),
+        )
         return None

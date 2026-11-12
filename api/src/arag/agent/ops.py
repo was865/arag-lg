@@ -99,6 +99,16 @@ def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
     return "\n\n".join(parts)
 
 
+# 検索結果のどれも関連度が低いときの前置き（最初の検索が空振りしたかの判定にも使う）
+LOW_RELEVANCE_NOTE = "注意: どの資料も質問との関連度が低い"
+_HAS_MATERIAL = re.compile(r"<資料 n=")
+
+
+def weak_result(text: str) -> bool:
+    """検索結果が 0 件か、関連度が低い資料だけか。"""
+    return not _HAS_MATERIAL.search(text) or text.startswith(LOW_RELEVANCE_NOTE)
+
+
 # キーワード検索が 0 件で意味検索に切り替えたときの前置き（ステップの要約もこれで見分ける）
 KEYWORD_FALLBACK_NOTE = "注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。"
 # 型番・番号だけに絞って見つかったときの前置き（後ろに語の説明が続く）
@@ -283,7 +293,7 @@ async def op_search(
     if res.hits and _is_low(ctx, res, mode):
         # 小さいモデルは無関係な資料でも答えを組み立てがちなので、関連の薄さを明示する
         out = (
-            f"注意: どの資料も質問との関連度が低い（最高スコア {_best(res):.2f}）。"
+            f"{LOW_RELEVANCE_NOTE}（最高スコア {_best(res):.2f}）。"
             "質問に直接答える記述が無ければ、資料からは見つからなかったと答えること。"
             "言葉が似ているだけの無関係な資料を根拠にしない。\n\n" + out
         )

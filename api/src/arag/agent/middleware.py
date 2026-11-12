@@ -270,7 +270,9 @@ def pick_review(
     if ctx.primer is not None and ctx.primer.kind == "chat":
         return None
     own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
-    if not ctx.stats.gap_reviews and _searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
+    # 最初の検索が 0 件・関連度の低い資料だけなら、「見つからない」は資料に無い質問への正しい答え（T17）
+    weak = ctx.primer is not None and ctx.primer.weak
+    if not ctx.stats.gap_reviews and not weak and _searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
         # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
         if m := GAP.search(answer):
             return Review("gap", m.group(0), GAP_NOTE, "調べ残しの見直し")

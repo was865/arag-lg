@@ -424,3 +424,31 @@ def test_send_back_notes_ask_to_keep_citation_numbers() -> None:
 
     for note in (GAP_NOTE, TABLE_NOTE, NUMBER_NOTE):
         assert "書き直すときも" in note and "出典番号" in note
+
+
+class LowSearch(FakeSearch):
+    """関連度の低い資料だけを返す検索。"""
+
+    def __init__(self, *texts: str) -> None:
+        super().__init__(*texts)
+        self.hits = [h.model_copy(update={"score": 0.05}) for h in self.hits]
+
+
+async def test_no_gap_review_when_first_search_found_nothing_relevant() -> None:
+    # 資料に無い質問: 最初の検索が 0 件・関連度が低いなら「見つからない」は正しい答えなので差し戻さない
+    for search in (FakeSearch(), LowSearch("無関係な本文")):
+        model = FakeToolModel(messages=script(AIMessage(content="資料には記載されていません。")))
+        c = ctx(search)
+        agent = build_agent(model, checkpointer=InMemorySaver())
+        state, _ = await run(agent, c, "社員食堂の営業時間は？")
+        assert state["messages"][-1].text == "資料には記載されていません。"
+        assert len(model.calls) == 1 and c.stats.gap_reviews == 0
+        assert c.primer is not None and c.primer.weak
+
+
+def test_system_prompt_asks_for_direct_citations_and_one_language() -> None:
+    from arag.agent.middleware import system_prompt
+
+    p = system_prompt(ctx(FakeSearch()))
+    assert "答えを直接支える資料だけを引用する" in p and "質問の言語だけで書く" in p
+    assert "特例" in p  # 特例の規則は残す

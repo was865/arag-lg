@@ -43,6 +43,8 @@ class Primer:
     queries: tuple[str, ...] = ()
     # モデルに添える検索結果（雑談・検索なしのときは空）
     text: str = ""
+    # どの検索も 0 件か関連度の低い資料だけだった（資料に無い質問らしい。specs/026 T17）
+    weak: bool = False
 
 
 @dataclass
