@@ -17,16 +17,19 @@ export const chat = {
 
   // agent-activity
   agentRunning: "エージェント実行中…",
+  storyThinking: "考えています…",
   agentDone: "エージェント実行",
   /** 検索の過程の要約（specs/025 R45） */
   storySearched: "{n} 件の資料を検索",
   storyCited: "{n} 件を引用",
+  storyCitedNone: "引用なし",
   storyNoSearch: "資料は検索していません",
   storyDetail: "詳細",
   storyMore: "ほか {n} 件",
   /** 検索の明細（文書ごとにまとめる） */
   searchFound: "{docs} 文書 · {spots} 箇所",
   searchCited: "引用",
+  searchWeak: "関連の薄い文書 {n} 件",
   searchDocTop: "文書の冒頭",
   /** 回答の下の「詳細」（所要時間・トークン数） */
   answerDetailTitle: "この回答の詳細",

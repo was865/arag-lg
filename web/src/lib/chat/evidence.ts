@@ -65,14 +65,27 @@ export interface RetrieveHit {
   snippet: string;
 }
 
-/** retrieve / fetch_document の出力テキスト（"[N] Title — heading\nbody"）を箇所ごとに分ける。 */
+/**
+ * 検索ツールの出力テキストを箇所ごとに分ける。2 つの書式を読む:
+ * - この版: `<資料 n="1" 文書="題" 見出し="道筋">本文</資料>`
+ * - 旧版: `[1] 題 — 見出し` + 改行 + 本文（空行区切り）
+ */
 export function parseRetrieveHits(text: unknown): RetrieveHit[] {
   if (typeof text !== "string" || !text) return [];
   const hits: RetrieveHit[] = [];
+  // 属性の値（見出しの道筋）に ">" が入るので、引用符の中は読み飛ばす
+  const tag = /<資料\s+((?:[^>"]|"[^"]*")*)>([\s\S]*?)<\/資料>/g;
+  let m: RegExpExecArray | null;
+  while ((m = tag.exec(text)) !== null) {
+    const attr = (name: string) => m![1].match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? "";
+    const n = Number(attr("n"));
+    if (Number.isFinite(n) && attr("文書")) hits.push({ n, title: attr("文書"), heading: attr("見出し"), snippet: m[2].trim() });
+  }
+  if (hits.length) return hits;
   // 各エントリは空行 + `[N]` 行始まりで区切る。最初のエントリは split で先頭に来る。
   for (const part of text.split(/\n\n(?=\[\d+\])/)) {
-    const m = part.match(/^\[(\d+)\]\s*(.+?)\s*—\s*([^\n]+)\n?([\s\S]*)$/);
-    if (m) hits.push({ n: Number(m[1]), title: m[2].trim(), heading: m[3].trim(), snippet: m[4].trim() });
+    const old = part.match(/^\[(\d+)\]\s*(.+?)\s*—\s*([^\n]+)\n?([\s\S]*)$/);
+    if (old) hits.push({ n: Number(old[1]), title: old[2].trim(), heading: old[3].trim(), snippet: old[4].trim() });
   }
   return hits;
 }
@@ -86,14 +99,30 @@ export interface SearchStory {
   files: { title: string; cited: boolean }[];
 }
 
-/** エージェントの段階から「何件探し、何件引用したか」を作る。 */
+/** これより低い関連度は「関連なし」とみなす（検索が件数を満たすために返した雑音）。 */
+export const NEGLIGIBLE_SCORE = 0.01;
+
+/** エージェントの段階から「何件探し、何件引用したか」を作る。関連がほぼ 0 の文書は（引用していなければ）数えない。 */
 export function searchStory(steps: ToolCall[], sources: Source[]): SearchStory {
   const citedTitles = new Set(sources.map((s) => s.title));
   const titles: string[] = [];
+  const add = (title: unknown) => {
+    if (typeof title === "string" && title && !titles.includes(title)) titles.push(title);
+  };
+  // 子の検索の hits で、どの箇所も関連がほぼ 0 だった文書（件数を埋めるだけの雑音）
+  const best = new Map<string, number>();
   for (const step of steps) {
-    if (step.name !== "retrieve" && step.name !== "fetch_document") continue;
-    for (const hit of parseRetrieveHits(step.output?.result)) if (!titles.includes(hit.title)) titles.push(hit.title);
+    // 親の段階は出力の文字列から、子の検索の段階は hits の一覧から、見つけた文書の題を集める
+    for (const hit of parseRetrieveHits(step.output?.result)) add(hit.title);
+    const hits = step.output?.hits;
+    if (!Array.isArray(hits)) continue;
+    for (const h of hits as { title?: unknown; score?: unknown }[]) {
+      add(h.title);
+      if (typeof h.title === "string" && typeof h.score === "number") best.set(h.title, Math.max(best.get(h.title) ?? -Infinity, h.score));
+    }
   }
+  const weak = (t: string) => !citedTitles.has(t) && (best.get(t) ?? Infinity) < NEGLIGIBLE_SCORE;
+  titles.splice(0, titles.length, ...titles.filter((t) => !weak(t)));
   // 引用したのに検索結果の文字列に現れない文書（題名の表記ゆれなど）も数に入れる
   for (const t of citedTitles) if (!titles.includes(t)) titles.push(t);
   const files = titles.map((title) => ({ title, cited: citedTitles.has(title) }));

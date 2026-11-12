@@ -42,6 +42,8 @@ export function AgentActivity({
   // 現在段階インジケータ: running な leaf（子）を優先し、無ければトップレベルの running。
   const runningSteps = visibleSteps.filter((s) => s.status === "running");
   const current = runningSteps.find((s) => s.parentId) ?? runningSteps[0];
+  // 推論を隠していても、考えている最中なら「実行中」より具体的に言う（検索の合間に長く考えることがある）
+  const thinking = steps.some((s) => s.name === "reasoning" && s.status === "running");
 
   const story = searchStory(visibleSteps, sources ?? []);
   const SHOWN = 4;
@@ -65,13 +67,21 @@ export function AgentActivity({
         {running ? (
           <span className="inline-flex items-center gap-2">
             <span className="h-3 w-3 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
-            <span className="text-shimmer font-medium">{current?.summary ?? t.chat.agentRunning}</span>
+            <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
           </span>
         ) : story.searched > 0 ? (
           <>
             <span className="inline-flex items-center gap-1.5">{check}{interpolate(t.chat.storySearched, { n: String(story.searched) })}</span>
             <span className="text-muted-2">›</span>
-            <span className="inline-flex items-center gap-1.5">{check}{interpolate(t.chat.storyCited, { n: String(story.cited) })}</span>
+            {story.cited > 0 ? (
+              <span className="inline-flex items-center gap-1.5">{check}{interpolate(t.chat.storyCited, { n: String(story.cited) })}</span>
+            ) : (
+              // 探したのに 1 つも引用していない回答は、根拠をたどれない。済みの印でなく注意として出す
+              <span className="inline-flex items-center gap-1.5 font-medium text-danger">
+                <Icon name="alert" size={12} />
+                {t.chat.storyCitedNone}
+              </span>
+            )}
           </>
         ) : (
           <span className="inline-flex items-center gap-1.5">{check}{t.chat.storyNoSearch}</span>
@@ -107,7 +117,9 @@ export function AgentActivity({
             );
           })}
           {story.files.length > SHOWN && (
-            <span className="inline-flex items-center px-1 text-caption text-muted-2">
+            // 折り返して 1 つだけ次の行に出ても浮かないよう、文書の札と同じ高さの札にする
+            <span className="inline-flex items-center rounded-control border-[0.5px] border-dashed border-divider-strong px-2 py-1 text-caption text-muted">
+
               {interpolate(t.chat.storyMore, { n: String(story.files.length - SHOWN) })}
             </span>
           )}

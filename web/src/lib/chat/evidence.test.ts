@@ -48,6 +48,30 @@ describe("parseRetrieveHits / searchStory（検索の過程）", () => {
     expect(story.cited).toBe(1);
     expect(story.files).toEqual([{ title: "x02-保守記録.xlsx", cited: true }, { title: "w01-規程.docx", cited: false }]);
   });
+  it("この版の書式（<資料 n=… 文書=… 見出し=…>）も読む", () => {
+    const text = '検索「HP-300」の結果 2 件（[n] が出典番号）:\n\n<資料 n="1" 文書="w03-手順書.docx" 見出し="手順書 > 2. 分解">\n本文 A\n</資料>\n\n<資料 n="2" 文書="w04-議事録.docx" 見出し="2. 対策">\n本文 B\n</資料>';
+    const hits = parseRetrieveHits(text);
+    expect(hits.map((h) => [h.n, h.title, h.heading])).toEqual([[1, "w03-手順書.docx", "手順書 > 2. 分解"], [2, "w04-議事録.docx", "2. 対策"]]);
+    expect(hits[0].snippet).toBe("本文 A");
+  });
+  it("引用が 1 つも無くても、探して見つけた文書は数える（子の検索の hits からも集める）", () => {
+    const child = step({ id: "c", name: "vector_search", output: { hits: [{ title: "a.docx", heading: "", score: 1 }, { title: "b.xlsx", heading: "", score: 0.5 }] } });
+    const story = searchStory([step({ output: { result: "" } }), child], []);
+    expect(story).toMatchObject({ searched: 2, cited: 0 });
+    expect(story.files.every((f) => !f.cited)).toBe(true);
+  });
+  it("関連がほぼ 0 の文書は、探した数に入れない（引用していれば入れる）", () => {
+    const result = '<資料 n="1" 文書="a.docx" 見出し="">本文</資料>\n\n<資料 n="2" 文書="noise.md" 見出し="">雑音</資料>\n\n<資料 n="3" 文書="c.md" 見出し="">雑音</資料>';
+    const child = step({
+      id: "c",
+      name: "vector_search",
+      output: { hits: [{ title: "a.docx", heading: "", score: 0.9 }, { title: "noise.md", heading: "", score: 0 }, { title: "c.md", heading: "", score: 0.004 }] },
+    });
+    const cited = [{ id: "s", type: "doc", title: "c.md", path: "c.md", author: "", date: "", sections: [] }] as Source[];
+    const story = searchStory([step({ output: { result } }), child], cited);
+    expect(story.files.map((f) => f.title).sort()).toEqual(["a.docx", "c.md"]);
+    expect(story.searched).toBe(2);
+  });
   it("検索していなければ 0 件", () => {
     expect(searchStory([], [])).toEqual({ searched: 0, cited: 0, files: [] });
   });
