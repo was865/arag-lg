@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, IconButton } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
@@ -49,22 +50,29 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
           className="block h-auto max-h-[200px] w-auto max-w-[240px] object-contain"
         />
       </button>
-      {open && (
-        <div
-          role="dialog"
-          // eslint-disable-next-line no-restricted-syntax -- 画像の拡大表示（ライトボックス）。枠のない全面表示で、Esc は自前で処理する
-          aria-modal="true"
-          aria-label={t.chat.imageAttached}
-          onClick={() => setOpen(false)}
-          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          tabIndex={-1}
-          ref={(el) => el?.focus()}
-          className="fixed inset-0 z-50 grid place-items-center bg-[rgba(20,18,15,0.72)] p-4"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- 拡大表示 */}
-          <img src={image.url} alt={t.chat.imageAttached} className="max-h-full max-w-full rounded-card object-contain" />
-        </div>
-      )}
+      {/* 会話の列の中に置くと、上の見出しや入力欄（それぞれ重なりの層を持つ）の下に潜るので、body 直下に出す */}
+      {open &&
+        createPortal(
+          <div
+            role="dialog"
+            // eslint-disable-next-line no-restricted-syntax -- 画像の拡大表示（ライトボックス）。枠のない全面表示で、Esc は自前で処理する
+            aria-modal="true"
+            aria-label={t.chat.imageAttached}
+            onClick={() => setOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+            tabIndex={-1}
+            ref={(el) => el?.focus()}
+            className="fixed inset-0 z-[230] grid place-items-center bg-[rgba(20,18,15,0.72)] p-4 outline-none"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- 拡大表示 */}
+            <img
+              src={image.url}
+              alt={t.chat.imageAttached}
+              className="block max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] rounded-card object-contain"
+            />
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
