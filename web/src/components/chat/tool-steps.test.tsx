@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ToolSteps } from "@/components/chat/tool-steps";
+import { ToolSteps, systemFieldValue } from "@/components/chat/tool-steps";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
 import type { ToolCall } from "@/lib/types";
@@ -37,5 +37,19 @@ describe("ToolSteps（システムの処理）", () => {
 
   it("システムの処理が無ければ組を出さない", () => {
     expect(render([steps[1]!])).not.toContain("システムの処理");
+  });
+});
+
+describe("systemFieldValue（システムの処理の値）", () => {
+  it("内訳から確かめた数字は式として読める形にする", () => {
+    expect(
+      systemFieldValue([
+        { value: "135", op: "sum", from: ["30", "25", "80"] },
+        { value: "55", op: "diff", from: ["80", "25"] },
+      ]),
+    ).toBe("135 = 30 + 25 + 80, 55 = 80 − 25");
+    expect(systemFieldValue([])).toBe("—");
+    expect(systemFieldValue(["12", "34"])).toBe("12, 34");
+    expect(systemFieldValue(3)).toBe("3");
   });
 });

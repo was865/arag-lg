@@ -495,3 +495,17 @@ async def test_low_relevance_note_keeps_question_language() -> None:
     await run(agent, ctx(LowSearch("無関係な本文")), "What is the email address?")
     human = next(m for m in model.calls[0] if isinstance(m, HumanMessage))
     assert "見つからなかったと（質問と同じ言語で）答える" in human.text
+
+
+async def test_sum_from_breakdown_is_not_sent_back_and_is_recorded() -> None:
+    """内訳（資料の値）の和は「資料に無い数字」にせず、number_check の derived に残す（T24・hm22）。"""
+    answer = "停止時間は合計 135 分です。\n- 30 分 [1]\n- 25 分 [1]\n- 80 分 [1]"
+    model = FakeToolModel(messages=script(AIMessage(content=answer)))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("| 09-02 | PM-04 | 30 |\n| 09-12 | PM-04 | 25 |\n| 09-19 | PM-04 | 80 |"))
+    _, custom = await run(agent, c, "PM-04 の停止時間の合計は？")
+    assert len(model.calls) == 1 and c.stats.number_reviews == 0
+    check = system_steps(custom)["number_check"]
+    assert check["output"]["unverified"] == []
+    assert check["output"]["derived"] == [{"value": "135", "op": "sum", "from": ["30", "25", "80"]}]
+    assert "内訳" in check["summary"]

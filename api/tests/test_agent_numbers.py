@@ -38,3 +38,44 @@ def test_numbers_right_after_japanese_text_are_read() -> None:
     assert ungrounded("前回は9月12日の点検です", ["前回 9月2日"]) == ["12"]
     # 型番の中の数字は今までどおり数えない
     assert numbers_in("SK300 と v1.25") == set()
+
+
+# ── 回答の中の内訳から出せる合計・差（specs/026 T24、hm22） ──
+
+PM04 = [
+    "| 2026-09-02 | PM-04 | 30 |\n| 2026-09-12 | PM-04 | 25 |\n| 2026-09-19 | PM-04 | 80 |\n| 合計 | | 600 |"
+]
+
+
+def test_sum_of_grounded_numbers_in_the_answer_is_derived() -> None:
+    from arag.agent.numbers import check_numbers
+
+    answer = "停止時間は合計 135 分です。\n- 30 分 [1]\n- 25 分 [1]\n- 80 分 [1]"
+    assert ungrounded(answer, PM04) == []
+    res = check_numbers(answer, PM04)
+    assert res.missing == []
+    assert res.derived == [{"value": "135", "op": "sum", "from": ["30", "25", "80"]}]
+
+
+def test_sum_is_not_derived_when_a_part_is_not_grounded() -> None:
+    # 70 は資料に無いので材料にしない → 135 も 70 も未確認のまま
+    answer = "合計 135 分です（30 分・25 分・70 分）"
+    assert ungrounded(answer, PM04) == ["135", "70"]
+
+
+def test_difference_of_two_grounded_numbers_is_derived() -> None:
+    from arag.agent.numbers import check_numbers
+
+    res = check_numbers("80 分と 25 分で、差は 55 分です", PM04)
+    assert res.missing == [] and res.derived == [{"value": "55", "op": "diff", "from": ["80", "25"]}]
+
+
+def test_no_rescue_when_answer_has_more_than_twelve_grounded_numbers() -> None:
+    src = [" ".join(str(n) for n in range(10, 23))]  # 10〜22 の 13 個
+    answer = " ".join(str(n) for n in range(10, 23)) + " の合計は 21 + 22 = 43"
+    assert ungrounded(answer, src) == ["43"]
+
+
+def test_products_are_not_derived() -> None:
+    # 25 × 30 = 750 は和でも差でもないので未確認のまま（calculate を使わせる）
+    assert ungrounded("25 分 × 30 回 = 750 分", PM04) == ["750"]

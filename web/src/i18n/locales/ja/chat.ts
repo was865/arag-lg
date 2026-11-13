@@ -184,6 +184,7 @@ export const chat = {
     summary: "要約",
     checked: "照合した数字の数",
     unverified: "見当たらない数字",
+    derived: "内訳から確かめた数字",
     source: "資料",
     where: "条件",
     compute: "計算式",

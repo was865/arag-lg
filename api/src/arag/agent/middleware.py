@@ -22,7 +22,7 @@ from langgraph.types import Command
 from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
-from arag.agent.numbers import numbers_in, ungrounded
+from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.primer import with_primer
 from arag.agent.steps import Step, StepClock, record_system
@@ -263,9 +263,13 @@ def _checks_numbers(ctx: RunContext) -> bool:
     return ctx.cfg.admit_unknown and (ctx.primer is None or ctx.primer.kind != "chat")
 
 
-def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[str]:
+def _check_numbers(ctx: RunContext, turn: list[AnyMessage], answer: str) -> NumberCheck:
     today = datetime.now(TZ).strftime("%Y年%m月%d日")
-    return ungrounded(answer, [*_materials(ctx, turn), ctx.question, today])
+    return check_numbers(answer, [*_materials(ctx, turn), ctx.question, today])
+
+
+def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[str]:
+    return _check_numbers(ctx, turn, answer).missing
 
 
 def pick_review(
@@ -306,7 +310,10 @@ def _record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], ans
     found = numbers_in(_MARK.sub("", answer))
     if not found:
         return
-    missing = _ungrounded(ctx, turn, answer)
+    res = _check_numbers(ctx, turn, answer)
+    missing = res.missing
+    # 回答の内訳から和・差で確かめた数字も、黙って通さず記録に残す（R24）
+    derived = "・".join(d["value"] for d in res.derived[:8])
     record_system(
         emit,
         "system-number-check",
@@ -315,10 +322,11 @@ def _record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], ans
         (
             "回答の数字のうち " + "・".join(missing[:8]) + " が資料・計算結果に見当たらない"
             if missing
-            else f"回答の数字 {len(found)} 個を資料・計算結果と照合した（すべて確認）"
+            else f"回答の数字 {len(found)} 個を資料・計算結果と照合した（すべて確認"
+            + (f"。{derived} は回答の内訳から確かめた）" if derived else "）")
         ),
         input={"checked": len(found)},
-        output={"unverified": missing[:20]},
+        output={"unverified": missing[:20], "derived": res.derived[:20]},
     )
 
 

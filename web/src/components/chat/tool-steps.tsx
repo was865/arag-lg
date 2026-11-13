@@ -298,7 +298,7 @@ function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionar
   for (const [k, v] of Object.entries(data)) {
     if (k === "kind") continue;
     if (typeof v === "string" && (v.length > 60 || v.includes("\n"))) texts.push([k, v]);
-    else rows.push({ k: systemFieldLabel(k, t), v: Array.isArray(v) ? (v.length ? v.join(", ") : "—") : String(v) });
+    else rows.push({ k: systemFieldLabel(k, t), v: systemFieldValue(v) });
   }
   return (
     <div className="space-y-2">
@@ -313,6 +313,21 @@ function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionar
       ))}
     </div>
   );
+}
+
+/** システムの処理の短い値。配列は「, 」でつなぎ、内訳から確かめた数字（number_check の derived）は式にする。 */
+export function systemFieldValue(v: unknown): string {
+  if (!Array.isArray(v)) return String(v);
+  if (!v.length) return "—";
+  return v
+    .map((x) => {
+      if (x && typeof x === "object" && "value" in x && Array.isArray((x as { from?: unknown }).from)) {
+        const d = x as { value: unknown; op?: unknown; from: unknown[] };
+        return `${String(d.value)} = ${d.from.map(String).join(d.op === "diff" ? " − " : " + ")}`;
+      }
+      return String(x);
+    })
+    .join(", ");
 }
 
 function systemFieldLabel(key: string, t: Dictionary): string {

@@ -6,7 +6,10 @@
 
 import re
 import unicodedata
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
+from itertools import combinations
+from typing import Any
 
 _MARK = re.compile(r"\[\d+\]")
 _LIST_HEAD = re.compile(r"^\s*\d{1,2}[.)]\s", re.MULTILINE)
@@ -17,6 +20,10 @@ _UNIT = re.compile(r"(\d[\d,]*(?:\.\d+)?)(億|万|千)(\d[\d,]*)?")
 _UNITS = {"億": Decimal(100_000_000), "万": Decimal(10_000), "千": Decimal(1_000)}
 _KANJI = re.compile(r"[〇一二三四五六七八九十百千]+")
 _DIGIT = {c: i for i, c in enumerate("〇一二三四五六七八九")}
+# 内訳からの導出（R24）: 材料は回答に出て資料に裏付けのある数字だけ。
+# 多すぎると偶然の一致が増えるので救済しない
+DERIVE_MAX_MATERIALS = 12
+DERIVE_SUM_TERMS = (2, 6)
 
 
 def _canon(token: str) -> str | None:
@@ -69,10 +76,39 @@ def numbers_in(text: str, *, kanji: bool = False) -> set[str]:
     return out
 
 
-def ungrounded(answer: str, sources: list[str]) -> list[str]:
-    """回答の数字のうち、照合先のどこにも無いもの（回答に出た順、元の書き方で）。
+@dataclass(frozen=True, slots=True)
+class NumberCheck:
+    """数字の照合の結果。missing は未確認の数字（回答に出た順、元の書き方）、
+    derived は回答の中の内訳から和・差で確かめた数字（記録に残す）。"""
+
+    missing: list[str] = field(default_factory=list)
+    derived: list[dict[str, Any]] = field(default_factory=list)
+
+
+def _derive(value: str, materials: list[str]) -> dict[str, Any] | None:
+    """value が材料の 2〜6 個の和か、2 個の差としてちょうど出せるなら、その導き方。積・割合・平均は見ない。"""
+    if len(materials) > DERIVE_MAX_MATERIALS:
+        return None
+    target = Decimal(value)
+    nums = [(m, Decimal(m)) for m in materials]
+    lo, hi = DERIVE_SUM_TERMS
+    for k in range(lo, min(hi, len(nums)) + 1):
+        for combo in combinations(nums, k):
+            if sum(v for _, v in combo) == target:
+                return {"value": value, "op": "sum", "from": [m for m, _ in combo]}
+    for (a, va), (b, vb) in combinations(nums, 2):
+        if abs(va - vb) == target:
+            big, small = (a, b) if va >= vb else (b, a)
+            return {"value": value, "op": "diff", "from": [big, small]}
+    return None
+
+
+def check_numbers(answer: str, sources: list[str]) -> NumberCheck:
+    """回答の数字を照合先と突き合わせる。
 
     引用記号と行頭の箇条書き番号は数えない。1 桁の整数は、個数など文章上の数が多いので数えない。
+    照合先に無い数字でも、回答に出て照合先にある数字（1 桁の整数は除く）の和・差でちょうど出せれば
+    未確認にせず、derived に記録する（R24。「30・25・80 分で合計 135 分」）。
     """
     known: set[str] = set()
     for src in sources:
@@ -85,14 +121,29 @@ def ungrounded(answer: str, sources: list[str]) -> list[str]:
         whole = _expand_units(m.group(0)).split()[-1]
         if _canon(whole) in known:
             covered |= {c for t in _NUM.finditer(m.group(0)) if (c := _canon(t.group(0)))}
-    missing: list[str] = []
+    unknown: list[tuple[str, str]] = []
+    materials: list[str] = []
     seen: set[str] = set()
     for m in _NUM.finditer(expanded):
         c = _canon(m.group(0))
         if c is None or c in seen:
             continue
         seen.add(c)
-        if re.fullmatch(r"\d", c) or c in known or c in covered:
+        if re.fullmatch(r"\d", c):
             continue
-        missing.append(m.group(0))
-    return missing
+        if c in known or c in covered:
+            materials.append(c)
+            continue
+        unknown.append((m.group(0), c))
+    out = NumberCheck()
+    for raw, c in unknown:
+        if (d := _derive(c, materials)) is not None:
+            out.derived.append(d)
+        else:
+            out.missing.append(raw)
+    return out
+
+
+def ungrounded(answer: str, sources: list[str]) -> list[str]:
+    """回答の数字のうち、照合先にも回答の内訳からの和・差にも無いもの（回答に出た順、元の書き方で）。"""
+    return check_numbers(answer, sources).missing
