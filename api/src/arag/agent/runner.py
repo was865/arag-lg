@@ -86,6 +86,8 @@ class RunnerDeps:
     image_reader: ImageReader | None = None
     # 続けて聞く質問の候補を作るか（ARAG_FOLLOWUPS、specs/028 R7）
     followups: bool = True
+    # 引用の刈り込み（ARAG_CITATION_PRUNE、specs/026 T31）
+    citation_prune: bool = True
 
     def agent_for(self, m: ResolvedModels) -> Any:
         if m.id not in self.agent_cache:
@@ -193,6 +195,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         document_ids=_uuids(req.get("document_ids")),
         include_archived=bool(req.get("include_archived")),
         cfg=cfg,
+        citation_prune=deps.citation_prune,
     )
     checkpoint_id: str | None = None
     status, code, err = "completed", None, ""
@@ -859,6 +862,7 @@ async def main() -> None:
             storage=LocalStorage(settings.storage_dir),
             image_reader=build_query_image_reader(settings),
             followups=settings.followups,
+            citation_prune=settings.citation_prune,
         )
         runner = Runner(
             deps,

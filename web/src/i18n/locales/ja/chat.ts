@@ -217,6 +217,8 @@ export const chat = {
     history_turns: "渡した前のターンの数",
     dropped: "落とした候補",
     evidence: "根拠の語句",
+    pruned: "外した引用",
+    sentences: "刈り込んだ文の数",
     ms: "かかった時間（ms）",
     questions: "候補",
     error: "失敗の理由",
@@ -228,6 +230,8 @@ export const chat = {
     already_answered: "既に答えた内容",
     same_question: "これまでの質問と同じ",
   } as Record<string, string>,
+  // 引用の刈り込みの 1 文の表示（外した番号・残した番号・その文の値）
+  pruneLabels: { removed: "外した", kept: "残した", values: "値" },
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     result: {

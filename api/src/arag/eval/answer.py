@@ -162,14 +162,17 @@ def wrong_facts_found(answer: str, facts: list[list[str]]) -> list[str]:
 _DECLINE = re.compile(
     r"(記載|明記|言及|明示|記述)(が|は)?(され)?(てい)?(ありません|ない|ません|無い|なし)"
     r"|示されていな|示されていません|見つかりませんでした|見当たりません|資料に(は)?(ありません|ない|無い)"
-    # 「データが含まれていません」「資料からは確認できません」「お答えすることができません」（Gemma 4）。
+    # 「データが含まれていません」「データは資料内に含まれていません」「資料からは確認できません」
+    # 「お答えすることができません」（Gemma 4）。
     # 「送料は含まれていません」のような補足に当たらないよう、情報を指す語や資料に続くときだけ見る
-    r"|(情報|データ|数値|記述|記載|値)(は|が|も)?(一切)?含まれてい(な|ません)"
+    r"|(情報|データ|数値|記述|記載|値)(は|が|も)?(一切)?((資料|文書|検索結果)(内|の中)?に(は)?)?含まれてい(な|ません)"
     r"|(資料|検索結果|文書)(の中)?(から|で|に)(は)?確認でき(な|ません)"
     r"|お答え(する)?(こと)?(が|は)?できません"
     r"|not (explicitly |directly )?(mention|state|specif|provide|include|contain|found|cover)"
     r"|(does|do|is|are) not (mention|state|specify|provide|include|contain)"
     r"|no (information|mention|details?) (about|on|regarding)"
+    # 「I could not find …」（Gemma 4 の hm60、026d）
+    r"|(could not|couldn't|was unable to|am unable to|cannot|can't) (find|locate)"
 )
 
 

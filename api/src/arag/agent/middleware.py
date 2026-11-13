@@ -25,6 +25,7 @@ from arag.agent.context import RunContext
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.primer import with_primer
+from arag.agent.prune import prune_citations
 from arag.agent.steps import Step, StepClock, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import LABELS
@@ -523,6 +524,8 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
         normalized = normalize_markers(answer)
         stripped = strip_unknown(normalized, known)
         fixed = drop_repeated_tail(stripped)
+        if runtime.context.citation_prune:
+            fixed = _prune(runtime, fixed)
         if fixed == text:
             return None
         removed = sorted({int(n) for n in _MARK.findall(normalized)} - known)
@@ -550,6 +553,30 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             },
         )
         return {"messages": [AIMessage(content=fixed, id=last.id, usage_metadata=last.usage_metadata)]}
+
+
+def _prune(runtime: Runtime[RunContext], answer: str) -> str:
+    """値を書いていない資料の番号を、その文から外す（specs/026 T31）。外したら記録に残す。"""
+    reg = runtime.context.registry
+    materials = {
+        c.n: "\n".join(x for x in (c.document_name, c.heading_path, c.context, c.text) if x)
+        for c in reg.items()
+    }
+    pruned_text, pruned = prune_citations(answer, materials)
+    if pruned:
+        removed = sorted({n for p in pruned for n in p["removed"]})
+        record_system(
+            runtime.stream_writer,
+            "system-citation-pruned",
+            "citation_pruned",
+            "引用の刈り込み",
+            f"{len(pruned)} つの文から、値を書いていない資料の番号 "
+            + "".join(f"[{n}]" for n in removed)
+            + " を外した",
+            input={"sentences": len(pruned)},
+            output={"pruned": pruned},
+        )
+    return pruned_text
 
 
 class RecordedSummarization(SummarizationMiddleware):

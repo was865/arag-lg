@@ -79,3 +79,5 @@ class RunContext:
     table_outputs: dict[str, dict[str, Any]] = field(default_factory=dict)
     # 最後に差し戻した下書きとその確認の種類。書き直しが空のままなら、これを回答にする（specs/026 R25）
     review_draft: tuple[AIMessage, str] | None = None
+    # 値を書いていない資料の番号を文から外す（ARAG_CITATION_PRUNE、specs/026 T31）
+    citation_prune: bool = True

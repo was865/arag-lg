@@ -58,6 +58,14 @@ describe("systemFieldValue（システムの処理の値）", () => {
         no_evidence: "資料に根拠が無い",
       }),
     ).toBe("担当者は？（資料に根拠が無い: 「佐伯」）");
+    // 引用の刈り込み（specs/026 T31）
+    expect(
+      systemFieldValue([{ sentence: "締付トルクは 52 N·m です", removed: [2, 3], kept: [1], values: ["52"] }], {}, {
+        removed: "外した",
+        kept: "残した",
+        values: "値",
+      }),
+    ).toBe("「締付トルクは 52 N·m です」外した [2][3]・残した [1]（値: 52）");
   });
 });
 

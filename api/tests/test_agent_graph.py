@@ -648,3 +648,28 @@ async def test_draft_without_citations_does_not_use_the_citation_rule() -> None:
     state, custom = await run(agent, ctx(FakeSearch("SK-300 在庫 6")), "SK-300 の在庫は？")
     assert state["messages"][-1].text == "SK-300 の在庫は 6 個です。"
     assert discarded_steps(custom) == []
+
+
+# ── 引用の刈り込み（specs/026 T31） ──
+
+
+async def test_citations_without_the_value_are_pruned_and_recorded() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="締付トルクは 52 N·m です[1][2]。")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("締付トルクは 52 N·m とする。", "品質会議で締付トルクの見直しを決めた。"))
+    state, custom = await run(agent, c, "締付トルクは？")
+    assert state["messages"][-1].text == "締付トルクは 52 N·m です[1]。"
+    step = system_steps(custom)["citation_pruned"]
+    assert step["label"] == "引用の刈り込み"
+    assert step["output"]["pruned"] == [
+        {"sentence": "締付トルクは 52 N·m です[1][2]。", "removed": [2], "kept": [1], "values": ["52"]}
+    ]
+
+
+async def test_pruning_can_be_turned_off() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="締付トルクは 52 N·m です[1][2]。")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("締付トルクは 52 N·m とする。", "品質会議で決めた。"), citation_prune=False)
+    state, custom = await run(agent, c, "締付トルクは？")
+    assert state["messages"][-1].text == "締付トルクは 52 N·m です[1][2]。"
+    assert "citation_pruned" not in system_steps(custom)

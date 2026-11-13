@@ -351,6 +351,11 @@ def test_summarize_wrong_fact_rate_counts_only_cases_with_wrong_facts() -> None:
         # hm58（Gemma 4 12B）: 「資料からは確認できません」
         "10月の出荷検査の不良率に関する実績は、現在の資料からは確認できません。",
         "生産台数に関する数値は含まれていません。",
+        # hm58（026d）: 情報を指す語と「含まれていません」の間に「資料内に」が入る
+        "現在、10月の出荷検査の不良率に関する実績データは資料内に含まれていません。",
+        # hm60（026d）: 「could not find」
+        "I'm sorry, but I could not find the email address for the Aster Seals sales contact "
+        "in the provided documents.",
     ],
 )
 def test_declines_detects_not_included_or_not_confirmable(answer: str) -> None:
@@ -363,6 +368,7 @@ def test_declines_detects_not_included_or_not_confirmable(answer: str) -> None:
         # 値を答えたうえで補足として「含まれていません」と書く回答は、断りとみなさない
         "価格は 12,000 円です [1]。送料は含まれていません。",
         "納期は 5 日です [1]。",
+        "送料は資料内に含まれていません。価格は 12,000 円です [1]。",
     ],
 )
 def test_declines_ignores_incidental_phrases(answer: str) -> None:

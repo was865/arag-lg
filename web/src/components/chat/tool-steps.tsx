@@ -316,7 +316,11 @@ export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Di
 }
 
 /** システムの処理の短い値。配列は「, 」でつなぎ、内訳から確かめた数字（number_check の derived）は式にする。 */
-export function systemFieldValue(v: unknown, reasons: Record<string, string> = {}): string {
+export function systemFieldValue(
+  v: unknown,
+  reasons: Record<string, string> = {},
+  prune: { removed: string; kept: string; values: string } = { removed: "-", kept: "+", values: "=" },
+): string {
   if (!Array.isArray(v)) return String(v);
   if (!v.length) return "—";
   return v
@@ -324,6 +328,12 @@ export function systemFieldValue(v: unknown, reasons: Record<string, string> = {
       if (x && typeof x === "object" && "value" in x && Array.isArray((x as { from?: unknown }).from)) {
         const d = x as { value: unknown; op?: unknown; from: unknown[] };
         return `${String(d.value)} = ${d.from.map(String).join(d.op === "diff" ? " − " : " + ")}`;
+      }
+      if (x && typeof x === "object" && "sentence" in x && Array.isArray((x as { removed?: unknown }).removed)) {
+        // 引用の刈り込み（specs/026 T31）: 文の冒頭・外した番号・残した番号・その文の値
+        const d = x as { sentence: unknown; removed: unknown[]; kept?: unknown[]; values?: unknown[] };
+        const marks = (ns: unknown[] | undefined) => (ns ?? []).map((n) => `[${String(n)}]`).join("");
+        return `「${String(d.sentence)}」${prune.removed} ${marks(d.removed)}・${prune.kept} ${marks(d.kept)}（${prune.values}: ${(d.values ?? []).map(String).join("・")}）`;
       }
       if (x && typeof x === "object" && "question" in x && "reason" in x) {
         // 落とした候補（続けて聞く）。理由は読める名前にし、根拠の語句があれば添える（specs/028 T23）
@@ -344,7 +354,7 @@ export function systemFieldValue(v: unknown, reasons: Record<string, string> = {
 /** 決まった値（空の生成の結果・未了の確認の種類）は読める名前にする。それ以外は systemFieldValue のまま。 */
 function systemValueLabel(key: string, v: unknown, t: Dictionary): string {
   const names = (t.chat.systemValues as Record<string, Record<string, string>>)[key];
-  return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v, t.chat.droppedReasons);
+  return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v, t.chat.droppedReasons, t.chat.pruneLabels);
 }
 
 function systemFieldLabel(key: string, t: Dictionary): string {
