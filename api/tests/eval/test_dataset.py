@@ -60,3 +60,20 @@ def test_relevant_documents_must_be_subset(tmp_path):
     )
     with pytest.raises(ValueError, match=r"missing\.pdf"):
         load_suite(path)
+
+
+def test_acceptable_documents_must_be_subset(tmp_path):
+    path = _write(
+        tmp_path,
+        """
+        suite: demo
+        documents: [a.pdf]
+        cases:
+          - id: c1
+            query: "x"
+            relevant_documents: [a.pdf]
+            acceptable_documents: [missing.pdf]
+      """,
+    )
+    with pytest.raises(ValueError, match="acceptable_documents"):
+        load_suite(path)

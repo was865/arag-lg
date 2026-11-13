@@ -406,3 +406,20 @@ async def test_run_case_normal_case_precision_unchanged_by_decline() -> None:
     r = await run_case(api, case, kb_id="kb1", model_id=None)
     assert r.citation_precision == citation_precision(set(r.cited_documents), ["a.pdf"])
     assert r.citation_precision < 1.0
+
+
+def test_citation_precision_counts_acceptable_documents() -> None:
+    """同じ事実を載せた別の資料（acceptable_documents）の引用は、精度で誤りに数えない（specs/026 T23）。"""
+    assert citation_precision({"a.pdf", "b.pdf"}, ["a.pdf"], ["b.pdf"]) == 1.0
+    assert citation_precision({"a.pdf", "b.pdf", "c.pdf"}, ["a.pdf"], ["b.pdf"]) == pytest.approx(2 / 3)
+    # 許容の資料だけを引用しても、再現率は relevant だけで測る
+    assert citation_recall({"b.pdf"}, ["a.pdf"]) == 0.0
+
+
+async def test_run_case_uses_acceptable_documents_for_precision_only() -> None:
+    # 回答は a.pdf（[1]）と b.pdf（[2]）を引用する
+    api = FakeApi([("run.completed", COMPLETED)])
+    case = Case(id="r", query="停止？", relevant_documents=["a.pdf"], acceptable_documents=["b.pdf"])
+    r = await run_case(api, case, kb_id="kb1", model_id=None)
+    assert set(r.cited_documents) == {"a.pdf", "b.pdf"}
+    assert r.citation_precision == 1.0 and r.citation_recall == 1.0

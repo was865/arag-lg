@@ -33,6 +33,8 @@ cases:
   query: 浜松第二工場の保全課長は誰ですか？
   tags: [ja, docx]
   relevant_documents: [w01-設備保全規程.docx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 出席者「保全課長 高梨 誠」
+  acceptable_documents: [w04-品質会議議事録_2026-09.docx]
   key_facts:
   - any: [高梨]
 - id: hm03-docx
@@ -107,6 +109,8 @@ cases:
   query: HP-300 分解手順書は第2版から第3版で何が変わりましたか？
   tags: [ja, docx, version]
   relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 第2版は変更前の値（45 N·m・KG-2・90 分）、議事録は「締付トルク変更、Oリングの交換を必須化」
+  acceptable_documents: [w02-HP-300分解手順書_第2版.docx, w04-品質会議議事録_2026-09.docx]
   key_facts:
   - any: ['52']
   - any: [KG-5]
@@ -135,6 +139,8 @@ cases:
   query: 部品 P-1042 の仕入先とリードタイムを教えてください。
   tags: [ja, xlsx, table]
   relevant_documents: [x01-部品台帳.xlsx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: Aster Seals の SK-300（= P-1042）のデータシート「Standard lead time is 21 days」
+  acceptable_documents: [e02-Aster-Seals-SK-300-datasheet.pdf]
   key_facts:
   - any: [Aster Seals]
   - any: [21日, '21']
@@ -148,6 +154,8 @@ cases:
   query: メカニカルシール MS-30 はどの機種に使えますか？
   tags: [ja, xlsx, table]
   relevant_documents: [x01-部品台帳.xlsx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 仕様書の軸封「メカニカルシール MS-30」、データシートの適用機種 HP-300・HP-320 と内容 MS-30
+  acceptable_documents: [d01-仕様書_HP-300.pdf, d02-仕様書_HP-320.pdf, e02-Aster-Seals-SK-300-datasheet.pdf]
   key_facts:
   - any: [HP-300]
   - any: [HP-320]
@@ -298,6 +306,8 @@ cases:
   query: PM-04 の9月12日の点検を行ったのは誰ですか？
   tags: [ja, scan]
   relevant_documents: [s01-月次点検票_PM-04_走査.pdf]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 2026-09-12 PM-04 月次点検（再点検）の担当「小野寺」
+  acceptable_documents: [x02-保守記録_2026-09.xlsx]
   key_facts:
   - any: [小野寺]
 - id: hm43-scan
@@ -412,6 +422,8 @@ cases:
   rewritten: HP-300 分解手順書 第2版 の締付トルク
   tags: [ja, multiturn, version]
   relevant_documents: [w02-HP-300分解手順書_第2版.docx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 第3版の変更点「45 N·m から 52 N·m に上げ」
+  acceptable_documents: [w03-HP-300分解手順書_第3版.docx]
   key_facts:
   - any: ['45']
 - id: hm62-turn
@@ -420,6 +432,8 @@ cases:
   rewritten: 仕入先 Aster Seals のリードタイム
   tags: [ja, multiturn, xlsx]
   relevant_documents: [x01-部品台帳.xlsx]
+  # 同じ事実を載せた別の資料（2026-11-13、元の資料で確認）: 「Standard lead time is 21 days」
+  acceptable_documents: [e02-Aster-Seals-SK-300-datasheet.pdf]
   key_facts:
   - any: [21日, '21']
 - id: hm63-turn

@@ -111,11 +111,12 @@ def citation_recall(cited: set[str], relevant: list[str]) -> float:
     return 1.0 if not rel else len(cited & rel) / len(rel)
 
 
-def citation_precision(cited: set[str], relevant: list[str]) -> float:
+def citation_precision(cited: set[str], relevant: list[str], acceptable: list[str] | None = None) -> float:
+    """引用した文書のうち、根拠の文書か、同じ事実を載せた別の文書（acceptable）の割合。"""
     if not cited:
         # 根拠の無い題で何も引用しないのは正しい振る舞い
         return 1.0 if not relevant else 0.0
-    return len(cited & set(relevant)) / len(cited)
+    return len(cited & (set(relevant) | set(acceptable or []))) / len(cited)
 
 
 class Trajectory(TypedDict):
@@ -180,10 +181,10 @@ def declines(answer: str) -> bool:
 def score_citation_precision(case: Case, cited: set[str], *, declined: bool, wrong_found: list[str]) -> float:
     """引用精度。答えの無い題（expect_no_answer かつ relevant_documents が空）で、資料に無いと述べ
     （回答不能を含む）、誤りの値も書いていなければ、近い資料を引用していても 1.0 とする（2026-11-13）。
-    値を言い切った答えと、答えのある題は今までどおり引用の当たりで測る。"""
+    値を言い切った答えと、答えのある題は今までどおり引用の当たりで測る（acceptable_documents も当たり）。"""
     if case.expect_no_answer and not case.relevant_documents and declined and not wrong_found:
         return 1.0
-    return citation_precision(cited, case.relevant_documents)
+    return citation_precision(cited, case.relevant_documents, case.acceptable_documents)
 
 
 def _coverage(matched: list[bool]) -> float:

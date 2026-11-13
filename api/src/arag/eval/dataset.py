@@ -17,6 +17,9 @@ class Case(BaseModel):
     top_k: int = 6
     tags: list[str] = Field(default_factory=list)  # 言語は ja / en / cross（日英をまたぐ）
     relevant_documents: list[str] = Field(default_factory=list)
+    # 同じ事実を載せた別の資料。引用しても誤りでない
+    # （引用精度では当たりに数え、再現率には入れない。specs/026 T23）
+    acceptable_documents: list[str] = Field(default_factory=list)
     key_facts: list[KeyFact] = Field(default_factory=list)
     # 答えに書いてはいけない誤りの値（例: 一部の集計で表全体の合計）。
     # key_facts は正しい値を含むかしか見ないので別に見る（specs/021）
@@ -47,9 +50,10 @@ class GoldenSuite(BaseModel):
     def _check_relevant_subset(self) -> "GoldenSuite":
         known = set(self.documents)
         for case in self.cases:
-            for fn in case.relevant_documents:
-                if fn not in known:
-                    raise ValueError(f"case {case.id}: relevant_documents に未登録の {fn} があります")
+            for field in ("relevant_documents", "acceptable_documents"):
+                for fn in getattr(case, field):
+                    if fn not in known:
+                        raise ValueError(f"case {case.id}: {field} に未登録の {fn} があります")
         return self
 
 
