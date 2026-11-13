@@ -1,6 +1,6 @@
 # 029 回答の流れを明示のグラフにする — タスク
 
-状態: P0〜P3 済み（T11 の 69 題の比較が残り）。ブランチ `feat/explicit-graph`。
+状態: P0〜P3 済み。P4・P5 は別に判断。ブランチ `feat/explicit-graph`。
 
 ## P0 着手前の確認
 - [x] T1 ライセンスを確かめ直す: `langgraph`・`langgraph-prebuilt`・`langgraph-checkpoint-postgres`（MIT のはず）、`langgraph-api`・`langgraph-cli` の `dev`（ELv2 のはず）、Studio が LangSmith への接続を要するか。結果を `specs/000-overview/licenses.md` と `decisions.md` に書く
@@ -17,7 +17,9 @@
 - [x] T8 `CitationMiddleware`・確定・`_classify` → `finalize`
 - [x] T9 `_deliver_followups`・画像の読み取り → 節点
 - [x] T10 ステップに `node` を足す（`make gen`）
-- [ ] T11 T2 のテストと既存の全テストが通る（済み。単体・結合とも）。69 題を作り直しの前後で比べる（指標 ±0.01、`wrong_fact` 0、p50 +100ms 以内）
+- [x] T11 T2 のテストと既存の全テストが通る（済み。単体・結合とも）。69 題を作り直しの前後で比べる（指標 ±0.01、`wrong_fact` 0、p50 +100ms 以内）
+  - 結果（Gemma 4 12B、前 = `hm-gemma4-12b-026f`、後 = `hm-gemma4-12b-029`）: 引用再現率 1.000 → 1.000、引用精度 0.966 → 0.973、事実網羅 1.000 → 1.000、誤りの記述 0 → 0、p50 2698 → 2667ms、p95 5279 → 6079ms（測定中に画面から 2 問を並行して流した）
+  - 回答不能率 0 → 0.014 は hm59（`expect_no_answer` の題）。前は「資料  や [1]」の崩れた引用が付いて回答扱いだったのが、T35（main で直した刈り込み）で引用が外れ、`no_relevant_sources` に分類された。退行ではない
 
 ## P2 図をコードから（R5・R6）
 - [x] T12 `diagram.py`・`make graph`・`docs/agent-graph.md`・`web/src/lib/chat/flow-graph.json`・CI の `graph-check`
