@@ -209,10 +209,18 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
     case "step":
       return { ...turn, steps: upsertStep(turn.steps, toToolCall(ev.step)) };
     case "answer.delta":
-      return relive(turn, (turn.rawAnswer ?? turn.answer) + ev.text, turn.rawCitationMap ?? {});
+      return relive(
+        { ...turn, staleAnswer: undefined },
+        (turn.rawAnswer ?? turn.answer) + ev.text,
+        turn.rawCitationMap ?? {},
+      );
     case "answer.reset":
-      // 代替モデルへの切り替えなどで書き直す
-      return relive(turn, "", turn.rawCitationMap ?? {});
+      // 確認での差し戻し・代替モデルへの切り替えなどで書き直す。それまでの下書きは、次の本文が届くまで残す
+      return relive(
+        { ...turn, staleAnswer: turn.answer.trim() ? turn.answer : turn.staleAnswer },
+        "",
+        turn.rawCitationMap ?? {},
+      );
     case "sources": {
       const next = withSources(turn, ev.sources, ev.citation_map);
       return relive(next, turn.rawAnswer ?? turn.answer, next.citationMap);
@@ -222,6 +230,7 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         ...withSources(turn, ev.sources, ev.citation_map),
         rawAnswer: undefined,
         rawCitationMap: undefined,
+        staleAnswer: undefined,
         answer: ev.answer,
         streaming: false,
         status: "done",
@@ -232,9 +241,9 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         steps: turn.steps.map(settle),
       };
     case "run.failed":
-      return { ...turn, streaming: false, status: "error", error: ev.message, steps: turn.steps.map(settle) };
+      return { ...turn, staleAnswer: undefined, streaming: false, status: "error", error: ev.message, steps: turn.steps.map(settle) };
     case "run.cancelled":
-      return { ...turn, streaming: false, status: "cancelled", steps: turn.steps.map(settle) };
+      return { ...turn, staleAnswer: undefined, streaming: false, status: "cancelled", steps: turn.steps.map(settle) };
     default:
       return turn;
   }

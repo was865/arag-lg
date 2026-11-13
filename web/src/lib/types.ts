@@ -121,6 +121,8 @@ export interface Turn {
   /** 生成中だけ持つ、サーバが送ったままの回答と出典番号（answer・citationMap は出た順に振り直した表示用）。 */
   rawAnswer?: string;
   rawCitationMap?: CitationMap;
+  /** 確認で差し戻された下書き。書き直した回答が届き始めるまで、薄く残して見せる（急に消さない）。 */
+  staleAnswer?: string;
   image?: TurnImage;
   steps: ToolCall[];
   answer: string;

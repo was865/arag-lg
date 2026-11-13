@@ -278,6 +278,7 @@ export function Transcript({
                 variant={toolView}
                 running={running}
                 answering={turn.answer.length > 0}
+                revising={Boolean(turn.staleAnswer)}
                 expandedMap={expandedSteps}
                 onToggleStep={onToggleStep}
               />
@@ -285,7 +286,20 @@ export function Transcript({
                 // 回答と根拠カード。幅が足りれば横に、足りなければ下に並べる（specs/025 R45）
                 <div className="@container">
                   <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-3.5 @[760px]:grid-cols-[minmax(0,1fr)_248px]">
-                    <StreamingAnswer text={turn.answer} streaming={turn.streaming} onCite={(n) => onCite(n, idx)} citationStyle={citationStyle} />
+                    {turn.streaming && turn.answer.length === 0 && turn.staleAnswer ? (
+                      // 差し戻された下書き: 書き直しが届くまで薄く残す（急に消えて行が跳ねないように）
+                      <div className="flex flex-col gap-2" aria-live="polite">
+                        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-caption font-medium text-accent">
+                          <span className="h-1.5 w-1.5 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />
+                          {t.chat.staleDraft}
+                        </span>
+                        <div className="pointer-events-none select-none opacity-40 transition-opacity duration-(--duration-mid)" aria-hidden>
+                          <StreamingAnswer text={turn.staleAnswer} streaming={false} onCite={() => {}} citationStyle={citationStyle} />
+                        </div>
+                      </div>
+                    ) : (
+                      <StreamingAnswer text={turn.answer} streaming={turn.streaming} onCite={(n) => onCite(n, idx)} citationStyle={citationStyle} />
+                    )}
                     <EvidenceRail items={evidenceList(turn.citationMap, turn.sources)} onOpen={(n) => onCite(n, idx)} />
                   </div>
                 </div>

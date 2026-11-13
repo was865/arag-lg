@@ -219,3 +219,41 @@ describe("explainFallback", () => {
     expect(explainFallback(alone)).toBe(alone);
   });
 });
+
+describe("差し戻しのあいだの下書き（staleAnswer、specs/026 T27）", () => {
+  const completed: RunEvent = {
+    type: "run.completed",
+    message_id: "m1",
+    answer: "書き直した回答",
+    tokens_in: 1,
+    tokens_out: 1,
+    duration_ms: 1,
+    no_answer_reason: null,
+    citation_map: {},
+    sources: [],
+  };
+
+  it("reset でそれまでの回答を staleAnswer に残し、answer は空にする", () => {
+    const t = play([{ type: "answer.delta", text: "下書き" }, { type: "answer.reset" }]);
+    expect(t.answer).toBe("");
+    expect(t.staleAnswer).toBe("下書き");
+  });
+
+  it("次の delta で staleAnswer を消す", () => {
+    const t = play([{ type: "answer.delta", text: "下書き" }, { type: "answer.reset" }, { type: "answer.delta", text: "新" }]);
+    expect(t.answer).toBe("新");
+    expect(t.staleAnswer).toBeUndefined();
+  });
+
+  it("空の回答の reset では staleAnswer に入れない", () => {
+    expect(play([{ type: "answer.reset" }]).staleAnswer).toBeUndefined();
+    expect(play([{ type: "answer.delta", text: "  " }, { type: "answer.reset" }]).staleAnswer).toBeUndefined();
+  });
+
+  it("完了・失敗・取消で staleAnswer を消す", () => {
+    const base: RunEvent[] = [{ type: "answer.delta", text: "下書き" }, { type: "answer.reset" }];
+    expect(play([...base, completed]).staleAnswer).toBeUndefined();
+    expect(play([...base, { type: "run.failed", code: "x", message: "失敗" } as RunEvent]).staleAnswer).toBeUndefined();
+    expect(play([...base, { type: "run.cancelled" } as RunEvent]).staleAnswer).toBeUndefined();
+  });
+});

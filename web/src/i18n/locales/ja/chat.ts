@@ -16,8 +16,10 @@ export const chat = {
   sentAt: "{time} に送信",
 
   // agent-activity
-  agentRunning: "エージェント実行中…",
   storyThinking: "考えています…",
+  storyWriting: "回答を書いています…",
+  storyRevising: "確認して書き直しています…",
+  staleDraft: "確認前の下書き・書き直しています",
   agentDone: "エージェント実行",
   /** 検索の過程の要約（specs/025 R45） */
   storySearched: "{n} 件の資料を検索",

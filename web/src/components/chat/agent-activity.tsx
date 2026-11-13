@@ -53,8 +53,10 @@ function StageRail({ stage, labels }: { stage: number; labels: string[] }) {
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
-  steps, sources, variant, running, answering = false, expandedMap, onToggleStep,
+  steps, sources, variant, running, answering = false, revising = false, expandedMap, onToggleStep,
 }: {
+  /** 確認で差し戻された下書きを書き直している最中か */
+  revising?: boolean;
   /** 回答の本文が流れ始めているか（実行中のステップが無いあいだ、考えているのか書いているのかを見分ける） */
   answering?: boolean;
   steps: ToolCall[];
@@ -90,6 +92,19 @@ export function AgentActivity({
   const activity: Activity = current ? activityOf(current.name) : thinking || !answering ? "think" : "write";
   // 質問の理解のステップがあるターンは、系統が導く流れ（specs/026）
   const guided = steps.some((s) => s.name === "understand");
+  // 確認が 1 度でも入ったら、そのあとの調べ直し・書き直しも「確認」の段階として見せる（段階が後ろへ戻らない）
+  const reviewed = revising || steps.some((s) => s.name === "review");
+  const stage = reviewed ? 3 : stageOf(current);
+  // いましていることを言葉で言う: 実行中のステップの要約 → 考え中 → 書き直し中 → 書いている最中
+  const nowLabel =
+    current?.summary ??
+    (thinking
+      ? t.chat.storyThinking
+      : reviewed
+        ? t.chat.storyRevising
+        : answering
+          ? t.chat.storyWriting
+          : t.chat.storyThinking);
 
   const story = searchStory(visibleSteps, sources ?? []);
   const SHOWN = 4;
@@ -114,18 +129,18 @@ export function AgentActivity({
           // 系統が導く流れ: 今どの段階かを列で示し、いまの動きを横に流す
           <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <StageRail
-              stage={stageOf(current)}
+              stage={stage}
               labels={[t.chat.stageUnderstand, t.chat.stageSearch, t.chat.stageAnswer, t.chat.stageCheck]}
             />
             <span className="inline-flex items-center gap-1.5">
               <ActivityGlyph activity={activity} />
-              <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
+              <span className="text-shimmer font-medium">{nowLabel}</span>
             </span>
           </span>
         ) : running ? (
           <span className="inline-flex items-center gap-2">
             <ActivityGlyph activity={activity} />
-            <span className="text-shimmer font-medium">{current?.summary ?? (thinking ? t.chat.storyThinking : t.chat.agentRunning)}</span>
+            <span className="text-shimmer font-medium">{nowLabel}</span>
           </span>
         ) : story.searched > 0 ? (
           <>
