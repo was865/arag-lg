@@ -29,6 +29,7 @@ from ..agent_fakes import (
     StatusError,
     fake_hit,
     idle_utility,
+    prompt_script,
     script,
     tool_call,
 )
@@ -217,8 +218,11 @@ async def test_utility_model_rewrites_low_score_search(
 ) -> None:
     """runner が書き換え用モデルを RunContext に渡し、低スコアのとき再検索する（R17）。"""
     model = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
-    # 1 つ目は質問の整理（読めない出力 → 質問文のまま検索）、2 つ目が書き換え
-    utility = FakeToolModel(messages=script(AIMessage(content="？"), AIMessage(content="社外持出し 規程")))
+    # 質問の整理（読めない出力 → 質問文のまま検索）と書き換えは並行に呼ばれうるので、プロンプトで答えを分ける
+    utility = prompt_script(
+        agent_understand=[AIMessage(content="？")],
+        agent_rewrite=[AIMessage(content="社外持出し 規程")],
+    )
     search = FakeSearch("無関係な本文")
     search.hits = [fake_hit("無関係な本文", score=0.05)]
     deps = make_deps(sessionmaker, redis, model, search)

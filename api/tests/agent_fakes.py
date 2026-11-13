@@ -9,10 +9,11 @@ from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-from langchain_core.outputs import ChatGenerationChunk, ChatResult
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, SystemMessage
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import Field
 
+from arag.prompts import load_prompt
 from arag.search.schemas import SearchHit, SearchRequest, SearchResult, SearchTrace
 
 
@@ -84,6 +85,34 @@ def script(*msgs: AIMessage) -> Iterator[AIMessage]:
 def idle_utility() -> "FakeToolModel":
     """質問の整理に何も足さない補助モデル（質問文のまま検索させる）。会話モデルの台本を減らさないために使う。"""
     return FakeToolModel(messages=itertools.repeat(AIMessage(content="{}")))
+
+
+class PromptScriptModel(FakeToolModel):
+    """システムプロンプト（prompts/ の名前）ごとに台本を持つ補助モデル。
+
+    最初のターンでは質問の整理と最初の検索（低スコアなら書き換え）が並行に走り、
+    どちらが先に補助モデルを呼ぶかは決まらない。呼ばれた順ではなくプロンプトで答えを選ぶ。
+    """
+
+    scripts: dict[str, list[AIMessage]] = Field(default_factory=dict)
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        self.calls.append(list(messages))
+        system = next((m.text for m in messages if isinstance(m, SystemMessage)), "")
+        for name, outs in self.scripts.items():
+            if system == load_prompt(name):
+                return ChatResult(generations=[ChatGeneration(message=outs.pop(0))])
+        raise AssertionError(f"台本の無いプロンプト: {system[:60]}")
+
+
+def prompt_script(**scripts: list[AIMessage]) -> PromptScriptModel:
+    return PromptScriptModel(messages=iter(()), scripts=scripts)
 
 
 def tool_call(name: str, **args: Any) -> AIMessage:
