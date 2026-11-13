@@ -125,3 +125,16 @@ START
   1. ストリームの順序（`answer.reset` と `answer.delta` の前後）。偽モデルのテストに、イベントの列をそのまま比べるものを先に足す（作り直しの前に、今の列を記録しておく）。
   2. `create_agent` の内側でしか取れない値（モデルの応答の `response_metadata` など）を `guard` が使う。部分グラフの出力（最後の `AIMessage`）から読めるかを P1 の最初に確かめる。読めなければ、その値だけ middleware が状態に書く。
   3. 節点が増えるぶんの checkpoint の書き込み（1 ターンに数回 → 十数回）。所要時間への影響を 69 題の p50 で見る（+100ms を超えたら、`investigate` の内側の checkpoint を減らす）。
+
+## 実装で変えた点（P1・P2、2026-11-14）
+
+- **`prepare` を 2 つの節点 `understand`・`primer_search` に分けた**。初回のターンの「質問文での検索」は `understand` の中で理解と並行のまま行い、`primer_search` は整理した残りの語だけを検索する（今と同じ並行の度合い）。これで「雑談は最初の検索を飛ばす」を条件つきの辺（`understand` → `investigate`）として書ける。初回の `primer-1` のステップは `understand` の節点のものになる。
+- **最初の検索の結果の文は状態に入れず `RunContext` に置く**（`primer`・`primer_texts`）。状態には理解の結果（`understanding`: kind・queries・table・残りの語）だけを置く。結果の文はターンごとに数 KB〜数十 KB あり、checkpoint に毎ターン残す理由が無いため。途中からの再開（P5）では `primer_search` からやり直す。
+- **差し戻しと空のやり直しの「結果の記録」は、調査の中のモデル呼び出しの直後に出す**（`AgentPolicyMiddleware`）。判断（やり直す・退避する・差し戻す）は外の `guard`・`review` が行い、状態の `send_back`・`empty_pending` に置く。部分グラフはこの鍵を読んで、差し戻しの依頼を次のモデル呼び出しにだけ添え、応答が来たら「見直し」のステップを閉じる。外で閉じると、書き直しがツールを呼んだときに「見直し」の完了がツールのステップより後になり、記録の順が変わるため。状態の書き換えは `ExtendedModelResponse` で行い、部分グラフに節点を足さない（回数の上限・`recursion_limit` を変えない）。
+- **`answer.reset` は今のまま runner が送る**（新しいモデル呼び出しの断片が来たら、それまでの本文を消す）。`review` が送る形にすると、届く順が変わるおそれがあるため。
+- **`guard` の辺は `retry`・`use_draft`・`ok` の 3 つ**。空のまま下書きも無い（`failed`）は、今と同じく確認へ進む（`ok`。表の集計の確認は空の回答にも掛かりうる）。区別は状態の `outcome`（`empty_failed`）で持つ。
+- **節点の名前の付け方**: 外側の節点は送るときに `tag_node` で付け、部分グラフの中のステップ（ツール・システムの処理・モデルの切り替え・考えた過程）は runner がストリームの namespace（`investigate:…`）から付ける。「見直し」のステップは調査の中で閉じても `review` の節点のもの。続けて聞くの記録は `followups`。
+- **runner の入出力は `RunContext.hooks` で渡す**: `finalize` が確定した回答（`Completion`）を `hooks.completed` に渡し、runner が保存して `run.completed` を送る。`followups` の節点は `hooks.followups` を呼ぶ（保存済みのメッセージに候補を足して `followups` を送る、今の処理のまま）。画像は `hooks.read_image`。テストでは空のまま（記録だけが出る）。確定の後の取消・失敗では保存し直さず、候補を待っている画面には空の `followups` を送って閉じる。
+- **流れの状態はターンの始め（`read_image`）で初期値に戻す**（`FRESH`）。前のターンの差し戻し済み・やり直し済みを持ち越さない。
+- **古い checkpoint**: 作り直しの前（create_agent だけのグラフ）が保存したスレッドも、`messages` の鍵が同じなのでそのまま続きを読める（テストあり）。応答の無いツール呼び出しを閉じる処理は `as_node="investigate"` で書く。取消が調査の途中に来たときは、外側の状態にはそのターンの質問だけが残り、途中のツールの結果は残らない（部分グラフの checkpoint にだけある）。
+

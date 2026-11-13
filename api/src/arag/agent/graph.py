@@ -1,21 +1,15 @@
-"""エージェントの組み立て（specs/005-agent design §3）。"""
+"""エージェントの組み立て（specs/005-agent design §3、specs/029）。
+
+外側の回答の流れ（`flow.build_graph`）に、調査の部分グラフ（create_agent）を入れて返す。
+ストリームは `subgraphs=True` で受ける（部分グラフの中のステップと本文の断片を受けるため）。
+"""
 
 from typing import Any
 
-from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from arag.agent.context import RunContext
-from arag.agent.middleware import (
-    AgentPolicyMiddleware,
-    CitationMiddleware,
-    RecordedSummarization,
-    StepMiddleware,
-)
-from arag.agent.model_switch import ModelSwitchMiddleware
-from arag.agent.primer import PrimerMiddleware
-from arag.agent.tools import TOOLS
+from arag.agent.flow import build_graph, build_investigate
 
 
 def build_agent(
@@ -28,22 +22,12 @@ def build_agent(
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     summarize_at_tokens: int = 12_000,
 ) -> Any:
-    middleware: list[Any] = [
-        # ターンの最初に、質問の整理と検索をシステムが行う（specs/026）
-        PrimerMiddleware(),
-        RecordedSummarization(
-            utility or model, trigger=("tokens", summarize_at_tokens), keep=("messages", 12)
-        ),
-        AgentPolicyMiddleware(),
-    ]
-    # 代替が無くても入れる（失敗の理由と、いまのモデル名を「考えた過程」に出すため）
-    fallbacks = [] if fallback is None else [(fallback_label, fallback)]
-    middleware.append(ModelSwitchMiddleware(model_label, fallbacks))
-    middleware += [StepMiddleware(), CitationMiddleware()]
-    return create_agent(
+    investigate = build_investigate(
         model,
-        tools=TOOLS,
-        middleware=middleware,
-        context_schema=RunContext,
-        checkpointer=checkpointer,
+        utility=utility,
+        fallback=fallback,
+        model_label=model_label,
+        fallback_label=fallback_label,
+        summarize_at_tokens=summarize_at_tokens,
     )
+    return build_graph(investigate, checkpointer=checkpointer)

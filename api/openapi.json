@@ -3684,6 +3684,17 @@
             "title": "Name",
             "type": "string"
           },
+          "node": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node"
+          },
           "output": {
             "anyOf": [
               {

@@ -6,10 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.citations import CitationRegistry
+from arag.agent.citations import CitationRegistry, FinalCitations
 from arag.agent.config import AgentCfg
 from arag.auth.principal import Principal
 from arag.search.schemas import SearchRequest, SearchResult
@@ -55,6 +54,29 @@ class Primer:
 
 
 @dataclass
+class Completion:
+    """確定した回答（specs/029 finalize）。runner はこれを保存して完了を送る。"""
+
+    answer: str  # 引用を振り直した回答（回答が無ければ利用者に見せる断りの文）
+    reason: str | None  # no_answer_reason
+    citations: FinalCitations
+    followups: bool  # 続けて聞く候補をこの後に作るか
+
+
+@dataclass
+class RunHooks:
+    """グラフの節点から呼ぶ、runner の入出力（DB・Redis・画像の保存先）。テストでは空のまま。"""
+
+    # 添付画像を文章にする（質問文を受け取る）。読めなければ例外。画像が無ければ None
+    read_image: Callable[[str], Awaitable[str]] | None = None
+    image_id: str = ""
+    # 回答を保存し、完了を送る（finalize の終わり）
+    completed: Callable[[Completion], Awaitable[None]] | None = None
+    # 続けて聞く候補を作って届ける（完了の後）。作った候補を返す。None なら作らない
+    followups: Callable[[], Awaitable[list[str]]] | None = None
+
+
+@dataclass
 class RunContext:
     principal: Principal
     sessionmaker: async_sessionmaker[AsyncSession]
@@ -77,7 +99,8 @@ class RunContext:
     table_failures: dict[tuple[str, str, str, int], str] = field(default_factory=dict)
     # table_query の結果の構造（ツールの呼び出し ID → table.summarize）。記録にだけ出す（specs/028 T8）
     table_outputs: dict[str, dict[str, Any]] = field(default_factory=dict)
-    # 最後に差し戻した下書きとその確認の種類。書き直しが空のままなら、これを回答にする（specs/026 R25）
-    review_draft: tuple[AIMessage, str] | None = None
+    # 最初の検索の結果の文（understand と primer_search の間で渡す。会話の状態には入れない）
+    primer_texts: list[str] = field(default_factory=list)
+    hooks: RunHooks = field(default_factory=RunHooks)
     # 値を書いていない資料の番号を文から外す（ARAG_CITATION_PRUNE、specs/026 T31）
     citation_prune: bool = True

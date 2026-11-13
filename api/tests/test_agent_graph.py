@@ -23,8 +23,9 @@ def ctx(search: FakeSearch, **kw: Any) -> RunContext:
 async def run(agent: Any, c: RunContext, q: str, thread: str = "t") -> tuple[dict[str, Any], list[Any]]:
     custom: list[Any] = []
     cfg = {"configurable": {"thread_id": thread}}
-    async for mode, chunk in agent.astream(
-        {"messages": [HumanMessage(q)]}, cfg, context=c, stream_mode=["messages", "custom"]
+    # 調査は部分グラフなので、その中のステップも受けるよう subgraphs=True で流す（specs/029）
+    async for _ns, mode, chunk in agent.astream(
+        {"messages": [HumanMessage(q)]}, cfg, context=c, stream_mode=["messages", "custom"], subgraphs=True
     ):
         if mode == "custom":
             custom.append(chunk)

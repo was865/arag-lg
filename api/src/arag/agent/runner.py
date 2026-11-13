@@ -22,15 +22,18 @@ from redis.asyncio import Redis
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_numbers, finalize_citations
+from arag.agent.citations import CitationRegistry, Cited, FinalCitations, finalize_citations
 from arag.agent.config import AgentCfg
-from arag.agent.context import RunContext, SearchFn
+from arag.agent.context import Completion, RunContext, RunHooks, SearchFn
+from arag.agent.flow import NO_ANSWER_TEXT
+
+# _classify は以前の場所（テストが使う）
+from arag.agent.flow import classify as _classify  # noqa: F401
 from arag.agent.followups import HISTORY_TURNS, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
-from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
-from arag.agent.steps import Step, StepClock, record_system
+from arag.agent.steps import Step, record_system, tag_node
 from arag.agent.stream import EventSink, is_cancelled, redis_client
 from arag.agent.thinking import ThinkSplitter
 from arag.audit import AuditEvent, write_audit
@@ -40,17 +43,6 @@ from arag.logging import get_logger
 from arag.storage import Storage
 
 log = get_logger("arag.agent.runner")
-
-NO_ANSWER_TEXT = {
-    "no_sources": "社内の資料から、この質問に答えられる情報は見つかりませんでした。"
-    "言い方を変えるか、検索範囲（ナレッジベース）を広げてもう一度お試しください。",
-    "step_budget_exhausted": "調べる回数の上限に達したため、回答をまとめられませんでした。"
-    "質問を絞るか、エージェント設定の「最大ステップ数」を増やしてください。",
-    "tool_failed": "検索の実行に失敗したため回答できませんでした。しばらくしてからもう一度お試しください。",
-    "generation_failed": "回答の生成に失敗しました。しばらくしてからもう一度お試しください。",
-    "empty_generation": "回答を生成できませんでした。もう一度お試しください。",
-}
-
 
 RUNNER_LOST = "回答の生成が中断されました。もう一度お試しください。"
 
@@ -149,29 +141,7 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
         if tc["id"] not in answered
     ]
     if fix:
-        await agent.aupdate_state(config, {"messages": fix}, as_node="tools")
-
-
-def _classify(answer: str, ctx: RunContext) -> str | None:
-    if answer.strip():
-        # 調べたのに資料が 1 件も無く、引用も無い回答は「資料なし」として数える（知識ギャップの分析用）
-        chat = ctx.primer is not None and ctx.primer.kind == "chat"
-        searched = ctx.stats.tool_calls or (ctx.stats.primer_searches and not chat)
-        if searched and not cited_numbers(answer):
-            if len(ctx.registry) == 0:
-                return "no_sources"
-            # 資料はあったが引用の無い回答（多くは「見つからなかった」）。引用必須のときだけ数える
-            if ctx.cfg.require_citations:
-                return "no_relevant_sources"
-        return None
-    if ctx.stats.tool_errors and len(ctx.registry) == 0:
-        return "tool_failed"
-    if len(ctx.registry) == 0:
-        return "no_sources"
-    if ctx.stats.empty_failed:
-        # 資料はあったが、モデルが本文の無い応答を返し、やり直しても下書きも無かった（R25。上限ではない）
-        return "empty_generation"
-    return "step_budget_exhausted"
+        await agent.aupdate_state(config, {"messages": fix}, as_node="investigate")
 
 
 async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
@@ -199,6 +169,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     )
     checkpoint_id: str | None = None
     status, code, err = "completed", None, ""
+    done = _Done()
     try:
         got = deps.resolve_models(model_id)
         models = await got if inspect.isawaitable(got) else got
@@ -214,6 +185,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         }
     )
     if models is not None:
+        resolved = models
         # 書き換え（CRAG）は utility が無ければ会話モデルで行う
         ctx.utility_model = models.utility or models.model
         agent = deps.agent_for(models)
@@ -223,6 +195,59 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 base["configurable"]["checkpoint_id"] = req["branch_checkpoint_id"]
             else:  # 先頭のターンからやり直すときは状態を空にする
                 await deps.checkpointer.adelete_thread(str(thread_id))
+
+        # グラフの節点から呼ぶ入出力（specs/029。確定 → 保存と完了、続けて聞く候補、添付画像）
+        async def completed(c: Completion) -> None:
+            src = _final_sources(c.citations)
+            turn.answer = c.answer
+            turn.stop()
+            await asyncio.shield(
+                _persist(
+                    deps,
+                    run_id,
+                    thread_id,
+                    message_id,
+                    req,
+                    resolved.id,
+                    "completed",
+                    None,
+                    "",
+                    c.answer,
+                    c.reason,
+                    turn,
+                    src,
+                    c.citations.items,
+                    ctx,
+                    checkpoint_id,
+                )
+            )
+            done.completion, done.src = c, src
+            await sink.emit(
+                {
+                    "type": "run.completed",
+                    "message_id": str(message_id),
+                    "answer": c.answer,
+                    "tokens_in": turn.tokens_in,
+                    "tokens_out": turn.tokens_out,
+                    "duration_ms": turn.duration_ms,
+                    "no_answer_reason": c.reason,
+                    **src,
+                    "suggestions": [],
+                    "followups_pending": c.followups,
+                }
+            )
+
+        async def followups() -> list[str]:
+            assert done.completion is not None
+            done.followups_started = True  # 失敗しても _deliver_followups が最後に followups を送る
+            return await _deliver_followups(
+                deps, sink, turn, resolved, ctx, req, thread_id, message_id, done.completion.answer, done.src
+            )
+
+        ctx.hooks = RunHooks(completed=completed, followups=followups if deps.followups else None)
+        if isinstance(img := req.get("image"), dict):
+            ctx.hooks.read_image = _image_reader(deps, img)
+            ctx.hooks.image_id = str(img["id"])
         try:
             await _repair_dangling_tool_calls(agent, base)
             before = await agent.aget_state(base)
@@ -232,18 +257,9 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 "max_concurrency": cfg.parallel_tools,
                 "recursion_limit": cfg.max_steps * 3 + 10,
             }
-            query = req["query"]
-            if isinstance(req.get("image"), dict):
-                description = await _read_image(deps, sink, turn, req)
-                query = with_image_description(query, description)
-                # 検索語の書き換えでも画像の内容を踏まえる（R5）
-                ctx.question = query
-            await _stream(agent, config, ctx, sink, turn, query)
-            final = await agent.aget_state({"configurable": {"thread_id": str(thread_id)}})
-            msgs = final.values.get("messages", [])
-            last = msgs[-1] if msgs else None
-            if isinstance(last, AIMessage) and not last.tool_calls:
-                turn.answer = last.text
+            await _stream(agent, config, ctx, sink, turn, req["query"])
+            if done.completion is None:
+                raise RuntimeError("回答を確定する前に流れが終わりました")
         except asyncio.CancelledError:
             status = "cancelled"
         except Exception as e:
@@ -253,23 +269,22 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 # どのモデルがなぜ使えなかったかを利用者に見せる（402 だけが残って原因が分からない、を防ぐ）
                 turn.answer = e.user_message()
 
-    # 引用を確定する（回答に出た順に振り直し、引用した箇所だけを出典にする）
+    if done.completion is not None:
+        # 完了は保存して送り済み。続けて聞く候補の前に止まったら、候補なしでストリームを閉じる
+        if status != "completed":
+            log.warning("stopped_after_completed", run_id=str(run_id), status=status, error=err or None)
+        if done.completion.followups and not done.followups_started:
+            await sink.emit({"type": "followups", "message_id": str(message_id), "suggestions": []})
+        return "completed"
+
+    # 確定まで届かなかった（取消・失敗・モデルなし）。流した分の回答と引用を保存する
     fin = finalize_citations(turn.answer, ctx.registry)
     answer = fin.answer
     reason: str | None = None
-    if status == "completed":
-        reason = _classify(answer, ctx)
-        if not answer.strip() and reason:
-            answer = NO_ANSWER_TEXT[reason]
-    elif status == "failed":
+    if status == "failed":
         reason = "generation_failed"
         answer = answer or NO_ANSWER_TEXT["generation_failed"]
     src = _final_sources(fin)
-    chat = ctx.primer is not None and ctx.primer.kind == "chat"
-    # 続けて聞く候補は、完了を送って保存した後に作って届ける（回答の下の操作を遅らせない。specs/028 T24）
-    want_followups = (
-        status == "completed" and reason is None and not chat and bool(deps.followups) and models is not None
-    )
     turn.stop()
     await asyncio.shield(
         _persist(
@@ -291,28 +306,36 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
             checkpoint_id,
         )
     )
-    if status == "completed":
-        await sink.emit(
-            {
-                "type": "run.completed",
-                "message_id": str(message_id),
-                "answer": answer,
-                "tokens_in": turn.tokens_in,
-                "tokens_out": turn.tokens_out,
-                "duration_ms": turn.duration_ms,
-                "no_answer_reason": reason,
-                **src,
-                "suggestions": [],
-                "followups_pending": want_followups,
-            }
-        )
-        if want_followups and models is not None:
-            await _deliver_followups(deps, sink, turn, models, ctx, req, thread_id, message_id, answer, src)
-    elif status == "cancelled":
+    if status == "cancelled":
         await sink.emit({"type": "run.cancelled", "message_id": str(message_id)})
     else:
         await sink.emit({"type": "run.failed", "code": code or "generation_failed", "message": answer})
     return status
+
+
+@dataclass
+class _Done:
+    """確定の節点が保存と完了の送信を済ませたか（その後の取消・失敗では、保存し直さない）。"""
+
+    completion: Completion | None = None
+    src: dict[str, Any] = field(default_factory=dict)
+    followups_started: bool = False
+
+
+def _image_reader(deps: RunnerDeps, img: dict[str, Any]) -> Callable[[str], Awaitable[str]]:
+    """添付画像を文章にする（R4）。読めなければ例外（read_image の節点が記録して、回答は止めない。R5）。"""
+
+    async def read(question: str) -> str:
+        if deps.image_reader is None or deps.storage is None:
+            raise RuntimeError("画像の読み取りが設定されていません")
+        data = await deps.storage.read(img["key"])
+        description = (await deps.image_reader.read(data, question)).strip()
+        if not description:
+            raise RuntimeError("画像から何も読み取れませんでした")
+        img["description"] = description
+        return description
+
+    return read
 
 
 async def _deliver_followups(
@@ -326,7 +349,7 @@ async def _deliver_followups(
     message_id: uuid.UUID,
     answer: str,
     src: dict[str, Any],
-) -> None:
+) -> list[str]:
     """完了の後に候補を作り、保存済みのメッセージに候補と記録のステップを足して、followups で届ける。
 
     どの場合も最後に followups を送る（ストリームはそこで閉じる）。失敗しても回答には触れない。
@@ -341,6 +364,7 @@ async def _deliver_followups(
         suggestions = []
     finally:
         await sink.emit({"type": "followups", "message_id": str(message_id), "suggestions": suggestions})
+    return suggestions
 
 
 async def _save_followups(
@@ -407,7 +431,7 @@ async def _followups(
         summary = f"候補を作れなかった（{output['error']}）"
     events: list[dict[str, Any]] = []
     record_system(
-        events.append,
+        tag_node(events.append, "followups"),
         "system-followups",
         "followups",
         "続けて聞く質問の作成",
@@ -429,49 +453,26 @@ async def _followups(
     return list(out.questions), step
 
 
-async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[str, Any]) -> str | None:
-    """添付画像を文章にする（R4）。失敗しても回答は止めず None を返す（R5）。"""
-    img = req["image"]
-    step = Step(id=f"img-{img['id']}", name="read_image", label="画像の読み取り", status="running")
-    events: list[dict[str, Any]] = []
-    clock = StepClock(events.append, step)
-
-    async def flush() -> None:
-        # 進行表示に出しつつ、保存するステップにも残す
-        for ev in events:
-            turn.steps[ev["step"]["id"]] = ev["step"]
-            await sink.emit(ev)
-        events.clear()
-
-    await flush()  # 「読み取り中」を先に出す
-    description: str | None = None
-    try:
-        if deps.image_reader is None or deps.storage is None:
-            raise RuntimeError("画像の読み取りが設定されていません")
-        data = await deps.storage.read(img["key"])
-        description = (await deps.image_reader.read(data, req["query"])).strip() or None
-        if description is None:
-            raise RuntimeError("画像から何も読み取れませんでした")
-        clock.done("読み取りました", {"description": description})
-        img["description"] = description
-    except Exception as e:
-        log.warning("read_image_failed", error=f"{type(e).__name__}: {e}")
-        clock.done("画像を読み取れませんでした", {"error": str(e)[:200]}, error=True)
-    await flush()
-    return description
-
-
 async def _stream(
     agent: Any, config: dict[str, Any], ctx: RunContext, sink: EventSink, turn: _Turn, query: str
 ) -> None:
     splitters: dict[str, ThinkSplitter] = {}
     reasoning = _Reasoning(sink, turn, ctx)
-    async for mode, chunk in agent.astream(
-        {"messages": [HumanMessage(query)]}, config, context=ctx, stream_mode=["messages", "custom"]
+    # 調査は部分グラフなので subgraphs=True で受ける（中のステップと本文の断片が届く。specs/029 T3）
+    async for ns, mode, chunk in agent.astream(
+        {"messages": [HumanMessage(query)]},
+        config,
+        context=ctx,
+        stream_mode=["messages", "custom"],
+        subgraphs=True,
     ):
         if mode == "custom":
             if chunk.get("type") == "step":
                 step = chunk["step"]
+                if ns and not step.get("node"):
+                    # 部分グラフの中のステップは、その部分グラフの節点（investigate）のもの
+                    step = {**step, "node": ns[0].split(":", 1)[0]}
+                    chunk = {**chunk, "step": step}
                 turn.steps[step["id"]] = step
                 await sink.emit(chunk)
                 # ツールが終わるたびに出典を送る（右パネルを先に用意できる）
@@ -538,6 +539,7 @@ class _Reasoning:
                 label="思考プロセス",
                 status="running",
                 input={"model": self.ctx.model_label} if self.ctx.model_label else {},
+                node="investigate",
             )
         self.text += delta
         if self.sent == 0 or len(self.text) - self.sent >= self.UPDATE_EVERY:

@@ -2561,6 +2561,8 @@ export interface components {
             label: string;
             /** Name */
             name: string;
+            /** Node */
+            node?: string | null;
             /** Output */
             output?: {
                 [key: string]: unknown;

@@ -18,6 +18,8 @@ class Step(BaseModel):
     input: dict[str, Any] = Field(default_factory=dict)
     output: dict[str, Any] | None = None
     summary: str = ""
+    # このステップを出した回答の流れの節点（specs/029 R3。古い記録には無い）
+    node: str | None = None
 
 
 class StepClock:
@@ -56,3 +58,15 @@ def record_system(emit: Any, step_id: str, kind: str, label: str, summary: str, 
         summary=summary,
     )
     emit({"type": "step", "step": step.model_dump()})
+
+
+def tag_node(emit: Any, node: str) -> Any:
+    """送るステップに節点の名前を付ける（既に付いていれば変えない。specs/029 R3）。"""
+
+    def tagged(ev: dict[str, Any]) -> None:
+        step = ev.get("step") if ev.get("type") == "step" else None
+        if isinstance(step, dict) and not step.get("node"):
+            ev = {**ev, "step": {**step, "node": node}}
+        emit(ev)
+
+    return tagged

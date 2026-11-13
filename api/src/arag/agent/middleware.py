@@ -1,14 +1,17 @@
-"""エージェントの middleware（specs/005-agent design §3）。"""
+"""調査（create_agent の部分グラフ）の middleware と、回答の流れの節点が使う判断・記録（specs/005・029）。"""
 
 import re
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, replace
+import time
+from collections.abc import Awaitable, Callable, Collection
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, NotRequired, cast
 from zoneinfo import ZoneInfo
 
 from langchain.agents.middleware import (
     AgentMiddleware,
+    AgentState,
+    ExtendedModelResponse,
     ModelRequest,
     ModelResponse,
     SummarizationMiddleware,
@@ -97,7 +100,7 @@ def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
     return load_prompt("agent_system").format(today=today, citation_rule=citation, unknown_rule=unknown)
 
 
-def _turn_start(messages: list[AnyMessage]) -> int:
+def turn_start(messages: list[AnyMessage]) -> int:
     for i in range(len(messages) - 1, -1, -1):
         if isinstance(messages[i], HumanMessage):
             return i
@@ -114,17 +117,43 @@ class Review:
     label: str
 
 
-class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
-    """システムプロンプト・最初の検索結果の添付・前のターンの資料の圧縮・回数上限・下書きの確認。"""
+class InvestigateState(AgentState[Any]):
+    """調査（create_agent の部分グラフ）と外側の流れで共有する状態の鍵（specs/029）。"""
+
+    # 差し戻し中: 記録のステップの ID・表示名・入力・依頼の文・始めた時刻
+    # （review が置き、書き直しの応答で消す）
+    send_back: NotRequired[dict[str, Any] | None]
+    # 差し戻した下書き（書き直しが空・返事なら、これを回答にする）
+    draft: NotRequired[AIMessage | None]
+    # 空の生成をやり直し中（やり直す前の応答の様子。guard が置き、やり直しの応答で消す）
+    empty_pending: NotRequired[dict[str, Any] | None]
+    # 差し戻しの直後に、ツールを呼ばずに書いた書き直しの元の下書き（guard が取り消しを判断する）
+    rewrite_of: NotRequired[str | None]
+    # 同じ呼び出しの続きとして数える差し戻しの回数（ツールを呼んだら 0 に戻す。回数の上限の判断に使う）
+    chain: NotRequired[int]
+
+
+class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
+    """調査の中のモデル呼び出し: システムプロンプト・最初の検索結果の添付・前のターンの資料の圧縮・回数上限、
+    差し戻し中なら下書きと依頼を添える。応答の後に、空のやり直しと差し戻しの結果を記録に残す。
+
+    差し戻す・やり直す・下書きへ退避するという判断は外側の節点（guard・review）が行う。
+    """
+
+    state_schema = InvestigateState
 
     async def awrap_model_call(
         self,
         request: ModelRequest[RunContext],
         handler: Callable[[ModelRequest[RunContext]], Awaitable[ModelResponse[Any]]],
-    ) -> ModelResponse[Any]:
+    ) -> ModelResponse[Any] | ExtendedModelResponse[Any]:
         ctx = request.runtime.context
+        state = cast(dict[str, Any], request.state)
+        send_back: dict[str, Any] | None = state.get("send_back")
+        # 差し戻し・空のやり直しで同じ呼び出しをし直すときは、ターンに 1 度の記録を繰り返さない
+        again = bool(send_back or state.get("empty_pending"))
         msgs = list(request.messages)
-        start = _turn_start(msgs)
+        start = turn_start(msgs)
         # 前のターンのツール結果は文脈を圧迫するので置き換える（checkpoint の状態は変えない）
         compact: list[AnyMessage] = [
             m.model_copy(update={"content": PRIOR_TOOL_PLACEHOLDER})
@@ -145,7 +174,7 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         ctx.stats.model_calls = calls
         emit = request.runtime.stream_writer
         replaced = sum(1 for m in msgs[:start] if isinstance(m, ToolMessage))
-        if replaced and calls == 1:  # 呼び出しのたびに置き換えるが、記録はターンに 1 回
+        if replaced and calls == 1 and not again:  # 呼び出しのたびに置き換えるが、記録はターンに 1 回
             record_system(
                 emit,
                 "system-compact",
@@ -160,97 +189,107 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         if calls >= ctx.cfg.max_steps:
             prompt += FINAL_NOTE
             overrides["tools"] = []
-            record_system(
-                emit,
-                f"system-budget-{calls}",
-                "step_budget",
-                "呼び出しの上限",
-                f"{calls} 回目で上限（{ctx.cfg.max_steps} 回）に達したため、ツールを外して最終回答を求めた",
-                input={"calls": calls, "max_steps": ctx.cfg.max_steps},
-                output={"note": FINAL_NOTE.strip()},
-            )
-        system = SystemMessage(prompt)
-        req = request.override(system_message=system, **overrides)
-        response, used_draft = await _guard_empty(ctx, emit, handler, req, await handler(req))
-        turn = msgs[start:]
-        has_tools = bool(request.tools) and calls < ctx.cfg.max_steps
-        # 確認: 調べ残し → 表の集計 → 数字の順に、当てはまるものを 1 つずつ差し戻す（種類ごとに 1 度）。
-        # 下書きと依頼は会話の状態には入れないが、差し戻したことは「見直し」のステップとして記録に残す
-        # 下書きを回答にしたときは、残りの確認はしない（数字の照合は下書きに対して行う）
-        while not used_draft and (answer := _final_answer(response)) is not None:
-            review = pick_review(ctx, turn, answer, calls, has_tools)
-            if review is None:
-                break
-            searches = _searches(ctx, turn)
-            response, used_draft = await self._send_back(
-                request, handler, system, compact, response, answer, review, searches
-            )
-            calls += 1
-            if used_draft:  # 書き直しが空・返事だった。下書きを回答にし、残りの確認はしない（記録済み）
-                break
-        if (answer := _final_answer(response)) is not None and _checks_numbers(ctx):
-            _record_number_check(ctx, emit, turn, answer)
-        return response
-
-    async def _send_back(
-        self,
-        request: ModelRequest[RunContext],
-        handler: Callable[[ModelRequest[RunContext]], Awaitable[ModelResponse[Any]]],
-        system: SystemMessage,
-        compact: list[AnyMessage],
-        response: ModelResponse[Any],
-        answer: str,
-        review: Review,
-        searches: int,
-    ) -> tuple[ModelResponse[Any], bool]:
-        ctx = request.runtime.context
-        if review.kind == "gap":
-            ctx.stats.gap_reviews += 1
-        elif review.kind == "table":
-            ctx.stats.table_reviews += 1
-        else:
-            ctx.stats.number_reviews += 1
-        clock = StepClock(
-            request.runtime.stream_writer,
-            Step(
-                id=f"review-{ctx.stats.reviews}",
-                name="review",
-                label=review.label,
-                status="running",
-                input={
-                    "kind": review.kind,
-                    "draft": answer,
-                    "trigger": review.trigger,
-                    "searches": searches,
-                },
-                summary="下書きを差し戻して書き直し中",
-            ),
-        )
-        draft = cast(AIMessage, response.result[-1])
-        ctx.review_draft = (draft, review.kind)
-        note = review.note + SEND_BACK_TAIL
-        retry: list[AnyMessage] = [*compact, draft, HumanMessage(note)]
-        req = request.override(system_message=system, messages=retry)
+            if not again:
+                record_system(
+                    emit,
+                    f"system-budget-{calls}",
+                    "step_budget",
+                    "呼び出しの上限",
+                    f"{calls} 回目で上限（{ctx.cfg.max_steps} 回）に達したため、"
+                    "ツールを外して最終回答を求めた",
+                    input={"calls": calls, "max_steps": ctx.cfg.max_steps},
+                    output={"note": FINAL_NOTE.strip()},
+                )
+        if send_back:
+            # 差し戻し: 下書きと依頼はこの呼び出しの中だけに添える（会話の状態には入れない）
+            overrides["messages"] = [*compact, state["draft"], HumanMessage(send_back["note"])]
         try:
-            redo, used_draft = await _guard_empty(
-                ctx, request.runtime.stream_writer, handler, req, await handler(req)
-            )
+            response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
         except Exception as e:
-            clock.done("差し戻しに失敗しました", {"note": note, "error": str(e)[:300]}, error=True)
+            if send_back:
+                finish_send_back(emit, send_back, None, error=str(e)[:300])
             raise
-        last = redo.result[-1] if redo.result else None
-        tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
-        clock.done(
-            f"「{review.trigger}」のため差し戻し → "
-            + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
-            {"note": note, "next_tools": tools},
+        update = self._after_response(ctx, emit, state, response)
+        return ExtendedModelResponse(response, Command(update=update)) if update else response
+
+    def _after_response(
+        self, ctx: RunContext, emit: Any, state: Any, response: ModelResponse[Any]
+    ) -> dict[str, Any]:
+        """応答の直後の記録（空のやり直しの結果・差し戻しの結果）。空の応答は見張り（guard）に任せる。"""
+        last = response.result[-1] if response.result else None
+        if not isinstance(last, AIMessage) or is_empty(last):
+            return {}
+        update: dict[str, Any] = {}
+        if (pending := state.get("empty_pending")) is not None:
+            record_empty(ctx, emit, {**pending, "retried": True}, {"result": "retried_ok"})
+            update["empty_pending"] = None
+        if send_back := state.get("send_back"):
+            finish_send_back(emit, send_back, last)
+            update["send_back"] = None
+            # ツールを呼ばずに書き直したなら、取り消すかを見張りが判断する
+            update["rewrite_of"] = None if last.tool_calls else send_back["input"]["draft"]
+        if last.tool_calls and state.get("chain"):
+            update["chain"] = 0
+        return update
+
+
+def finish_send_back(
+    emit: Any, send_back: dict[str, Any], redo: AnyMessage | None, *, error: str | None = None
+) -> None:
+    """差し戻しのステップを閉じる（書き直しで呼んだツール、または書き直したこと）。"""
+    started = float(send_back["started"])
+    if error is not None:
+        summary, output, status = (
+            "差し戻しに失敗しました",
+            {"note": send_back["note"], "error": error},
+            "error",
         )
-        if not used_draft and (rewrite := _final_answer(redo)) is not None:
-            reason = discard_reason(answer, rewrite)
-            if reason is not None:
-                _record_discarded(ctx, request.runtime.stream_writer, reason, review.kind, rewrite)
-                return replace(redo, result=[draft]), True
-        return redo, used_draft
+    else:
+        tools = [c["name"] for c in redo.tool_calls] if isinstance(redo, AIMessage) else []
+        summary = f"「{send_back['input']['trigger']}」のため差し戻し → " + (
+            f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"
+        )
+        output, status = {"note": send_back["note"], "next_tools": tools}, "done"
+    step = Step(
+        id=send_back["id"],
+        name="review",
+        label=send_back["label"],
+        status=status,  # type: ignore[arg-type]
+        duration_ms=round((time.perf_counter() - started) * 1000),
+        input=send_back["input"],
+        output=output,
+        summary=summary,
+        node="review",
+    )
+    emit({"type": "step", "step": step.model_dump()})
+
+
+def open_send_back(ctx: RunContext, emit: Any, review: Review, answer: str, searches: int) -> dict[str, Any]:
+    """差し戻しを始める（記録に「見直し」のステップを出す）。返す値は状態の send_back に置く。"""
+    if review.kind == "gap":
+        ctx.stats.gap_reviews += 1
+    elif review.kind == "table":
+        ctx.stats.table_reviews += 1
+    else:
+        ctx.stats.number_reviews += 1
+    send_back: dict[str, Any] = {
+        "id": f"review-{ctx.stats.reviews}",
+        "label": review.label,
+        "input": {"kind": review.kind, "draft": answer, "trigger": review.trigger, "searches": searches},
+        "note": review.note + SEND_BACK_TAIL,
+        "started": time.perf_counter(),
+    }
+    step = Step(
+        id=send_back["id"],
+        name="review",
+        label=review.label,
+        status="running",
+        input=send_back["input"],
+        summary="下書きを差し戻して書き直し中",
+        node="review",
+    )
+    emit({"type": "step", "step": step.model_dump()})
+    return send_back
 
 
 # 差し戻しへの返事の言い方（書き直しの冒頭にあれば、回答ではなく依頼への返事。specs/026 T29）
@@ -280,7 +319,7 @@ def discard_reason(draft: str, rewrite: str) -> str | None:
     return None
 
 
-def _record_discarded(ctx: RunContext, emit: Any, reason: str, kind: str, rewrite: str) -> None:
+def record_discarded(ctx: RunContext, emit: Any, reason: str, kind: str, rewrite: str) -> None:
     ctx.stats.rewrites_discarded += 1
     record_system(
         emit,
@@ -293,22 +332,29 @@ def _record_discarded(ctx: RunContext, emit: Any, reason: str, kind: str, rewrit
     )
 
 
-def _is_empty(response: ModelResponse[Any]) -> bool:
+def final_answer(msg: AnyMessage | None) -> str | None:
+    """最終回答（ツール呼び出しの無い応答）の本文。そうでなければ None。"""
+    if not isinstance(msg, AIMessage) or msg.tool_calls:
+        return None
+    return split_thinking(msg.text)[1]
+
+
+def is_empty(msg: AnyMessage | None) -> bool:
     """ツール呼び出しも本文も無い応答（思考だけで切れた場合を含む）。"""
-    answer = _final_answer(response)
+    answer = final_answer(msg)
     return answer is not None and not answer.strip()
 
 
-def _empty_detail(response: ModelResponse[Any]) -> dict[str, Any]:
-    last = response.result[-1] if response.result else None
-    if not isinstance(last, AIMessage):
+def empty_detail(msg: AnyMessage | None) -> dict[str, Any]:
+    """空の応答の様子（終わった理由・思考の文字数・出力のトークン数）。記録に残す。"""
+    if not isinstance(msg, AIMessage):
         return {"finish_reason": None, "reasoning_chars": 0, "tokens_out": None}
-    separate = last.additional_kwargs.get("reasoning_content")
-    thought = split_thinking(last.text)[0]
+    separate = msg.additional_kwargs.get("reasoning_content")
+    thought = split_thinking(msg.text)[0]
     return {
-        "finish_reason": last.response_metadata.get("finish_reason"),
+        "finish_reason": msg.response_metadata.get("finish_reason"),
         "reasoning_chars": len(thought) + (len(separate) if isinstance(separate, str) else 0),
-        "tokens_out": last.usage_metadata["output_tokens"] if last.usage_metadata else None,
+        "tokens_out": msg.usage_metadata["output_tokens"] if msg.usage_metadata else None,
     }
 
 
@@ -319,39 +365,7 @@ _EMPTY_SUMMARY = {
 }
 
 
-async def _guard_empty(
-    ctx: RunContext,
-    emit: Any,
-    handler: Callable[[ModelRequest[RunContext]], Awaitable[ModelResponse[Any]]],
-    req: ModelRequest[RunContext],
-    response: ModelResponse[Any],
-) -> tuple[ModelResponse[Any], bool]:
-    """空の生成を 1 度だけやり直し、だめなら差し戻した下書きを回答にする（R25）。どの場合も記録に残す。
-
-    戻り値の 2 つ目は、下書きを回答にしたか（呼び出し側は残りの確認をしない）。
-    """
-    if not _is_empty(response):
-        return response, False
-    detail = _empty_detail(response)
-    retried = ctx.stats.empty_retries == 0
-    if retried:
-        ctx.stats.empty_retries += 1
-        redo = await handler(req)
-        if not _is_empty(redo):
-            _record_empty(ctx, emit, {**detail, "retried": True}, {"result": "retried_ok"})
-            return redo, False
-        response, detail = redo, _empty_detail(redo)
-    if ctx.review_draft is not None:
-        draft, kind = ctx.review_draft
-        out = {"result": "used_draft", "pending_review": kind}
-        _record_empty(ctx, emit, {**detail, "retried": retried}, out)
-        return replace(response, result=[draft]), True
-    ctx.stats.empty_failed = True
-    _record_empty(ctx, emit, {**detail, "retried": retried}, {"result": "failed"})
-    return response, False
-
-
-def _record_empty(ctx: RunContext, emit: Any, inp: dict[str, Any], out: dict[str, Any]) -> None:
+def record_empty(ctx: RunContext, emit: Any, inp: dict[str, Any], out: dict[str, Any]) -> None:
     ctx.stats.empty_events += 1
     record_system(
         emit,
@@ -364,15 +378,7 @@ def _record_empty(ctx: RunContext, emit: Any, inp: dict[str, Any], out: dict[str
     )
 
 
-def _final_answer(response: ModelResponse[Any]) -> str | None:
-    """最終回答（ツール呼び出しの無い応答）の本文。そうでなければ None。"""
-    last = response.result[-1] if response.result else None
-    if not isinstance(last, AIMessage) or last.tool_calls:
-        return None
-    return split_thinking(last.text)[1]
-
-
-def _searches(ctx: RunContext, turn: list[AnyMessage]) -> int:
+def searches(ctx: RunContext, turn: list[AnyMessage]) -> int:
     """このターンの検索の回数（システムが最初に行った分を含む）。"""
     own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
     return own + ctx.stats.primer_searches
@@ -386,7 +392,7 @@ def _materials(ctx: RunContext, turn: list[AnyMessage]) -> list[str]:
     return out
 
 
-def _checks_numbers(ctx: RunContext) -> bool:
+def checks_numbers(ctx: RunContext) -> bool:
     # 雑談と、一般知識で補ってよい設定では照合しない
     return ctx.cfg.admit_unknown and (ctx.primer is None or ctx.primer.kind != "chat")
 
@@ -401,9 +407,17 @@ def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[st
 
 
 def pick_review(
-    ctx: RunContext, turn: list[AnyMessage], answer: str, calls: int, has_tools: bool
+    ctx: RunContext,
+    turn: list[AnyMessage],
+    answer: str,
+    calls: int,
+    has_tools: bool,
+    done: Collection[str] = (),
 ) -> Review | None:
-    """最終回答の下書きを差し戻すなら、その理由を返す。回数に余裕が無い・雑談のときは差し戻さない。"""
+    """最終回答の下書きを差し戻すなら、その理由を返す。回数に余裕が無い・雑談のときは差し戻さない。
+
+    done はこのターンで済んだ確認の種類（種類ごとに 1 度まで）。
+    """
     if not has_tools or calls + 2 > ctx.cfg.max_steps:
         return None
     if ctx.primer is not None and ctx.primer.kind == "chat":
@@ -411,12 +425,12 @@ def pick_review(
     own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
     # 最初の検索が 0 件・関連度の低い資料だけなら、「見つからない」は資料に無い質問への正しい答え（T17）
     weak = ctx.primer is not None and ctx.primer.weak
-    if not ctx.stats.gap_reviews and not weak and _searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
+    if "gap" not in done and not weak and searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
         # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
         if m := GAP.search(answer):
             return Review("gap", m.group(0), GAP_NOTE, "調べ残しの見直し")
     if (
-        not ctx.stats.table_reviews
+        "table" not in done
         and ctx.primer is not None
         and ctx.primer.table
         and not any(isinstance(m, ToolMessage) and m.name == "table_query" for m in turn)
@@ -424,7 +438,7 @@ def pick_review(
     ):
         # 表の行を目で比べると誤る（在庫 4・発注点 4 を「下回る」と答えるなど）
         return Review("table", "表の集計を計算していない", TABLE_NOTE, "表の集計の確認")
-    if not ctx.stats.number_reviews and _checks_numbers(ctx):
+    if "numbers" not in done and checks_numbers(ctx):
         if missing := _ungrounded(ctx, turn, answer):
             shown = "・".join(missing[:8])
             return Review(
@@ -433,7 +447,7 @@ def pick_review(
     return None
 
 
-def _record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
+def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
     """数字の照合の結果を記録に残す（見当たらない数字は画面で注意として示す）。"""
     found = numbers_in(_MARK.sub("", answer))
     if not found:
@@ -510,56 +524,53 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         return result
 
 
-class CitationMiddleware(AgentMiddleware[Any, RunContext]):
-    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。考えた過程と末尾の言い直しも落とす。"""
+def clean_answer(ctx: RunContext, emit: Any, last: AIMessage) -> AIMessage | None:
+    """回答の引用記号を正規化し、登録されていない番号を除く（R18）。考えた過程と末尾の言い直しも落とす。
 
-    async def aafter_agent(self, state: Any, runtime: Runtime[RunContext]) -> dict[str, Any] | None:
-        msgs = state["messages"]
-        if not msgs or not isinstance(msgs[-1], AIMessage) or msgs[-1].tool_calls:
-            return None
-        last: AIMessage = msgs[-1]
-        text = last.text
-        thought, answer = split_thinking(text)  # 考えた過程は「考えた過程」のステップで見せる
-        known = set(runtime.context.registry.numbers())
-        normalized = normalize_markers(answer)
-        stripped = strip_unknown(normalized, known)
-        tailed = drop_repeated_tail(stripped)
-        tail_dropped = len(stripped) - len(tailed)
-        fixed = _prune(runtime, tailed) if runtime.context.citation_prune else tailed
-        if fixed == text:
-            return None
-        removed = sorted({int(n) for n in _MARK.findall(normalized)} - known)
-        notes = []
-        if thought:
-            notes.append(f"考えた過程 {len(thought)} 文字を回答から分けた")
-        if normalized != answer:
-            notes.append("引用の書き方をそろえた")
-        if removed:
-            notes.append("資料に無い番号 " + "".join(f"[{n}]" for n in removed) + " を消した")
-        if tail_dropped:
-            notes.append(f"末尾の言い直し {tail_dropped} 文字を消した")
-        if tailed != fixed:
-            notes.append("値を書いていない資料の番号を外した（引用の刈り込み）")
-        record_system(
-            runtime.stream_writer,
-            "system-citation-cleanup",
-            "citation_cleanup",
-            "回答の整形",
-            "・".join(notes) or "回答を整えた",
-            input={"before": text[:4000]},
-            output={
-                "after": fixed[:4000],
-                "removed_numbers": removed,
-                "tail_dropped_chars": tail_dropped,
-                "thinking_chars": len(thought or ""),
-            },
-        )
-        return {"messages": [AIMessage(content=fixed, id=last.id, usage_metadata=last.usage_metadata)]}
+    変えたら記録に残し、置き換える AIMessage（同じ ID）を返す。変えなければ None。
+    """
+    text = last.text
+    thought, answer = split_thinking(text)  # 考えた過程は「考えた過程」のステップで見せる
+    known = set(ctx.registry.numbers())
+    normalized = normalize_markers(answer)
+    stripped = strip_unknown(normalized, known)
+    tailed = drop_repeated_tail(stripped)
+    tail_dropped = len(stripped) - len(tailed)
+    fixed = _prune(ctx, emit, tailed) if ctx.citation_prune else tailed
+    if fixed == text:
+        return None
+    removed = sorted({int(n) for n in _MARK.findall(normalized)} - known)
+    notes = []
+    if thought:
+        notes.append(f"考えた過程 {len(thought)} 文字を回答から分けた")
+    if normalized != answer:
+        notes.append("引用の書き方をそろえた")
+    if removed:
+        notes.append("資料に無い番号 " + "".join(f"[{n}]" for n in removed) + " を消した")
+    if tail_dropped:
+        notes.append(f"末尾の言い直し {tail_dropped} 文字を消した")
+    if tailed != fixed:
+        notes.append("値を書いていない資料の番号を外した（引用の刈り込み）")
+    record_system(
+        emit,
+        "system-citation-cleanup",
+        "citation_cleanup",
+        "回答の整形",
+        "・".join(notes) or "回答を整えた",
+        input={"before": text[:4000]},
+        output={
+            "after": fixed[:4000],
+            "removed_numbers": removed,
+            "tail_dropped_chars": tail_dropped,
+            "thinking_chars": len(thought or ""),
+        },
+    )
+    return AIMessage(content=fixed, id=last.id, usage_metadata=last.usage_metadata)
 
 
-def _prune(runtime: Runtime[RunContext], answer: str) -> str:
+def _prune(ctx: RunContext, emit: Any, answer: str) -> str:
     """値を書いていない資料の番号を、その文から外す（specs/026 T31）。外したら記録に残す。"""
-    reg = runtime.context.registry
+    reg = ctx.registry
     materials = {
         c.n: "\n".join(x for x in (c.document_name, c.heading_path, c.context, c.text) if x)
         for c in reg.items()
@@ -572,7 +583,7 @@ def _prune(runtime: Runtime[RunContext], answer: str) -> str:
     if pruned:
         removed = sorted({n for p in pruned for n in p["removed"]})
         record_system(
-            runtime.stream_writer,
+            emit,
             "system-citation-pruned",
             "citation_pruned",
             "引用の刈り込み",

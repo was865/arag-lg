@@ -4589,32 +4589,6 @@
     "type": "step"
    },
    {
-    "citation_map": {
-     "1": {
-      "section_id": "<uuid-1>",
-      "source_id": "<uuid-2>"
-     }
-    },
-    "sources": [
-     {
-      "id": "<uuid-2>",
-      "score": 0.9,
-      "sections": [
-       {
-        "block_type": "text",
-        "body": "本文",
-        "heading": "第1章",
-        "id": "<uuid-1>",
-        "n": 1,
-        "page": 2
-       }
-      ],
-      "title": "規程.pdf"
-     }
-    ],
-    "type": "sources"
-   },
-   {
     "step": {
      "id": "primer-1",
      "input": {

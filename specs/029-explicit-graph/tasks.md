@@ -3,19 +3,21 @@
 状態: 着手（P0〜P2）。ブランチ `feat/explicit-graph`。
 
 ## P0 着手前の確認
-- [ ] T1 ライセンスを確かめ直す: `langgraph`・`langgraph-prebuilt`・`langgraph-checkpoint-postgres`（MIT のはず）、`langgraph-api`・`langgraph-cli` の `dev`（ELv2 のはず）、Studio が LangSmith への接続を要するか。結果を `specs/000-overview/licenses.md` と `decisions.md` に書く
-- [ ] T2 今のイベントの列を固定する: 代表的な分岐（そのまま回答／調べ残しの差し戻し／表の差し戻し／数字の差し戻し／空の生成のやり直し／下書きへの退避／雑談）ごとに、偽モデルで流したイベントとステップの列を記録するテストを足す（作り直しの物差し）
-- [ ] T3 `create_agent` を部分グラフにしたとき、`subgraphs=True` で `messages`・`custom` が今と同じ形で届くか、最後の応答の `response_metadata` が外から読めるかを、小さな試し書きで確かめる
+- [x] T1 ライセンスを確かめ直す: `langgraph`・`langgraph-prebuilt`・`langgraph-checkpoint-postgres`（MIT のはず）、`langgraph-api`・`langgraph-cli` の `dev`（ELv2 のはず）、Studio が LangSmith への接続を要するか。結果を `specs/000-overview/licenses.md` と `decisions.md` に書く
+- [x] T2 今のイベントの列を固定する: 代表的な分岐（そのまま回答／調べ残しの差し戻し／表の差し戻し／数字の差し戻し／空の生成のやり直し／下書きへの退避／雑談）ごとに、偽モデルで流したイベントとステップの列を記録するテストを足す（作り直しの物差し）
+  - `api/tests/test_agent_flow_snapshots.py`（17 の分岐。`runner._stream` を通したイベント・モデルが受け取った最後のメッセージ・状態のメッセージ・回数）。作り直しの後に期待を変えたのは `second_turn` の 1 件だけ: 2 ターン目の「質問の理解」の直後に出ていた `sources` イベントが出なくなった（中身は直後の検索の完了で送るものと同じ）。`sources` はステップを受け取った時点で資料が登録済みなら送るので、受け手の遅れで出たり出なかったりする（作り直しの前は、検索が終わってから理解の完了を受けていた）。節点の境目で受け手が追いつくようになったため
+- [x] T3 `create_agent` を部分グラフにしたとき、`subgraphs=True` で `messages`・`custom` が今と同じ形で届くか、最後の応答の `response_metadata` が外から読めるかを、小さな試し書きで確かめる
+  - 結果: `subgraphs=True` なら `messages`（本文の断片、`langgraph_node="model"`）と `custom`（部分グラフの中のステップ）が今と同じ中身で届く。形は `(namespace, mode, chunk)` の 3 つ組になる（`subgraphs` なしでは部分グラフの中の `custom` が届かず、本文も断片でなく完成したメッセージで届く）。`response_metadata`（`finish_reason`）と`usage_metadata` は外側の節点から状態のメッセージで読める。部分グラフと外側で同じ名前の鍵は双方向に渡り、外側の `RemoveMessage` の後に入り直すと、消したメッセージはモデルに渡らない。部分グラフの状態の書き換えは`ExtendedModelResponse`（モデルの呼び出しを包む middleware から `Command` を返す）で、節点を増やさずに行える
 
 ## P1 明示のグラフ（R1〜R4）
-- [ ] T4 `AgentState` と節点の骨組み（`prepare`・`investigate`・`guard`・`review`・`finalize`・`followups`・`read_image`）、辺の純関数とそのテスト
-- [ ] T5 `PrimerMiddleware` → `prepare`
-- [ ] T6 `_guard_empty`・書き直しの取り消し → `guard`
-- [ ] T7 `pick_review`・`_send_back` → `review`（`answer.reset` の送り方を含む）
-- [ ] T8 `CitationMiddleware`・確定・`_classify` → `finalize`
-- [ ] T9 `_deliver_followups`・画像の読み取り → 節点
-- [ ] T10 ステップに `node` を足す（`make gen`）
-- [ ] T11 T2 のテストと既存の全テストが通る。69 題を作り直しの前後で比べる（指標 ±0.01、`wrong_fact` 0、p50 +100ms 以内）
+- [x] T4 `AgentState` と節点の骨組み（`prepare`・`investigate`・`guard`・`review`・`finalize`・`followups`・`read_image`）、辺の純関数とそのテスト
+- [x] T5 `PrimerMiddleware` → `prepare`
+- [x] T6 `_guard_empty`・書き直しの取り消し → `guard`
+- [x] T7 `pick_review`・`_send_back` → `review`（`answer.reset` の送り方を含む）
+- [x] T8 `CitationMiddleware`・確定・`_classify` → `finalize`
+- [x] T9 `_deliver_followups`・画像の読み取り → 節点
+- [x] T10 ステップに `node` を足す（`make gen`）
+- [ ] T11 T2 のテストと既存の全テストが通る（済み。単体・結合とも）。69 題を作り直しの前後で比べる（指標 ±0.01、`wrong_fact` 0、p50 +100ms 以内）
 
 ## P2 図をコードから（R5・R6）
 - [ ] T12 `diagram.py`・`make graph`・`docs/agent-graph.md`・`web/src/lib/chat/flow-graph.json`・CI の `graph-check`
