@@ -69,7 +69,7 @@ Better Auth の標準エンドポイントを `/api/auth/*` にそのまま公�
 | `run.started` | `run_id`, `thread_id`, `message_id` | FastAPI | （新規） |
 | `messages` | AI メッセージチャンク（本文トークン・ツール呼び出し引数・`usage_metadata`）とメタ（`langgraph_node`） | LangGraph `messages` | `answer-start` / `answer-delta`、`step`（ツール開始） |
 | `custom` | 型付きアプリイベント（下表） | `get_stream_writer()` | `step`（サブ段階）・`done` の引用部分 |
-| `run.completed` | `tokens`, `duration_ms`, `no_answer_reason` | FastAPI | `done` + `saved` |
+| `run.completed` | `tokens`, `duration_ms`, `no_answer_reason`, `suggestions`（specs/028） | FastAPI | `done` + `saved` |
 | `run.failed` / `run.cancelled` | `message` | FastAPI | `error` |
 
 custom イベントの種類（JSON Schema で定義し pydantic / zod を生成）:
@@ -145,6 +145,7 @@ custom イベントの種類（JSON Schema で定義し pydantic / zod を生成
 | `GET /v1/admin/trash` ・ `POST /v1/admin/trash/transfer` | 全社ごみ箱・救出（移管） | `admin/trash*` |
 | `POST /v1/admin/users/{id}/offboard` ・ `/reactivate` ・ `GET /offboard-preview` | 退職処理（個人 KB をごみ箱へ）。Better Auth 側の無効化と同時に呼ぶ | `admin/members/*offboard*`, `reactivate` |
 | `GET /v1/admin/audit` | 監査ログ（フィルタ・ページング） | `admin/audit` |
+| `GET /v1/admin/feedback` ・ `GET /v1/admin/feedback/{id}` ・ `POST …/{id}/resolve` ・ `/reopen` | 技術者への報告（評価・状態で絞る一覧と未対応の件数・ターンの全記録・対応済みと戻し。監査ログに残す。specs/028） | 新規 |
 | `GET /v1/admin/analytics/overview` ・ `/gaps` ・ `/diagnostics/{message_id}` | 利用量・品質・知識ギャップ・診断 | `admin/analytics/*` |
 
 ## 4. 旧版にあって新版に作らない API

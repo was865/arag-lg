@@ -56,9 +56,9 @@ knowledge_bases 1─* documents *─1 contents 1─* sections 1─* chunks
 | 表 | 列 | 備考 |
 |---|---|---|
 | `threads` | id, user_id, title, pinned, created_at, updated_at | LangGraph の `thread_id` と同じ値 |
-| `messages` | id, thread_id, ordinal, query, answer_text, model_id, tokens_in, tokens_out, duration_ms, steps(jsonb), no_answer_reason, checkpoint_id, run_id, created_at | 1 ターン = 1 行。run 完了時に確定。`steps` は旧 `ToolCall[]` 形式（履歴表示用）。`checkpoint_id` は分岐（再生成・質問編集）の起点 |
+| `messages` | id, thread_id, ordinal, query, answer_text, model_id, tokens_in, tokens_out, duration_ms, steps(jsonb), no_answer_reason, suggestions(jsonb、続けて聞く候補。specs/028), checkpoint_id, run_id, created_at | 1 ターン = 1 行。run 完了時に確定。`steps` は旧 `ToolCall[]` 形式（履歴表示用）。`checkpoint_id` は分岐（再生成・質問編集）の起点 |
 | `citations` | id, message_id, ordinal(n), document_id, chunk_id, section_id, document_title, heading_path, snippet, block_type, page, score | 旧版と同じ。文書削除後も表示できるようスナップショットを保持 |
-| `message_feedback` | id, message_id(UNIQUE), user_id, rating（up / down）, reason_tags[], comment, trace_id, created_at, updated_at | `trace_id` は Langfuse（任意）との突合用 |
+| `message_feedback` | id, message_id(UNIQUE), user_id, rating（up / down）, reason_tags[]（error を含む。specs/028）, comment, trace_id, status（open / resolved）, resolved_by, resolved_at, created_at, updated_at | `trace_id` は Langfuse（任意）との突合用 |
 | `runs` | id, thread_id, message_id, user_id, status（running / completed / failed / cancelled）, started_at, finished_at, error | 実行中 run の検出・再接続。イベント本体は Redis Stream（TTL 1 時間） |
 
 **checkpoint と `messages` の関係**: LangGraph の checkpoint が**エージェント状態の正**（再開・分岐・interrupt に使う）。`messages` / `citations` は一覧・履歴表示・分析のための**確定済みビュー**で、run 完了時に 1 トランザクションで書く。履歴表示で checkpoint を読む必要は無い。

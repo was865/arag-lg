@@ -1,8 +1,8 @@
 "use client";
 
-/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・部門・ナレッジベース・監査ログ・利用状況・モデル）。 */
+/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・部門・ナレッジベース・監査ログ・フィードバック・利用状況・モデル）。 */
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
@@ -11,11 +11,31 @@ const TABS = [
   { key: "departments", href: "/admin/departments", label: "部門" },
   { key: "kbs", href: "/admin/kbs", label: "ナレッジベース" },
   { key: "audit", href: "/admin/audit", label: "監査ログ" },
+  { key: "feedback", href: "/admin/feedback", label: "フィードバック" },
   { key: "analytics", href: "/admin/analytics", label: "利用状況" },
   { key: "models", href: "/admin/models", label: "モデル" },
 ] as const;
 
+/** 未対応の「良くない」の報告の件数（ナビに小さく出す。specs/028 R13）。取れなければ出さない。 */
+function useOpenFeedback(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/v1/admin/feedback?limit=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { open_count?: number } | null) => {
+        if (alive && b?.open_count) setN(b.open_count);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return n;
+}
+
 export function AdminHeader({ current, children }: { current: (typeof TABS)[number]["key"]; children?: ReactNode }) {
+  const openFeedback = useOpenFeedback();
   return (
     <header className="flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider px-[18px] max-md:px-2.5">
       <Link
@@ -39,6 +59,9 @@ export function AdminHeader({ current, children }: { current: (typeof TABS)[numb
               )}
             >
               {t.label}
+              {t.key === "feedback" && openFeedback > 0 && (
+                <span className="nums ml-1 rounded-full bg-danger-soft px-1.5 text-mini font-semibold text-danger">{openFeedback}</span>
+              )}
             </Link>
           ))}
         </nav>

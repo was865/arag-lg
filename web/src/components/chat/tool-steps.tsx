@@ -1084,6 +1084,8 @@ interface Props {
   variant: ToolView;
   expandedMap: Record<string, boolean>;
   onToggleStep: (id: string) => void;
+  /** 「システムの処理」を最初から開いておく（管理者が報告を読むとき。specs/028 R14） */
+  systemOpen?: boolean;
 }
 
 /** フラットな steps を「ルート(parentId なし)」と「子(parentId 別)」に分ける。 */
@@ -1187,13 +1189,14 @@ function SubSteps({ steps, expandedMap, onToggleStep, t }: {
  * 記録には全部残すが、エージェントが自分で行った段階（検索・読む・計算・見直し）の流れを邪魔しないよう、
  * 末尾に件数だけを出し、開くと 1 件 1 行、さらに開くと中身が見える（3 段で深くなる）。
  */
-function SystemGroup({ steps, expandedMap, onToggleStep, t }: {
+function SystemGroup({ steps, expandedMap, onToggleStep, t, defaultOpen = false }: {
   steps: ToolCall[];
   expandedMap: Record<string, boolean>;
   onToggleStep: (id: string) => void;
   t: Dictionary;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   if (steps.length === 0) return null;
   return (
     <div className="border-t-[0.5px] border-divider">
@@ -1229,7 +1232,7 @@ function SystemGroup({ steps, expandedMap, onToggleStep, t }: {
   );
 }
 
-export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) {
+export function ToolSteps({ steps, variant, expandedMap, onToggleStep, systemOpen }: Props) {
   const { t } = useT();
   // 生の記録（log）は全部を時刻順に出す。ほかは、システムの処理を末尾の 1 組に畳む
   if (variant === "log") return <ToolStepLog steps={steps} dict={t} />;
@@ -1250,7 +1253,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
             )}
           </div>
         ))}
-        <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
+        <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} defaultOpen={systemOpen} />
       </div>
     );
   }
@@ -1266,7 +1269,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep }: Props) 
           )}
         </div>
       ))}
-      <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
+      <SystemGroup steps={system} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} defaultOpen={systemOpen} />
     </div>
   );
 }

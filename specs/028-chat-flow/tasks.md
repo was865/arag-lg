@@ -20,5 +20,5 @@
 - [x] T10 `message_feedback.status` などの migration・理由 `error`
 - [x] T11 管理者の API 4 つ（一覧・詳細・resolve・reopen）と監査ログ。管理者でなければ 403（R13〜R15・R17）
 - [x] T12 利用者側: 報告の欄の 1 行と理由、通知の「問題を報告」（R11・R12）
-- [ ] T13 `/admin/feedback` の一覧・詳細・状態の変更・診断用にコピー・ナビの件数（R13〜R16）
-- [ ] T14 `specs/README.md` に 028 を足し、`specs/000-overview` の機能・画面・API の一覧を合わせる
+- [x] T13 `/admin/feedback` の一覧・詳細・状態の変更・診断用にコピー・ナビの件数（R13〜R16）
+- [x] T14 `specs/README.md` に 028 を足し、`specs/000-overview` の機能・画面・API の一覧を合わせる

@@ -125,6 +125,7 @@
 | KB 管理（全 KB 一覧・詳細・文書一覧） | P5 | `admin/kb-list.tsx`, `kb-detail.tsx` |
 | 全社ごみ箱・選択文書の救出（移管） | P5 | `admin/org-trash.tsx` |
 | 監査ログ（ログイン・質問・アップロード・削除…） | P5（記録は MVP から開始） | `admin/audit-log.tsx` |
+| フィードバック（技術者への報告: 過程つきで読む・対応済みにする・診断用にコピー。specs/028） | 実装済み | 新規 |
 | 分析: 利用量・品質（👍👎・回答不能率）・知識ギャップ（未解決クエリ）・1 件の診断ドリルダウン | P5 | `admin/analytics/*` |
 | チーム管理・チーム別分析 | 後続 | `admin/teams-panel.tsx`, `analytics/teams-panel.tsx` |
 | 工作日历 | 廃止（handoff 除外） | `admin/work-calendar` |

@@ -20,6 +20,7 @@ UI 仕様の基準: Design System（https://claude.ai/artifact/QaGvknVyaiM1TwBwA
 | `/admin/kbs` ・ `/admin/kbs/[id]` | 管理: KB 一覧・詳細 | P5 | 同じ | |
 | `/admin/trash` | 管理: 全社ごみ箱 | P5 | 同じ | |
 | `/admin/audit` | 管理: 監査ログ | P5 | 同じ | |
+| `/admin/feedback` | 管理: フィードバック（技術者への報告） | 実装済み | 無し | **追加**（specs/028） |
 | `/admin/llm-keys` | 管理: LLM API キー | P5 | 同じ | |
 | `/admin/models` | 管理: モデル目録 | P5 | 同じ | |
 | `/admin/teams` | 管理: チーム | 後続 | 同じ | |
