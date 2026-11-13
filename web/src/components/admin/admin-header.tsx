@@ -34,8 +34,18 @@ function useOpenFeedback(): number {
   return n;
 }
 
-export function AdminHeader({ current, children }: { current: (typeof TABS)[number]["key"]; children?: ReactNode }) {
-  const openFeedback = useOpenFeedback();
+export function AdminHeader({
+  current,
+  children,
+  openFeedback: given,
+}: {
+  current: (typeof TABS)[number]["key"];
+  children?: ReactNode;
+  /** フィードバックの画面が自分で数えた件数（状態を変えたらすぐ合わせる）。無ければ自分で取る */
+  openFeedback?: number;
+}) {
+  const fetched = useOpenFeedback();
+  const openFeedback = given ?? fetched;
   return (
     <header className="flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider px-[18px] max-md:px-2.5">
       <Link

@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/input";
 import { ListSkeleton } from "@/components/ui/skeleton";
 import { useT } from "@/i18n/context";
 import { reasonLabel, tagLabel } from "@/lib/admin/analytics";
-import { diagnostics, statusLabel, type FeedbackDetail, type FeedbackRow } from "@/lib/admin/feedback";
+import { afterStatusChange, diagnostics, statusLabel, type FeedbackDetail, type FeedbackRow } from "@/lib/admin/feedback";
 import type { paths } from "@/lib/api/schema";
 import { turnFromMessage } from "@/lib/chat/turn";
 import { cn } from "@/lib/utils";
@@ -65,6 +65,8 @@ export function FeedbackView() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  // 未対応の「良くない」の件数（ナビに出す。状態を変えたらここで合わせる）
+  const [openCount, setOpenCount] = useState<number | undefined>(undefined);
 
   const fetchPage = useCallback(
     async (after: string | null) => {
@@ -84,6 +86,7 @@ export function FeedbackView() {
         if (!alive) return;
         setRows(p.items);
         setCursor(p.next_cursor ?? null);
+        setOpenCount(p.open_count);
         setError(null);
       },
       (e: unknown) => {
@@ -113,7 +116,7 @@ export function FeedbackView() {
 
   return (
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] bg-bg">
-      <AdminHeader current="feedback" />
+      <AdminHeader current="feedback" openFeedback={openCount} />
       <div className="border-b-[0.5px] border-divider px-[18px] py-2.5 max-md:px-3">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-2">
           <Select size="md" aria-label={t.chat.feedbackDownTitle} value={rating} onChange={(e) => setRating(e.target.value as Rating)}>
@@ -181,7 +184,11 @@ export function FeedbackView() {
                 key={selected}
                 id={selected}
                 names={names}
-                onChanged={(d) => setRows((cur) => cur?.map((r) => (r.id === d.id ? { ...r, status: d.status } : r)) ?? cur)}
+                onChanged={(d) => {
+                  const next = afterStatusChange(rows ?? [], openCount ?? 0, d, status);
+                  setRows(next.rows);
+                  setOpenCount(next.openCount);
+                }}
               />
             ) : (
               <p className="py-16 text-center text-body text-muted">{a.selectHint}</p>

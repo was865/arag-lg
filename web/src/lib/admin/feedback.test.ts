@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diagnostics, statusLabel, type FeedbackDetail } from "@/lib/admin/feedback";
+import { diagnostics, statusLabel, type FeedbackDetail, type FeedbackRow } from "@/lib/admin/feedback";
 
 const detail: FeedbackDetail = {
   id: "f1",
@@ -67,5 +67,26 @@ describe("diagnostics（診断用にコピー、specs/028 R16）", () => {
   it("状態の表示名", () => {
     expect(statusLabel("open")).toBe("未対応");
     expect(statusLabel("resolved")).toBe("対応済み");
+  });
+});
+
+describe("状態を変えたあとの一覧（3100 で見つけた不具合）", () => {
+  it("絞り込みに合わなくなった行は一覧から外し、未対応の件数を合わせる", async () => {
+    const { afterStatusChange } = await import("@/lib/admin/feedback");
+    const rows = [
+      { id: "f1", rating: "down", status: "open" },
+      { id: "f2", rating: "down", status: "open" },
+    ] as unknown as FeedbackRow[];
+    const resolved = { ...detail, id: "f1", status: "resolved" } as FeedbackDetail;
+    const a = afterStatusChange(rows, 2, resolved, "open");
+    expect(a.rows.map((r) => r.id)).toEqual(["f2"]);
+    expect(a.openCount).toBe(1);
+    // 絞り込みが「すべて」なら残して状態だけ変える
+    const b = afterStatusChange(rows, 2, resolved, "");
+    expect(b.rows.find((r) => r.id === "f1")?.status).toBe("resolved");
+    // 戻すと件数も戻る。良いの報告は件数に入れない
+    expect(afterStatusChange(b.rows, 1, { ...resolved, status: "open" } as FeedbackDetail, "").openCount).toBe(2);
+    const up = { ...resolved, rating: "up" } as FeedbackDetail;
+    expect(afterStatusChange(rows, 2, up, "").openCount).toBe(2);
   });
 });

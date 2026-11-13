@@ -60,3 +60,21 @@ export function diagnostics(d: FeedbackDetail, reporterName: string | null) {
     },
   };
 }
+
+/**
+ * 対応済み・未対応に変えたあとの一覧と、未対応の「良くない」の件数。
+ * 状態の絞り込み（filter、"" はすべて）に合わなくなった行は一覧から外す。
+ */
+export function afterStatusChange(
+  rows: FeedbackRow[],
+  openCount: number,
+  d: FeedbackDetail,
+  filter: FeedbackStatus | "",
+): { rows: FeedbackRow[]; openCount: number } {
+  const prev = rows.find((r) => r.id === d.id)?.status ?? (d.status === "open" ? "resolved" : "open");
+  const delta = d.rating !== "down" || prev === d.status ? 0 : d.status === "open" ? 1 : -1;
+  const next = rows
+    .map((r) => (r.id === d.id ? { ...r, status: d.status } : r))
+    .filter((r) => r.id !== d.id || !filter || r.status === filter);
+  return { rows: next, openCount: Math.max(0, openCount + delta) };
+}

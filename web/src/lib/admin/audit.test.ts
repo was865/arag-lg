@@ -6,6 +6,9 @@ describe("actionLabel", () => {
     expect(actionLabel("document.delete")).toBe("文書をごみ箱へ");
     expect(actionLabel("member.ban")).toBe("メンバーを停止");
     expect(actionLabel("x.y")).toBe("x.y");
+    // 技術者への報告（specs/028 R15）
+    expect(actionLabel("feedback.resolve")).toBe("報告を対応済みに");
+    expect(actionLabel("feedback.reopen")).toBe("報告を未対応に戻す");
   });
 });
 

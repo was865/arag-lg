@@ -39,6 +39,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "llm.model.update": "モデルを変更",
   "llm.model.delete": "モデルを削除",
   "llm.model.reorder": "モデルを並べ替え",
+  "feedback.resolve": "報告を対応済みに",
+  "feedback.reopen": "報告を未対応に戻す",
 };
 
 /** 絞り込みの選択肢（前方一致で API に渡す）。 */
@@ -52,6 +54,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "llm.", label: "モデル・API キー" },
   { value: "thread.", label: "共有" },
   { value: "chat.", label: "質問" },
+  { value: "feedback.", label: "フィードバック" },
 ];
 
 export function actionLabel(action: string): string {
