@@ -32,6 +32,7 @@ class RunStats:
     # 空の生成（ツール呼び出しも本文も無い応答。specs/026 R25）: やり直した回数（run に 1 度）・記録した回数・
     # 下書きも無く空のまま終えたか（runner が empty_generation に分類する）
     empty_retries: int = 0
+    rewrites_discarded: int = 0  # 差し戻しへの返事・引用の消えた書き直しを捨てた回数（026 T29）
     empty_events: int = 0
     empty_failed: bool = False
 

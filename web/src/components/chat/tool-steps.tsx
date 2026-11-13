@@ -316,7 +316,7 @@ export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Di
 }
 
 /** システムの処理の短い値。配列は「, 」でつなぎ、内訳から確かめた数字（number_check の derived）は式にする。 */
-export function systemFieldValue(v: unknown): string {
+export function systemFieldValue(v: unknown, reasons: Record<string, string> = {}): string {
   if (!Array.isArray(v)) return String(v);
   if (!v.length) return "—";
   return v
@@ -326,8 +326,14 @@ export function systemFieldValue(v: unknown): string {
         return `${String(d.value)} = ${d.from.map(String).join(d.op === "diff" ? " − " : " + ")}`;
       }
       if (x && typeof x === "object" && "question" in x && "reason" in x) {
-        const d = x as { question: unknown; reason: unknown };
-        return `${String(d.question)}（${String(d.reason)}）`;
+        // 落とした候補（続けて聞く）。理由が決まった値（low_relevance）なら読める名前と、そのときのスコア
+        const d = x as { question: unknown; reason: unknown; score?: unknown };
+        const reason = reasons[String(d.reason)] ?? String(d.reason);
+        return `${String(d.question)}（${reason}${typeof d.score === "number" ? ` ${d.score}` : ""}）`;
+      }
+      if (x && typeof x === "object" && "question" in x && "score" in x) {
+        const d = x as { question: unknown; score: unknown };
+        return `${String(d.question)}（${d.score === null ? "—" : String(d.score)}）`;
       }
       return String(x);
     })
@@ -337,7 +343,7 @@ export function systemFieldValue(v: unknown): string {
 /** 決まった値（空の生成の結果・未了の確認の種類）は読める名前にする。それ以外は systemFieldValue のまま。 */
 function systemValueLabel(key: string, v: unknown, t: Dictionary): string {
   const names = (t.chat.systemValues as Record<string, Record<string, string>>)[key];
-  return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v);
+  return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v, t.chat.droppedReasons);
 }
 
 function systemFieldLabel(key: string, t: Dictionary): string {
@@ -451,6 +457,14 @@ export function TableResult({ output, t }: { output: Record<string, unknown>; t:
       <div className="text-caption text-muted">
         {t.chat.tableMatched.replace("{n}", String(matched)).replace("{m}", String(total))}
       </div>
+      {Array.isArray(output.notes) && output.notes.length > 0 && (
+        <div className="text-caption text-muted">
+          <span className={sectionLabelCls}>{t.chat.tableNotes}</span>
+          {(output.notes as unknown[]).map((n, i) => (
+            <p key={i}>{String(n)}</p>
+          ))}
+        </div>
+      )}
       {label && output.compute_value !== undefined && (
         <KeyValueGrid rows={[{ k: label, v: output.compute_value === null ? "—" : String(output.compute_value) }]} />
       )}

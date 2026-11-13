@@ -110,7 +110,8 @@ class PrimerMiddleware(AgentMiddleware[Any, RunContext]):
             clock.done(
                 _describe(u),
                 {"kind": u.kind, "queries": list(u.queries), "table": u.table, "raw": u.raw[:1000]}
-                | ({"error": u.error} if u.error else {}),
+                | ({"error": u.error} if u.error else {})
+                | ({"table_overridden": True} if u.table_overridden else {}),
             )
 
         texts: list[str] = []

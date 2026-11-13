@@ -166,6 +166,7 @@ export const chat = {
   tableCompute: "計算式",
   tableAll: "（全行）",
   tableMatched: "該当 {n} 行 / 全 {m} 行",
+  tableNotes: "表の注記",
   tableAllAggregates: "すべての集計",
   tableColumn: "列",
   aggSum: "合計",
@@ -201,6 +202,10 @@ export const chat = {
     retried: "やり直したか",
     result: "結果",
     pending_review: "未了の確認",
+    reason: "理由",
+    review: "確認の種類",
+    discarded: "捨てた書き直し",
+    used: "回答にしたもの",
     source: "資料",
     where: "条件",
     compute: "計算式",
@@ -211,11 +216,15 @@ export const chat = {
     excerpt_chars: "渡した抜粋の字数",
     history_turns: "渡した前のターンの数",
     dropped: "落とした候補",
+    scores: "候補ごとの検索の最高スコア",
+    threshold: "関連が低いとみなすスコア",
     ms: "かかった時間（ms）",
     questions: "候補",
     error: "失敗の理由",
     raw: "モデルの出力",
   } as Record<string, string>,
+  // 続けて聞く候補を落とした理由の表示名（決まった値のもの）
+  droppedReasons: { low_relevance: "資料の関連が低い" } as Record<string, string>,
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     result: {
@@ -227,6 +236,18 @@ export const chat = {
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
       numbers: "数字の確認",
+    },
+    review: {
+      gap: "調べ残しの見直し",
+      table: "表の集計の確認",
+      numbers: "数字の確認",
+    },
+    reason: {
+      no_citations: "引用が消えた",
+      reply_to_request: "依頼への返事だった",
+    },
+    used: {
+      draft: "差し戻す前の下書き",
     },
   } as Record<string, Record<string, string>>,
   sectionVerifyDetails: "検証詳細",

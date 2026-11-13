@@ -2,7 +2,7 @@
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from arag.agent.understand import history_text, parse
+from arag.agent.understand import guard_table, history_text, parse
 
 
 def test_json_is_read_even_with_surrounding_text() -> None:
@@ -58,3 +58,18 @@ def test_prompt_limits_table_and_resolves_references_to_the_last_answer() -> Non
     assert "直前のアシスタントの回答" in p and "そこのリードタイム" in p
     # 表に載っている 1 つの値（ある拠点・ある月の生産台数）を読むだけも false（hm52）
     assert "浜松第2工場の2026年9月の生産台数は" in p
+
+
+def test_output_form_alone_is_not_table_aggregation() -> None:
+    raw = '{"kind": "docs", "queries": ["HP-300 HP-320 仕様"], "table": true}'
+    q = "HP-300 と HP-320 の仕様の違いをすべて表にしてください。"
+    u = guard_table(parse(raw, q), q)
+    assert u.table is False and u.table_overridden is True
+    # 集計の語があれば、表にしての言い方があってもモデルの判断どおり
+    q2 = "在庫が発注点を下回る部品を表にしてください"
+    assert guard_table(parse(raw, q2), q2).table is True
+    q3 = "List the specs of HP-300 and HP-320 in a table"
+    assert guard_table(parse(raw, q3), q3).table is False
+    # 形の指定が無ければ変えない
+    q4 = "HP-300 と HP-320 の違いは？"
+    assert guard_table(parse(raw, q4), q4).table_overridden is False

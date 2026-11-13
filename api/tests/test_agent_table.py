@@ -177,3 +177,36 @@ def test_summarize_aggregate_function_value() -> None:
     out = summarize(r, "max(単価)")
     assert out["compute_label"] == "計算（max(単価)）" and out["compute_value"] == "24800"
     assert out["rows_matched"] == 4 and "計算" not in out["columns"]
+
+
+X01 = """| 部品台帳（2026年9月30日現在）　浜松第二工場 資材係 |  |  |  |  |  |  |
+|---|---|---|---|---|---|---|
+| 部品番号 | 名称 | 適用機種 | 単価（円） | 在庫 | 発注点 | 仕入先コード |
+| P-1042 | シールキット SK-300 | HP-300 / HP-320 | 18400 | 6 | 10 | S-07 |
+| P-1043 | メカニカルシール MS-30 |  | 24800 | 4 | 4 | S-07 |
+| P-2010 | 軸受 6308ZZ | HP-300 | 3150 | 22 | 12 | S-02 |
+| P-2011 | 軸受 6309ZZ | HP-320 | 3980 | 9 | 12 | S-02 |
+| P-3100 | 羽根車 IM-300 | HP-300 | 56000 | 2 | 1 | S-11 |
+| P-3120 | 羽根車 IM-320 | HP-320 | 61500 | 1 | 1 | S-11 |
+| P-4001 | グリス KG-5（400g） | 共通 | 2200 | 35 | 20 | S-02 |
+| P-4002 | グリス KG-2（400g） | 共通（廃止予定） | 1800 | 12 | 0 | S-02 |
+|  |  |  |  |  |  |  |
+| 注: 在庫が発注点を下回ったら、資材係が仕入先に発注する。 |  |  |  |  |  |  |
+"""
+
+
+def test_blank_and_note_rows_are_not_data_rows() -> None:
+    """x01: 空の行と「注:」の行を「全 10 行」に数えていた（specs/026 T30）。"""
+    t = parse_tables(X01)[0]
+    assert len(t.rows) == 8
+    assert t.notes == ["注: 在庫が発注点を下回ったら、資材係が仕入先に発注する。"]
+    r = run_query(t, "在庫 < 発注点", "(発注点 - 在庫) * 単価")
+    assert [row[0] for row in r.matched] == ["P-1042", "P-2011"]
+    out = render(r, "在庫 < 発注点", "(発注点 - 在庫) * 単価")
+    assert "（8 行）" in out and "85540" in out and "注記: 注: 在庫が発注点を下回ったら" in out
+    s = summarize(r, "(発注点 - 在庫) * 単価")
+    assert s["rows_total"] == 8 and s["notes"] == t.notes
+    assert s["aggregates"]["計算（(発注点 - 在庫) * 単価）"]["sum"] == "85540"
+    # 先頭のセルだけでも、注記の言い方でなければデータの行のまま
+    t2 = parse_tables("| 名称 | 数 |\n|---|---|\n| A | 1 |\n| B |  |")[0]
+    assert len(t2.rows) == 2 and t2.notes == []

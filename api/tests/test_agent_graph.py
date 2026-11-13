@@ -580,3 +580,71 @@ def test_send_back_tail_asks_to_call_the_tool_first() -> None:
     from arag.agent.middleware import SEND_BACK_TAIL
 
     assert "まずそのツールを呼んで" in SEND_BACK_TAIL and "暗算" in SEND_BACK_TAIL
+
+
+# ── 差し戻しへの返事を回答にしない（specs/026 T29） ──
+
+
+def discarded_steps(custom: list[Any]) -> list[dict[str, Any]]:
+    return [
+        e["step"]
+        for e in custom
+        if e["type"] == "step"
+        and e["step"]["name"] == "system"
+        and e["step"]["input"].get("kind") == "rewrite_discarded"
+        and e["step"]["status"] == "done"
+    ]
+
+
+TABLE_DRAFT = "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |"
+
+
+async def table_send_back(redo: AIMessage, *rest: AIMessage) -> tuple[dict[str, Any], list[Any], RunContext]:
+    model = FakeToolModel(messages=script(AIMessage(content=TABLE_DRAFT), redo, *rest))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    u = utility('{"kind": "docs", "queries": ["在庫が発注点を下回る部品"], "table": true}')
+    c = ctx(FakeSearch(TABLE), utility_model=u)
+    state, custom = await run(agent, c, "在庫が発注点を下回る部品は？")
+    return state, custom, c
+
+
+async def test_rewrite_without_citations_falls_back_to_the_draft() -> None:
+    state, custom, _ = await table_send_back(AIMessage(content="P-1042 が該当します。"))
+    assert state["messages"][-1].text == TABLE_DRAFT
+    [step] = discarded_steps(custom)
+    assert step["input"]["reason"] == "no_citations" and step["input"]["review"] == "table"
+    assert step["output"]["used"] == "draft" and step["output"]["pending_review"] == "table"
+    assert step["output"]["discarded"] == "P-1042 が該当します。"
+
+
+async def test_reply_to_the_send_back_falls_back_to_the_draft() -> None:
+    """3100: 表の集計の確認で差し戻すと「了解いたしました。指示に従い…」が回答になった。"""
+    reply = "了解いたしました。指示に従い、table_query を使用して回答します[1]。"
+    state, custom, _ = await table_send_back(AIMessage(content=reply))
+    assert state["messages"][-1].text == TABLE_DRAFT
+    [step] = discarded_steps(custom)
+    assert step["input"]["reason"] == "reply_to_request"
+    # 下書きに戻しても数字の照合は行う（未確認の数字は既存の注意で示す）
+    assert "number_check" in system_steps(custom)
+
+
+async def test_rewrite_after_calling_a_tool_is_kept() -> None:
+    state, custom, _ = await table_send_back(
+        tool_call("table_query", source="1", where="在庫 < 発注点"),
+        AIMessage(content="了解しました。P-1042 です。"),
+    )
+    assert state["messages"][-1].text == "了解しました。P-1042 です。"
+    assert discarded_steps(custom) == []
+
+
+async def test_draft_without_citations_does_not_use_the_citation_rule() -> None:
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="資料に記載されていません。"),
+            AIMessage(content="SK-300 の在庫は 6 個です。"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    state, custom = await run(agent, ctx(FakeSearch("SK-300 在庫 6")), "SK-300 の在庫は？")
+    assert state["messages"][-1].text == "SK-300 の在庫は 6 個です。"
+    assert discarded_steps(custom) == []

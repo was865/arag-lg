@@ -51,6 +51,15 @@ describe("systemFieldValue（システムの処理の値）", () => {
     expect(systemFieldValue([])).toBe("—");
     expect(systemFieldValue(["12", "34"])).toBe("12, 34");
     expect(systemFieldValue(3)).toBe("3");
+    // 続けて聞く: 候補ごとのスコアと、関連が低くて落とした候補（specs/028 T19）
+    expect(systemFieldValue([{ question: "単価は？", score: 0.91 }, { question: "場所は？", score: null }])).toBe(
+      "単価は？（0.91）, 場所は？（—）",
+    );
+    expect(
+      systemFieldValue([{ question: "担当者は？", reason: "low_relevance", score: 0.05 }], {
+        low_relevance: "資料の関連が低い",
+      }),
+    ).toBe("担当者は？（資料の関連が低い 0.05）");
   });
 });
 
@@ -68,5 +77,28 @@ describe("空の生成（empty_generation）の表示", () => {
     expect(html).toContain("終了の理由");
     expect(html).toContain("思考の文字数");
     expect(html).toContain("調べ残しの見直し");
+  });
+
+  it("書き直しの取り消し（rewrite_discarded）の理由と使った回答を読める名前で出す（specs/026 T29）", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="ja" dict={ja}>
+        <SystemFields
+          data={{
+            kind: "rewrite_discarded",
+            reason: "reply_to_request",
+            review: "table",
+            discarded: "了解いたしました。",
+            used: "draft",
+            pending_review: "table",
+          }}
+          t={ja}
+        />
+      </LocaleProvider>,
+    );
+    expect(html).toContain("依頼への返事だった");
+    expect(html).toContain("確認の種類");
+    expect(html).toContain("表の集計の確認");
+    expect(html).toContain("捨てた書き直し");
+    expect(html).toContain("差し戻す前の下書き");
   });
 });

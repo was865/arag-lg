@@ -44,4 +44,11 @@ describe("表の集計の表示（specs/028 R10）", () => {
     expect(html).toContain("<table");
     expect(html).not.toContain("該当");
   });
+
+  it("表の注記（「注:」の行）は行数に数えず、注記として見せる（specs/026 T30）", () => {
+    const html = render({ ...output, notes: ["注: 在庫が発注点を下回ったら、資材係が発注する。"] });
+    expect(html).toContain("表の注記");
+    expect(html).toContain("注: 在庫が発注点を下回ったら");
+    expect(render(output)).not.toContain("表の注記");
+  });
 });

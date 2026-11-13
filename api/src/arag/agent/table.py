@@ -30,6 +30,8 @@ class Table:
     rows: list[list[str]]
     # 表に書かれた「合計」「小計」の行。データの行ではないので、条件・集計の対象から外す
     totals: list[list[str]] = field(default_factory=list)
+    # 表の下の「注:」「※」などの注記の行（先頭のセルだけに文がある）。データの行から外して注記として残す
+    notes: list[str] = field(default_factory=list)
     # 式で使える名前 → 列の位置（元の見出しと、括弧の単位を除いた別名）
     names: dict[str, int] = field(default_factory=dict)
 
@@ -84,6 +86,17 @@ def is_total_row(cells: list[str]) -> bool:
     return bool(_TOTAL.match(re.sub(r"\s+", "", unicodedata.normalize("NFKC", first))))
 
 
+_NOTE = re.compile(r"^(注|※|備考|note)", re.IGNORECASE)
+
+
+def note_text(cells: list[str]) -> str | None:
+    """先頭のセルだけに文があり、注記の言い方で始まる行なら、その文。"""
+    if not cells or not cells[0].strip() or any(c.strip() for c in cells[1:]):
+        return None
+    first = cells[0].strip()
+    return first if _NOTE.match(unicodedata.normalize("NFKC", first)) else None
+
+
 def parse_tables(text: str) -> list[Table]:
     """本文から Markdown の表を取り出す。1 セルだけの題名行は題名にし、次の行を見出しにする。"""
     lines = text.split("\n")
@@ -102,12 +115,22 @@ def parse_tables(text: str) -> list[Table]:
                 title = next((c for c in header if c), "")
                 header, rows = rows[0], rows[1:]
             width = len(header)
-            rows = [(r + [""] * width)[:width] for r in rows]
+            # すべてのセルが空の行は捨てる。注記の行は合計の行と同じくデータの行から外す（specs/026 T30）
+            rows = [(r + [""] * width)[:width] for r in rows if any(c.strip() for c in r)]
+            notes = [n for r in rows if (n := note_text(r)) is not None]
+            rows = [r for r in rows if note_text(r) is None]
             totals = [r for r in rows if is_total_row(r)]
             rows = [r for r in rows if not is_total_row(r)]
             if header and rows:
                 tables.append(
-                    Table(title=title, header=header, rows=rows, totals=totals, names=_name_map(header))
+                    Table(
+                        title=title,
+                        header=header,
+                        rows=rows,
+                        totals=totals,
+                        notes=notes,
+                        names=_name_map(header),
+                    )
                 )
             i = j
         else:
@@ -406,6 +429,7 @@ def render(result: QueryResult, where: str, compute: str) -> str:
             lines.append("| " + " | ".join(t.header) + " |")
             lines.append("|" + "---|" * len(t.header))
             lines += ["| " + " | ".join(result.matched[i]) + " |" for i in p.rows[:MAX_ROWS_SHOWN]]
+    lines += [f"注記: {n}" for n in t.notes]
     return "\n".join(lines)
 
 
@@ -446,6 +470,8 @@ def summarize(result: QueryResult, compute: str) -> dict[str, Any]:
         "compute_label": label,
         "aggregates": aggregates,
     }
+    if t.notes:
+        out["notes"] = list(t.notes)
     if result.is_aggregate:
         out["compute_value"] = fmt(result.aggregate) if result.aggregate is not None else None
     return out

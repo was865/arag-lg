@@ -171,13 +171,12 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         system = SystemMessage(prompt)
         req = request.override(system_message=system, **overrides)
         response, used_draft = await _guard_empty(ctx, emit, handler, req, await handler(req))
-        if used_draft:
-            return response
         turn = msgs[start:]
         has_tools = bool(request.tools) and calls < ctx.cfg.max_steps
         # 確認: 調べ残し → 表の集計 → 数字の順に、当てはまるものを 1 つずつ差し戻す（種類ごとに 1 度）。
         # 下書きと依頼は会話の状態には入れないが、差し戻したことは「見直し」のステップとして記録に残す
-        while (answer := _final_answer(response)) is not None:
+        # 下書きを回答にしたときは、残りの確認はしない（数字の照合は下書きに対して行う）
+        while not used_draft and (answer := _final_answer(response)) is not None:
             review = pick_review(ctx, turn, answer, calls, has_tools)
             if review is None:
                 break
@@ -186,8 +185,8 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
                 request, handler, system, compact, response, answer, review, searches
             )
             calls += 1
-            if used_draft:  # 書き直しが空のまま。下書きを回答にし、残りの確認はしない（記録済み）
-                return response
+            if used_draft:  # 書き直しが空・返事だった。下書きを回答にし、残りの確認はしない（記録済み）
+                break
         if (answer := _final_answer(response)) is not None and _checks_numbers(ctx):
             _record_number_check(ctx, emit, turn, answer)
         return response
@@ -245,7 +244,52 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
             {"note": note, "next_tools": tools},
         )
+        if not used_draft and (rewrite := _final_answer(redo)) is not None:
+            reason = discard_reason(answer, rewrite)
+            if reason is not None:
+                _record_discarded(ctx, request.runtime.stream_writer, reason, review.kind, rewrite)
+                return replace(redo, result=[draft]), True
         return redo, used_draft
+
+
+# 差し戻しへの返事の言い方（書き直しの冒頭にあれば、回答ではなく依頼への返事。specs/026 T29）
+_REPLY = re.compile(
+    r"了解|承知|かしこまりました|指示に従い|ご指摘|申し訳|失礼いたしました|"
+    r"I understand|Understood|I will|I apologi[sz]e|Sorry",
+    re.IGNORECASE,
+)
+REPLY_HEAD_CHARS = 40
+_DISCARD_SUMMARY = {
+    "no_citations": "書き直しで引用がすべて消えたため、差し戻す前の下書きを回答にした（確認は未了）",
+    "reply_to_request": "書き直しが差し戻しへの返事だったため、差し戻す前の下書きを回答にした（確認は未了）",
+}
+
+
+def discard_reason(draft: str, rewrite: str) -> str | None:
+    """差し戻しの後、ツールを呼ばずに書いた書き直しを捨てる理由。捨てないなら None。
+
+    呼び出し側は、書き直しがツール呼び出しの無い応答（差し戻しの直後の最終回答）のときだけ使う。
+    """
+    if not rewrite.strip():
+        return None
+    if _MARK.search(normalize_markers(draft)) and not _MARK.search(normalize_markers(rewrite)):
+        return "no_citations"
+    if _REPLY.search(rewrite.strip()[:REPLY_HEAD_CHARS]):
+        return "reply_to_request"
+    return None
+
+
+def _record_discarded(ctx: RunContext, emit: Any, reason: str, kind: str, rewrite: str) -> None:
+    ctx.stats.rewrites_discarded += 1
+    record_system(
+        emit,
+        f"system-rewrite-discarded-{ctx.stats.rewrites_discarded}",
+        "rewrite_discarded",
+        "書き直しの取り消し",
+        _DISCARD_SUMMARY[reason],
+        input={"reason": reason, "review": kind},
+        output={"discarded": rewrite[:200], "used": "draft", "pending_review": kind},
+    )
 
 
 def _is_empty(response: ModelResponse[Any]) -> bool:

@@ -6,7 +6,7 @@
 import asyncio
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from langchain_core.language_models import BaseChatModel
@@ -29,6 +29,8 @@ class Understanding:
     kind: Kind = "docs"
     queries: tuple[str, ...] = ()
     table: bool = False
+    # モデルは true と言ったが、出力の形の指定（「表にして」）だけなので false にした（specs/026 T28）
+    table_overridden: bool = False
     # 記録用: モデルの出力そのままと、読めなかったときの理由
     raw: str = ""
     error: str = ""
@@ -69,6 +71,25 @@ def parse(text: str, question: str) -> Understanding:
     )
 
 
+# 「表にして」「一覧で」などは答えの形の指定であって、表の集計ではない（specs/026 T28）
+_FORM = re.compile(
+    r"表に(して|まとめ)|表で|表形式|一覧に(して|まとめ)|一覧で|まとめて|in a table|as a table|tabulate",
+    re.IGNORECASE,
+)
+_AGGREGATE = re.compile(
+    r"合計|総|平均|最大|最小|最も|一番|何件|何個|いくつ|いくら|下回|上回|以上|以下|未満|超|"
+    r"total|sum|average|how many|below|above|least|most",
+    re.IGNORECASE,
+)
+
+
+def guard_table(u: Understanding, question: str) -> Understanding:
+    """出力の形の言い方があり、集計の語が無い質問は、モデルが true と言っても table=false にする。"""
+    if u.table and _FORM.search(question) and not _AGGREGATE.search(question):
+        return replace(u, table=False, table_overridden=True)
+    return u
+
+
 def history_text(messages: list[AnyMessage]) -> str:
     """直近の会話（質問と回答の先頭）。ツールの結果は入れない。"""
     turns: list[tuple[str, str]] = []
@@ -98,4 +119,4 @@ async def understand(model: BaseChatModel | None, history: list[AnyMessage], que
         )
     except Exception as e:
         return fallback(question, f"{type(e).__name__}: {e}"[:200])
-    return parse(out.text, question)
+    return guard_table(parse(out.text, question), question)
