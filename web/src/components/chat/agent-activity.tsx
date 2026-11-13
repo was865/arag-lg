@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { ToolSteps } from "@/components/chat/tool-steps";
 import { cn, formatMs } from "@/lib/utils";
 import type { Source, ToolCall, ToolView } from "@/lib/types";
@@ -12,44 +12,8 @@ import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
-
-/** 進行中の段階（specs/026）: 0 理解 → 1 検索 → 2 回答 → 3 確認。実行中のステップから決める。 */
-function stageOf(current: ToolCall | undefined): number {
-  if (!current) return 2; // 実行中のステップが無いあいだは、モデルが回答を書いている
-  if (current.name === "understand") return 0;
-  if (current.name === "review") return 3;
-  if (current.name === "reasoning") return 2;
-  return 1;
-}
-
-/** 段階の列。済んだ段階は静かに、今の段階だけを色と呼吸する点で示す。 */
-function StageRail({ stage, labels }: { stage: number; labels: string[] }) {
-  return (
-    <span className="inline-flex items-center gap-1" aria-hidden>
-      {labels.map((label, i) => (
-        <Fragment key={label}>
-          {i > 0 && (
-            <span
-              className={cn(
-                "h-px w-2.5 transition-colors duration-(--duration-mid)",
-                i <= stage ? "bg-accent/50" : "bg-divider-strong",
-              )}
-            />
-          )}
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-caption transition-colors duration-(--duration-mid)",
-              i === stage ? "bg-accent-soft font-medium text-accent" : i < stage ? "text-fg-2" : "text-muted-2",
-            )}
-          >
-            {i === stage && <span className="h-1.5 w-1.5 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />}
-            {label}
-          </span>
-        </Fragment>
-      ))}
-    </span>
-  );
-}
+import { flowOf, stepsOfNode, type FlowNodeId } from "@/lib/chat/flow";
+import { FlowRail, RunFlow } from "@/components/chat/run-flow";
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
@@ -69,6 +33,8 @@ export function AgentActivity({
 }) {
   // 段階の明細は既定で畳む（実行中は見出しに今の段階名が流れる）。利用者が開閉した値を優先する。
   const [open, setOpen] = useState<boolean | null>(null);
+  // 流れの節点で一覧を絞る（specs/029 R8）
+  const [only, setOnly] = useState<FlowNodeId | null>(null);
   const isOpen = open ?? false;
   const { t } = useT();
   const { tweaks } = useTweaks();
@@ -94,7 +60,9 @@ export function AgentActivity({
   const guided = steps.some((s) => s.name === "understand");
   // 確認が 1 度でも入ったら、そのあとの調べ直し・書き直しも「確認」の段階として見せる（段階が後ろへ戻らない）
   const reviewed = revising || steps.some((s) => s.name === "review");
-  const stage = reviewed ? 3 : stageOf(current);
+  // 回答の流れ（specs/029）。見出しの段階の列と「詳細」の流れは同じ計算から出す
+  // 実行中のステップが無いあいだはモデルが考えるか書いている（調査）。確認が入った後は、確認の段階のまま見せる
+  const flow = flowOf(steps, { running, idle: reviewed ? "review" : "investigate" });
   // いましていることを言葉で言う: 実行中のステップの要約 → 考え中 → 書き直し中 → 書いている最中
   const nowLabel =
     current?.summary ??
@@ -128,10 +96,7 @@ export function AgentActivity({
         {running && guided ? (
           // 系統が導く流れ: 今どの段階かを列で示し、いまの動きを横に流す
           <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <StageRail
-              stage={stage}
-              labels={[t.chat.stageUnderstand, t.chat.stageSearch, t.chat.stageAnswer, t.chat.stageCheck]}
-            />
+            <FlowRail flow={flow} />
             <span className="inline-flex items-center gap-1.5">
               <ActivityGlyph activity={activity} />
               <span className="text-shimmer font-medium">{nowLabel}</span>
@@ -201,7 +166,8 @@ export function AgentActivity({
       {isOpen && (
         <div className="animate-fade-up overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface-2 motion-reduce:animate-none">
           <CitedTitlesContext.Provider value={new Set((sources ?? []).map((x) => x.title))}>
-            <ToolSteps steps={visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
+            {guided && <RunFlow flow={flow} selected={only} onSelect={setOnly} />}
+            <ToolSteps steps={only ? stepsOfNode(visibleSteps, only) : visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
           </CitedTitlesContext.Provider>
         </div>
       )}

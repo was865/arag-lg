@@ -149,10 +149,14 @@ export const chat = {
   reviewNext: "そのあと",
   reviewRewrote: "回答を書き直した",
   // 系統が導く流れ（specs/026）
-  stageUnderstand: "理解",
-  stageSearch: "検索",
-  stageAnswer: "回答",
-  stageCheck: "確認",
+  // 回答の流れ（specs/029）。節点の名前は flow-graph.json（グラフの定義）から
+  flowTitle: "流れ",
+  flowSentBack: "差し戻し {n} 回",
+  flowRetried: "やり直し {n} 回",
+  flowUsedDraft: "下書きへ",
+  flowFiltered: "{node}のステップだけを表示中",
+  flowClear: "解除",
+  flowInferred: "古い記録のため、流れは推定です",
   bySystem: "自動",
   bySystemHint: "システムが質問をもとに先に行った検索",
   understandQuestion: "質問",

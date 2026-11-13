@@ -135,7 +135,10 @@ export function stepsOfNode<T extends FlowStep>(steps: T[], node: FlowNodeId): T
 }
 
 /** ステップの列から、この回答の流れ（通った節点と辺・回数）を組み立てる。 */
-export function flowOf(steps: FlowStep[], opts: { running?: boolean } = {}): FlowRun {
+export function flowOf(
+  steps: FlowStep[],
+  opts: { running?: boolean; /** 実行中で、動いているステップが無いときの節点（既定は最後のステップの節点） */ idle?: FlowNodeId } = {},
+): FlowRun {
   const running = Boolean(opts.running);
   const { nodes: nodeOfStep, inferred } = nodesOfSteps(steps);
   const top = steps.filter((s) => !s.parentId);
@@ -184,7 +187,7 @@ export function flowOf(steps: FlowStep[], opts: { running?: boolean } = {}): Flo
   if (running) {
     const live = [...top].reverse().find((s) => s.status === "running");
     const last = live ?? top[top.length - 1];
-    current = last ? nodeOfStep.get(last.id) : "understand";
+    current = live ? nodeOfStep.get(live.id) : last ? (opts.idle ?? nodeOfStep.get(last.id)) : "understand";
   }
 
   const nodes: FlowNodeRun[] = FLOW_GRAPH.nodes.map((n) => ({

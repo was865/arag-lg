@@ -1,6 +1,6 @@
 # 029 回答の流れを明示のグラフにする — タスク
 
-状態: 着手（P0〜P2・P3 の T14）。ブランチ `feat/explicit-graph`。
+状態: P0〜P3 済み（T11 の 69 題の比較が残り）。ブランチ `feat/explicit-graph`。
 
 ## P0 着手前の確認
 - [x] T1 ライセンスを確かめ直す: `langgraph`・`langgraph-prebuilt`・`langgraph-checkpoint-postgres`（MIT のはず）、`langgraph-api`・`langgraph-cli` の `dev`（ELv2 のはず）、Studio が LangSmith への接続を要するか。結果を `specs/000-overview/licenses.md` と `decisions.md` に書く
@@ -25,9 +25,12 @@
 
 ## P3 実行の経路（R7〜R9）
 - [x] T14 `flow.ts`（ステップの列 → 経路。`node` の無い記録は推定）とテスト
-- [ ] T15 `run-flow.tsx`（見た目は design.md のとおり）。`StageRail` を置き換える
-- [ ] T16 節点で一覧を絞る（R8）
-- [ ] T17 管理画面のフィードバックの詳細に出す（R9）
+- [x] T15 `run-flow.tsx`（見た目は design.md のとおり）。`StageRail` を置き換える
+  - 実行中の見出しは `FlowRail`（理解・最初の検索・調査・確認・確定の 5 段。画像・見張り・続けて聞くは前後の段にまとめる。雑談と分かったら最初の検索を外す）。「詳細」の上は `RunFlow`（全節点）。どちらも `flowOf` の同じ結果から出す
+  - 動いているステップが無いあいだ（モデルが考える・書く）は `flowOf` の `idle` で今の節点を決める（確認の後は確認のまま。段階が後ろへ戻って見えないように）
+  - 画像の節点は、画像のあるターンだけ並べる。戻り・退避の弧は節点の列の位置（列の幅の割合）から描く
+- [x] T16 節点で一覧を絞る（R8）
+- [x] T17 管理画面のフィードバックの詳細に出す（R9）
 
 ## P4・P5（任意。別に判断）
 - [ ] T18 聞き返し: 入庫側に版・機種・拠点の項目があるかを調べ、無ければ先にその設計を出す

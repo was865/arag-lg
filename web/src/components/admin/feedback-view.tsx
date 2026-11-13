@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { StaticAnswer } from "@/components/chat/messages";
 import { ToolSteps } from "@/components/chat/tool-steps";
+import { RunFlow } from "@/components/chat/run-flow";
+import { flowOf, stepsOfNode, type FlowNodeId } from "@/lib/chat/flow";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -218,6 +220,8 @@ function FeedbackDetailPane({
   const [d, setD] = useState<FeedbackDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // 流れの節点で過程を絞る（specs/029 R8・R9）
+  const [only, setOnly] = useState<FlowNodeId | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -228,6 +232,7 @@ function FeedbackDetailPane({
         return;
       }
       setD(data);
+      setOnly(null);
       // 過程は最初から開いておく（システムの処理も見える。R14）
       setExpanded(Object.fromEntries(data.message.steps.map((s) => [s.id, true])));
     });
@@ -321,8 +326,11 @@ function FeedbackDetailPane({
       <section className="flex flex-col gap-1.5">
         <h2 className="m-0 text-caption font-semibold text-muted">{a.process}</h2>
         <div className="overflow-hidden rounded-card border-[0.5px] border-divider">
+          {turn.steps.some((x) => x.name === "understand") && (
+            <RunFlow flow={flowOf(turn.steps)} selected={only} onSelect={setOnly} />
+          )}
           <ToolSteps
-            steps={turn.steps}
+            steps={only ? stepsOfNode(turn.steps, only) : turn.steps}
             variant="card"
             expandedMap={expanded}
             onToggleStep={(sid) => setExpanded((x) => ({ ...x, [sid]: !x[sid] }))}
