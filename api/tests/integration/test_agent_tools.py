@@ -191,7 +191,9 @@ async def test_table_query_reads_the_section_table(
         sec = await s.get(Section, uuid.UUID(sec_id.group(1)))
         assert sec is not None
         sec.text = "台帳\n\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1 | 6 | 10 |\n| P-2 | 4 | 4 |\n"
-    out = await op_table_query(ctx, sec_id.group(1), "在庫 < 発注点", "発注点 - 在庫")
+    out = await op_table_query(ctx, sec_id.group(1), "在庫 < 発注点", "発注点 - 在庫", call_id="c1")
+    # 記録用の構造はツールの呼び出しごとに残し、モデルに渡す文には入れない（specs/028 T8）
+    assert ctx.table_outputs["c1"]["rows_matched"] == 1 and "rows_matched" not in out
     assert out.startswith('<資料 n="1" 文書="a.md"') and "2 行）" in out and "1 行。" in out
     assert "| P-1 | 6 | 10 | 4 |" in out and "P-2" not in out
     # 読む（read_section）のと同じ出典番号になる

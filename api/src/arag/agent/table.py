@@ -409,6 +409,48 @@ def render(result: QueryResult, where: str, compute: str) -> str:
     return "\n".join(lines)
 
 
+def _stats(vals: list[Decimal]) -> dict[str, str]:
+    s = sum(vals, Decimal(0))
+    return {"sum": fmt(s), "avg": fmt(s / len(vals)), "max": fmt(max(vals)), "min": fmt(min(vals))}
+
+
+def summarize(result: QueryResult, compute: str) -> dict[str, Any]:
+    """記録（ステップの output）に出す構造（specs/028 R10）。モデルに渡す文（render）とは別に作る。
+
+    該当行（最大 MAX_ROWS_SHOWN 行）・行数・compute の列の名前と集計・数値の列ごとの合計・平均・最大・最小。
+    """
+    t = result.table
+    per_row = bool(compute.strip()) and not result.is_aggregate
+    label = f"{CALC_COLUMN}（{compute.strip()}）" if compute.strip() else None
+    rows: list[list[str]] = []
+    for k, cells in enumerate(result.matched[:MAX_ROWS_SHOWN]):
+        row = list(cells)
+        if per_row:
+            v = result.computed[k]
+            row.append(fmt(v) if v is not None else "")
+        rows.append(row)
+    aggregates: dict[str, dict[str, str]] = {}
+    vals = [v for v in result.computed if v is not None]
+    if per_row and vals and label:
+        aggregates[label] = _stats(vals)
+    for name in result.totals:  # 合計を出した列（どの該当行でも数だった列）。名前は式で使う名前
+        i = t.names[name]
+        col = [x for x in (to_value(cells[i]) for cells in result.matched) if isinstance(x, Decimal)]
+        if col:
+            aggregates[name] = _stats(col)
+    out: dict[str, Any] = {
+        "rows_total": len(t.rows),
+        "rows_matched": len(result.matched),
+        "columns": t.header + ([CALC_COLUMN] if per_row else []),
+        "rows": rows,
+        "compute_label": label,
+        "aggregates": aggregates,
+    }
+    if result.is_aggregate:
+        out["compute_value"] = fmt(result.aggregate) if result.aggregate is not None else None
+    return out
+
+
 EXAMPLES = (
     '書き方の例: where="在庫 < 発注点"・where="単価 >= 10000 and "HP-300" in 適用機種"・'
     'compute="(発注点 - 在庫) * 単価"（行ごと）・compute="max(単価)"・compute="sum(在庫 * 単価)"・'

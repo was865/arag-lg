@@ -820,12 +820,9 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                     onRegenerate={(idx) => rerun(idx)}
                     onEdit={running ? undefined : (idx, text) => rerun(idx, text)}
                     onFollowup={running ? undefined : askFollowup}
-                    onOpenSources={openSourcesForTurn}
                     onFeedback={onFeedbackToggle}
                     onFeedbackDetail={onFeedbackDetail}
                     feedback={{}}
-                    activeCiteTurn={activeCiteTurn}
-                    rightPanelOpen={rightPanelShown}
                     liveAttachments={[]}
                     isLiveLastTurn={false}
                   />

@@ -21,6 +21,9 @@ export const chat = {
   storyRevising: "確認して書き直しています…",
   staleDraft: "確認前の下書き・書き直しています",
   followupsTitle: "続けて聞く",
+  moreActions: "その他",
+  saveMarkdown: "Markdown で保存",
+  saveHtml: "HTML で書き出す",
   agentDone: "エージェント実行",
   /** 検索の過程の要約（specs/025 R45） */
   storySearched: "{n} 件の資料を検索",
@@ -35,7 +38,6 @@ export const chat = {
   searchWeak: "関連の薄い文書 {n} 件",
   searchDocTop: "文書の冒頭",
   /** 回答の下の「詳細」（所要時間・トークン数） */
-  answerDetailTitle: "この回答の詳細",
   answerDetailTime: "所要時間",
   answerDetailTokens: "トークン",
   /** 回答の横の根拠カード */
@@ -72,13 +74,8 @@ export const chat = {
   hintNewThread: "で新規スレッド",
 
   // answer-footer
-  sourcesTitle: "この回答の出典を表示",
   // 回答で引用した箇所の数（{docs} は文書の数）
-  sourcesChip: "出典 {n} 件",
-  sourcesChipDocs: "出典 {n} 件（{docs} 文書）",
   copyTitle: "コピー",
-  downloadMarkdownTitle: ".md をダウンロード",
-  downloadHtmlTitle: "HTML ページとして書き出す",
   exportFailed: "書き出しに失敗しました",
   regenerateTitle: "再生成",
   feedbackUpTitle: "良い回答",
@@ -165,6 +162,13 @@ export const chat = {
   tableWhere: "条件",
   tableCompute: "計算式",
   tableAll: "（全行）",
+  tableMatched: "該当 {n} 行 / 全 {m} 行",
+  tableAllAggregates: "すべての集計",
+  tableColumn: "列",
+  aggSum: "合計",
+  aggAvg: "平均",
+  aggMax: "最大",
+  aggMin: "最小",
   unverifiedNumbers: "資料で確かめられなかった数字",
   unverifiedNumbersHint: "元の資料で確かめてください。",
   systemGroup: "システムの処理",

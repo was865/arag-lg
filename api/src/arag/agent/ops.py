@@ -17,6 +17,7 @@ from arag.agent.context import Emit, RunContext
 from arag.agent.steps import Step, StepClock, record_system
 from arag.agent.table import EXAMPLES, TableError, describe_tables, error_hint, parse_tables, run_query
 from arag.agent.table import render as render_table
+from arag.agent.table import summarize as summarize_table
 from arag.db.models import Content, Document, Section
 from arag.logging import get_logger
 from arag.prompts import load_prompt
@@ -507,6 +508,7 @@ async def op_table_query(
     table: int = 1,
     *,
     emit: Emit | None = None,
+    call_id: str = "",
 ) -> str:
     """資料の表から、条件に合う行と合計を計算で求める（specs/026 R12・R13）。
 
@@ -526,14 +528,16 @@ async def op_table_query(
                 output={"note": note},
             )
         return note
-    out = await _table_query(ctx, source, where, compute, table)
+    out = await _table_query(ctx, source, where, compute, table, call_id)
     if isinstance(out, _Failure):
         ctx.table_failures[key] = out.text
         return out.text
     return out
 
 
-async def _table_query(ctx: RunContext, source: str, where: str, compute: str, table: int) -> str | _Failure:
+async def _table_query(
+    ctx: RunContext, source: str, where: str, compute: str, table: int, call_id: str = ""
+) -> str | _Failure:
     found = await _visible_section(ctx, source)
     if found is None:
         return _Failure(
@@ -559,6 +563,8 @@ async def _table_query(ctx: RunContext, source: str, where: str, compute: str, t
         hint = EXAMPLES if "使える列" in str(e) else error_hint(target)
         return _Failure(f"表を集計できませんでした: {e}\n{hint}")
     body = render_table(result, where, compute)
+    if call_id:
+        ctx.table_outputs[call_id] = summarize_table(result, compute)
     if len(tables) > 1:
         body += f"\n（この資料には表が {len(tables)} つあります）\n{describe_tables(tables)}"
     # 引用は章の番号にそろえる（表の結果も同じ資料の一部）

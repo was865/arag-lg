@@ -2,7 +2,7 @@
 
 import pytest
 
-from arag.agent.table import TableError, parse_tables, render, run_query, to_value
+from arag.agent.table import TableError, parse_tables, render, run_query, summarize, to_value
 
 LEDGER = """前書き
 
@@ -154,3 +154,26 @@ def test_total_rows_are_not_data_rows() -> None:
     out = render(r, "", "sum(停止時間)")
     assert "600" in out and "1200" not in out and "合計の行 2 つは" in out
     assert [row[0] for row in run_query(t, "", "max(停止時間)").matched] == ["A", "B"]
+
+
+def test_summarize_gives_rows_and_aggregates_for_the_step() -> None:
+    """記録に出す構造（specs/028 R10）。モデルに渡す文（render）は変えない。"""
+    r = run_query(ledger(), "在庫 < 発注点", "(発注点 - 在庫) * 単価")
+    before = render(r, "在庫 < 発注点", "(発注点 - 在庫) * 単価")
+    out = summarize(r, "(発注点 - 在庫) * 単価")
+    assert out["rows_total"] == 4 and out["rows_matched"] == 2
+    assert out["columns"][-1] == "計算" and out["rows"][0][-1] == "73600"
+    assert out["compute_label"] == "計算（(発注点 - 在庫) * 単価）"
+    assert out["aggregates"]["計算（(発注点 - 在庫) * 単価）"] == {
+        "sum": "85540", "avg": "42770", "max": "73600", "min": "11940",
+    }  # fmt: skip
+    # ほかの数値の列も集計する（「すべての集計」で見せる）
+    assert out["aggregates"]["在庫"] == {"sum": "15", "avg": "7.5", "max": "9", "min": "6"}
+    assert render(r, "在庫 < 発注点", "(発注点 - 在庫) * 単価") == before
+
+
+def test_summarize_aggregate_function_value() -> None:
+    r = run_query(ledger(), "", "max(単価)")
+    out = summarize(r, "max(単価)")
+    assert out["compute_label"] == "計算（max(単価)）" and out["compute_value"] == "24800"
+    assert out["rows_matched"] == 4 and "計算" not in out["columns"]

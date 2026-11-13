@@ -74,5 +74,7 @@ class RunContext:
     model_label: str = ""
     # このターンで失敗した table_query の指定（source・where・compute・table）→ 返した誤り（specs/026 T12）
     table_failures: dict[tuple[str, str, str, int], str] = field(default_factory=dict)
+    # table_query の結果の構造（ツールの呼び出し ID → table.summarize）。記録にだけ出す（specs/028 T8）
+    table_outputs: dict[str, dict[str, Any]] = field(default_factory=dict)
     # 最後に差し戻した下書きとその確認の種類。書き直しが空のままなら、これを回答にする（specs/026 R25）
     review_draft: tuple[AIMessage, str] | None = None

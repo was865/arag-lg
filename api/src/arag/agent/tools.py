@@ -96,7 +96,15 @@ async def table_query(
             （max / min はその値の行も）。省略可
         table: 資料に表が複数あるときの番号（1 から）
     """
-    return await op_table_query(runtime.context, source, where, compute, table, emit=_emit(runtime))
+    return await op_table_query(
+        runtime.context,
+        source,
+        where,
+        compute,
+        table,
+        emit=_emit(runtime),
+        call_id=runtime.tool_call_id or "",
+    )
 
 
 @tool

@@ -451,14 +451,17 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         text = result.text if isinstance(result, ToolMessage) else ""
         n = len(_MATERIAL.findall(text))
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
+        output: dict[str, Any] = {"result": text[:2000]}
         if name == "table_query":
             rows = _TABLE_RESULT.search(text)
             summary = f"{rows.group(1)} 行中 {rows.group(2)} 行" if rows else text[:120]
+            # 画面で行・件数・集計を見せるための構造（モデルに渡す文は変えない。specs/028 T8）
+            output.update(ctx.table_outputs.pop(cid, {}))
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):
             summary = f"完全一致 0 件 → 型番のみで資料 {n} 件"
-        clock.done(summary, {"result": text[:2000]})
+        clock.done(summary, output)
         return result
 
 

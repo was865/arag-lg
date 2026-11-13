@@ -210,8 +210,8 @@ export function StaticAnswer({
 
 export function Transcript({
   turns, toolView, expandedSteps, onToggleStep, onCite, citationStyle,
-  onCopy, onDownload, onDownloadHtml, onRegenerate, onOpenSources, onFeedback, onFeedbackDetail, feedback,
-  activeCiteTurn, rightPanelOpen, liveAttachments, isLiveLastTurn, onEdit, onFollowup,
+  onCopy, onDownload, onDownloadHtml, onRegenerate, onFeedback, onFeedbackDetail, feedback,
+  liveAttachments, isLiveLastTurn, onEdit, onFollowup,
 }: {
   turns: Turn[];
   toolView: ToolView;
@@ -224,13 +224,10 @@ export function Transcript({
   onDownload: (turnIdx: number) => void;
   onDownloadHtml: (turnIdx: number) => void;
   onRegenerate: (turnIdx: number) => void;
-  onOpenSources: (turnIdx: number) => void;
   onFeedback: (v: "up" | "down", turnIdx: number) => void;
   onFeedbackDetail: (v: { reasonTags: FeedbackReasonTag[]; comment: string }, turnIdx: number) => void;
   // 楽観的更新用の上書き（未設定なら turn.feedback にフォールバック）。
   feedback: Record<number, TurnFeedback | null>;
-  activeCiteTurn: number;
-  rightPanelOpen: boolean;
   liveAttachments: StagedFile[];
   isLiveLastTurn: boolean;
   /** 質問の編集→作り直し。未指定なら編集 UI を出さない（生成中など）。 */
@@ -317,10 +314,8 @@ export function Transcript({
               {/* 各 done 回答が自分の指標・操作を持つ（複数ターン対応）。 */}
               {turn.status === "done" && (
                 <AnswerFooter
-                  tokens={turn.tokens} durationMs={turn.durationMs} sources={turn.sources}
+                  tokens={turn.tokens} durationMs={turn.durationMs}
                   onCopy={() => onCopy(idx)} onDownload={() => onDownload(idx)} onDownloadHtml={() => onDownloadHtml(idx)} onRegenerate={() => onRegenerate(idx)}
-                  onOpenSources={() => onOpenSources(idx)}
-                  sourcesActive={rightPanelOpen && activeCiteTurn === idx}
                   onFeedback={(v) => onFeedback(v, idx)}
                   onFeedbackDetail={(v) => onFeedbackDetail(v, idx)}
                   feedback={feedback[idx] ?? turn.feedback ?? null}
