@@ -1,6 +1,6 @@
 # 029 回答の流れを明示のグラフにする — タスク
 
-状態: 着手（P0〜P2）。ブランチ `feat/explicit-graph`。
+状態: 着手（P0〜P2・P3 の T14）。ブランチ `feat/explicit-graph`。
 
 ## P0 着手前の確認
 - [x] T1 ライセンスを確かめ直す: `langgraph`・`langgraph-prebuilt`・`langgraph-checkpoint-postgres`（MIT のはず）、`langgraph-api`・`langgraph-cli` の `dev`（ELv2 のはず）、Studio が LangSmith への接続を要するか。結果を `specs/000-overview/licenses.md` と `decisions.md` に書く
@@ -20,11 +20,11 @@
 - [ ] T11 T2 のテストと既存の全テストが通る（済み。単体・結合とも）。69 題を作り直しの前後で比べる（指標 ±0.01、`wrong_fact` 0、p50 +100ms 以内）
 
 ## P2 図をコードから（R5・R6）
-- [ ] T12 `diagram.py`・`make graph`・`docs/agent-graph.md`・`web/src/lib/chat/flow-graph.json`・CI の `graph-check`
-- [ ] T13 `docs/architecture.html` を今の構成に合わせ、回答の流れは `agent-graph.md` を指す。IP アドレスを消す
+- [x] T12 `diagram.py`・`make graph`・`docs/agent-graph.md`・`web/src/lib/chat/flow-graph.json`・CI の `graph-check`
+- [x] T13 `docs/architecture.html` を今の構成に合わせ、回答の流れは `agent-graph.md` を指す。IP アドレスを消す
 
 ## P3 実行の経路（R7〜R9）
-- [ ] T14 `flow.ts`（ステップの列 → 経路。`node` の無い記録は推定）とテスト
+- [x] T14 `flow.ts`（ステップの列 → 経路。`node` の無い記録は推定）とテスト
 - [ ] T15 `run-flow.tsx`（見た目は design.md のとおり）。`StageRail` を置き換える
 - [ ] T16 節点で一覧を絞る（R8）
 - [ ] T17 管理画面のフィードバックの詳細に出す（R9）

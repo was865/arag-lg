@@ -138,3 +138,4 @@ START
 - **流れの状態はターンの始め（`read_image`）で初期値に戻す**（`FRESH`）。前のターンの差し戻し済み・やり直し済みを持ち越さない。
 - **古い checkpoint**: 作り直しの前（create_agent だけのグラフ）が保存したスレッドも、`messages` の鍵が同じなのでそのまま続きを読める（テストあり）。応答の無いツール呼び出しを閉じる処理は `as_node="investigate"` で書く。取消が調査の途中に来たときは、外側の状態にはそのターンの質問だけが残り、途中のツールの結果は残らない（部分グラフの checkpoint にだけある）。
 
+- **`flow.ts` の推定の規則は節点の分け方に合わせた**: `understand`→understand、`by=system` の検索→primer_search（ただし初回のターン = 理解の `history` が false の `primer-1` は understand）、`review`→review、`empty_generation`・`rewrite_discarded`→guard、`citation_pruned`・`citation_cleanup`・`number_check`→finalize、`followups`→followups、`read_image`→read_image、子ステップは親の節点、その他→investigate。調査・見張り・確認は何も出さずに通ることがあるので、後ろの節点まで進んでいれば通ったとみなす。画面の `ToolCall` に `node` を足した（`toToolCall` が写す）。

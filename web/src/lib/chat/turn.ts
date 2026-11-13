@@ -49,6 +49,8 @@ export function toToolCall(step: ApiStep): ToolCall {
     input: viewInput(step),
     output: (step.output as Record<string, unknown> | null | undefined) ?? null,
     summary: step.summary ?? "",
+    // 出した節点（specs/029。古い記録には無い。流れの表示が推定する）
+    ...(step.node ? { node: step.node } : {}),
   };
 }
 

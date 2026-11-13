@@ -77,6 +77,8 @@ export interface ToolCall {
   input: Record<string, unknown>;
   output: Record<string, unknown> | null;
   summary: string;
+  /** このステップを出した回答の流れの節点（specs/029。古い記録には無い） */
+  node?: string;
 }
 
 // ── Threads ─────────────────────────────────────────────────────────────────

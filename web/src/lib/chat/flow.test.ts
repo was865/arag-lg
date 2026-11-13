@@ -1,0 +1,139 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { FLOW_GRAPH, flowOf, inferNode, nodesOfSteps, stepsOfNode, type FlowNodeId, type FlowStep } from "@/lib/chat/flow";
+
+/** api の偽モデルのテストが記録した、分岐ごとのイベントの列（specs/029 T2。節点の名前は除いてある = 古い記録と同じ形） */
+const SNAPSHOTS = JSON.parse(
+  readFileSync(new URL("../../../../api/tests/fixtures/agent_flow_snapshots.json", import.meta.url), "utf-8"),
+) as Record<string, { events: { type: string; step?: Record<string, unknown> }[] }>;
+
+/** イベントの列を、画面と同じく ID ごとに最後の状態へまとめる。 */
+function stepsOf(name: string): FlowStep[] {
+  const byId = new Map<string, FlowStep>();
+  for (const ev of SNAPSHOTS[name].events) {
+    if (ev.type !== "step" || !ev.step) continue;
+    const s = ev.step as { id: string; name: string; parent_id?: string; status: string; input?: Record<string, unknown>; output?: Record<string, unknown> };
+    byId.set(s.id, { id: s.id, name: s.name, parentId: s.parent_id, status: s.status, durationMs: 10, input: s.input ?? {}, output: s.output ?? null });
+  }
+  return [...byId.values()];
+}
+
+const passedIds = (steps: FlowStep[]) => flowOf(steps).nodes.filter((n) => n.passed).map((n) => n.id);
+const edge = (steps: FlowStep[], key: string) => flowOf(steps).edges.find((e) => e.key === key)!;
+const visits = (steps: FlowStep[], id: FlowNodeId) => flowOf(steps).nodes.find((n) => n.id === id)!.visits;
+
+describe("flowOf（ステップの列 → 通った節点と辺）", () => {
+  it("グラフの形は make graph の書き出しに従う", () => {
+    expect(FLOW_GRAPH.nodes.map((n) => n.id)).toEqual([
+      "read_image", "understand", "primer_search", "investigate", "guard", "review", "finalize", "followups",
+    ]);
+    expect(FLOW_GRAPH.edges.find((e) => e.key === "send_back")).toMatchObject({ source: "review", target: "investigate", kind: "back" });
+  });
+
+  it("そのまま回答: 理解 → 最初の検索 → 調査 → 見張り → 確認 → 確定。画像と続けて聞くは通らない", () => {
+    const steps = stepsOf("answer");
+    expect(passedIds(steps)).toEqual(["understand", "primer_search", "investigate", "guard", "review", "finalize"]);
+    const run = flowOf(steps);
+    expect(run).toMatchObject({ sentBack: 0, retried: 0, usedDraft: false, inferred: true });
+    expect(edge(steps, "pass").passed).toBe(true);
+    expect(edge(steps, "send_back").passed).toBe(false);
+  });
+
+  it("調べ残しの差し戻し: 確認 → 調査へ 1 回戻り、調査と確認を 2 回通る", () => {
+    const steps = stepsOf("gap");
+    const run = flowOf(steps);
+    expect(run.sentBack).toBe(1);
+    expect(edge(steps, "send_back")).toMatchObject({ passed: true, count: 1, kind: "back" });
+    expect(visits(steps, "investigate")).toBe(2);
+    expect(visits(steps, "review")).toBe(2);
+    // 見直しのステップは確認の節点のもの、書き直しで呼んだ検索は調査の節点のもの
+    const { nodes } = nodesOfSteps(steps);
+    expect(nodes.get("review-1")).toBe("review");
+    expect([...nodes.entries()].filter(([id]) => id.startsWith("<call-")).every(([, n]) => n === "investigate")).toBe(true);
+  });
+
+  it("調べ残しの後に数字の差し戻し: 2 回戻る", () => {
+    expect(flowOf(stepsOf("gap_then_numbers")).sentBack).toBe(2);
+    expect(edge(stepsOf("gap_then_numbers"), "send_back").count).toBe(2);
+  });
+
+  it("空の生成のやり直し: 見張り → 調査へ戻る", () => {
+    const steps = stepsOf("empty_retry");
+    expect(flowOf(steps).retried).toBe(1);
+    expect(edge(steps, "retry")).toMatchObject({ passed: true, count: 1 });
+    expect(visits(steps, "investigate")).toBe(2);
+    // やり直さずに空のまま終わった 2 度目は数えない
+    expect(flowOf(stepsOf("empty_retry_then_tools")).retried).toBe(1);
+  });
+
+  it("下書きへの退避: 見張り → 確定へ飛び、確認からの通過の辺は通らない", () => {
+    for (const name of ["empty_after_send_back_uses_draft", "rewrite_reply_uses_draft"]) {
+      const steps = stepsOf(name);
+      const run = flowOf(steps);
+      expect(run.usedDraft).toBe(true);
+      expect(edge(steps, "use_draft")).toMatchObject({ passed: true, kind: "skip" });
+      expect(edge(steps, "pass").passed).toBe(false);
+      expect(visits(steps, "review")).toBe(1);
+    }
+    expect(flowOf(stepsOf("rewrite_after_tool_kept")).usedDraft).toBe(false);
+  });
+
+  it("雑談: 最初の検索を飛ばして調査へ", () => {
+    const steps = stepsOf("chat");
+    expect(passedIds(steps)).not.toContain("primer_search");
+    expect(edge(steps, "chat").passed).toBe(true);
+    expect(edge(steps, "docs").passed).toBe(false);
+  });
+
+  it("所要時間は節点の親ステップの和。子ステップも節点の一覧に入る", () => {
+    const steps = stepsOf("tool_then_answer");
+    const run = flowOf(steps);
+    const understand = run.nodes.find((n) => n.id === "understand")!;
+    // 初回のターンは質問文での検索（primer-1）を理解と並行に行う
+    expect(understand.stepIds).toContain("primer-1");
+    expect(understand.stepIds.some((id) => id.startsWith("primer-1:"))).toBe(true);
+    expect(understand.durationMs).toBe(20);
+  });
+});
+
+describe("節点の名前（新しい記録）と推定（古い記録）", () => {
+  const step = (id: string, name: string, extra: Partial<FlowStep> = {}): FlowStep => ({
+    id, name, status: "done", durationMs: 5, input: {}, ...extra,
+  });
+
+  it("node があればそれを使い、推定とは示さない", () => {
+    const steps = [
+      step("understand", "understand", { node: "understand", input: { history: true }, output: { kind: "docs" } }),
+      step("primer-1", "search", { node: "primer_search", input: { by: "system" } }),
+      step("call_1", "search", { node: "investigate" }),
+      step("call_1:r", "retrieve", { parentId: "call_1" }),
+      step("system-citation-cleanup", "system", { node: "finalize", input: { kind: "citation_cleanup" } }),
+    ];
+    const run = flowOf(steps);
+    expect(run.inferred).toBe(false);
+    expect(stepsOfNode(steps, "investigate").map((s) => s.id)).toEqual(["call_1", "call_1:r"]);
+    expect(stepsOfNode(steps, "primer_search").map((s) => s.id)).toEqual(["primer-1"]);
+  });
+
+  it("推定の規則: 2 ターン目の primer-1 は最初の検索、見張りと確定の処理は種類で分ける", () => {
+    expect(inferNode(step("primer-1", "retrieve", { input: { by: "system" } }), false)).toBe("primer_search");
+    expect(inferNode(step("primer-1", "retrieve", { input: { by: "system" } }), true)).toBe("understand");
+    expect(inferNode(step("x", "system", { input: { kind: "rewrite_discarded" } }), true)).toBe("guard");
+    expect(inferNode(step("x", "system", { input: { kind: "number_check" } }), true)).toBe("finalize");
+    expect(inferNode(step("x", "system", { input: { kind: "followups" } }), true)).toBe("followups");
+    expect(inferNode(step("x", "system", { input: { kind: "step_budget" } }), true)).toBe("investigate");
+    expect(inferNode(step("img-1", "read_image"), true)).toBe("read_image");
+    expect(nodesOfSteps(stepsOf("second_turn")).nodes.get("primer-1")).toBe("primer_search");
+  });
+
+  it("実行中は、いま動いているステップの節点を示す。確定前なら確定は通っていない", () => {
+    const steps = [
+      step("understand", "understand", { node: "understand", output: { kind: "docs" } }),
+      step("review-1", "review", { node: "review", status: "running" }),
+    ];
+    const run = flowOf(steps, { running: true });
+    expect(run.current).toBe("review");
+    expect(run.nodes.find((n) => n.id === "review")!.current).toBe(true);
+    expect(run.nodes.find((n) => n.id === "finalize")!.passed).toBe(false);
+  });
+});
