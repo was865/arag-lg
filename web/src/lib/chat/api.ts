@@ -1,6 +1,7 @@
 /** ブラウザから Next の中継（/api/v1）経由で対話 API を呼ぶ。型は OpenAPI から生成したもの。 */
 import createClient from "openapi-fetch";
 import type { components, paths } from "@/lib/api/schema";
+import type { FeedbackReasonTag } from "@/lib/feedback-types";
 
 type S = components["schemas"];
 export type ThreadOut = S["ThreadOut"];
@@ -85,7 +86,7 @@ export const chatApi = {
     });
     if (!response.ok) fail(response.status, error);
   },
-  async feedback(messageId: string, body: { rating: "up" | "down"; reason_tags?: string[]; comment?: string | null }) {
+  async feedback(messageId: string, body: { rating: "up" | "down"; reason_tags?: FeedbackReasonTag[]; comment?: string | null }) {
     const { data, error, response } = await client.PUT("/v1/messages/{message_id}/feedback", {
       params: { path: { message_id: messageId } },
       body: { reason_tags: [], ...body },

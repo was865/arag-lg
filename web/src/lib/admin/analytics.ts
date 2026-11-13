@@ -21,6 +21,7 @@ const TAG_LABEL: Record<string, string> = {
   no_source: ja.chat.feedbackReasonNoSource,
   irrelevant: ja.chat.feedbackReasonIrrelevant,
   other: ja.chat.feedbackReasonOther,
+  error: ja.chat.feedbackReasonError,
 };
 
 export const tagLabel = (t: string) => TAG_LABEL[t] ?? t;

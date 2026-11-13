@@ -155,7 +155,7 @@ async def test_thread_detail_returns_messages_and_feedback(
 
     r = await api.put(
         f"/v1/messages/{mid}/feedback",
-        json={"rating": "down", "reason_tags": ["根拠が違う"], "comment": "別の章です"},
+        json={"rating": "down", "reason_tags": ["wrong"], "comment": "別の章です"},
         headers=ALICE,
     )
     assert r.status_code == 200

@@ -359,6 +359,7 @@ class Citation(Base):
 
 class MessageFeedback(Base):
     __tablename__ = "message_feedback"
+    __table_args__ = (Index("ix_message_feedback_list", "updated_at", "id"),)
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     message_id: Mapped[uuid.UUID] = mapped_column(
@@ -369,6 +370,10 @@ class MessageFeedback(Base):
     reason_tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # 技術者への報告の状態（specs/028 R15）: open / resolved。利用者が直したら open に戻す
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="open", server_default="open")
+    resolved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
 

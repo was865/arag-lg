@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from qdrant_client import AsyncQdrantClient
 
-from arag import analytics_router, audit_router, health, llm_admin_router
+from arag import analytics_router, audit_router, feedback_admin_router, health, llm_admin_router
 from arag.agent import router as router_agent
 from arag.agent.openapi import install_event_schemas
 from arag.agent.stream import redis_client
@@ -80,6 +80,7 @@ def create_app(
     app.include_router(router_search.router)
     app.include_router(router_agent.router)
     app.include_router(audit_router.router)
+    app.include_router(feedback_admin_router.router)
     app.include_router(analytics_router.router)
     app.include_router(llm_admin_router.router)
     install_event_schemas(app)

@@ -11,6 +11,8 @@ import {
   AnswerFooter,
   CancelledNotice,
   ErrorNotice,
+  ReportProblem,
+  canReport,
   UncitedNotice,
   UnverifiedNumbersNotice,
   unverifiedNumbers,
@@ -237,6 +239,9 @@ export function Transcript({
 }) {
   const { t } = useT();
   const now = new Date();
+  // 保存したメッセージがあるときだけ（受付前の取消・runner_lost の失敗では出さない）
+  const report = (turn: Turn, idx: number) =>
+    canReport(turn) ? <ReportProblem onSubmit={(v) => onFeedbackDetail(v, idx)} /> : undefined;
   return (
     <>
       {turns.map((turn, idx) => {
@@ -305,12 +310,16 @@ export function Transcript({
                 </div>
               )}
               {/* 取消でも途中までの回答は残す（runner が保存する） */}
-              {turn.status === "cancelled" && <CancelledNotice onRetry={() => onRegenerate(idx)} />}
+              {turn.status === "cancelled" && <CancelledNotice onRetry={() => onRegenerate(idx)} report={report(turn, idx)} />}
               {turn.status === "done" && turn.noAnswerReason === "no_relevant_sources" && turn.answer.trim() && (
                 <UncitedNotice />
               )}
               {turn.status === "done" && <UnverifiedNumbersNotice numbers={unverifiedNumbers(turn.steps)} />}
-              {turn.status === "error" && <ErrorNotice message={turn.error} onRetry={() => onRegenerate(idx)} />}
+              {turn.status === "error" && <ErrorNotice message={turn.error} onRetry={() => onRegenerate(idx)} report={report(turn, idx)} />}
+              {/* 回答なし（資料が無い・上限など）も「問題を報告」から過程ごと届ける（specs/028 R12） */}
+              {turn.status === "done" && turn.noAnswerReason && canReport(turn) && (
+                <div className="-mb-1 flex">{report(turn, idx)}</div>
+              )}
               {/* 各 done 回答が自分の指標・操作を持つ（複数ターン対応）。 */}
               {turn.status === "done" && (
                 <AnswerFooter

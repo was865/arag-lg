@@ -50,7 +50,8 @@ export function FeedbackPopover({ open, onOpenChange, children, initial, onSubmi
   );
 }
 
-function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit: Props["onSubmit"] }) {
+/** 報告の欄の中身（理由・コメント・共有の注意・送信）。 */
+export function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit: Props["onSubmit"] }) {
   const { t } = useT();
   const [tags, setTags] = useState<Set<FeedbackReasonTag>>(new Set(initial?.reasonTags ?? []));
   const [comment, setComment] = useState(initial?.comment ?? "");
@@ -62,6 +63,7 @@ function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit
     no_source: t.chat.feedbackReasonNoSource,
     irrelevant: t.chat.feedbackReasonIrrelevant,
     other: t.chat.feedbackReasonOther,
+    error: t.chat.feedbackReasonError,
   };
 
   function toggle(tag: FeedbackReasonTag) {
@@ -101,6 +103,8 @@ function FeedbackForm({ initial, onSubmit }: { initial: Initial | null; onSubmit
         maxLength={1000}
         className="mb-2.5 bg-surface-2"
       />
+      {/* 送ると過程ごと管理者が読める（specs/028 R11） */}
+      <p className="mb-2.5 text-caption text-muted">{t.chat.feedbackShareNote}</p>
       <div className="flex justify-end gap-2">
         <PopoverClose asChild>
           <Button variant="ghost" size="sm" className="text-muted">

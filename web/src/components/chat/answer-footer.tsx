@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { IconButton, Button } from "@/components/ui/button";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
+import type { Turn } from "@/lib/types";
 import { useT } from "@/i18n/context";
 import { FeedbackPopover } from "@/components/chat/feedback-popover";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -105,7 +106,33 @@ export function AnswerFooter({ tokens, durationMs, onCopy, onDownload, onDownloa
   );
 }
 
-export function CancelledNotice({ onRetry }: { onRetry: () => void }) {
+/** 報告できるターンか（保存したメッセージがある）。受付前の取消・runner_lost の失敗では出さない。 */
+export function canReport(turn: Turn): boolean {
+  return Boolean(turn.messageId);
+}
+
+/**
+ * 「問題を報告」（specs/028 R12）。失敗・取消・回答なしの通知に置き、理由「エラー・回答が出ない」を選んだ状態で
+ * 報告の欄を開く（利用者は外せる）。送ると評価は「良くない」になる。
+ */
+export function ReportProblem({ onSubmit }: { onSubmit: (v: { reasonTags: FeedbackReasonTag[]; comment: string }) => void }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <FeedbackPopover
+      open={open}
+      onOpenChange={setOpen}
+      initial={{ reasonTags: ["error"], comment: null }}
+      onSubmit={(v) => { onSubmit(v); setOpen(false); }}
+    >
+      <Button variant="plain" size="sm" className="shrink-0 text-muted" onClick={() => setOpen(true)}>
+        {t.chat.reportProblem}
+      </Button>
+    </FeedbackPopover>
+  );
+}
+
+export function CancelledNotice({ onRetry, report }: { onRetry: () => void; report?: React.ReactNode }) {
   const { t } = useT();
   return (
     <div className="flex items-center gap-2.5 rounded-card border-[0.5px] border-dashed border-divider-strong bg-surface-2 px-3.5 py-2.5 text-body text-muted">
@@ -114,9 +141,12 @@ export function CancelledNotice({ onRetry }: { onRetry: () => void }) {
         <path d="M6 6l4 4M10 6l-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
       <span>{t.chat.cancelledNotice}</span>
-      <Button variant="plain" size="sm" className="ml-auto font-semibold" onClick={onRetry}>
-        {t.chat.retryRun}
-      </Button>
+      <span className="ml-auto flex items-center gap-1">
+        {report}
+        <Button variant="plain" size="sm" className="font-semibold" onClick={onRetry}>
+          {t.chat.retryRun}
+        </Button>
+      </span>
     </div>
   );
 }
@@ -167,7 +197,7 @@ export function unverifiedNumbers(steps: { name: string; input: Record<string, u
 }
 
 /** 生成に失敗したターン（理由とやり直し）。 */
-export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: () => void }) {
+export function ErrorNotice({ message, onRetry, report }: { message?: string; onRetry: () => void; report?: React.ReactNode }) {
   const { t } = useT();
   return (
     <div role="alert" className="flex items-center gap-2.5 rounded-card border-[0.5px] border-danger/40 bg-danger-soft px-3.5 py-2.5 text-body text-danger">
@@ -177,6 +207,7 @@ export function ErrorNotice({ message, onRetry }: { message?: string; onRetry: (
       </svg>
       {/* 「モデルごとの理由」のように複数行で届くことがある */}
       <span className="min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]">{message || t.chat.runFailedNotice}</span>
+      {report}
       <Button variant="plain" size="sm" className="font-semibold" onClick={onRetry}>
         {t.chat.retryRun}
       </Button>

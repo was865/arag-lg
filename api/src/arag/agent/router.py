@@ -262,31 +262,33 @@ async def get_thread_detail(thread_id: uuid.UUID, p: CurrentPrincipal, s: Sessio
     }
     return ThreadDetail(
         **_thread_out(t).model_dump(),
-        messages=[
-            MessageOut(
-                id=m.id,
-                ordinal=m.ordinal,
-                query=m.query,
-                answer=m.answer_text,
-                status=m.status,
-                model_id=m.model_id,
-                tokens_in=m.tokens_in,
-                tokens_out=m.tokens_out,
-                duration_ms=m.duration_ms,
-                steps=[Step.model_validate(x) for x in m.steps],
-                sources=[SourceView.model_validate(x) for x in m.sources],
-                citation_map={k: CitationRef.model_validate(v) for k, v in m.citation_map.items()},
-                suggestions=list(m.suggestions or []),
-                no_answer_reason=m.no_answer_reason,
-                created_at=m.created_at,
-                image=_image_out(m.request),
-                feedback=FeedbackOut(rating=f.rating, reason_tags=f.reason_tags, comment=f.comment)  # type: ignore[arg-type]
-                if (f := fb.get(m.id))
-                else None,
-            )
-            for m in msgs
-        ],
+        messages=[message_out(m, fb.get(m.id)) for m in msgs],
         active_run=_active_out(await active_run(s, t.id)),
+    )
+
+
+def message_out(m: Message, f: MessageFeedback | None = None) -> MessageOut:
+    """保存したターンを API の形にする（スレッドの詳細と、管理者が読む報告の詳細で共用）。"""
+    return MessageOut(
+        id=m.id,
+        ordinal=m.ordinal,
+        query=m.query,
+        answer=m.answer_text,
+        status=m.status,
+        model_id=m.model_id,
+        tokens_in=m.tokens_in,
+        tokens_out=m.tokens_out,
+        duration_ms=m.duration_ms,
+        steps=[Step.model_validate(x) for x in m.steps],
+        sources=[SourceView.model_validate(x) for x in m.sources],
+        citation_map={k: CitationRef.model_validate(v) for k, v in m.citation_map.items()},
+        suggestions=list(m.suggestions or []),
+        no_answer_reason=m.no_answer_reason,
+        created_at=m.created_at,
+        image=_image_out(m.request),
+        feedback=FeedbackOut(rating=f.rating, reason_tags=f.reason_tags, comment=f.comment)  # type: ignore[arg-type]
+        if f is not None
+        else None,
     )
 
 
@@ -524,9 +526,13 @@ def _valid_id(v: str) -> bool:
 # --- 評価（👍👎）---
 
 
+# 「良くない」の理由（web の FEEDBACK_REASON_TAGS と同じ。error は specs/028 R12）
+FeedbackReason = Literal["outdated", "wrong", "no_source", "irrelevant", "other", "error"]
+
+
 class FeedbackIn(BaseModel):
     rating: Literal["up", "down"]
-    reason_tags: list[str] = Field(default_factory=list, max_length=10)
+    reason_tags: list[FeedbackReason] = Field(default_factory=list, max_length=10)
     comment: str | None = Field(None, max_length=2000)
 
 
@@ -543,11 +549,13 @@ async def put_feedback(
         fb = MessageFeedback(message_id=msg.id, user_id=p.user_id, rating=body.rating)
         s.add(fb)
     fb.rating = body.rating
-    fb.reason_tags = body.reason_tags
+    fb.reason_tags = list(body.reason_tags)
     fb.comment = body.comment
     fb.updated_at = datetime.now(UTC)
+    # 利用者が直した報告は、対応済みでも未対応に戻す（技術者が読み直す）
+    fb.status, fb.resolved_by, fb.resolved_at = "open", None, None
     await s.commit()
-    return FeedbackOut(rating=body.rating, reason_tags=body.reason_tags, comment=body.comment)
+    return FeedbackOut(rating=body.rating, reason_tags=list(body.reason_tags), comment=body.comment)
 
 
 # ── 共有（specs/008-thread-share）────────────────────────────────────────

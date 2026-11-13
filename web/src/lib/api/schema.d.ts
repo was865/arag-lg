@@ -73,6 +73,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Feedback
+         * @description 報告の一覧（新しい順。質問とコメントは先頭 80 字）。open_count は未対応の「良くない」の件数。
+         */
+        get: operations["list_feedback_v1_admin_feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feedback/{feedback_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Feedback
+         * @description 報告とそのターン（質問・回答・出典・ステップの全記録・実行の情報）。読むだけ。
+         */
+        get: operations["get_feedback_v1_admin_feedback__feedback_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feedback/{feedback_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Feedback */
+        post: operations["reopen_feedback_v1_admin_feedback__feedback_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feedback/{feedback_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Feedback */
+        post: operations["resolve_feedback_v1_admin_feedback__feedback_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/llm": {
         parameters: {
             query?: never;
@@ -1517,6 +1591,52 @@ export interface components {
              */
             ext: string;
         };
+        /** FeedbackDetail */
+        FeedbackDetail: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            message: components["schemas"]["MessageOut"];
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /** Reason Tags */
+            reason_tags: string[];
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Resolved By */
+            resolved_by: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "resolved";
+            /**
+             * Thread Id
+             * Format: uuid
+             */
+            thread_id: string;
+            /** Thread Title */
+            thread_title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** User Id */
+            user_id: string;
+        };
         /** FeedbackIn */
         FeedbackIn: {
             /** Comment */
@@ -1527,7 +1647,7 @@ export interface components {
              */
             rating: "up" | "down";
             /** Reason Tags */
-            reason_tags?: string[];
+            reason_tags?: ("outdated" | "wrong" | "no_source" | "irrelevant" | "other" | "error")[];
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -1540,6 +1660,60 @@ export interface components {
             rating: "up" | "down";
             /** Reason Tags */
             reason_tags: string[];
+        };
+        /** FeedbackPage */
+        FeedbackPage: {
+            /** Items */
+            items: components["schemas"]["FeedbackRow"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Open Count */
+            open_count: number;
+        };
+        /** FeedbackRow */
+        FeedbackRow: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /** Model Id */
+            model_id: string | null;
+            /** No Answer Reason */
+            no_answer_reason: string | null;
+            /** Query */
+            query: string;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /** Reason Tags */
+            reason_tags: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "resolved";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** User Id */
+            user_id: string;
         };
         /** FeedbackSummary */
         FeedbackSummary: {
@@ -2763,6 +2937,133 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_feedback_v1_admin_feedback_get: {
+        parameters: {
+            query?: {
+                rating?: ("up" | "down") | null;
+                status?: ("open" | "resolved") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_feedback_v1_admin_feedback__feedback_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_feedback_v1_admin_feedback__feedback_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_feedback_v1_admin_feedback__feedback_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackDetail"];
                 };
             };
             /** @description Validation Error */

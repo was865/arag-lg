@@ -242,7 +242,16 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         steps: turn.steps.map(settle),
       };
     case "run.failed":
-      return { ...turn, staleAnswer: undefined, streaming: false, status: "error", error: ev.message, steps: turn.steps.map(settle) };
+      return {
+        ...turn,
+        // 心拍が途絶えた run（runner_lost）はメッセージを保存していない（報告・分岐の元にできない）
+        messageId: ev.code === "runner_lost" ? undefined : turn.messageId,
+        staleAnswer: undefined,
+        streaming: false,
+        status: "error",
+        error: ev.message,
+        steps: turn.steps.map(settle),
+      };
     case "run.cancelled":
       return { ...turn, staleAnswer: undefined, streaming: false, status: "cancelled", steps: turn.steps.map(settle) };
     default:
