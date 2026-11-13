@@ -20,6 +20,8 @@ from arag.agent.understand import MAX_QUERIES, Understanding, understand
 _BLOCK = re.compile(r'<資料 n="(\d+)".*?</資料>', re.DOTALL)
 PRIMER_OPEN = "<検索結果>"
 PRIMER_CLOSE = "</検索結果>"
+# 検索結果の後ろに付ける締めの 1 行（R22）。資料が日本語ばかりだと英語の質問にも日本語で答えがち（hm60）
+PRIMER_LANGUAGE = "資料の言語にかかわらず、上の質問と同じ言語で答える。"
 PRIMER_HEAD = (
     "次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。"
     "足りるならこのまま答え、足りない点だけツールで調べてください。"
@@ -45,7 +47,7 @@ def merge_results(texts: list[str]) -> str:
 def with_primer(question: str, primer: Primer | None) -> str:
     if primer is None or not primer.text:
         return question
-    return f"{question}\n\n{PRIMER_OPEN}\n{PRIMER_HEAD}\n\n{primer.text}\n{PRIMER_CLOSE}"
+    return f"{question}\n\n{PRIMER_OPEN}\n{PRIMER_HEAD}\n\n{primer.text}\n{PRIMER_CLOSE}\n{PRIMER_LANGUAGE}"
 
 
 async def _search(ctx: RunContext, emit: Emit, index: int, query: str) -> str:

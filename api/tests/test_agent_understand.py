@@ -56,3 +56,5 @@ def test_prompt_limits_table_and_resolves_references_to_the_last_answer() -> Non
     assert "1 つの値を読むだけ" in p and "false" in p
     # 「そこ」「それ」は、まず直前の回答に出た答えを指すとみなす（hm62）
     assert "直前のアシスタントの回答" in p and "そこのリードタイム" in p
+    # 表に載っている 1 つの値（ある拠点・ある月の生産台数）を読むだけも false（hm52）
+    assert "浜松第2工場の2026年9月の生産台数は" in p

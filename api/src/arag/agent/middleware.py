@@ -39,6 +39,12 @@ PRIOR_TOOL_PLACEHOLDER = "（前のターンの資料。出典番号はこのタ
 # 差し戻しの依頼に添える（書き直しで出典番号が落ちて引用が付かなくなるのを防ぐ）。
 # 「[n]」と書くと小さいモデルがそのまま写すので、実際の数字の例で示す
 KEEP_CITATIONS = "書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。"
+# すべての差し戻しの依頼の末尾に付ける（R22）。依頼を利用者の発言と取り違えて返事・お詫びを書き、
+# それが回答になるのを防ぐ（Gemma 4 12B の hm52: 英語の質問に、日本語の依頼への返事で答えた）
+SEND_BACK_TAIL = (
+    "\n\nこの依頼は利用者の発言ではありません（システムの確認です）。返事・お詫び・経緯の説明は書かず、"
+    "利用者の元の質問への回答そのものを、元の質問と同じ言語で最初から書き直してください。"
+)
 # 下書きが「資料に無い」「確認が必要」などと調べ残しを認めているか（日本語・英語）
 GAP = re.compile(
     r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|不明|"
@@ -213,18 +219,19 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             ),
         )
         draft = cast(AIMessage, response.result[-1])
-        retry: list[AnyMessage] = [*compact, draft, HumanMessage(review.note)]
+        note = review.note + SEND_BACK_TAIL
+        retry: list[AnyMessage] = [*compact, draft, HumanMessage(note)]
         try:
             redo = await handler(request.override(system_message=system, messages=retry))
         except Exception as e:
-            clock.done("差し戻しに失敗しました", {"note": review.note, "error": str(e)[:300]}, error=True)
+            clock.done("差し戻しに失敗しました", {"note": note, "error": str(e)[:300]}, error=True)
             raise
         last = redo.result[-1] if redo.result else None
         tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
         clock.done(
             f"「{review.trigger}」のため差し戻し → "
             + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
-            {"note": review.note, "next_tools": tools},
+            {"note": note, "next_tools": tools},
         )
         return redo
 

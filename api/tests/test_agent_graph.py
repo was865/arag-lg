@@ -452,3 +452,46 @@ def test_system_prompt_asks_for_direct_citations_and_one_language() -> None:
     p = system_prompt(ctx(FakeSearch()))
     assert "答えを直接支える資料だけを引用する" in p and "質問の言語だけで書く" in p
     assert "特例" in p  # 特例の規則は残す
+
+
+# ── 差し戻しは会話ではない・回答の言語（026 T19・T20、hm52・hm60） ──
+
+
+async def test_send_back_asks_to_rewrite_the_answer_not_to_reply() -> None:
+    """差し戻しの依頼には、返事ではなく元の質問への回答を質問の言語で書き直す旨の一文が付く（hm52）。"""
+    from arag.agent.middleware import SEND_BACK_TAIL
+
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="P-1042 has 6 in stock [1]."),
+            AIMessage(content="P-1042 has 6 in stock [1]."),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    u = utility('{"kind": "docs", "queries": ["P-1042 在庫"], "table": true}')
+    c = ctx(FakeSearch(TABLE), utility_model=u)
+    _, custom = await run(agent, c, "How many P-1042 are in stock?")
+    retry = model.calls[1][-1]
+    assert isinstance(retry, HumanMessage) and retry.text.endswith(SEND_BACK_TAIL)
+    # 記録にも同じ依頼を残す
+    review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"][-1]
+    assert review["output"]["note"].endswith(SEND_BACK_TAIL)
+    assert "利用者の発言ではありません" in SEND_BACK_TAIL and "同じ言語" in SEND_BACK_TAIL
+
+
+def test_primer_ends_with_answer_language_line() -> None:
+    from arag.agent.context import Primer
+    from arag.agent.primer import PRIMER_CLOSE, PRIMER_LANGUAGE, with_primer
+
+    out = with_primer("What is X?", Primer(kind="docs", text='<資料 n="1">X は 1</資料>'))
+    assert out.endswith(f"{PRIMER_CLOSE}\n{PRIMER_LANGUAGE}")
+    assert "上の質問と同じ言語" in PRIMER_LANGUAGE
+
+
+async def test_low_relevance_note_keeps_question_language() -> None:
+    """関連度の低い検索結果の注意書きは、見つからないと質問の言語で答えるよう求める（hm60）。"""
+    model = FakeToolModel(messages=script(AIMessage(content="Not found in the documents.")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    await run(agent, ctx(LowSearch("無関係な本文")), "What is the email address?")
+    human = next(m for m in model.calls[0] if isinstance(m, HumanMessage))
+    assert "見つからなかったと（質問と同じ言語で）答える" in human.text
