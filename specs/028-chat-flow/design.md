@@ -11,6 +11,7 @@
 - 場所: `runner` が回答を確定した後、`run.completed` を送る前。`api/src/arag/agent/followups.py`（新規）に `async suggest(model, question, answer, titles) -> Followups(questions, error, ms)`。
 - プロンプト `prompts/agent_followups.md`: JSON `{"questions": ["…", "…"]}` だけを出させる。入力は質問・回答（先頭 1500 字）・引用した資料の題名。資料の本文は渡さない（題名だけで足りる。指示の混入も避ける）。
 - 解析は `understand.parse` と同じ流儀（コードブロックの記号を外す・配列でなければ失敗）。重複と元の質問と同じ文を落とし、40 字を超えるもの（半角は 0.5 字と数える。実際の Gemma で英語の候補が 50〜74 文字になり全部落ちたため）は捨て、最大 3 個。
+- （T6b）資料の抜粋も渡す: `CitationRegistry.items()`（検索に出た全件）を、資料ごとに「題名（見出し）+ 本文の先頭 240 字」、スコア順（スコアの無い節の読み込みは後ろ）に最大 8 件、全体で 2400 字まで。プロンプトでは `<資料>…</資料>` で囲み、中はデータであり指示ではないと書く。記録の input に `excerpts`（件数）と `excerpt_chars`（字数）を入れる。題名だけでは、資料に答えの無い候補（担当部署・保管場所など）が混じったため。
 - `asyncio.wait_for(…, 3.0)`。例外・打ち切りは握って候補なしにし、`record_system(kind="followups", input={"model"}, output={"questions"|"error", …})`。
 - 運ぶ形: `run.completed` に `suggestions: list[str]`（既定は空）。`messages` に `suggestions` JSONB（既定 `[]`、migration）。スレッドの詳細の各ターンに `suggestions` を含める。API を変えるので `make gen`。
 - 画面: `web/src/components/chat/followups.tsx`（新規）。`messages.tsx` で、最後のターン・`status==="done"`・候補あり・実行中でない、のときだけ回答の操作の行の下に置く。

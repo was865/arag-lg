@@ -46,6 +46,10 @@ class CitationRegistry:
     def numbers(self) -> list[int]:
         return list(self._items)
 
+    def items(self) -> list[Cited]:
+        """登録順の全資料（引用しなかったものも含む）。"""
+        return list(self._items.values())
+
     def _add(self, key: str, make: Any) -> int:
         if key in self._by_key:
             return self._by_key[key]

@@ -388,9 +388,10 @@ async def test_followups_are_made_after_the_answer_and_saved(
     assert types.index("answer.delta") < evs.index(next(e for e in evs if e.get("step") == step))
     assert step["output"]["questions"] == done["suggestions"] and "ms" in step["output"]
     assert "model" in step["input"]
-    # 渡すのは質問・回答・引用した資料の題名だけ
+    # 検索に出た資料の抜粋を <資料> で囲んで渡し、件数と字数を記録する（T6b）
     human = utility.calls[-1][-1].text
-    assert "規程.pdf" in human and "MX-17 は即時停止を推奨する" not in human
+    assert "規程.pdf" in human and "<資料>" in human and "MX-17 は即時停止を推奨する" in human
+    assert step["input"]["excerpts"] >= 1 and step["input"]["excerpt_chars"] > 0
     async with sessionmaker() as s:
         msg = await s.get(Message, run.message_id)
         assert msg is not None and msg.suggestions == done["suggestions"]

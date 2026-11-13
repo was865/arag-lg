@@ -9,6 +9,7 @@
 - [x] T4 `run.completed` と `messages.suggestions`（migration）・スレッドの詳細に含める・`make gen`
 - [x] T5 画面: `followups.tsx`・`Turn.suggestions`・最後のターンだけ出す・押すと送る・`systemKinds.followups` の表示（R6）。vitest
 - [x] T6 実際の Gemma で 3 つの質問（表の集計・版の比較・英語）を流し、候補の質と言語、かかった時間を報告する
+- [x] T6b 候補を資料で答えられる質問だけにする（R2a）: 検索に出た資料の抜粋を渡し、件数と字数を記録する。実際の Gemma で 3 題を流して確かめる
 
 ## B. 回答の下の操作・表の集計
 - [ ] T7 footer を 5 つにし、「その他」に保存 2 つと時間・トークンを入れる。「出典 n 件」の札を外す（R8・R9）。使わなくなった props・文言・テストを消す

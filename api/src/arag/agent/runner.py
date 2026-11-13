@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_numbers, finalize_citations
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
-from arag.agent.followups import Followups, suggest
+from arag.agent.followups import Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
 from arag.agent.query_image import with_image_description
@@ -317,8 +317,9 @@ async def _followups(
     model = models.utility or models.model
     label = models.utility_label if models.utility else (models.label or models.id)
     titles = [s["title"] for s in src.get("sources", [])]
+    docs = excerpts(ctx.registry.items())
     try:
-        out = await suggest(model, question, answer, titles)
+        out = await suggest(model, question, answer, titles, docs)
     except asyncio.CancelledError:
         # 本文を流し終えた後の取消は、回答をそのまま保存し、候補だけ諦める
         task = asyncio.current_task()
@@ -341,7 +342,12 @@ async def _followups(
         "followups",
         "続けて聞く質問の作成",
         summary,
-        input={"model": label, "titles": titles},
+        input={
+            "model": label,
+            "titles": titles,
+            "excerpts": len(docs),
+            "excerpt_chars": sum(len(d) for d in docs),
+        },
         output=output,
     )
     for ev in events:

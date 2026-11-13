@@ -8,12 +8,14 @@ import asyncio
 import json
 import re
 import time
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from arag.agent.citations import Cited
 from arag.agent.thinking import split_thinking
 from arag.prompts import load_prompt
 
@@ -21,6 +23,10 @@ MAX_QUESTIONS = 3
 MAX_CHARS = 40
 ANSWER_CHARS = 1500
 TIMEOUT_SEC = 3.0
+# 検索に出た資料の抜粋（T6b）: 1 件の本文の先頭・件数・全体の字数の上限
+EXCERPT_CHARS = 240
+EXCERPT_MAX = 8
+EXCERPT_TOTAL = 2400
 
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
 _MARK = re.compile(r"\[\d+\]")
@@ -64,10 +70,44 @@ def parse(text: str, question: str) -> tuple[list[str], str]:
     return out, ""
 
 
-def _message(question: str, answer: str, titles: list[str]) -> str:
+def excerpts(items: Iterable[Cited]) -> list[str]:
+    """検索に出た資料（引用しなかったものも含む）を「題名（見出し）+ 本文の先頭」にする。
+
+    スコアの高い順（スコアの無い、節をまるごと読んだものは後ろ）に最大 EXCERPT_MAX 件、
+    全体で EXCERPT_TOTAL 字まで。
+    """
+    ranked = sorted(items, key=lambda c: (c.score is None, -(c.score or 0.0), c.n))
+    out: list[str] = []
+    total = 0
+    for c in ranked[:EXCERPT_MAX]:
+        head = f"{c.document_name}（{c.heading_path}）" if c.heading_path else c.document_name
+        block = f"{head}\n{' '.join(c.text.split())[:EXCERPT_CHARS]}"
+        if total + len(block) > EXCERPT_TOTAL:
+            block = block[: EXCERPT_TOTAL - total]
+        if not block.strip():
+            break
+        out.append(block)
+        total += len(block)
+    return out
+
+
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uff00-\uffef]")
+
+
+def language(question: str) -> str:
+    """候補を書く言語。かな・漢字が無ければ英語（抜粋が日本語でも質問の言語に合わせる）。"""
+    return "日本語" if _CJK.search(question) else "English（英語）"
+
+
+def _message(question: str, answer: str, titles: list[str], docs: Sequence[str]) -> str:
     body = _MARK.sub("", answer).strip()[:ANSWER_CHARS]
-    docs = "\n".join(f"- {t}" for t in titles) or "（なし）"
-    return f"質問:\n{question.strip()}\n\n回答:\n{body}\n\n引用した資料の題名:\n{docs}"
+    names = "\n".join(f"- {t}" for t in titles) or "（なし）"
+    found = "\n\n".join(docs) or "（なし）"
+    return (
+        f"質問:\n{question.strip()}\n\n回答:\n{body}\n\n引用した資料の題名:\n{names}\n\n"
+        f"検索に出た資料の抜粋:\n<資料>\n{found}\n</資料>\n\n"
+        f"候補を書く言語: {language(question)}"
+    )
 
 
 async def suggest(
@@ -75,16 +115,20 @@ async def suggest(
     question: str,
     answer: str,
     titles: list[str],
+    docs: Sequence[str] = (),
     *,
     limit_sec: float = TIMEOUT_SEC,
 ) -> Followups:
-    """質問・回答・引用した資料の題名から候補を作る。資料の本文は渡さない（指示の混入を避ける）。"""
+    """質問・回答・引用した資料の題名・検索に出た資料の抜粋から候補を作る（抜粋はデータとして囲む）。"""
     t0 = time.monotonic()
 
     def ms() -> int:
         return round((time.monotonic() - t0) * 1000)
 
-    msgs = [SystemMessage(load_prompt("agent_followups")), HumanMessage(_message(question, answer, titles))]
+    msgs = [
+        SystemMessage(load_prompt("agent_followups")),
+        HumanMessage(_message(question, answer, titles, docs)),
+    ]
     try:
         out = await asyncio.wait_for(model.ainvoke(msgs), timeout=limit_sec)
     except TimeoutError:
