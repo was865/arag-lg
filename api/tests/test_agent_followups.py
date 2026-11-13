@@ -110,3 +110,41 @@ async def test_suggest_names_the_language_of_the_question() -> None:
     await suggest(model, "生産台数は？", "1,284 台です。", [], [])
     assert "English" in model.calls[0][1].text
     assert "日本語" in model.calls[1][1].text and "English" not in model.calls[1][1].text
+
+
+def test_drop_known_drops_repeats_and_already_answered() -> None:
+    from arag.agent.followups import drop_known
+
+    history = [
+        ("在庫が発注点を下回っている部品はどれですか？", "SK-300 と 6309ZZ です。在庫は 6 個と 9 個。")
+    ]
+    question = "SK-300 の仕入先はどこですか？"
+    answer = "シールキット SK-300（部品番号: P-1042）の仕入先は Aster Seals Ltd. です。"
+    kept, dropped = drop_known(
+        [
+            "在庫が発注点を下回っている部品はどれですか",  # 前の質問と同じ（句読点の違いは見ない）
+            "SK-300の部品番号は？",  # 語（SK-300・部品番号）がすべて今の回答にある
+            "SK-300の在庫数は？",  # 「在庫数」→「在庫」で前の回答に当たる
+            "SK-300 のリードタイムは？",  # 「リードタイム」はまだ出ていない
+            "それは何ですか？",  # 内容の語が無いものは落とさない
+        ],
+        question,
+        answer,
+        history,
+    )
+    assert kept == ["SK-300 のリードタイムは？", "それは何ですか？"]
+    reasons = {d["question"]: d["reason"] for d in dropped}
+    assert "これまでの質問と同じ" in reasons["在庫が発注点を下回っている部品はどれですか"]
+    assert "会話に出ている" in reasons["SK-300の部品番号は？"]
+    assert "SK-300の在庫数は？" in reasons
+
+
+async def test_suggest_passes_recent_turns_and_records_dropped() -> None:
+    reply = AIMessage(content='{"questions": ["P-1042 の部品番号は？", "SK-300 のリードタイムは？"]}')
+    model = FakeToolModel(messages=script(reply))
+    history = [("前の質問です", "x" * 1000)]
+    out = await suggest(model, "SK-300 は？", "SK-300 の部品番号は P-1042 です。", [], [], history=history)
+    human = model.calls[0][1].text
+    assert "前の質問です" in human and "x" * 600 in human and "x" * 601 not in human
+    assert out.questions == ("SK-300 のリードタイムは？",)
+    assert out.dropped and out.dropped[0]["question"] == "P-1042 の部品番号は？"

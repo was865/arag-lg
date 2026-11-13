@@ -42,3 +42,17 @@ describe("問題を報告（specs/028 R11・R12）", () => {
     expect(canReport({ ...newTurn("q"), status: "cancelled" })).toBe(false);
   });
 });
+
+describe("報告の送信が 404 のとき（specs/028 R12a）", () => {
+  it("保存されていないと伝え、そのターンでは以後出さない", async () => {
+    const { ApiError } = await import("@/lib/chat/api");
+    const { isUnsavedMessage } = await import("@/components/chat/answer-footer");
+    expect(isUnsavedMessage(new ApiError(404, "not_found", "見つかりません"))).toBe(true);
+    expect(isUnsavedMessage(new ApiError(500, "x", "失敗"))).toBe(false);
+    expect(isUnsavedMessage(new Error("x"))).toBe(false);
+    expect(ja.feedback.feedbackUnsaved).toBe("この回答は保存されていないため、報告できません。");
+    const t = { ...newTurn("q", { messageId: "m" }), status: "error" as const };
+    expect(canReport(t)).toBe(true);
+    expect(canReport({ ...t, unsaved: true })).toBe(false);
+  });
+});

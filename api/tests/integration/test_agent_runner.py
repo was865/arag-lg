@@ -441,3 +441,33 @@ async def test_no_followups_for_chat(sessionmaker: async_sessionmaker[AsyncSessi
     await execute_run(deps, run.id)
     evs = await events(redis, run.id)
     assert evs[-1]["suggestions"] == [] and not followup_steps(evs)
+
+
+async def test_followups_see_previous_turns_and_record_dropped(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    """前のターンの質問と回答を渡し、会話で既に出たことを尋ねる候補を落として記録する（R2b・T15）。"""
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="在庫は 6 個です[1]。"), AIMessage(content="仕入先は S-07 です[1]。")
+        )
+    )
+    understand = AIMessage(content='{"kind": "docs", "queries": ["SK-300"], "table": false}')
+    utility = prompt_script(
+        agent_understand=[understand, understand],
+        agent_followups=[
+            AIMessage(content='{"questions": ["SK-300 の単価は？"]}'),
+            AIMessage(content='{"questions": ["SK-300 の在庫数は？", "SK-300 のリードタイムは？"]}'),
+        ],
+    )
+    deps = with_utility(make_deps(sessionmaker, redis, model), model, utility)
+    th, run1 = await start(sessionmaker, "SK-300 の在庫は？")
+    assert await execute_run(deps, run1.id) == "completed"
+    _th, run2 = await start(sessionmaker, "SK-300 の仕入先は？", th)
+    assert await execute_run(deps, run2.id) == "completed"
+    evs = await events(redis, run2.id)
+    assert evs[-1]["suggestions"] == ["SK-300 のリードタイムは？"]
+    [step] = followup_steps(evs)
+    assert step["output"]["dropped"][0]["question"] == "SK-300 の在庫数は？"
+    human = utility.calls[-1][-1].text
+    assert "SK-300 の在庫は？" in human and "在庫は 6 個です" in human

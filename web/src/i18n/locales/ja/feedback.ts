@@ -30,6 +30,7 @@ export const feedback = {
   feedbackSent: "フィードバックを送信しました",
   feedbackImprovement: "改善要望を受け付けました",
   feedbackFailed: "フィードバックの送信に失敗しました",
+  feedbackUnsaved: "この回答は保存されていないため、報告できません。",
 
   // workspace.tsx — scope
   scopeChanged: "検索範囲: {label}",

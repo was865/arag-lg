@@ -8,6 +8,7 @@ import asyncio
 import json
 import re
 import time
+import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -27,6 +28,9 @@ TIMEOUT_SEC = 3.0
 EXCERPT_CHARS = 240
 EXCERPT_MAX = 8
 EXCERPT_TOTAL = 2400
+# 直近のターン（T15）: 前の何ターンを渡すか・各回答の先頭の字数
+HISTORY_TURNS = 3
+HISTORY_ANSWER_CHARS = 600
 
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
 _MARK = re.compile(r"\[\d+\]")
@@ -43,6 +47,8 @@ class Followups:
     error: str = ""
     ms: int = 0
     raw: str = ""
+    # 会話で既に出たとして落とした候補と理由（T15）
+    dropped: tuple[dict[str, str], ...] = ()
 
 
 def parse(text: str, question: str) -> tuple[list[str], str]:
@@ -91,6 +97,50 @@ def excerpts(items: Iterable[Cited]) -> list[str]:
     return out
 
 
+# 内容の語: 漢字・カタカナ・英数字と - の連なり（2 字以上）
+_WORD = re.compile(r"[\u4e00-\u9fff々〆ヶ\u30a1-\u30faー0-9A-Za-z-]{2,}")
+_SUFFIX = ("数", "名", "先", "額")
+_PUNCT = re.compile(r"[\s\W_]+")
+
+
+def _norm(text: str) -> str:
+    return unicodedata.normalize("NFKC", text).casefold()
+
+
+def _same_key(text: str) -> str:
+    """同じ文かを見るための形（NFKC・空白と句読点を除く）。"""
+    return _PUNCT.sub("", _norm(text))
+
+
+def drop_known(
+    questions: list[str], question: str, answer: str, history: Sequence[tuple[str, str]]
+) -> tuple[list[str], list[dict[str, str]]]:
+    """会話で既に出たことを尋ねる候補を落とす（R2b）。
+
+    ① これまでの質問（今の質問を含む）と同じ文。
+    ② 内容の語がすべて、今のターンと前のターンの質問と回答に含まれる
+    （3 字以上で末尾が「数・名・先・額」の語は、その 1 字を除いた形でも照合）。語が無い候補は落とさない。
+    """
+    asked = {_same_key(q) for q, _ in history} | {_same_key(question)}
+    seen = _norm("\n".join([question, answer, *(f"{q}\n{a}" for q, a in history)]))
+    kept: list[str] = []
+    dropped: list[dict[str, str]] = []
+    for q in questions:
+        if _same_key(q) in asked:
+            dropped.append({"question": q, "reason": "これまでの質問と同じ"})
+            continue
+        words = _WORD.findall(_norm(q))
+
+        def known(w: str) -> bool:
+            return w in seen or (len(w) >= 3 and w.endswith(_SUFFIX) and w[:-1] in seen)
+
+        if words and all(known(w) for w in words):
+            dropped.append({"question": q, "reason": f"語がすべて会話に出ている（{'・'.join(words)}）"})
+            continue
+        kept.append(q)
+    return kept, dropped
+
+
 _CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uff00-\uffef]")
 
 
@@ -99,11 +149,22 @@ def language(question: str) -> str:
     return "日本語" if _CJK.search(question) else "English（英語）"
 
 
-def _message(question: str, answer: str, titles: list[str], docs: Sequence[str]) -> str:
+def _message(
+    question: str,
+    answer: str,
+    titles: list[str],
+    docs: Sequence[str],
+    history: Sequence[tuple[str, str]] = (),
+) -> str:
     body = _MARK.sub("", answer).strip()[:ANSWER_CHARS]
+    past = "\n\n".join(
+        f"質問: {q.strip()}\n回答: {_MARK.sub('', a).strip()[:HISTORY_ANSWER_CHARS]}"
+        for q, a in history[-HISTORY_TURNS:]
+    )
     names = "\n".join(f"- {t}" for t in titles) or "（なし）"
     found = "\n\n".join(docs) or "（なし）"
     return (
+        f"これまでの会話（古い順）:\n{past or '（なし）'}\n\n"
         f"質問:\n{question.strip()}\n\n回答:\n{body}\n\n引用した資料の題名:\n{names}\n\n"
         f"検索に出た資料の抜粋:\n<資料>\n{found}\n</資料>\n\n"
         f"候補を書く言語: {language(question)}"
@@ -117,6 +178,7 @@ async def suggest(
     titles: list[str],
     docs: Sequence[str] = (),
     *,
+    history: Sequence[tuple[str, str]] = (),
     limit_sec: float = TIMEOUT_SEC,
 ) -> Followups:
     """質問・回答・引用した資料の題名・検索に出た資料の抜粋から候補を作る（抜粋はデータとして囲む）。"""
@@ -127,7 +189,7 @@ async def suggest(
 
     msgs = [
         SystemMessage(load_prompt("agent_followups")),
-        HumanMessage(_message(question, answer, titles, docs)),
+        HumanMessage(_message(question, answer, titles, docs, history)),
     ]
     try:
         out = await asyncio.wait_for(model.ainvoke(msgs), timeout=limit_sec)
@@ -137,4 +199,5 @@ async def suggest(
         return Followups(error=f"{type(e).__name__}: {e}"[:200], ms=ms())
     text = str(out.text) if hasattr(out, "text") else str(out)
     questions, error = parse(text, question)
-    return Followups(questions=tuple(questions), error=error, ms=ms(), raw=text[:1000])
+    kept, dropped = drop_known(questions, question, answer, history[-HISTORY_TURNS:])
+    return Followups(questions=tuple(kept), error=error, ms=ms(), raw=text[:1000], dropped=tuple(dropped))

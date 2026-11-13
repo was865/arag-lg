@@ -6,6 +6,7 @@
  *   （生成中の run の購読を保つため）。再読み込みすると active-run から続きを表示する。
  * - 文書の管理画面・設定・認証は P4 で移植する。
  */
+import { isUnsavedMessage } from "@/components/chat/answer-footer";
 import { TranscriptSkeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -175,7 +176,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     }
   }, []);
 
-  const { convs, load, send, cancel, setFeedback, forget } = useConversations({
+  const { convs, load, send, cancel, setFeedback, markUnsaved, forget } = useConversations({
     onRunEnd: () => void refreshThreads(),
     onThreadCreated: (id) => {
       setActiveId((cur) => (cur === null ? id : cur));
@@ -488,9 +489,12 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     try {
       await chatApi.feedback(turn.messageId, { rating: fb.rating, reason_tags: fb.reasonTags, comment: fb.comment });
       push(fb.rating === "down" ? t.feedback.feedbackImprovement : t.feedback.feedbackSent, "success");
-    } catch {
+    } catch (e) {
       setFeedback(activeId, idx, prev);
-      push(t.feedback.feedbackFailed, "error");
+      if (isUnsavedMessage(e)) {
+        markUnsaved(activeId, idx);
+        push(t.feedback.feedbackUnsaved, "error");
+      } else push(t.feedback.feedbackFailed, "error");
     }
   };
   const onFeedbackToggle = (v: FeedbackRating, idx: number) => {

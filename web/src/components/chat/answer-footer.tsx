@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { IconButton, Button } from "@/components/ui/button";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import type { Turn } from "@/lib/types";
+import { ApiError } from "@/lib/chat/api";
 import { useT } from "@/i18n/context";
 import { FeedbackPopover } from "@/components/chat/feedback-popover";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -108,7 +109,12 @@ export function AnswerFooter({ tokens, durationMs, onCopy, onDownload, onDownloa
 
 /** 報告できるターンか（保存したメッセージがある）。受付前の取消・runner_lost の失敗では出さない。 */
 export function canReport(turn: Turn): boolean {
-  return Boolean(turn.messageId);
+  return Boolean(turn.messageId) && !turn.unsaved;
+}
+
+/** 報告の送信の失敗が「メッセージが保存されていない」（404）か。 */
+export function isUnsavedMessage(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 404;
 }
 
 /**

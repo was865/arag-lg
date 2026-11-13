@@ -73,5 +73,12 @@ describe("followups の記録の表示", () => {
       <SystemFields data={{ kind: "followups", model: "gemma4-12b", titles: ["規程.pdf"], ms: 812, questions: ["次は？"] }} t={ja} />,
     );
     for (const label of ["モデル", "引用した資料", "かかった時間（ms）", "候補"]) expect(html).toContain(label);
+    // 落とした候補は「候補（理由）」で読めるようにする（T15）
+    const dropped = render(
+      <SystemFields data={{ kind: "followups", history_turns: 2, dropped: [{ question: "在庫数は？", reason: "これまでの質問と同じ" }] }} t={ja} />,
+    );
+    expect(dropped).toContain("落とした候補");
+    expect(dropped).toContain("在庫数は？（これまでの質問と同じ）");
+    expect(dropped).toContain("渡した前のターンの数");
   });
 });

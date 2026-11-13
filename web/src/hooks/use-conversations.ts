@@ -170,6 +170,13 @@ export function useConversations({ onRunEnd, onThreadCreated }: Options = {}) {
     [update],
   );
 
+  // 報告の送信が 404 のターン（保存されていない）。「問題を報告」を以後出さない
+  const markUnsaved = useCallback(
+    (threadId: string, idx: number) =>
+      update(threadId, (c) => ({ ...c, turns: c.turns.map((t, i) => (i === idx ? { ...t, unsaved: true } : t)) })),
+    [update],
+  );
+
   const forget = useCallback((threadId: string) => {
     setConvs((all) => {
       const next = { ...all };
@@ -186,5 +193,5 @@ export function useConversations({ onRunEnd, onThreadCreated }: Options = {}) {
     };
   }, []);
 
-  return { convs, load, send, cancel, setFeedback, forget };
+  return { convs, load, send, cancel, setFeedback, markUnsaved, forget };
 }

@@ -325,6 +325,10 @@ export function systemFieldValue(v: unknown): string {
         const d = x as { value: unknown; op?: unknown; from: unknown[] };
         return `${String(d.value)} = ${d.from.map(String).join(d.op === "diff" ? " − " : " + ")}`;
       }
+      if (x && typeof x === "object" && "question" in x && "reason" in x) {
+        const d = x as { question: unknown; reason: unknown };
+        return `${String(d.question)}（${String(d.reason)}）`;
+      }
       return String(x);
     })
     .join(", ");

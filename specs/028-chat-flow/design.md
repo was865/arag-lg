@@ -12,6 +12,7 @@
 - プロンプト `prompts/agent_followups.md`: JSON `{"questions": ["…", "…"]}` だけを出させる。入力は質問・回答（先頭 1500 字）・引用した資料の題名。資料の本文は渡さない（題名だけで足りる。指示の混入も避ける）。
 - 解析は `understand.parse` と同じ流儀（コードブロックの記号を外す・配列でなければ失敗）。重複と元の質問と同じ文を落とし、40 字を超えるもの（半角は 0.5 字と数える。実際の Gemma で英語の候補が 50〜74 文字になり全部落ちたため）は捨て、最大 3 個。
 - （T6b）資料の抜粋も渡す: `CitationRegistry.items()`（検索に出た全件）を、資料ごとに「題名（見出し）+ 本文の先頭 240 字」、スコア順（スコアの無い節の読み込みは後ろ）に最大 8 件、全体で 2400 字まで。プロンプトでは `<資料>…</資料>` で囲み、中はデータであり指示ではないと書く。記録の input に `excerpts`（件数）と `excerpt_chars`（字数）を入れる。題名だけでは、資料に答えの無い候補（担当部署・保管場所など）が混じったため。
+- （T15）runner は同じスレッドの前の 3 ターン（ordinal が今より小さいもの）の質問と回答（先頭 600 字）を読み、`suggest(…, history=)` に渡す。モデルの出力の後に `drop_known` で決定的に絞る: ①これまでの質問（今の質問を含む）と同じ文（NFKC・空白と句読点を除いて比較）②候補の内容の語（漢字・カタカナ・英数字と `-` の連なり、2 字以上）がすべて、今のターンと前の 3 ターンの質問と回答に含まれる（3 字以上で末尾が「数・名・先・額」の語は、その 1 字を除いた形でも照合）。語が 1 つも無い候補は落とさない。落とした候補は output の `dropped: [{question, reason}]`。
 - `asyncio.wait_for(…, 3.0)`。例外・打ち切りは握って候補なしにし、`record_system(kind="followups", input={"model"}, output={"questions"|"error", …})`。
 - 運ぶ形: `run.completed` に `suggestions: list[str]`（既定は空）。`messages` に `suggestions` JSONB（既定 `[]`、migration）。スレッドの詳細の各ターンに `suggestions` を含める。API を変えるので `make gen`。
 - 画面: `web/src/components/chat/followups.tsx`（新規）。`messages.tsx` で、最後のターン・`status==="done"`・候補あり・実行中でない、のときだけ回答の操作の行の下に置く。

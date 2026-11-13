@@ -209,6 +209,8 @@ export const chat = {
     titles: "引用した資料",
     excerpts: "渡した抜粋の件数",
     excerpt_chars: "渡した抜粋の字数",
+    history_turns: "渡した前のターンの数",
+    dropped: "落とした候補",
     ms: "かかった時間（ms）",
     questions: "候補",
     error: "失敗の理由",

@@ -19,13 +19,13 @@ from typing import Any, Protocol
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from redis.asyncio import Redis
-from sqlalchemy import text, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_numbers, finalize_citations
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
-from arag.agent.followups import Followups, excerpts, suggest
+from arag.agent.followups import HISTORY_TURNS, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
 from arag.agent.query_image import with_image_description
@@ -261,7 +261,8 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     chat = ctx.primer is not None and ctx.primer.kind == "chat"
     if status == "completed" and reason is None and not chat and deps.followups and models is not None:
         # 回答の本文は流し終えている。候補は 3 秒までで、だめなら候補なし（回答は遅らせない・失敗させない）
-        suggestions = await _followups(sink, turn, models, ctx, req["query"], answer, src)
+        history = await _recent_turns(deps, thread_id, int(req["ordinal"]))
+        suggestions = await _followups(sink, turn, models, ctx, req["query"], answer, src, history)
     await asyncio.shield(
         _persist(
             deps,
@@ -304,6 +305,20 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     return status
 
 
+async def _recent_turns(deps: RunnerDeps, thread_id: uuid.UUID, ordinal: int) -> list[tuple[str, str]]:
+    """このターンより前の直近のターンの質問と回答（古い順。続けて聞く候補が会話で既に出たことを避けるため）。"""
+    async with deps.sessionmaker() as s:
+        rows = (
+            await s.execute(
+                select(Message.query, Message.answer_text)
+                .where(Message.thread_id == thread_id, Message.ordinal < ordinal)
+                .order_by(Message.ordinal.desc())
+                .limit(HISTORY_TURNS)
+            )
+        ).all()
+    return [(q, a) for q, a in reversed(rows)]
+
+
 async def _followups(
     sink: EventSink,
     turn: _Turn,
@@ -312,6 +327,7 @@ async def _followups(
     question: str,
     answer: str,
     src: dict[str, Any],
+    history: list[tuple[str, str]] | None = None,
 ) -> list[str]:
     """続けて聞く質問の候補を作り、作ったこと（モデル・時間・結果か失敗の理由）を記録に残す（R4・R5）。"""
     model = models.utility or models.model
@@ -319,7 +335,7 @@ async def _followups(
     titles = [s["title"] for s in src.get("sources", [])]
     docs = excerpts(ctx.registry.items())
     try:
-        out = await suggest(model, question, answer, titles, docs)
+        out = await suggest(model, question, answer, titles, docs, history=history or [])
     except asyncio.CancelledError:
         # 本文を流し終えた後の取消は、回答をそのまま保存し、候補だけ諦める
         task = asyncio.current_task()
@@ -327,6 +343,8 @@ async def _followups(
             task.uncancel()
         out = Followups(error="取り消された")
     output: dict[str, Any] = {"ms": out.ms}
+    if out.dropped:
+        output["dropped"] = list(out.dropped)
     if out.questions:
         output["questions"] = list(out.questions)
         summary = f"{len(out.questions)} 個の候補を作った（{out.ms} ms）"
@@ -347,6 +365,7 @@ async def _followups(
             "titles": titles,
             "excerpts": len(docs),
             "excerpt_chars": sum(len(d) for d in docs),
+            "history_turns": len(history or []),
         },
         output=output,
     )
