@@ -11,7 +11,7 @@ Claude 専用の補足は `CLAUDE.md`、運用の手順は `docs/operations.md`�
 | `api/` | Python（FastAPI + LangChain/LangGraph、uv）。`src/arag/` の主な区分: `agent/`（エージェント・middleware・runner）、`search/`（Qdrant の混合検索 + rerank）、`ingest/`（Docling → 分块 → 文脈付与 → 索引、worker）、`eval/`（評価 CLI）、`prompts/`、`auth/`、`kb/` |
 | `web/` | Next.js 16（画面 + Better Auth、pnpm）。`src/components/chat/` が会話、`src/i18n/locales/ja/` が文言 |
 | `specs/` | 仕様（SDD）。一覧は `specs/README.md`、全体像（機能・画面・API・データモデル・採否・ライセンス台帳）は `000-overview/` |
-| `docs/architecture.html` | 今の構成図。`docs/operations.md` は運用手順。`docs/handoff.md` は着手時（2026-11-08）の計画で、歴史的な資料 |
+| `docs/architecture.html` | 今の構成図。回答の流れは `docs/agent-graph.md`（`make graph` がコードから書き出す。手で直さない）。`docs/operations.md` は運用手順。`docs/handoff.md` は着手時（2026-11-08）の計画で、歴史的な資料 |
 | `eval/` | 評価の題と資料（`suites/`・`assets/`）、比較する構成（`variants.yaml`） |
 | `compose.yaml` / `compose.gpu.yaml` | 開発機（Mac）の全体 / GPU 機（Windows + RTX 4090）の推論 |
 
@@ -35,6 +35,7 @@ make setup          # 依存の導入（api: uv、web: pnpm）
 make test           # api の pytest・scripts・web の vitest
 make lint           # ruff・mypy・eslint・tsc
 make gen            # API を変えたら: OpenAPI → web の TS 型（CI の gen-check が一致を確かめる）
+make graph          # 回答の流れ（api/src/arag/agent/flow.py）を変えたら: 図と画面用の JSON を書き出す（CI の graph-check）
 make licenses       # 本番依存のライセンス走査
 make up-infra       # postgres・qdrant・redis だけ
 make up / make down # 全体を compose で
