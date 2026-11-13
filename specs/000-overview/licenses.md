@@ -6,6 +6,7 @@
 |---|---|---|---|---|---|
 | langchain / langchain-core | Python | 1.4.9 / 1.7.6 | MIT | 2026-11-08 | https://pypi.org/project/langchain/ |
 | langgraph / langgraph-checkpoint-postgres | Python | 1.2.20 / 3.2.0 | MIT | 2026-11-08 | https://pypi.org/project/langgraph/ |
+| langgraph-prebuilt / langgraph-checkpoint / langgraph-sdk（langgraph の依存。029 で再確認） | Python | 1.1.1 / 4.3.1 / 0.4.14 | MIT（METADATA の License-Expression・同梱の LICENSE） | 2026-11-14 | https://pypi.org/project/langgraph-prebuilt/ |
 | langchain-openai / -anthropic / -deepseek | Python | 1.7.4 / 1.7.10 / 1.1.1 | MIT | 2026-11-08 | https://pypi.org/project/langchain-openai/ |
 | qdrant-client | Python | 1.20.0 | Apache-2.0 | 2026-11-08 | https://pypi.org/project/qdrant-client/ |
 | docling / docling-core | Python | 2.148.0 / 2.106.0 | MIT | 2026-11-08 | https://github.com/docling-project/docling |
@@ -81,6 +82,7 @@
 | コンポーネント | ライセンス | 理由 | 確認日 |
 |---|---|---|---|
 | LangGraph Agent Server | ELv2 + ライセンスキー | 本番自己ホストにキーが必要 | 2026-11-08 |
+| langgraph-api 0.18.0 / langgraph-runtime-inmem 0.38.0（`langgraph dev`・Studio の土台） | Elastic-2.0（PyPI の license 欄） | ELv2。`langgraph-api` は `langsmith[otel]` に依存する。`langgraph-cli` 0.4.43 自体は MIT だが、`dev` は `[inmem]` でこの 2 つを入れる（specs/029 T1） | 2026-11-14 |
 | MinerU 4.x | MinerU Open Source License（Apache-2.0 + 規模閾値・使用表示義務） | 表示義務が製品に及ぶ | 2026-11-08 |
 | Infinity v3 | Infinity Restricted MIT 1.0 | 特定 25 事業者上での利用禁止（配備先を制約） | 2026-11-08 |
 | MinIO | AGPL-3.0 | Langfuse 用 S3 は SeaweedFS か既存 S3 を使う | 2026-11-08 |

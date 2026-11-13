@@ -221,3 +221,21 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 - 書き換え（CRAG）は、日本語以外の質問なら日本語に訳したクエリを明示的に求める。ruri の rerank は英日の組で点が 0.0x と低く、英語のまま言い換えても上がらない。
 - 書き換え後も最高スコアが閾値未満なら、ツール結果の先頭に「関連度が低い」注意を付ける。8B は無関係な資料（例: メダルの持ち出し）を根拠に答えを組み立てた。付けた後は「見つからなかった」と答えた。
 - 資料はあるが引用の無い回答は `no_answer_reason = no_relevant_sources`（引用必須のとき）として数え、知識の欠けの分析に使う。本文はモデルの説明を残す。
+
+## 15. 回答の流れの明示のグラフと Studio（specs/029 T1、2026-11-14）
+
+パッケージのメタデータ（`uv pip show` 相当の METADATA・PyPI の JSON の license 欄・同梱の LICENSE）で確かめた。
+
+| パッケージ | 版 | ライセンス | 採否 |
+|---|---|---|---|
+| langgraph | 1.2.20 | MIT | 採用（既存） |
+| langgraph-prebuilt | 1.1.1 | MIT | 採用（既存、langchain の `create_agent` が使う） |
+| langgraph-checkpoint / -postgres | 4.3.1 / 3.2.0 | MIT | 採用（既存） |
+| langgraph-sdk | 0.4.14 | MIT | 間接の依存（既存） |
+| langgraph-cli | 0.4.43 | MIT | 入れない（`dev` は下の 2 つが要る） |
+| langgraph-api | 0.18.0 | Elastic-2.0 | 不採用。`langsmith[otel]` に依存 |
+| langgraph-runtime-inmem | 0.38.0 | Elastic-2.0 | 不採用 |
+
+- `StateGraph`・`get_graph().draw_mermaid()`・checkpoint は MIT の `langgraph` だけで使える。図と経路の表示は自前で作る（029 R5〜R9）。
+- Studio の画面が LangSmith のサイト上で動き、その接続を要するか: パッケージのメタデータからは**未確認**（`langgraph-api` が `langsmith[otel]` を依存に持つことまでは確認）。どちらにしても `langgraph-api` が ELv2 なので採らない。
+
