@@ -137,7 +137,7 @@ export function RunFlow({
                 title={n.description}
                 aria-pressed={active}
                 className={cn(
-                  "relative z-[1] inline-flex min-w-0 max-w-full flex-col items-center rounded-control border-[0.5px] px-1.5 py-0.5 text-caption leading-tight outline-none transition-colors duration-(--duration-mid) focus-visible:ring-2 focus-visible:ring-accent/50",
+                  "relative z-[1] inline-flex min-w-0 max-w-full flex-col items-center rounded-control border-[0.5px] px-1.5 py-0.5 text-caption max-sm:px-1 leading-tight outline-none transition-colors duration-(--duration-mid) focus-visible:ring-2 focus-visible:ring-accent/50",
                   n.passed ? "border-divider-strong bg-surface text-fg" : "border-dashed border-divider bg-surface-2 text-muted-2",
                   n.current && "border-accent/60 text-accent",
                   active && "ring-2 ring-accent/60",
@@ -146,11 +146,15 @@ export function RunFlow({
               >
                 <span className="inline-flex max-w-full items-center gap-1">
                   {n.current && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />}
-                  <span className="truncate">{n.label}</span>
-                  {n.visits > 1 && <span className="nums shrink-0 text-accent">×{n.visits}</span>}
+                  {/* 幅が足りないときは切らずに折り返す（「最初の / 検索」）。横スクロールはさせない */}
+                  <span className="truncate max-sm:whitespace-normal max-sm:text-center max-sm:[word-break:break-all]">{n.label}</span>
                 </span>
-                {n.passed && n.durationMs > 0 && (
-                  <span className="nums font-mono text-[10px] text-muted max-sm:hidden">{formatMs(n.durationMs)}</span>
+                {/* 2 行目: 通った回数と所要時間（幅が足りないときは回数だけ） */}
+                {(n.visits > 1 || (n.passed && n.durationMs > 0)) && (
+                  <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted">
+                    {n.visits > 1 && <span className="nums font-sans font-medium text-accent">×{n.visits}</span>}
+                    {n.passed && n.durationMs > 0 && <span className="nums max-sm:hidden">{formatMs(n.durationMs)}</span>}
+                  </span>
                 )}
               </button>
             </div>
