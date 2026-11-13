@@ -19,6 +19,7 @@ import { UserAttachments } from "@/components/uploads/uploads";
 import type { CitationStyle, StagedFile, Turn, TurnImage, ToolView } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
+import { Followups, followupsFor } from "@/components/chat/followups";
 import { dateSeparator, formatTurnTimestamp, sameLocalDay } from "@/lib/datetime";
 
 /** 質問に添えた画像の縮小表示。押すと拡大する（specs/017 R6）。 */
@@ -210,7 +211,7 @@ export function StaticAnswer({
 export function Transcript({
   turns, toolView, expandedSteps, onToggleStep, onCite, citationStyle,
   onCopy, onDownload, onDownloadHtml, onRegenerate, onOpenSources, onFeedback, onFeedbackDetail, feedback,
-  activeCiteTurn, rightPanelOpen, liveAttachments, isLiveLastTurn, onEdit,
+  activeCiteTurn, rightPanelOpen, liveAttachments, isLiveLastTurn, onEdit, onFollowup,
 }: {
   turns: Turn[];
   toolView: ToolView;
@@ -234,6 +235,8 @@ export function Transcript({
   isLiveLastTurn: boolean;
   /** 質問の編集→作り直し。未指定なら編集 UI を出さない（生成中など）。 */
   onEdit?: (turnIdx: number, text: string) => void;
+  /** 続けて聞く候補を押したとき（specs/028）。未指定（生成中など）なら候補を出さない。 */
+  onFollowup?: (text: string) => void;
 }) {
   const { t } = useT();
   const now = new Date();
@@ -324,6 +327,7 @@ export function Transcript({
                   feedbackDisabled={!turn.messageId}
                 />
               )}
+              {onFollowup && <Followups items={followupsFor(turn, isLast, running)} onSend={onFollowup} />}
             </AssistantMessage>
           </div>
         );

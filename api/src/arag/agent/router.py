@@ -157,6 +157,8 @@ class MessageOut(BaseModel):
     citation_map: dict[str, CitationRef]
     no_answer_reason: str | None
     created_at: datetime
+    # 続けて聞く質問の候補（specs/028 R1）
+    suggestions: list[str] = []
     feedback: FeedbackOut | None = None
     image: QueryImageOut | None = None
 
@@ -274,6 +276,7 @@ async def get_thread_detail(thread_id: uuid.UUID, p: CurrentPrincipal, s: Sessio
                 steps=[Step.model_validate(x) for x in m.steps],
                 sources=[SourceView.model_validate(x) for x in m.sources],
                 citation_map={k: CitationRef.model_validate(v) for k, v in m.citation_map.items()},
+                suggestions=list(m.suggestions or []),
                 no_answer_reason=m.no_answer_reason,
                 created_at=m.created_at,
                 image=_image_out(m.request),

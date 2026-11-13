@@ -25,11 +25,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from arag.agent.citations import CitationRegistry, Cited, FinalCitations, cited_numbers, finalize_citations
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext, SearchFn
+from arag.agent.followups import Followups, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
 from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
-from arag.agent.steps import Step, StepClock
+from arag.agent.steps import Step, StepClock, record_system
 from arag.agent.stream import EventSink, is_cancelled, redis_client
 from arag.agent.thinking import ThinkSplitter
 from arag.audit import AuditEvent, write_audit
@@ -66,6 +67,7 @@ class ResolvedModels:
     fallback: BaseChatModel | None = None
     label: str = ""
     fallback_label: str = ""
+    utility_label: str = ""
 
 
 @dataclass
@@ -82,6 +84,8 @@ class RunnerDeps:
     # 質問に添えた画像（specs/017）。画像の保存先と、画像を文章にする読み手（未設定なら読めない扱い）
     storage: Storage | None = None
     image_reader: ImageReader | None = None
+    # 続けて聞く質問の候補を作るか（ARAG_FOLLOWUPS、specs/028 R7）
+    followups: bool = True
 
     def agent_for(self, m: ResolvedModels) -> Any:
         if m.id not in self.agent_cache:
@@ -253,6 +257,11 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         reason = "generation_failed"
         answer = answer or NO_ANSWER_TEXT["generation_failed"]
     src = _final_sources(fin)
+    suggestions: list[str] = []
+    chat = ctx.primer is not None and ctx.primer.kind == "chat"
+    if status == "completed" and reason is None and not chat and deps.followups and models is not None:
+        # 回答の本文は流し終えている。候補は 3 秒までで、だめなら候補なし（回答は遅らせない・失敗させない）
+        suggestions = await _followups(sink, turn, models, ctx, req["query"], answer, src)
     await asyncio.shield(
         _persist(
             deps,
@@ -271,6 +280,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
             fin.items,
             ctx,
             checkpoint_id,
+            suggestions,
         )
     )
     if status == "completed":
@@ -284,6 +294,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 "duration_ms": turn.duration_ms,
                 "no_answer_reason": reason,
                 **src,
+                "suggestions": suggestions,
             }
         )
     elif status == "cancelled":
@@ -291,6 +302,52 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
     else:
         await sink.emit({"type": "run.failed", "code": code or "generation_failed", "message": answer})
     return status
+
+
+async def _followups(
+    sink: EventSink,
+    turn: _Turn,
+    models: ResolvedModels,
+    ctx: RunContext,
+    question: str,
+    answer: str,
+    src: dict[str, Any],
+) -> list[str]:
+    """続けて聞く質問の候補を作り、作ったこと（モデル・時間・結果か失敗の理由）を記録に残す（R4・R5）。"""
+    model = models.utility or models.model
+    label = models.utility_label if models.utility else (models.label or models.id)
+    titles = [s["title"] for s in src.get("sources", [])]
+    try:
+        out = await suggest(model, question, answer, titles)
+    except asyncio.CancelledError:
+        # 本文を流し終えた後の取消は、回答をそのまま保存し、候補だけ諦める
+        task = asyncio.current_task()
+        if task is not None:
+            task.uncancel()
+        out = Followups(error="取り消された")
+    output: dict[str, Any] = {"ms": out.ms}
+    if out.questions:
+        output["questions"] = list(out.questions)
+        summary = f"{len(out.questions)} 個の候補を作った（{out.ms} ms）"
+    else:
+        output["error"] = out.error or "候補が無かった"
+        if out.raw:
+            output["raw"] = out.raw
+        summary = f"候補を作れなかった（{output['error']}）"
+    events: list[dict[str, Any]] = []
+    record_system(
+        events.append,
+        "system-followups",
+        "followups",
+        "続けて聞く質問の作成",
+        summary,
+        input={"model": label, "titles": titles},
+        output=output,
+    )
+    for ev in events:
+        turn.steps[ev["step"]["id"]] = ev["step"]
+        await sink.emit(ev)
+    return list(out.questions)
 
 
 async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[str, Any]) -> str | None:
@@ -447,6 +504,7 @@ async def _persist(
     cited: dict[int, Cited],
     ctx: RunContext,
     checkpoint_id: str | None,
+    suggestions: list[str] | None = None,
 ) -> None:
     now = datetime.now(UTC)
     steps = list(turn.steps.values())
@@ -468,6 +526,7 @@ async def _persist(
                 sources=src["sources"],
                 citation_map=src["citation_map"],
                 no_answer_reason=reason,
+                suggestions=suggestions or [],
                 request={k: v for k, v in req.items() if k != "principal"},
                 checkpoint_id=checkpoint_id,
                 run_id=run_id,
@@ -706,6 +765,7 @@ async def main() -> None:
             fallback=fb.build() if fb else None,
             label=spec.label,
             fallback_label=fb.label if fb else "",
+            utility_label=settings.utility_model,
         )
 
     stop = asyncio.Event()
@@ -722,6 +782,7 @@ async def main() -> None:
             events_ttl_sec=settings.run_events_ttl_sec,
             storage=LocalStorage(settings.storage_dir),
             image_reader=build_query_image_reader(settings),
+            followups=settings.followups,
         )
         runner = Runner(
             deps,

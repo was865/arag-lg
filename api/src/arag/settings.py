@@ -94,6 +94,8 @@ class Settings(BaseSettings):
     chat_models: list[dict[str, Any]] = []
     # 書き換え・要約用（目録の id。空なら会話モデルと同じ）
     utility_model: str = ""
+    # 回答のあとに続けて聞く質問の候補を作る（specs/028 R7）
+    followups: bool = True
     # 画面で登録する API キーの暗号化鍵（Fernet。カンマ区切りで入れ替え。specs/013-llm-keys）
     secret_key: SecretStr = SecretStr("")
     # Web の中継と共有する合言葉。合うときだけ利用者の IP（X-ARag-Client-IP）を監査ログに使う

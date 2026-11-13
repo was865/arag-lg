@@ -75,6 +75,8 @@ class RunCompleted(BaseModel):
     no_answer_reason: NoAnswerReason | None = None
     citation_map: dict[str, CitationRef]
     sources: list[SourceView]
+    # 続けて聞く質問の候補（specs/028 R1。作らない・作れないときは空）
+    suggestions: list[str] = []
 
 
 class RunFailed(BaseModel):

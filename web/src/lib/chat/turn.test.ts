@@ -63,9 +63,11 @@ describe("applyEvent", () => {
         no_answer_reason: null,
         citation_map: { "1": { source_id: "d1", section_id: "x1" } },
         sources: [source],
+        suggestions: ["続きの質問は？"],
       },
     ]);
     expect(t).toMatchObject({ answer: "最終の回答[1]", tokens: 120, durationMs: 1500, status: "done", streaming: false });
+    expect(t.suggestions).toEqual(["続きの質問は？"]);
     expect(t.steps[0].status).toBe("error");
   });
 
@@ -124,17 +126,19 @@ describe("turnFromMessage", () => {
       citation_map: { "1": { source_id: "d1", section_id: "x1" } },
       no_answer_reason: null,
       created_at: "2026-11-09T00:00:00Z",
+      suggestions: ["次は？"],
       feedback: { rating: "down", reason_tags: ["wrong"], comment: null },
     });
     expect(t).toMatchObject({ status: "done", tokens: 15, messageId: "m1", streaming: false });
     expect(t.feedback).toEqual({ rating: "down", reasonTags: ["wrong"], comment: null });
     expect(t.citationMap[1].sectionId).toBe("x1");
+    expect(t.suggestions).toEqual(["次は？"]);
   });
   it("画像つきメッセージは API の画像 URL を持つ（specs/017 R6）", () => {
     const base = {
       id: "m2", ordinal: 1, query: "この図は？", answer: "", status: "completed", model_id: null,
       tokens_in: 0, tokens_out: 0, duration_ms: 0, steps: [], sources: [], citation_map: {},
-      no_answer_reason: null, created_at: "2026-11-09T00:00:00Z", feedback: null,
+      no_answer_reason: null, created_at: "2026-11-09T00:00:00Z", feedback: null, suggestions: [],
     } satisfies Omit<Parameters<typeof turnFromMessage>[0], "image">;
     const t = turnFromMessage({ ...base, image: { width: 640, height: 480, description: "棒グラフ" } }, "th1");
     expect(t.image).toEqual({ url: "/api/v1/threads/th1/messages/m2/image", width: 640, height: 480, description: "棒グラフ" });
@@ -190,6 +194,7 @@ describe("liveCitations（生成中の番号）", () => {
       no_answer_reason: null,
       sources: [],
       citation_map: { "1": { source_id: "d2", section_id: "c" }, "2": { source_id: "d1", section_id: "x1" } },
+      suggestions: [],
     });
     expect(done.answer).toBe("停止する[1]。根拠[2]");
     expect(done.rawAnswer).toBeUndefined();
@@ -231,6 +236,7 @@ describe("差し戻しのあいだの下書き（staleAnswer、specs/026 T27）"
     no_answer_reason: null,
     citation_map: {},
     sources: [],
+    suggestions: [],
   };
 
   it("reset でそれまでの回答を staleAnswer に残し、answer は空にする", () => {

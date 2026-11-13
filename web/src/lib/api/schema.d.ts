@@ -1759,6 +1759,11 @@ export interface components {
             status: string;
             /** Steps */
             steps: components["schemas"]["Step"][];
+            /**
+             * Suggestions
+             * @default []
+             */
+            suggestions: string[];
             /** Tokens In */
             tokens_in: number;
             /** Tokens Out */
@@ -1968,6 +1973,11 @@ export interface components {
             no_answer_reason: ("no_sources" | "no_relevant_sources" | "step_budget_exhausted" | "tool_failed" | "generation_failed" | "empty_generation") | null;
             /** Sources */
             sources: components["schemas"]["SourceView"][];
+            /**
+             * Suggestions
+             * @default []
+             */
+            suggestions: string[];
             /** Tokens In */
             tokens_in: number;
             /** Tokens Out */

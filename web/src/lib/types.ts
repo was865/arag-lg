@@ -148,6 +148,8 @@ export interface Turn {
   modelId?: string;
   /** 回答不能の理由（null/未定義 = 回答できた）。 */
   noAnswerReason?: string | null;
+  /** 続けて聞く質問の候補（specs/028）。最後のターンの下にだけ出す。 */
+  suggestions?: string[];
   /** 失敗したときの説明（日本語）。 */
   error?: string;
 }

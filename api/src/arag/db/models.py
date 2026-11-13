@@ -325,6 +325,10 @@ class Message(Base):
     sources: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     citation_map: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     no_answer_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 続けて聞く質問の候補（specs/028 R1）
+    suggestions: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     request: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

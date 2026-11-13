@@ -1756,6 +1756,14 @@
             "title": "Steps",
             "type": "array"
           },
+          "suggestions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
           "tokens_in": {
             "title": "Tokens In",
             "type": "integer"
@@ -2351,6 +2359,14 @@
               "$ref": "#/components/schemas/SourceView"
             },
             "title": "Sources",
+            "type": "array"
+          },
+          "suggestions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
             "type": "array"
           },
           "tokens_in": {

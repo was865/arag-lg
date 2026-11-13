@@ -388,6 +388,13 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     });
   };
 
+  /** 続けて聞く候補を押したら、その文をそのまま送る。入力欄の下書きと画像には触れない（specs/028）。 */
+  const askFollowup = (text: string) => {
+    if (running || imageBusy) return;
+    stickToBottom.current = true;
+    void send(activeId, text, { body: { ...runBody(), image: null } });
+  };
+
   /** idx のターンを作り直す（同じ質問 = 再生成、別の質問 = 編集）。 */
   const rerun = (idx: number, query?: string) => {
     if (running) {
@@ -812,6 +819,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
                     onDownloadHtml={(idx) => void downloadAnswerHtml(idx)}
                     onRegenerate={(idx) => rerun(idx)}
                     onEdit={running ? undefined : (idx, text) => rerun(idx, text)}
+                    onFollowup={running ? undefined : askFollowup}
                     onOpenSources={openSourcesForTurn}
                     onFeedback={onFeedbackToggle}
                     onFeedbackDetail={onFeedbackDetail}

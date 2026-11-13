@@ -75,6 +75,7 @@ async def _finish(
             citation_map={"1": {"source_id": "s1", "section_id": "x1"}},
             checkpoint_id=f"ckpt-{ordinal}",
             run_id=run.id,
+            suggestions=["次の質問は？"],
         )
         s.add(msg)
         await s.commit()
@@ -171,6 +172,8 @@ async def test_thread_detail_returns_messages_and_feedback(
     assert m["steps"][0]["label"] == "検索"
     assert m["citation_map"]["1"]["section_id"] == "x1"
     assert m["feedback"]["rating"] == "up"
+    # 続けて聞く質問の候補も履歴から戻せる（specs/028 R6）
+    assert m["suggestions"] == ["次の質問は？"]
     assert detail["active_run"] is None
 
 

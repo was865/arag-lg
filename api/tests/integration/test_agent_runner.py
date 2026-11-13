@@ -345,3 +345,98 @@ async def test_empty_generation_reason(sessionmaker: async_sessionmaker[AsyncSes
     done = (await events(redis, run.id))[-1]
     assert done["no_answer_reason"] == "empty_generation"
     assert done["answer"] == "回答を生成できませんでした。もう一度お試しください。"
+
+
+# ── 続けて聞く（specs/028 R1〜R7） ──
+
+
+def with_utility(deps: RunnerDeps, model: Any, utility: Any) -> RunnerDeps:
+    deps.resolve_models = lambda mid: ResolvedModels(id="fake", model=model, utility=utility)
+    return deps
+
+
+def followup_steps(evs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        e["step"]
+        for e in evs
+        if e["type"] == "step"
+        and e["step"]["name"] == "system"
+        and e["step"]["input"].get("kind") == "followups"
+    ]
+
+
+async def test_followups_are_made_after_the_answer_and_saved(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="即時停止です[1]。")))
+    utility = prompt_script(
+        agent_understand=[AIMessage(content='{"kind": "docs", "queries": ["MX-17"], "table": false}')],
+        agent_followups=[
+            AIMessage(content='{"questions": ["MX-17 の再開の手順は？", "停止の判断は誰がする？"]}')
+        ],
+    )
+    deps = with_utility(make_deps(sessionmaker, redis, model), model, utility)
+    _th, run = await start(sessionmaker, "MX-17 はどうする？")
+    assert await execute_run(deps, run.id) == "completed"
+    evs = await events(redis, run.id)
+    done = evs[-1]
+    assert done["type"] == "run.completed" and done["answer"] == "即時停止です[1]。"
+    assert done["suggestions"] == ["MX-17 の再開の手順は？", "停止の判断は誰がする？"]
+    # 本文を流し終えた後に作る
+    types = [e["type"] for e in evs]
+    [step] = followup_steps(evs)
+    assert types.index("answer.delta") < evs.index(next(e for e in evs if e.get("step") == step))
+    assert step["output"]["questions"] == done["suggestions"] and "ms" in step["output"]
+    assert "model" in step["input"]
+    # 渡すのは質問・回答・引用した資料の題名だけ
+    human = utility.calls[-1][-1].text
+    assert "規程.pdf" in human and "MX-17 は即時停止を推奨する" not in human
+    async with sessionmaker() as s:
+        msg = await s.get(Message, run.message_id)
+        assert msg is not None and msg.suggestions == done["suggestions"]
+        assert any(x.get("input", {}).get("kind") == "followups" for x in msg.steps)
+
+
+async def test_followups_failure_keeps_the_answer(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    # idle_utility は「{}」しか返さない → 形式の誤り。回答はそのまま、候補なし、理由を記録
+    model = FakeToolModel(messages=script(AIMessage(content="即時停止です[1]。")))
+    deps = make_deps(sessionmaker, redis, model)
+    _th, run = await start(sessionmaker, "MX-17 はどうする？")
+    assert await execute_run(deps, run.id) == "completed"
+    evs = await events(redis, run.id)
+    assert evs[-1]["suggestions"] == [] and evs[-1]["answer"] == "即時停止です[1]。"
+    [step] = followup_steps(evs)
+    assert step["output"]["error"]
+
+
+async def test_no_followups_for_no_answer_or_when_disabled(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
+) -> None:
+    # 回答なし（資料 0 件）では作らない
+    model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="")))
+    deps = make_deps(sessionmaker, redis, model, search=FakeSearch())
+    _th, run = await start(sessionmaker, "q")
+    await execute_run(deps, run.id)
+    evs = await events(redis, run.id)
+    assert evs[-1]["no_answer_reason"] and evs[-1]["suggestions"] == [] and not followup_steps(evs)
+    # ARAG_FOLLOWUPS=false では作らない
+    model2 = FakeToolModel(messages=script(AIMessage(content="即時停止です[1]。")))
+    deps2 = make_deps(sessionmaker, redis, model2, followups=False)
+    _th, run2 = await start(sessionmaker, "MX-17 はどうする？")
+    await execute_run(deps2, run2.id)
+    evs2 = await events(redis, run2.id)
+    assert evs2[-1]["suggestions"] == [] and not followup_steps(evs2)
+
+
+async def test_no_followups_for_chat(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="こんにちは。")))
+    utility = prompt_script(
+        agent_understand=[AIMessage(content='{"kind": "chat", "queries": [], "table": false}')],
+    )
+    deps = with_utility(make_deps(sessionmaker, redis, model), model, utility)
+    _th, run = await start(sessionmaker, "こんにちは")
+    await execute_run(deps, run.id)
+    evs = await events(redis, run.id)
+    assert evs[-1]["suggestions"] == [] and not followup_steps(evs)

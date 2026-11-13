@@ -238,6 +238,7 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         durationMs: ev.duration_ms,
         messageId: ev.message_id,
         noAnswerReason: ev.no_answer_reason ?? null,
+        suggestions: ev.suggestions ?? [],
         steps: turn.steps.map(settle),
       };
     case "run.failed":
@@ -286,6 +287,7 @@ export function turnFromMessage(m: ApiMessage, threadId?: string): Turn {
     messageId: m.id,
     modelId: m.model_id ?? undefined,
     noAnswerReason: m.no_answer_reason ?? null,
+    suggestions: m.suggestions ?? [],
     feedback: m.feedback
       ? {
           rating: m.feedback.rating,

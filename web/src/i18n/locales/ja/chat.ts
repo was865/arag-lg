@@ -20,6 +20,7 @@ export const chat = {
   storyWriting: "回答を書いています…",
   storyRevising: "確認して書き直しています…",
   staleDraft: "確認前の下書き・書き直しています",
+  followupsTitle: "続けて聞く",
   agentDone: "エージェント実行",
   /** 検索の過程の要約（specs/025 R45） */
   storySearched: "{n} 件の資料を検索",
@@ -197,6 +198,12 @@ export const chat = {
     where: "条件",
     compute: "計算式",
     table: "表の番号",
+    model: "モデル",
+    titles: "引用した資料",
+    ms: "かかった時間（ms）",
+    questions: "候補",
+    error: "失敗の理由",
+    raw: "モデルの出力",
   } as Record<string, string>,
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
