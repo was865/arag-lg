@@ -28,7 +28,6 @@ from arag.agent.context import RunContext, SearchFn
 from arag.agent.followups import HISTORY_TURNS, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
-from arag.agent.ops import best_score
 from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, StepClock, record_system
@@ -110,10 +109,15 @@ class _Turn:
         self.tokens_in = 0
         self.tokens_out = 0
         self.t0 = time.monotonic()
+        self.t1: float | None = None
+
+    def stop(self) -> None:
+        """回答を確定した時点で止める（後から作る続けて聞く候補の時間を所要時間に含めない。T24）。"""
+        self.t1 = time.monotonic()
 
     @property
     def duration_ms(self) -> int:
-        return round((time.monotonic() - self.t0) * 1000)
+        return round(((self.t1 or time.monotonic()) - self.t0) * 1000)
 
 
 def _uuids(v: list[str] | None) -> list[uuid.UUID] | None:
@@ -258,12 +262,12 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         reason = "generation_failed"
         answer = answer or NO_ANSWER_TEXT["generation_failed"]
     src = _final_sources(fin)
-    suggestions: list[str] = []
     chat = ctx.primer is not None and ctx.primer.kind == "chat"
-    if status == "completed" and reason is None and not chat and deps.followups and models is not None:
-        # 回答の本文は流し終えている。候補は 3 秒までで、だめなら候補なし（回答は遅らせない・失敗させない）
-        history = await _recent_turns(deps, thread_id, int(req["ordinal"]))
-        suggestions = await _followups(sink, turn, models, ctx, req["query"], answer, src, history)
+    # 続けて聞く候補は、完了を送って保存した後に作って届ける（回答の下の操作を遅らせない。specs/028 T24）
+    want_followups = (
+        status == "completed" and reason is None and not chat and bool(deps.followups) and models is not None
+    )
+    turn.stop()
     await asyncio.shield(
         _persist(
             deps,
@@ -282,7 +286,6 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
             fin.items,
             ctx,
             checkpoint_id,
-            suggestions,
         )
     )
     if status == "completed":
@@ -296,14 +299,57 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                 "duration_ms": turn.duration_ms,
                 "no_answer_reason": reason,
                 **src,
-                "suggestions": suggestions,
+                "suggestions": [],
+                "followups_pending": want_followups,
             }
         )
+        if want_followups and models is not None:
+            await _deliver_followups(deps, sink, turn, models, ctx, req, thread_id, message_id, answer, src)
     elif status == "cancelled":
         await sink.emit({"type": "run.cancelled", "message_id": str(message_id)})
     else:
         await sink.emit({"type": "run.failed", "code": code or "generation_failed", "message": answer})
     return status
+
+
+async def _deliver_followups(
+    deps: RunnerDeps,
+    sink: EventSink,
+    turn: _Turn,
+    models: ResolvedModels,
+    ctx: RunContext,
+    req: dict[str, Any],
+    thread_id: uuid.UUID,
+    message_id: uuid.UUID,
+    answer: str,
+    src: dict[str, Any],
+) -> None:
+    """完了の後に候補を作り、保存済みのメッセージに候補と記録のステップを足して、followups で届ける。
+
+    どの場合も最後に followups を送る（ストリームはそこで閉じる）。失敗しても回答には触れない。
+    """
+    suggestions: list[str] = []
+    try:
+        history = await _recent_turns(deps, thread_id, int(req["ordinal"]))
+        suggestions, step = await _followups(sink, turn, models, ctx, req["query"], answer, src, history)
+        await asyncio.shield(_save_followups(deps, message_id, suggestions, step))
+    except Exception:
+        log.exception("followups_failed", message_id=str(message_id))
+        suggestions = []
+    finally:
+        await sink.emit({"type": "followups", "message_id": str(message_id), "suggestions": suggestions})
+
+
+async def _save_followups(
+    deps: RunnerDeps, message_id: uuid.UUID, suggestions: list[str], step: dict[str, Any]
+) -> None:
+    """保存済みのメッセージに候補を入れ、候補の作成のステップを記録の末尾に足す（履歴・報告の詳細でも見える）。"""
+    async with deps.sessionmaker() as s, s.begin():
+        msg = await s.get(Message, message_id, with_for_update=True)
+        if msg is None:  # 待つ間に作り直された（同じターンからの再生成）
+            return
+        msg.suggestions = suggestions
+        msg.steps = [*[x for x in (msg.steps or []) if x.get("id") != step["id"]], step]
 
 
 async def _recent_turns(deps: RunnerDeps, thread_id: uuid.UUID, ordinal: int) -> list[tuple[str, str]]:
@@ -329,36 +375,25 @@ async def _followups(
     answer: str,
     src: dict[str, Any],
     history: list[tuple[str, str]] | None = None,
-) -> list[str]:
+) -> tuple[list[str], dict[str, Any]]:
     """続けて聞く質問の候補を作り、作ったこと（モデル・時間・結果か失敗の理由）を記録に残す（R4・R5）。"""
     model = models.utility or models.model
     label = models.utility_label if models.utility else (models.label or models.id)
     titles = [s["title"] for s in src.get("sources", [])]
     docs = excerpts(ctx.registry.items())
     try:
-        out = await suggest(
-            model,
-            question,
-            answer,
-            titles,
-            docs,
-            history=history or [],
-            score=lambda q: best_score(ctx, q),
-            threshold=ctx.cfg.grade_threshold,
-        )
+        out = await suggest(model, question, answer, titles, docs, history=history or [])
     except asyncio.CancelledError:
-        # 本文を流し終えた後の取消は、回答をそのまま保存し、候補だけ諦める
+        # 完了の後の取消は、回答をそのまま残し、候補だけ諦める
         task = asyncio.current_task()
         if task is not None:
             task.uncancel()
         out = Followups(error="取り消された")
     output: dict[str, Any] = {"ms": out.ms}
+    if out.evidence:
+        output["evidence"] = list(out.evidence)
     if out.dropped:
         output["dropped"] = list(out.dropped)
-    if out.scores is not None:
-        # 候補ごとの検索の最上位スコア（「関連が低い」の閾値を下回れば落とす。None は確かめられなかった）
-        output["scores"] = [{"question": q, "score": v} for q, v in out.scores.items()]
-        output["threshold"] = ctx.cfg.grade_threshold
     if out.questions:
         output["questions"] = list(out.questions)
         summary = f"{len(out.questions)} 個の候補を作った（{out.ms} ms）"
@@ -383,10 +418,12 @@ async def _followups(
         },
         output=output,
     )
+    step: dict[str, Any] = {}
     for ev in events:
-        turn.steps[ev["step"]["id"]] = ev["step"]
+        step = ev["step"]
+        turn.steps[step["id"]] = step
         await sink.emit(ev)
-    return list(out.questions)
+    return list(out.questions), step
 
 
 async def _read_image(deps: RunnerDeps, sink: EventSink, turn: _Turn, req: dict[str, Any]) -> str | None:

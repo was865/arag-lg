@@ -102,9 +102,11 @@ async def test_run_completes_and_persists(
     assert await execute_run(deps, run.id) == "completed"
     evs = await events(redis, run.id)
     types = [e["type"] for e in evs]
-    assert types[0] == "run.started" and types[-1] == "run.completed"
+    # 完了の後に続けて聞く候補（followups）が届き、そこで閉じる（specs/028 T24）
+    assert types[0] == "run.started" and types[-1] == "followups"
+    assert types.index("run.completed") < types.index("followups")
     assert "step" in types and "sources" in types and "answer.delta" in types
-    done = evs[-1]
+    done = next(e for e in evs if e["type"] == "run.completed")
     assert done["answer"] == "即時停止です[1]。" and done["no_answer_reason"] is None
     assert set(done["citation_map"]) == {"1"} and done["tokens_out"] > 0
     async with sessionmaker() as s:
@@ -270,7 +272,7 @@ async def test_citations_renumbered_in_answer_order(
     deps = make_deps(sessionmaker, redis, model, search)
     _, run = await start(sessionmaker, "MX-17 は？")
     await execute_run(deps, run.id)
-    done = (await events(redis, run.id))[-1]
+    done = next(e for e in await events(redis, run.id) if e["type"] == "run.completed")
     assert done["answer"] == "停止する[1]。点検は[2][1]。"
     by_section = {sec["id"]: sec for src in done["sources"] for sec in src["sections"]}
     assert set(done["citation_map"]) == {"1", "2"} and len(by_section) == 2
@@ -327,7 +329,7 @@ async def test_thinking_becomes_a_reasoning_step(
     evs = await events(redis, run.id)
     deltas = "".join(e["text"] for e in evs if e["type"] == "answer.delta")
     assert "think" not in deltas and "即時停止です" in deltas
-    assert evs[-1]["answer"] == "即時停止です[1]。"
+    assert next(e for e in evs if e["type"] == "run.completed")["answer"] == "即時停止です[1]。"
     async with sessionmaker() as s:
         msg = await s.get(Message, run.message_id)
         assert msg is not None and msg.answer_text == "即時停止です[1]。"
@@ -365,6 +367,12 @@ def followup_steps(evs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def fu(*pairs: tuple[str, str]) -> AIMessage:
+    return AIMessage(
+        content=json.dumps({"questions": [{"q": q, "evidence": e} for q, e in pairs]}, ensure_ascii=False)
+    )
+
+
 async def test_followups_are_made_after_the_answer_and_saved(
     sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
@@ -372,30 +380,42 @@ async def test_followups_are_made_after_the_answer_and_saved(
     utility = prompt_script(
         agent_understand=[AIMessage(content='{"kind": "docs", "queries": ["MX-17"], "table": false}')],
         agent_followups=[
-            AIMessage(content='{"questions": ["MX-17 の再開の手順は？", "停止の判断は誰がする？"]}')
+            fu(("MX-17 の推奨は何ですか？", "即時停止を推奨する"), ("停止の判断は誰がする？", "工場長が判断"))
         ],
     )
     deps = with_utility(make_deps(sessionmaker, redis, model), model, utility)
     _th, run = await start(sessionmaker, "MX-17 はどうする？")
     assert await execute_run(deps, run.id) == "completed"
     evs = await events(redis, run.id)
-    done = evs[-1]
-    assert done["type"] == "run.completed" and done["answer"] == "即時停止です[1]。"
-    assert done["suggestions"] == ["MX-17 の再開の手順は？", "停止の判断は誰がする？"]
-    # 本文を流し終えた後に作る
     types = [e["type"] for e in evs]
+    # 完了を先に送り（候補はまだ空・後から届くと示す）、その後に候補を followups で届けて閉じる（T24）
+    done = next(e for e in evs if e["type"] == "run.completed")
+    assert done["answer"] == "即時停止です[1]。" and done["suggestions"] == [] and done["followups_pending"]
+    last = evs[-1]
+    assert last["type"] == "followups" and last["message_id"] == str(run.message_id)
+    # 抜粋に根拠の無い候補（工場長が判断）は落とす（T23）
+    assert last["suggestions"] == ["MX-17 の推奨は何ですか？"]
     [step] = followup_steps(evs)
-    assert types.index("answer.delta") < evs.index(next(e for e in evs if e.get("step") == step))
-    assert step["output"]["questions"] == done["suggestions"] and "ms" in step["output"]
+    assert types.index("run.completed") < evs.index(next(e for e in evs if e.get("step") == step))
+    assert step["output"]["questions"] == last["suggestions"] and "ms" in step["output"]
+    assert step["output"]["evidence"] == [
+        {"question": "MX-17 の推奨は何ですか？", "evidence": "即時停止を推奨する"}
+    ]
+    assert step["output"]["dropped"] == [
+        {"question": "停止の判断は誰がする？", "reason": "no_evidence", "evidence": "工場長が判断"}
+    ]
     assert "model" in step["input"]
     # 検索に出た資料の抜粋を <資料> で囲んで渡し、件数と字数を記録する（T6b）
     human = utility.calls[-1][-1].text
     assert "規程.pdf" in human and "<資料>" in human and "MX-17 は即時停止を推奨する" in human
     assert step["input"]["excerpts"] >= 1 and step["input"]["excerpt_chars"] > 0
+    # 候補と、後から足したステップは保存済みのメッセージに入る（履歴の再読み込み・報告の詳細で見える）
     async with sessionmaker() as s:
         msg = await s.get(Message, run.message_id)
-        assert msg is not None and msg.suggestions == done["suggestions"]
-        assert any(x.get("input", {}).get("kind") == "followups" for x in msg.steps)
+        assert msg is not None and msg.suggestions == last["suggestions"]
+        assert [x for x in msg.steps if x.get("input", {}).get("kind") == "followups"] == [step]
+        # 所要時間に候補の時間を含めない
+        assert msg.duration_ms == done["duration_ms"]
 
 
 async def test_followups_failure_keeps_the_answer(
@@ -407,7 +427,9 @@ async def test_followups_failure_keeps_the_answer(
     _th, run = await start(sessionmaker, "MX-17 はどうする？")
     assert await execute_run(deps, run.id) == "completed"
     evs = await events(redis, run.id)
-    assert evs[-1]["suggestions"] == [] and evs[-1]["answer"] == "即時停止です[1]。"
+    done = next(e for e in evs if e["type"] == "run.completed")
+    assert done["answer"] == "即時停止です[1]。"
+    assert evs[-1]["type"] == "followups" and evs[-1]["suggestions"] == []
     [step] = followup_steps(evs)
     assert step["output"]["error"]
 
@@ -421,6 +443,7 @@ async def test_no_followups_for_no_answer_or_when_disabled(
     _th, run = await start(sessionmaker, "q")
     await execute_run(deps, run.id)
     evs = await events(redis, run.id)
+    assert evs[-1]["type"] == "run.completed" and not evs[-1]["followups_pending"]
     assert evs[-1]["no_answer_reason"] and evs[-1]["suggestions"] == [] and not followup_steps(evs)
     # ARAG_FOLLOWUPS=false では作らない
     model2 = FakeToolModel(messages=script(AIMessage(content="即時停止です[1]。")))
@@ -428,7 +451,7 @@ async def test_no_followups_for_no_answer_or_when_disabled(
     _th, run2 = await start(sessionmaker, "MX-17 はどうする？")
     await execute_run(deps2, run2.id)
     evs2 = await events(redis, run2.id)
-    assert evs2[-1]["suggestions"] == [] and not followup_steps(evs2)
+    assert evs2[-1]["type"] == "run.completed" and not followup_steps(evs2)
 
 
 async def test_no_followups_for_chat(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
@@ -440,38 +463,34 @@ async def test_no_followups_for_chat(sessionmaker: async_sessionmaker[AsyncSessi
     _th, run = await start(sessionmaker, "こんにちは")
     await execute_run(deps, run.id)
     evs = await events(redis, run.id)
-    assert evs[-1]["suggestions"] == [] and not followup_steps(evs)
+    assert evs[-1]["type"] == "run.completed" and not followup_steps(evs)
 
 
-async def test_followups_see_previous_turns_and_record_dropped(
+async def test_followups_see_previous_turns_and_drop_what_was_answered(
     sessionmaker: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
-    """前のターンの質問と回答を渡し、会話で既に出たことを尋ねる候補を落として記録する（R2b・T15）。"""
+    """前のターンの質問と回答を渡し、根拠の語句が既に回答にある候補を落として記録する（R2b・T23）。"""
     model = FakeToolModel(
         messages=script(
-            AIMessage(content="SK-300 の在庫は 6 個です[1]。"),
-            AIMessage(content="仕入先は S-07 です[1]。"),
+            AIMessage(content="MX-17 は即時停止を推奨します[1]。"),
+            AIMessage(content="規程のとおりです[1]。"),
         )
     )
-    understand = AIMessage(content='{"kind": "docs", "queries": ["SK-300"], "table": false}')
+    understand = AIMessage(content='{"kind": "docs", "queries": ["MX-17"], "table": false}')
     utility = prompt_script(
         agent_understand=[understand, understand],
-        agent_followups=[
-            AIMessage(content='{"questions": ["SK-300 の単価は？"]}'),
-            AIMessage(content='{"questions": ["SK-300 の在庫数は？", "SK-300 のリードタイムは？"]}'),
-        ],
+        agent_followups=[fu(), fu(("MX-17 の推奨は？", "即時停止を推奨"))],
     )
     deps = with_utility(make_deps(sessionmaker, redis, model), model, utility)
-    th, run1 = await start(sessionmaker, "SK-300 の在庫は？")
+    th, run1 = await start(sessionmaker, "MX-17 は？")
     assert await execute_run(deps, run1.id) == "completed"
-    _th, run2 = await start(sessionmaker, "SK-300 の仕入先は？", th)
+    _th, run2 = await start(sessionmaker, "根拠は？", th)
     assert await execute_run(deps, run2.id) == "completed"
     evs = await events(redis, run2.id)
-    assert evs[-1]["suggestions"] == ["SK-300 のリードタイムは？"]
+    assert evs[-1]["type"] == "followups" and evs[-1]["suggestions"] == []
     [step] = followup_steps(evs)
-    assert step["output"]["dropped"][0]["question"] == "SK-300 の在庫数は？"
-    # 残った候補は検索で確かめ、最上位のスコアを記録する（T19）
-    assert [s["question"] for s in step["output"]["scores"]] == ["SK-300 のリードタイムは？"]
-    assert "threshold" in step["output"]
+    assert step["output"]["dropped"] == [
+        {"question": "MX-17 の推奨は？", "reason": "already_answered", "evidence": "即時停止を推奨"}
+    ]
     human = utility.calls[-1][-1].text
-    assert "SK-300 の在庫は？" in human and "在庫は 6 個です" in human
+    assert "MX-17 は？" in human and "即時停止を推奨します" in human

@@ -51,15 +51,13 @@ describe("systemFieldValue（システムの処理の値）", () => {
     expect(systemFieldValue([])).toBe("—");
     expect(systemFieldValue(["12", "34"])).toBe("12, 34");
     expect(systemFieldValue(3)).toBe("3");
-    // 続けて聞く: 候補ごとのスコアと、関連が低くて落とした候補（specs/028 T19）
-    expect(systemFieldValue([{ question: "単価は？", score: 0.91 }, { question: "場所は？", score: null }])).toBe(
-      "単価は？（0.91）, 場所は？（—）",
-    );
+    // 続けて聞く: 残した候補の根拠の語句と、落とした候補の理由（specs/028 T23）
+    expect(systemFieldValue([{ question: "単価は？", evidence: "18,400 円" }])).toBe("単価は？（「18,400 円」）");
     expect(
-      systemFieldValue([{ question: "担当者は？", reason: "low_relevance", score: 0.05 }], {
-        low_relevance: "資料の関連が低い",
+      systemFieldValue([{ question: "担当者は？", reason: "no_evidence", evidence: "佐伯" }], {
+        no_evidence: "資料に根拠が無い",
       }),
-    ).toBe("担当者は？（資料の関連が低い 0.05）");
+    ).toBe("担当者は？（資料に根拠が無い: 「佐伯」）");
   });
 });
 

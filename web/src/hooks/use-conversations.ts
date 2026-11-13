@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, chatApi, streamUrl, type StartRunBody } from "@/lib/chat/api";
-import { applyEvent, isTerminal, newTurn, turnFromMessage, type RunEvent } from "@/lib/chat/turn";
+import { applyEvent, endsRun, isTerminal, newTurn, turnFromMessage, type RunEvent } from "@/lib/chat/turn";
 import type { Turn, TurnImage } from "@/lib/types";
 import { uid } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ export const RUN_EVENT_TYPES: RunEvent["type"][] = [
   "answer.reset",
   "sources",
   "run.completed",
+  "followups",
   "run.failed",
   "run.cancelled",
 ];
@@ -81,10 +82,8 @@ export function useConversations({ onRunEnd, onThreadCreated }: Options = {}) {
           reconnecting: false,
           turns: c.turns.map((t) => (t.runId === runId ? applyEvent(t, ev) : t)),
         }));
-        if (isTerminal(ev)) {
-          close();
-          cbs.current.onRunEnd?.(threadId);
-        }
+        if (endsRun(ev)) cbs.current.onRunEnd?.(threadId);
+        if (isTerminal(ev)) close();
       };
       for (const type of RUN_EVENT_TYPES) es.addEventListener(type, onEvent as EventListener);
       es.onerror = () => {

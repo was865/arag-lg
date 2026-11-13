@@ -1765,6 +1765,24 @@ export interface components {
             /** Parent Id */
             parent_id?: string | null;
         };
+        /**
+         * FollowupsEvent
+         * @description 続けて聞く質問の候補（specs/028 T24）。run.completed の後に届き、ストリームはここで閉じる。
+         */
+        FollowupsEvent: {
+            /** Message Id */
+            message_id: string;
+            /**
+             * Suggestions
+             * @default []
+             */
+            suggestions: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "followups";
+        };
         /** Gap */
         Gap: {
             /**
@@ -2138,6 +2156,11 @@ export interface components {
             };
             /** Duration Ms */
             duration_ms: number;
+            /**
+             * Followups Pending
+             * @default false
+             */
+            followups_pending: boolean;
             /** Message Id */
             message_id: string;
             /**
@@ -2180,7 +2203,7 @@ export interface components {
              */
             thread_id: string;
         };
-        RunEvent: components["schemas"]["RunStarted"] | components["schemas"]["StepEvent"] | components["schemas"]["AnswerDelta"] | components["schemas"]["AnswerReset"] | components["schemas"]["SourcesEvent"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"];
+        RunEvent: components["schemas"]["RunStarted"] | components["schemas"]["StepEvent"] | components["schemas"]["AnswerDelta"] | components["schemas"]["AnswerReset"] | components["schemas"]["SourcesEvent"] | components["schemas"]["RunCompleted"] | components["schemas"]["FollowupsEvent"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"];
         /** RunFailed */
         RunFailed: {
             /** Code */

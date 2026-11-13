@@ -63,12 +63,36 @@ describe("applyEvent", () => {
         no_answer_reason: null,
         citation_map: { "1": { source_id: "d1", section_id: "x1" } },
         sources: [source],
-        suggestions: ["続きの質問は？"],
+        suggestions: ["続きの質問は？"], followups_pending: false,
       },
     ]);
     expect(t).toMatchObject({ answer: "最終の回答[1]", tokens: 120, durationMs: 1500, status: "done", streaming: false });
     expect(t.suggestions).toEqual(["続きの質問は？"]);
     expect(t.steps[0].status).toBe("error");
+  });
+
+  it("候補は完了の後の followups で届き、そのときストリームを閉じる（specs/028 T24）", () => {
+    const completed: RunEvent = {
+      type: "run.completed",
+      message_id: "m1",
+      answer: "回答[1]",
+      tokens_in: 1,
+      tokens_out: 1,
+      duration_ms: 900,
+      no_answer_reason: null,
+      citation_map: {},
+      sources: [],
+      suggestions: [],
+      followups_pending: true,
+    };
+    const done = play([completed]);
+    // 完了の時点で回答は確定し、入力欄と操作は使える（実行中の扱いにしない）
+    expect(done).toMatchObject({ status: "done", streaming: false, suggestions: [] });
+    expect(isTerminal(completed)).toBe(false);
+    const fu: RunEvent = { type: "followups", message_id: "m1", suggestions: ["次は？"] };
+    expect(applyEvent(done, fu).suggestions).toEqual(["次は？"]);
+    expect(isTerminal(fu)).toBe(true);
+    expect(isTerminal({ ...completed, followups_pending: false })).toBe(true);
   });
 
   it("書き直しで本文を空にする", () => {
@@ -194,7 +218,7 @@ describe("liveCitations（生成中の番号）", () => {
       no_answer_reason: null,
       sources: [],
       citation_map: { "1": { source_id: "d2", section_id: "c" }, "2": { source_id: "d1", section_id: "x1" } },
-      suggestions: [],
+      suggestions: [], followups_pending: false,
     });
     expect(done.answer).toBe("停止する[1]。根拠[2]");
     expect(done.rawAnswer).toBeUndefined();
@@ -236,7 +260,7 @@ describe("差し戻しのあいだの下書き（staleAnswer、specs/026 T27）"
     no_answer_reason: null,
     citation_map: {},
     sources: [],
-    suggestions: [],
+    suggestions: [], followups_pending: false,
   };
 
   it("reset でそれまでの回答を staleAnswer に残し、answer は空にする", () => {

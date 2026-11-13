@@ -9,3 +9,14 @@ def test_socket_timeout_outlasts_blocking_read() -> None:
     kw = r.connection_pool.connection_kwargs
     assert kw["socket_timeout"] > READ_BLOCK_MS / 1000
     assert kw["decode_responses"] is True
+
+
+def test_stream_closes_after_followups_when_they_are_pending() -> None:
+    """候補を後から送る完了では閉じず、followups で閉じる（specs/028 T24）。"""
+    from arag.agent.events import closes_stream
+
+    assert closes_stream("run.completed", {"followups_pending": False})
+    assert not closes_stream("run.completed", {"followups_pending": True})
+    assert closes_stream("followups", {})
+    assert closes_stream("run.failed", {}) and closes_stream("run.cancelled", {})
+    assert not closes_stream("step", {})

@@ -9,7 +9,7 @@ import json
 import re
 import time
 import unicodedata
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,10 +24,10 @@ MAX_QUESTIONS = 3
 MAX_CHARS = 40
 ANSWER_CHARS = 1500
 TIMEOUT_SEC = 3.0
-# 検索に出た資料の抜粋（T6b）: 1 件の本文の先頭・件数・全体の字数の上限
-EXCERPT_CHARS = 240
+# 検索に出た資料の抜粋（T6b・T23）: 1 件の本文の先頭・件数・全体の字数の上限。答えの値が入るよう広めに渡す
+EXCERPT_CHARS = 400
 EXCERPT_MAX = 8
-EXCERPT_TOTAL = 2400
+EXCERPT_TOTAL = 3200
 # 直近のターン（T15）: 前の何ターンを渡すか・各回答の先頭の字数
 HISTORY_TURNS = 3
 HISTORY_ANSWER_CHARS = 600
@@ -42,19 +42,32 @@ def width(text: str) -> float:
 
 
 @dataclass(frozen=True, slots=True)
+class Candidate:
+    """候補と、抜粋からそのまま写した答えの語句（T23）。"""
+
+    q: str
+    evidence: str
+
+
+@dataclass(frozen=True, slots=True)
 class Followups:
     questions: tuple[str, ...] = ()
     error: str = ""
     ms: int = 0
     raw: str = ""
-    # 会話で既に出たとして落とした候補と理由（T15）
-    dropped: tuple[dict[str, Any], ...] = ()
-    # 候補ごとの検索の最上位スコア（T19。確かめられなかった候補は None）
-    scores: dict[str, float | None] | None = None
+    # 残した候補の根拠の語句（T23）
+    evidence: tuple[dict[str, str], ...] = ()
+    # 落とした候補と理由（no_evidence / already_answered / same_question）
+    dropped: tuple[dict[str, str], ...] = ()
 
 
-def parse(text: str, question: str) -> tuple[list[str], str]:
-    """モデルの出力から候補を取り出す（重複・元の質問と同じ文・40 字超（半角は半分）を落とし、最大 3 個）。"""
+def parse(text: str, question: str) -> tuple[list[Candidate], str]:
+    """モデルの出力から候補と根拠を取り出す。
+
+    重複・元の質問と同じ文・40 字超（半角は半分）を落とし、最大 3 個。
+
+    古い形（文字列の配列）は根拠が無く確かめられないので、失敗として扱う。
+    """
     _, body = split_thinking(text)
     m = _JSON.search(body)
     if not m:
@@ -66,13 +79,21 @@ def parse(text: str, question: str) -> tuple[list[str], str]:
     raw = data.get("questions") if isinstance(data, dict) else None
     if not isinstance(raw, list):
         return [], "questions が配列でない"
-    out: list[str] = []
+    if any(isinstance(x, str) for x in raw):
+        return [], "古い形（文字列の配列）で、根拠の語句が無い"
+    out: list[Candidate] = []
     seen = {question.strip()}
-    for q in raw:
-        if not isinstance(q, str) or not (q := q.strip()) or width(q) > MAX_CHARS or q in seen:
+    for x in raw:
+        if not isinstance(x, dict):
+            continue
+        q, ev = x.get("q"), x.get("evidence")
+        if not isinstance(q, str) or not isinstance(ev, str):
+            continue
+        q, ev = q.strip(), ev.strip()
+        if not q or not ev or width(q) > MAX_CHARS or q in seen:
             continue
         seen.add(q)
-        out.append(q)
+        out.append(Candidate(q, ev))
         if len(out) == MAX_QUESTIONS:
             break
     return out, ""
@@ -99,10 +120,11 @@ def excerpts(items: Iterable[Cited]) -> list[str]:
     return out
 
 
-# 内容の語: 漢字・カタカナ・英数字と - の連なり（2 字以上）
-_WORD = re.compile(r"[\u4e00-\u9fff々〆ヶ\u30a1-\u30faー0-9A-Za-z-]{2,}")
-_SUFFIX = ("数", "名", "先", "額")
 _PUNCT = re.compile(r"[\s\W_]+")
+_SPACE = re.compile(r"\s+")
+_DIGIT_COMMA = re.compile(r"(?<=\d),(?=\d{3})")
+# 数字・英数字の型番（2 字以上。18400・P-1042・SK-300・KG-5）
+_CODE = re.compile(r"[0-9A-Za-z][0-9A-Za-z.\-]*[0-9A-Za-z]")
 
 
 def _norm(text: str) -> str:
@@ -114,32 +136,51 @@ def _same_key(text: str) -> str:
     return _PUNCT.sub("", _norm(text))
 
 
-def drop_known(
-    questions: list[str], question: str, answer: str, history: Sequence[tuple[str, str]]
-) -> tuple[list[str], list[dict[str, Any]]]:
-    """会話で既に出たことを尋ねる候補を落とす（R2b）。
+def _match_key(text: str) -> str:
+    """語句がそのまま在るかを見る形（NFKC・空白を除く・数字の 3 桁区切りのカンマを除く）。"""
+    return _SPACE.sub("", _DIGIT_COMMA.sub("", _norm(text)))
 
-    ① これまでの質問（今の質問を含む）と同じ文。
-    ② 内容の語がすべて、今の回答と前のターンの回答に含まれる（質問の文は ① でしか見ない。T19）
-    （3 字以上で末尾が「数・名・先・額」の語は、その 1 字を除いた形でも照合）。語が無い候補は落とさない。
+
+def _codes(text: str) -> set[str]:
+    return {w for w in _CODE.findall(_DIGIT_COMMA.sub("", _norm(text))) if any(ch.isdigit() for ch in w)}
+
+
+def check_candidates(
+    cands: Sequence[Candidate],
+    *,
+    docs: Sequence[str],
+    question: str,
+    answer: str,
+    history: Sequence[tuple[str, str]],
+) -> tuple[list[Candidate], list[dict[str, str]]]:
+    """候補を根拠の語句で確かめる（T23）。
+
+    ① これまでの質問（今の質問を含む）と同じ文 → same_question。
+    ② 根拠の語句が、渡した抜粋のどれにも部分文字列として無い → no_evidence。
+    ③ 根拠の語句が、今と直近のターンの回答の文に既にある。または語句の中の数字・英数字の型番（2 字以上）が
+       すべて回答の文にある → already_answered。
     """
     asked = {_same_key(q) for q, _ in history} | {_same_key(question)}
-    seen = _norm("\n".join([answer, *(a for _, a in history)]))
-    kept: list[str] = []
-    dropped: list[dict[str, Any]] = []
-    for q in questions:
-        if _same_key(q) in asked:
-            dropped.append({"question": q, "reason": "これまでの質問と同じ"})
-            continue
-        words = _WORD.findall(_norm(q))
+    sources = [_match_key(d) for d in docs]
+    answers_text = "\n".join([_MARK.sub("", answer), *(_MARK.sub("", a) for _, a in history)])
+    answers = _match_key(answers_text)
+    answer_codes = _codes(answers_text)
+    kept: list[Candidate] = []
+    dropped: list[dict[str, str]] = []
 
-        def known(w: str) -> bool:
-            return w in seen or (len(w) >= 3 and w.endswith(_SUFFIX) and w[:-1] in seen)
+    def drop(c: Candidate, reason: str) -> None:
+        dropped.append({"question": c.q, "reason": reason, "evidence": c.evidence})
 
-        if words and all(known(w) for w in words):
-            dropped.append({"question": q, "reason": f"語がすべて会話に出ている（{'・'.join(words)}）"})
-            continue
-        kept.append(q)
+    for c in cands:
+        ev = _match_key(c.evidence)
+        if _same_key(c.q) in asked:
+            drop(c, "same_question")
+        elif not ev or not any(ev in s for s in sources):
+            drop(c, "no_evidence")
+        elif ev in answers or ((codes := _codes(c.evidence)) and codes <= answer_codes):
+            drop(c, "already_answered")
+        else:
+            kept.append(c)
     return kept, dropped
 
 
@@ -181,14 +222,11 @@ async def suggest(
     docs: Sequence[str] = (),
     *,
     history: Sequence[tuple[str, str]] = (),
-    score: Callable[[str], Awaitable[float | None]] | None = None,
-    threshold: float = 0.0,
     limit_sec: float = TIMEOUT_SEC,
 ) -> Followups:
     """質問・回答・引用した資料の題名・検索に出た資料の抜粋から候補を作る（抜粋はデータとして囲む）。
 
-    score があれば、残った候補をそれぞれ検索して最上位のスコアが threshold を下回るものを落とす（T19）。
-    時間の枠（limit_sec）は候補の生成と合わせたもの。間に合わなかった候補は確かめずに残す。
+    候補には抜粋から写した根拠の語句を付けさせ、コードで確かめて、資料に無いこと・既に答えたことを落とす。
     """
     t0 = time.monotonic()
 
@@ -206,34 +244,15 @@ async def suggest(
     except Exception as e:
         return Followups(error=f"{type(e).__name__}: {e}"[:200], ms=ms())
     text = str(out.text) if hasattr(out, "text") else str(out)
-    questions, error = parse(text, question)
-    kept, dropped = drop_known(questions, question, answer, history[-HISTORY_TURNS:])
-    scores: dict[str, float | None] | None = None
-    if score is not None and kept:
-        scores = await _scores(score, kept, limit_sec - (time.monotonic() - t0))
-        for q in list(kept):
-            v = scores[q]
-            if v is not None and v < threshold:
-                kept.remove(q)
-                dropped.append({"question": q, "reason": "low_relevance", "score": v})
-    return Followups(
-        questions=tuple(kept), error=error, ms=ms(), raw=text[:1000], dropped=tuple(dropped), scores=scores
+    cands, error = parse(text, question)
+    kept, dropped = check_candidates(
+        cands, docs=docs, question=question, answer=answer, history=history[-HISTORY_TURNS:]
     )
-
-
-async def _scores(
-    score: Callable[[str], Awaitable[float | None]], questions: list[str], left: float
-) -> dict[str, float | None]:
-    """候補を並行して検索し、最上位のスコアを得る。時間切れ・失敗の候補は None（確かめずに残す）。"""
-    tasks = {q: asyncio.ensure_future(score(q)) for q in questions}
-    if left > 0:
-        await asyncio.wait(tasks.values(), timeout=left)
-    out: dict[str, float | None] = {}
-    for q, t in tasks.items():
-        if t.done() and not t.cancelled() and t.exception() is None:
-            v = t.result()
-            out[q] = round(v, 3) if v is not None else None
-        else:
-            t.cancel()
-            out[q] = None
-    return out
+    return Followups(
+        questions=tuple(c.q for c in kept),
+        error=error,
+        ms=ms(),
+        raw=text[:1000],
+        evidence=tuple({"question": c.q, "evidence": c.evidence} for c in kept),
+        dropped=tuple(dropped),
+    )

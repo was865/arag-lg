@@ -1586,6 +1586,34 @@
         "title": "FolderUpdate",
         "type": "object"
       },
+      "FollowupsEvent": {
+        "description": "続けて聞く質問の候補（specs/028 T24）。run.completed の後に届き、ストリームはここで閉じる。",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "suggestions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "type": {
+            "const": "followups",
+            "default": "followups",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ],
+        "title": "FollowupsEvent",
+        "type": "object"
+      },
       "Gap": {
         "properties": {
           "created_at": {
@@ -2584,6 +2612,11 @@
             "title": "Duration Ms",
             "type": "integer"
           },
+          "followups_pending": {
+            "default": false,
+            "title": "Followups Pending",
+            "type": "boolean"
+          },
           "message_id": {
             "title": "Message Id",
             "type": "string"
@@ -2681,6 +2714,7 @@
           "mapping": {
             "answer.delta": "#/components/schemas/AnswerDelta",
             "answer.reset": "#/components/schemas/AnswerReset",
+            "followups": "#/components/schemas/FollowupsEvent",
             "run.cancelled": "#/components/schemas/RunCancelled",
             "run.completed": "#/components/schemas/RunCompleted",
             "run.failed": "#/components/schemas/RunFailed",
@@ -2708,6 +2742,9 @@
           },
           {
             "$ref": "#/components/schemas/RunCompleted"
+          },
+          {
+            "$ref": "#/components/schemas/FollowupsEvent"
           },
           {
             "$ref": "#/components/schemas/RunFailed"

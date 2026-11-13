@@ -216,15 +216,18 @@ export const chat = {
     excerpt_chars: "渡した抜粋の字数",
     history_turns: "渡した前のターンの数",
     dropped: "落とした候補",
-    scores: "候補ごとの検索の最高スコア",
-    threshold: "関連が低いとみなすスコア",
+    evidence: "根拠の語句",
     ms: "かかった時間（ms）",
     questions: "候補",
     error: "失敗の理由",
     raw: "モデルの出力",
   } as Record<string, string>,
   // 続けて聞く候補を落とした理由の表示名（決まった値のもの）
-  droppedReasons: { low_relevance: "資料の関連が低い" } as Record<string, string>,
+  droppedReasons: {
+    no_evidence: "資料に根拠が無い",
+    already_answered: "既に答えた内容",
+    same_question: "これまでの質問と同じ",
+  } as Record<string, string>,
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     result: {

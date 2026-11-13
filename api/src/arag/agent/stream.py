@@ -7,7 +7,7 @@ from typing import Any
 
 from redis.asyncio import Redis
 
-from arag.agent.events import RUN_EVENT, TERMINAL
+from arag.agent.events import RUN_EVENT, closes_stream
 
 MAXLEN = 5000
 FLUSH_CHARS = 64
@@ -73,7 +73,7 @@ class EventSink:
         else:
             await self.flush()
         await self._xadd(ev)
-        if ev.get("type") in TERMINAL:
+        if closes_stream(str(ev.get("type")), ev):
             self.closed = True
             await self.redis.expire(self.key, self.ttl)
 
@@ -93,7 +93,7 @@ async def read_events(
                 last_id = entry_id if isinstance(entry_id, str) else entry_id.decode()
                 typ, data = fields["type"], fields["data"]
                 yield last_id, typ, data
-                if typ in TERMINAL:
+                if closes_stream(typ, json.loads(data) if typ == "run.completed" else {}):
                     return
 
 

@@ -241,6 +241,9 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         suggestions: ev.suggestions ?? [],
         steps: turn.steps.map(settle),
       };
+    case "followups":
+      // 完了の後に届く続けて聞く候補（specs/028 T24）。次の質問を送った後に届いても、最後のターンでなければ出ない
+      return { ...turn, suggestions: ev.suggestions ?? [] };
     case "run.failed":
       return {
         ...turn,
@@ -264,7 +267,14 @@ function settle(s: ToolCall): ToolCall {
   return s.status === "running" ? { ...s, status: "error", summary: s.summary } : s;
 }
 
+/** ストリームを閉じるイベントか。候補を後から送る完了（followups_pending）は閉じず、followups で閉じる。 */
 export function isTerminal(ev: RunEvent): boolean {
+  if (ev.type === "run.completed") return !ev.followups_pending;
+  return ev.type === "followups" || ev.type === "run.failed" || ev.type === "run.cancelled";
+}
+
+/** run が終わったイベントか（回答の確定。続けて聞く候補を待たない）。 */
+export function endsRun(ev: RunEvent): boolean {
   return ev.type === "run.completed" || ev.type === "run.failed" || ev.type === "run.cancelled";
 }
 

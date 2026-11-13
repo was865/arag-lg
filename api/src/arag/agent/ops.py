@@ -301,25 +301,6 @@ async def op_search(
     return out
 
 
-async def best_score(ctx: RunContext, query: str) -> float | None:
-    """このターンと同じ範囲で 1 回だけ検索し、最上位のスコアを返す（書き換えなし・ステップなし）。
-
-    続けて聞く候補が資料で答えられそうかを確かめるのに使う（specs/028 T19）。rerank が効いていない
-    （縮退）ときはスコアを「関連が低い」の閾値と比べられないので None。
-    """
-    req = SearchRequest(
-        query=query,
-        kb_ids=ctx.kb_ids,
-        document_ids=ctx.document_ids,
-        include_archived=ctx.include_archived,
-        mode="hybrid",
-        top_k=ctx.cfg.top_k,
-        candidate_k=max(ctx.cfg.candidate_k, ctx.cfg.top_k),
-    )
-    res = await _run_search(ctx, req)
-    return None if "rerank" in res.degraded else _best(res)
-
-
 def _is_low(ctx: RunContext, res: SearchResult, mode: str) -> bool:
     return mode == "hybrid" and "rerank" not in res.degraded and _best(res) < ctx.cfg.grade_threshold
 

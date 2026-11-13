@@ -69,3 +69,12 @@
 | admin: copyDiagnostics / copied | 診断用にコピー / コピーしました |
 | admin: process / runInfo | 過程 / 実行の情報 |
 | admin: empty | 報告はまだありません。 |
+
+## T23・T24（2026-11-13 追補）
+
+- T19 の「検索で確かめる」と「内容の語がすべて既出」の規則は外した（部品名が入れば検索のスコアは高く、資料に無いことを尋ねる候補を見分けられなかった。語の照合は、回答が質問を言い直すため誤って落とした）。
+- 出力の形: `{"questions": [{"q": "質問", "evidence": "抜粋からそのまま写した語句（8〜40 字）"}]}`。`check_candidates` が NFKC・空白（と数字の 3 桁区切りのカンマ）を除いて照合する: ①これまでの質問と同じ文 → `same_question` ②根拠が渡した抜粋のどれにも無い → `no_evidence` ③根拠が今と直近 3 ターンの回答の文にある、または根拠の中の数字・英数字の型番（2 字以上・数字を含む）がすべて回答にある → `already_answered`。
+- 抜粋は 1 件 400 字・最大 8 件・全体 3200 字。
+- output: `evidence: [{question, evidence}]`（残した候補）・`dropped: [{question, reason, evidence}]`。
+- 届け方（T24）: runner は `_persist` の後に `run.completed`（`suggestions: []`・`followups_pending: true`）を送り、`_deliver_followups` で候補を作って `followups`（`{message_id, suggestions}`）を送る。保存済みのメッセージの `suggestions` を更新し、`followups` のステップを `steps` の末尾に足す。ストリームは `followups_pending` の完了では閉じず、`followups` で閉じる（`events.closes_stream`）。候補を作らない条件のときは `followups_pending: false` で、完了で閉じる。`duration_ms` は完了の時点で止める（`_Turn.stop`）。
+

@@ -1,67 +1,96 @@
-"""続けて聞く質問の候補（specs/028 R1〜R4）。"""
+"""続けて聞く質問の候補（specs/028 R1〜R4・T23）。"""
 
 import asyncio
+import json
 import uuid
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from arag.agent.citations import Cited
-from arag.agent.followups import EXCERPT_CHARS, EXCERPT_TOTAL, MAX_CHARS, excerpts, parse, suggest
+from arag.agent.followups import (
+    EXCERPT_CHARS,
+    EXCERPT_TOTAL,
+    MAX_CHARS,
+    check_candidates,
+    excerpts,
+    parse,
+    suggest,
+)
 
 from .agent_fakes import FakeToolModel, script
 
 
+def reply(*pairs: tuple[str, str]) -> AIMessage:
+    return AIMessage(
+        content=json.dumps({"questions": [{"q": q, "evidence": e} for q, e in pairs]}, ensure_ascii=False)
+    )
+
+
 def test_parse_takes_up_to_three_and_drops_duplicates_question_and_long_ones() -> None:
     long = "あ" * (MAX_CHARS + 1)
-    text = (
-        '{"questions": ["SK-300 の単価は？", "SK-300 の単価は？", "在庫は？", "'
-        + long
-        + '", "仕入先はどこですか？", "リードタイムは？"]}'
-    )
-    qs, err = parse(text, "在庫は？")
-    assert err == "" and qs == ["SK-300 の単価は？", "仕入先はどこですか？", "リードタイムは？"]
+    text = reply(
+        ("SK-300 の単価は？", "18,400"),
+        ("SK-300 の単価は？", "18,400"),
+        ("在庫は？", "6"),
+        (long, "x"),
+        ("仕入先はどこですか？", "S-07"),
+        ("リードタイムは？", "21 日"),
+    ).text
+    cands, err = parse(text, "在庫は？")
+    assert err == "" and [c.q for c in cands] == [
+        "SK-300 の単価は？",
+        "仕入先はどこですか？",
+        "リードタイムは？",
+    ]
+    assert cands[1].evidence == "S-07"
 
 
 def test_parse_counts_half_width_as_half() -> None:
-    # 半角は 1 字を半分に数える（全角 40 字 ≒ 半角 80 字）。
-    # 実際の Gemma の英語の候補が 40 字を超えて全部落ちたため
+    # 半角は 1 字を半分に数える（全角 40 字 ≒ 半角 80 字）
     en = "What were the main reasons for production fluctuations in September 2026?"  # 74 字
-    too_long = "x" * (MAX_CHARS * 2 + 1)
-    qs, _ = parse('{"questions": ["' + en + '", "' + too_long + '"]}', "q")
-    assert qs == [en]
+    cands, _ = parse(reply((en, "a"), ("x" * (MAX_CHARS * 2 + 1), "b")).text, "q")
+    assert [c.q for c in cands] == [en]
 
 
 def test_parse_reads_json_after_thinking_preamble_and_code_fence() -> None:
-    text = (
-        '<think>考える</think>はい、次のとおりです。\n```json\n{"questions": ["What is the lead time?"]}\n```'
-    )
-    assert parse(text, "q") == (["What is the lead time?"], "")
+    body = '{"questions": [{"q": "What is the lead time?", "evidence": "21 days"}]}'
+    text = f"<think>考える</think>はい。\n```json\n{body}\n```"
+    cands, err = parse(text, "q")
+    assert err == "" and cands[0].q == "What is the lead time?" and cands[0].evidence == "21 days"
 
 
-def test_parse_fails_when_not_json_or_not_a_list() -> None:
+def test_parse_fails_when_not_json_or_old_form() -> None:
     assert parse("候補はありません", "q")[0] == [] and parse("候補はありません", "q")[1]
     assert parse('{"questions": "在庫は？"}', "q")[1]
     assert parse('["在庫は？"]', "q")[1]
+    # 古い形（文字列の配列）は失敗として扱う（根拠が無いので確かめられない）
+    cands, err = parse('{"questions": ["在庫は？"]}', "q")
+    assert cands == [] and "古い形" in err
 
 
 async def test_suggest_sends_question_answer_and_titles_only() -> None:
-    reply = AIMessage(content='{"questions": ["補充の期限は？", "発注先は？"]}')
-    model = FakeToolModel(messages=script(reply))
-    out = await suggest(model, "在庫は？", "在庫は 6 個です[1]。" + "x" * 3000, ["x01-部品台帳.xlsx"])
+    docs = ["x01\n補充の期限は 10月31日。発注先は S-07。"]
+    model = FakeToolModel(messages=script(reply(("補充の期限は？", "10月31日"), ("発注先は？", "S-07"))))
+    out = await suggest(model, "在庫は？", "在庫は 6 個です[1]。" + "x" * 3000, ["x01-部品台帳.xlsx"], docs)
     assert out.questions == ("補充の期限は？", "発注先は？") and out.error == "" and out.ms >= 0
+    assert out.evidence == (
+        {"question": "補充の期限は？", "evidence": "10月31日"},
+        {"question": "発注先は？", "evidence": "S-07"},
+    )
     system, human = model.calls[0]
     assert isinstance(system, SystemMessage) and isinstance(human, HumanMessage)
     assert "在庫は？" in human.text and "x01-部品台帳.xlsx" in human.text
     # 回答は先頭 1500 字まで
     assert "x" * 1600 not in human.text
+    assert "evidence" in system.text
 
 
 async def test_suggest_times_out_and_reports_errors_without_raising() -> None:
     class Slow(FakeToolModel):
         async def ainvoke(self, *a: Any, **k: Any) -> Any:
             await asyncio.sleep(1)
-            return AIMessage(content='{"questions": ["a"]}')
+            return reply(("a", "a"))
 
     out = await suggest(Slow(messages=script()), "q", "a", [], limit_sec=0.05)
     assert out.questions == () and "打ち切" in out.error
@@ -112,85 +141,86 @@ async def test_suggest_names_the_language_of_the_question() -> None:
     assert "日本語" in model.calls[1][1].text and "English" not in model.calls[1][1].text
 
 
-def test_drop_known_drops_repeats_and_already_answered() -> None:
-    from arag.agent.followups import drop_known
+def test_candidates_need_evidence_copied_from_the_excerpts() -> None:
+    """検索のスコアでは見分けられなかった「資料に無いことを尋ねる候補」を、根拠の語句で落とす（T23）。"""
+    from arag.agent.followups import Candidate
 
-    history = [
-        ("在庫が発注点を下回っている部品はどれですか？", "SK-300 と 6309ZZ です。在庫は 6 個と 9 個。")
+    docs = [
+        "x01-部品台帳.xlsx\n| P-1042 | シールキット SK-300 | 18400 | 6 | 10 | S-07 |",
+        "w04\n佐伯さんが 10月31日 までに補充する。",
     ]
-    question = "SK-300 の仕入先はどこですか？"
-    answer = "シールキット SK-300（部品番号: P-1042）の仕入先は Aster Seals Ltd. です。"
-    kept, dropped = drop_known(
+    kept, dropped = check_candidates(
         [
-            "在庫が発注点を下回っている部品はどれですか",  # 前の質問と同じ（句読点の違いは見ない）
-            "SK-300の部品番号は？",  # 語（SK-300・部品番号）がすべて今の回答にある
-            "SK-300の在庫数は？",  # 「在庫数」→「在庫」で前の回答に当たる
-            "SK-300 のリードタイムは？",  # 「リードタイム」はまだ出ていない
-            "それは何ですか？",  # 内容の語が無いものは落とさない
+            Candidate("SK-300 の仕入先コードは？", "S-07"),
+            Candidate("SK-300 の保管場所は？", "第2倉庫の棚 B"),  # 抜粋に無い
+            Candidate("補充の期限は？", "10 月 31 日 までに"),  # 空白・全角半角の違いは見ない
         ],
-        question,
-        answer,
-        history,
+        docs=docs,
+        question="SK-300 の単価は？",
+        answer="SK-300 の単価は 18,400 円です[1]。",
+        history=[],
     )
-    assert kept == ["SK-300 のリードタイムは？", "それは何ですか？"]
+    assert [c.q for c in kept] == ["SK-300 の仕入先コードは？", "補充の期限は？"]
+    assert dropped == [
+        {"question": "SK-300 の保管場所は？", "reason": "no_evidence", "evidence": "第2倉庫の棚 B"}
+    ]
+
+
+def test_candidates_whose_evidence_is_already_answered_are_dropped() -> None:
+    from arag.agent.followups import Candidate
+
+    docs = ["x01\n| P-1042 | シールキット SK-300 | HP-300 / HP-320 | 18400 | 6 | 10 | S-07 |\n在庫は 6 個"]
+    history = [("在庫が発注点を下回っている部品は？", "シールキット SK-300（P-1042）の在庫は 6 個です。")]
+    kept, dropped = check_candidates(
+        [
+            Candidate("SK-300 の在庫数は？", "在庫は 6 個"),  # 前の回答の文にそのままある
+            Candidate("SK-300 の部品番号は？", "P-1042"),  # 前の回答の文にある
+            Candidate("SK-300 の適用機種は？", "HP-300 / HP-320"),  # まだ答えていない
+            Candidate(
+                "SK-300 の行は？", "P-1042 | シールキット SK-300 | HP-300"
+            ),  # 型番・数字がすべて回答にある…ではない
+            Candidate("在庫が発注点を下回っている部品は", "S-07"),  # これまでの質問と同じ
+        ],
+        docs=docs,
+        question="SK-300 の単価は？",
+        answer="SK-300 の単価は 18,400 円です[1]。",
+        history=history,
+    )
+    assert [c.q for c in kept] == ["SK-300 の適用機種は？", "SK-300 の行は？"]
     reasons = {d["question"]: d["reason"] for d in dropped}
-    assert "これまでの質問と同じ" in reasons["在庫が発注点を下回っている部品はどれですか"]
-    assert "会話に出ている" in reasons["SK-300の部品番号は？"]
-    assert "SK-300の在庫数は？" in reasons
+    assert reasons == {
+        "SK-300 の在庫数は？": "already_answered",
+        "SK-300 の部品番号は？": "already_answered",
+        "在庫が発注点を下回っている部品は": "same_question",
+    }
 
 
-async def test_suggest_passes_recent_turns_and_records_dropped() -> None:
-    reply = AIMessage(content='{"questions": ["P-1042 の部品番号は？", "SK-300 のリードタイムは？"]}')
-    model = FakeToolModel(messages=script(reply))
+def test_long_evidence_is_already_answered_when_all_codes_and_numbers_are_in_the_answer() -> None:
+    from arag.agent.followups import Candidate
+
+    docs = ["x01\n| P-1042 | シールキット SK-300 | 18400 |"]
+    kept, dropped = check_candidates(
+        [Candidate("SK-300 の単価は？", "P-1042 | シールキット SK-300 | 18400")],
+        docs=docs,
+        question="SK-300 は？",
+        answer="シールキット SK-300（部品番号 P-1042）の単価は 18,400 円です。",
+        history=[],
+    )
+    assert kept == [] and dropped[0]["reason"] == "already_answered"
+
+
+async def test_suggest_records_dropped_with_reasons() -> None:
+    model = FakeToolModel(messages=script(reply(("SK-300 の保管場所は？", "棚 B"), ("仕入先は？", "S-07"))))
+    out = await suggest(model, "SK-300 は？", "SK-300 です。", [], ["| P-1042 | S-07 |"])
+    assert out.questions == ("仕入先は？",)
+    assert out.dropped == (
+        {"question": "SK-300 の保管場所は？", "reason": "no_evidence", "evidence": "棚 B"},
+    )
+
+
+async def test_suggest_passes_recent_turns() -> None:
+    model = FakeToolModel(messages=script(reply()))
     history = [("前の質問です", "x" * 1000)]
-    out = await suggest(model, "SK-300 は？", "SK-300 の部品番号は P-1042 です。", [], [], history=history)
+    await suggest(model, "SK-300 は？", "SK-300 です。", [], [], history=history)
     human = model.calls[0][1].text
     assert "前の質問です" in human and "x" * 600 in human and "x" * 601 not in human
-    assert out.questions == ("SK-300 のリードタイムは？",)
-    assert out.dropped and out.dropped[0]["question"] == "P-1042 の部品番号は？"
-
-
-def test_words_only_in_questions_do_not_drop_a_candidate() -> None:
-    """3100: 「在庫」が前の質問にしか出ていないのに「SK-300 の在庫数は？」を落とした（specs/028 T19）。"""
-    from arag.agent.followups import drop_known
-
-    history = [("在庫が発注点を下回っている部品はどれですか？", "シールキット SK-300 と軸受 6309ZZ です。")]
-    kept, dropped = drop_known(
-        ["シールキット SK-300の在庫数は？", "在庫が発注点を下回っている部品はどれですか"],
-        "SK-300 の単価は？",
-        "シールキット SK-300 の単価は 18,400 円です。",
-        history,
-    )
-    assert kept == ["シールキット SK-300の在庫数は？"]
-    assert dropped[0]["reason"] == "これまでの質問と同じ"
-
-
-async def test_candidates_without_relevant_documents_are_dropped() -> None:
-    reply = AIMessage(content='{"questions": ["SK-300 の単価は？", "補充の担当者は？", "保管場所は？"]}')
-    model = FakeToolModel(messages=script(reply))
-    scores = {"SK-300 の単価は？": 0.91, "補充の担当者は？": 0.05}
-
-    async def score(q: str) -> float | None:
-        if q == "保管場所は？":
-            return None  # rerank が効かず比べられない → 確かめずに残す
-        return scores[q]
-
-    out = await suggest(model, "SK-300 は？", "SK-300 です。", [], [], score=score, threshold=0.3)
-    assert out.questions == ("SK-300 の単価は？", "保管場所は？")
-    assert out.dropped == ({"question": "補充の担当者は？", "reason": "low_relevance", "score": 0.05},)
-    assert out.scores == {"SK-300 の単価は？": 0.91, "補充の担当者は？": 0.05, "保管場所は？": None}
-
-
-async def test_slow_relevance_check_keeps_the_candidates() -> None:
-    reply = AIMessage(content='{"questions": ["SK-300 の単価は？"]}')
-    model = FakeToolModel(messages=script(reply))
-
-    async def slow(q: str) -> float | None:
-        await asyncio.sleep(5)
-        return 0.0
-
-    out = await suggest(
-        model, "SK-300 は？", "SK-300 です。", [], [], score=slow, threshold=0.3, limit_sec=0.2
-    )
-    assert out.questions == ("SK-300 の単価は？",) and out.dropped == ()
-    assert out.scores == {"SK-300 の単価は？": None}

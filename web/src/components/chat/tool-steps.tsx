@@ -326,14 +326,15 @@ export function systemFieldValue(v: unknown, reasons: Record<string, string> = {
         return `${String(d.value)} = ${d.from.map(String).join(d.op === "diff" ? " − " : " + ")}`;
       }
       if (x && typeof x === "object" && "question" in x && "reason" in x) {
-        // 落とした候補（続けて聞く）。理由が決まった値（low_relevance）なら読める名前と、そのときのスコア
-        const d = x as { question: unknown; reason: unknown; score?: unknown };
+        // 落とした候補（続けて聞く）。理由は読める名前にし、根拠の語句があれば添える（specs/028 T23）
+        const d = x as { question: unknown; reason: unknown; evidence?: unknown };
         const reason = reasons[String(d.reason)] ?? String(d.reason);
-        return `${String(d.question)}（${reason}${typeof d.score === "number" ? ` ${d.score}` : ""}）`;
+        return `${String(d.question)}（${reason}${typeof d.evidence === "string" ? `: 「${d.evidence}」` : ""}）`;
       }
-      if (x && typeof x === "object" && "question" in x && "score" in x) {
-        const d = x as { question: unknown; score: unknown };
-        return `${String(d.question)}（${d.score === null ? "—" : String(d.score)}）`;
+      if (x && typeof x === "object" && "question" in x && "evidence" in x) {
+        // 残した候補と根拠の語句
+        const d = x as { question: unknown; evidence: unknown };
+        return `${String(d.question)}（「${String(d.evidence)}」）`;
       }
       return String(x);
     })
