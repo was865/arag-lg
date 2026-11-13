@@ -10,6 +10,7 @@ const REASON_LABEL: Record<string, string> = {
   step_budget_exhausted: "調べる回数の上限",
   tool_failed: "検索の失敗",
   generation_failed: "生成の失敗",
+  empty_generation: "空の生成",
 };
 
 export const reasonLabel = (r: string) => REASON_LABEL[r] ?? r;

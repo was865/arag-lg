@@ -61,6 +61,14 @@
 - 内訳からの導出（R24、`check_numbers`）: 照合先に無い数字 v を、回答に出て照合先にある数字（1 桁の整数は除く、12 個まで）の 2〜6 個の和か 2 個の差で厳密に出せれば未確認から外す。
   `number_check` の出力 `derived`（例 `[{"value": "135", "op": "sum", "from": ["30","25","80"]}]`）に残し、画面は「内訳から確かめた数字」。
 
+### 空の生成（R25）
+
+- 判定: 最後の AIMessage にツール呼び出しが無く、思考を除いた本文が空白だけ。モデルの呼び出し（最初の呼び出し・差し戻しの書き直し）の直後に当てる。
+- やり直しは run に 1 度（`RunStats.empty_retries`）。差し戻した下書きは `RunContext.review_draft` に持ち、空のままなら最終回答にする。
+- 記録: `system`（`kind="empty_generation"`）。input に `finish_reason`（`response_metadata`、無ければ null）・`reasoning_chars`・`tokens_out`・`retried`、
+  output に `result`（`retried_ok` / `used_draft` / `failed`）、下書きを使ったときは未了の確認の種類 `pending_review`。
+- どちらも無ければ `RunStats.empty_failed` を立て、`_classify` が `empty_generation`（「回答を生成できませんでした。もう一度お試しください。」）で終える。
+
 ## 表の集計（`table_query`）
 
 `table_query(source, where="", compute="", table=1)`

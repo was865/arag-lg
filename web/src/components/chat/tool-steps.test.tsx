@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ToolSteps, systemFieldValue } from "@/components/chat/tool-steps";
+import { SystemFields, ToolSteps, systemFieldValue } from "@/components/chat/tool-steps";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
 import type { ToolCall } from "@/lib/types";
@@ -51,5 +51,22 @@ describe("systemFieldValue（システムの処理の値）", () => {
     expect(systemFieldValue([])).toBe("—");
     expect(systemFieldValue(["12", "34"])).toBe("12, 34");
     expect(systemFieldValue(3)).toBe("3");
+  });
+});
+
+describe("空の生成（empty_generation）の表示", () => {
+  it("結果と項目を日本語の名前で出す", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="ja" dict={ja}>
+        <SystemFields
+          data={{ kind: "empty_generation", result: "used_draft", pending_review: "gap", finish_reason: "length", reasoning_chars: 7161 }}
+          t={ja}
+        />
+      </LocaleProvider>,
+    );
+    expect(html).toContain("確認前の下書きを回答にした");
+    expect(html).toContain("終了の理由");
+    expect(html).toContain("思考の文字数");
+    expect(html).toContain("調べ残しの見直し");
   });
 });

@@ -47,6 +47,7 @@ NO_ANSWER_TEXT = {
     "質問を絞るか、エージェント設定の「最大ステップ数」を増やしてください。",
     "tool_failed": "検索の実行に失敗したため回答できませんでした。しばらくしてからもう一度お試しください。",
     "generation_failed": "回答の生成に失敗しました。しばらくしてからもう一度お試しください。",
+    "empty_generation": "回答を生成できませんでした。もう一度お試しください。",
 }
 
 
@@ -156,6 +157,9 @@ def _classify(answer: str, ctx: RunContext) -> str | None:
         return "tool_failed"
     if len(ctx.registry) == 0:
         return "no_sources"
+    if ctx.stats.empty_failed:
+        # 資料はあったが、モデルが本文の無い応答を返し、やり直しても下書きも無かった（R25。上限ではない）
+        return "empty_generation"
     return "step_budget_exhausted"
 
 

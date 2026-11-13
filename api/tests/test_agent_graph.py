@@ -509,3 +509,67 @@ async def test_sum_from_breakdown_is_not_sent_back_and_is_recorded() -> None:
     assert check["output"]["unverified"] == []
     assert check["output"]["derived"] == [{"value": "135", "op": "sum", "from": ["30", "25", "80"]}]
     assert "内訳" in check["summary"]
+
+
+# ── 空の生成（026 T25、hm58: 思考の記号だけを max_tokens まで出して本文が空） ──
+
+
+def empty_steps(custom: list[Any]) -> list[dict[str, Any]]:
+    return [
+        e["step"]
+        for e in custom
+        if e["type"] == "step"
+        and e["step"]["name"] == "system"
+        and e["step"]["input"].get("kind") == "empty_generation"
+    ]
+
+
+async def test_empty_generation_is_retried_once() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="答えは 5 年です[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("保存は 5 年"))
+    state, custom = await run(agent, c, "保存期間は？")
+    assert state["messages"][-1].text == "答えは 5 年です[1]" and len(model.calls) == 2
+    [step] = empty_steps(custom)
+    assert step["output"]["result"] == "retried_ok"
+    assert {"finish_reason", "reasoning_chars", "tokens_out"} <= set(step["input"])
+    assert c.stats.empty_retries == 1 and not c.stats.empty_failed
+
+
+async def test_empty_after_send_back_uses_the_draft() -> None:
+    draft = "変更点はトルク値です[1]。在庫数は資料に記載されていません。"
+    model = FakeToolModel(
+        messages=script(AIMessage(content=draft), AIMessage(content=""), AIMessage(content=""))
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("HP-300 第3版", "SK-300 在庫"))
+    state, custom = await run(agent, c, "第3版の変更点と、関連部品の在庫は？")
+    assert state["messages"][-1].text == draft and len(model.calls) == 3
+    [step] = empty_steps(custom)
+    assert step["output"]["result"] == "used_draft" and step["output"]["pending_review"] == "gap"
+    assert not c.stats.empty_failed
+
+
+async def test_empty_without_draft_ends_as_empty_generation() -> None:
+    from arag.agent.runner import _classify
+
+    model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("保存は 5 年"))
+    state, custom = await run(agent, c, "保存期間は？")
+    assert state["messages"][-1].text == "" and len(model.calls) == 2
+    [step] = empty_steps(custom)
+    assert step["output"]["result"] == "failed" and step["input"]["retried"] is True
+    assert c.stats.empty_failed and _classify("", c) == "empty_generation"
+
+
+async def test_empty_generation_is_retried_only_once_per_run() -> None:
+    model = FakeToolModel(
+        messages=script(AIMessage(content=""), tool_call("search", query="保存期間"), AIMessage(content=""))
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("保存は 5 年"))
+    _, custom = await run(agent, c, "保存期間は？")
+    assert len(model.calls) == 3  # 2 度目の空はやり直さない
+    assert [s["output"]["result"] for s in empty_steps(custom)] == ["retried_ok", "failed"]
+    assert empty_steps(custom)[1]["input"]["retried"] is False

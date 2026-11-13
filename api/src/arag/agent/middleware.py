@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, cast
 from zoneinfo import ZoneInfo
@@ -166,7 +166,10 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
                 output={"note": FINAL_NOTE.strip()},
             )
         system = SystemMessage(prompt)
-        response = await handler(request.override(system_message=system, **overrides))
+        req = request.override(system_message=system, **overrides)
+        response, used_draft = await _guard_empty(ctx, emit, handler, req, await handler(req))
+        if used_draft:
+            return response
         turn = msgs[start:]
         has_tools = bool(request.tools) and calls < ctx.cfg.max_steps
         # 確認: 調べ残し → 表の集計 → 数字の順に、当てはまるものを 1 つずつ差し戻す（種類ごとに 1 度）。
@@ -176,10 +179,12 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             if review is None:
                 break
             searches = _searches(ctx, turn)
-            response = await self._send_back(
+            response, used_draft = await self._send_back(
                 request, handler, system, compact, response, answer, review, searches
             )
             calls += 1
+            if used_draft:  # 書き直しが空のまま。下書きを回答にし、残りの確認はしない（記録済み）
+                return response
         if (answer := _final_answer(response)) is not None and _checks_numbers(ctx):
             _record_number_check(ctx, emit, turn, answer)
         return response
@@ -194,7 +199,7 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
         answer: str,
         review: Review,
         searches: int,
-    ) -> ModelResponse[Any]:
+    ) -> tuple[ModelResponse[Any], bool]:
         ctx = request.runtime.context
         if review.kind == "gap":
             ctx.stats.gap_reviews += 1
@@ -219,10 +224,14 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             ),
         )
         draft = cast(AIMessage, response.result[-1])
+        ctx.review_draft = (draft, review.kind)
         note = review.note + SEND_BACK_TAIL
         retry: list[AnyMessage] = [*compact, draft, HumanMessage(note)]
+        req = request.override(system_message=system, messages=retry)
         try:
-            redo = await handler(request.override(system_message=system, messages=retry))
+            redo, used_draft = await _guard_empty(
+                ctx, request.runtime.stream_writer, handler, req, await handler(req)
+            )
         except Exception as e:
             clock.done("差し戻しに失敗しました", {"note": note, "error": str(e)[:300]}, error=True)
             raise
@@ -233,7 +242,78 @@ class AgentPolicyMiddleware(AgentMiddleware[Any, RunContext]):
             + (f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"),
             {"note": note, "next_tools": tools},
         )
-        return redo
+        return redo, used_draft
+
+
+def _is_empty(response: ModelResponse[Any]) -> bool:
+    """ツール呼び出しも本文も無い応答（思考だけで切れた場合を含む）。"""
+    answer = _final_answer(response)
+    return answer is not None and not answer.strip()
+
+
+def _empty_detail(response: ModelResponse[Any]) -> dict[str, Any]:
+    last = response.result[-1] if response.result else None
+    if not isinstance(last, AIMessage):
+        return {"finish_reason": None, "reasoning_chars": 0, "tokens_out": None}
+    separate = last.additional_kwargs.get("reasoning_content")
+    thought = split_thinking(last.text)[0]
+    return {
+        "finish_reason": last.response_metadata.get("finish_reason"),
+        "reasoning_chars": len(thought) + (len(separate) if isinstance(separate, str) else 0),
+        "tokens_out": last.usage_metadata["output_tokens"] if last.usage_metadata else None,
+    }
+
+
+_EMPTY_SUMMARY = {
+    "retried_ok": "回答が空だったため、同じ要求でやり直して回答できた",
+    "used_draft": "書き直しが空だったため、差し戻す前の下書きを回答にした（確認は未了）",
+    "failed": "回答が空のままで、使える下書きも無かった",
+}
+
+
+async def _guard_empty(
+    ctx: RunContext,
+    emit: Any,
+    handler: Callable[[ModelRequest[RunContext]], Awaitable[ModelResponse[Any]]],
+    req: ModelRequest[RunContext],
+    response: ModelResponse[Any],
+) -> tuple[ModelResponse[Any], bool]:
+    """空の生成を 1 度だけやり直し、だめなら差し戻した下書きを回答にする（R25）。どの場合も記録に残す。
+
+    戻り値の 2 つ目は、下書きを回答にしたか（呼び出し側は残りの確認をしない）。
+    """
+    if not _is_empty(response):
+        return response, False
+    detail = _empty_detail(response)
+    retried = ctx.stats.empty_retries == 0
+    if retried:
+        ctx.stats.empty_retries += 1
+        redo = await handler(req)
+        if not _is_empty(redo):
+            _record_empty(ctx, emit, {**detail, "retried": True}, {"result": "retried_ok"})
+            return redo, False
+        response, detail = redo, _empty_detail(redo)
+    if ctx.review_draft is not None:
+        draft, kind = ctx.review_draft
+        out = {"result": "used_draft", "pending_review": kind}
+        _record_empty(ctx, emit, {**detail, "retried": retried}, out)
+        return replace(response, result=[draft]), True
+    ctx.stats.empty_failed = True
+    _record_empty(ctx, emit, {**detail, "retried": retried}, {"result": "failed"})
+    return response, False
+
+
+def _record_empty(ctx: RunContext, emit: Any, inp: dict[str, Any], out: dict[str, Any]) -> None:
+    ctx.stats.empty_events += 1
+    record_system(
+        emit,
+        f"system-empty-{ctx.stats.empty_events}",
+        "empty_generation",
+        "回答の生成のやり直し",
+        _EMPTY_SUMMARY[out["result"]],
+        input=inp,
+        output=out,
+    )
 
 
 def _final_answer(response: ModelResponse[Any]) -> str | None:

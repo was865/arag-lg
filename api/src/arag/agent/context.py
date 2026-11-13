@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from arag.agent.citations import CitationRegistry
@@ -28,6 +29,11 @@ class RunStats:
     number_reviews: int = 0
     # システムが最初に行った検索の回数（specs/026 ②）
     primer_searches: int = 0
+    # 空の生成（ツール呼び出しも本文も無い応答。specs/026 R25）: やり直した回数（run に 1 度）・記録した回数・
+    # 下書きも無く空のまま終えたか（runner が empty_generation に分類する）
+    empty_retries: int = 0
+    empty_events: int = 0
+    empty_failed: bool = False
 
     @property
     def reviews(self) -> int:
@@ -68,3 +74,5 @@ class RunContext:
     model_label: str = ""
     # このターンで失敗した table_query の指定（source・where・compute・table）→ 返した誤り（specs/026 T12）
     table_failures: dict[tuple[str, str, str, int], str] = field(default_factory=dict)
+    # 最後に差し戻した下書きとその確認の種類。書き直しが空のままなら、これを回答にする（specs/026 R25）
+    review_draft: tuple[AIMessage, str] | None = None

@@ -2334,7 +2334,8 @@
                   "no_relevant_sources",
                   "step_budget_exhausted",
                   "tool_failed",
-                  "generation_failed"
+                  "generation_failed",
+                  "empty_generation"
                 ],
                 "type": "string"
               },

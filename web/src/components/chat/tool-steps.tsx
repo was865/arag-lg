@@ -292,13 +292,13 @@ function outputSectionLabel(step: ToolCall, t: Dictionary): string {
 }
 
 /** システムの処理の入力・出力。短い値は表に、長い文章（整形の前後・要約など）は読める箱に出す。 */
-function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionary }) {
+export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionary }) {
   const rows: { k: string; v: React.ReactNode }[] = [];
   const texts: [string, string][] = [];
   for (const [k, v] of Object.entries(data)) {
     if (k === "kind") continue;
     if (typeof v === "string" && (v.length > 60 || v.includes("\n"))) texts.push([k, v]);
-    else rows.push({ k: systemFieldLabel(k, t), v: systemFieldValue(v) });
+    else rows.push({ k: systemFieldLabel(k, t), v: systemValueLabel(k, v, t) });
   }
   return (
     <div className="space-y-2">
@@ -328,6 +328,12 @@ export function systemFieldValue(v: unknown): string {
       return String(x);
     })
     .join(", ");
+}
+
+/** 決まった値（空の生成の結果・未了の確認の種類）は読める名前にする。それ以外は systemFieldValue のまま。 */
+function systemValueLabel(key: string, v: unknown, t: Dictionary): string {
+  const names = (t.chat.systemValues as Record<string, Record<string, string>>)[key];
+  return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v);
 }
 
 function systemFieldLabel(key: string, t: Dictionary): string {

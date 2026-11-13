@@ -7,7 +7,12 @@ from pydantic import BaseModel, Field, TypeAdapter
 from arag.agent.steps import Step
 
 NoAnswerReason = Literal[
-    "no_sources", "no_relevant_sources", "step_budget_exhausted", "tool_failed", "generation_failed"
+    "no_sources",
+    "no_relevant_sources",
+    "step_budget_exhausted",
+    "tool_failed",
+    "generation_failed",
+    "empty_generation",
 ]
 
 

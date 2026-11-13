@@ -189,8 +189,10 @@ async def test_model_unavailable_fails_with_message(
 
 
 async def test_no_sources_reason(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
-    # 0 件なので書き換え → 再検索 → 回答なし
-    model = FakeToolModel(messages=script(tool_call("search", query="x"), AIMessage(content="")))
+    # 0 件なので書き換え → 再検索 → 回答なし（空の生成は 1 度やり直す。資料 0 件なら no_sources のまま）
+    model = FakeToolModel(
+        messages=script(tool_call("search", query="x"), AIMessage(content=""), AIMessage(content=""))
+    )
     deps = make_deps(sessionmaker, redis, model, search=FakeSearch())
     _, run = await start(sessionmaker, "q")
     await execute_run(deps, run.id)
@@ -332,3 +334,14 @@ async def test_thinking_becomes_a_reasoning_step(
         r = next(st for st in msg.steps if st["name"] == "reasoning")
         assert r["status"] == "done" and r["output"] == {"reasoning": "資料 [1] によると即時停止。"}
         assert r["input"] == {"model": "Qwen3 8B"} and r["label"] == "思考プロセス"
+
+
+async def test_empty_generation_reason(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:
+    """資料はあるのに本文が空のまま（やり直しても・下書きも無い）なら empty_generation で終える（R25）。"""
+    model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="")))
+    deps = make_deps(sessionmaker, redis, model, search=FakeSearch("保存は 5 年"))
+    _, run = await start(sessionmaker, "保存期間は？")
+    await execute_run(deps, run.id)
+    done = (await events(redis, run.id))[-1]
+    assert done["no_answer_reason"] == "empty_generation"
+    assert done["answer"] == "回答を生成できませんでした。もう一度お試しください。"
