@@ -331,8 +331,19 @@ export function systemFieldValue(
       }
       if (x && typeof x === "object" && "sentence" in x && Array.isArray((x as { removed?: unknown }).removed)) {
         // 引用の刈り込み（specs/026 T31）: 文の冒頭・外した番号・残した番号・その文の値
-        const d = x as { sentence: unknown; removed: unknown[]; kept?: unknown[]; values?: unknown[] };
-        const marks = (ns: unknown[] | undefined) => (ns ?? []).map((n) => `[${String(n)}]`).join("");
+        // 番号は検索で振った番号（保存のときに振り直される）なので、資料の名前があれば添える
+        const d = x as {
+          sentence: unknown;
+          removed: unknown[];
+          kept?: unknown[];
+          values?: unknown[];
+          documents?: Record<string, unknown>;
+        };
+        const docs = d.documents;
+        const marks = (ns: unknown[] | undefined) =>
+          docs
+            ? (ns ?? []).map((n) => `[${String(n)}] ${String(docs[String(n)] ?? "")}`.trim()).join("、")
+            : (ns ?? []).map((n) => `[${String(n)}]`).join("");
         return `「${String(d.sentence)}」${prune.removed} ${marks(d.removed)}・${prune.kept} ${marks(d.kept)}（${prune.values}: ${(d.values ?? []).map(String).join("・")}）`;
       }
       if (x && typeof x === "object" && "question" in x && "reason" in x) {

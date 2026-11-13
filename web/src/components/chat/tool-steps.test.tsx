@@ -66,6 +66,22 @@ describe("systemFieldValue（システムの処理の値）", () => {
         values: "値",
       }),
     ).toBe("「締付トルクは 52 N·m です」外した [2][3]・残した [1]（値: 52）");
+    // 番号は保存のときに振り直されるので、資料の名前があれば番号に添える
+    expect(
+      systemFieldValue(
+        [
+          {
+            sentence: "締付トルクは 52 N·m です",
+            removed: [2],
+            kept: [1],
+            values: ["52"],
+            documents: { "1": "w03-手順書.docx", "2": "w04-議事録.docx" },
+          },
+        ],
+        {},
+        { removed: "外した", kept: "残した", values: "値" },
+      ),
+    ).toBe("「締付トルクは 52 N·m です」外した [2] w04-議事録.docx・残した [1] w03-手順書.docx（値: 52）");
   });
 });
 

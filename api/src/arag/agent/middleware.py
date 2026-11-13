@@ -523,9 +523,9 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
         known = set(runtime.context.registry.numbers())
         normalized = normalize_markers(answer)
         stripped = strip_unknown(normalized, known)
-        fixed = drop_repeated_tail(stripped)
-        if runtime.context.citation_prune:
-            fixed = _prune(runtime, fixed)
+        tailed = drop_repeated_tail(stripped)
+        tail_dropped = len(stripped) - len(tailed)
+        fixed = _prune(runtime, tailed) if runtime.context.citation_prune else tailed
         if fixed == text:
             return None
         removed = sorted({int(n) for n in _MARK.findall(normalized)} - known)
@@ -536,8 +536,10 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             notes.append("引用の書き方をそろえた")
         if removed:
             notes.append("資料に無い番号 " + "".join(f"[{n}]" for n in removed) + " を消した")
-        if len(stripped) > len(fixed):
-            notes.append(f"末尾の言い直し {len(stripped) - len(fixed)} 文字を消した")
+        if tail_dropped:
+            notes.append(f"末尾の言い直し {tail_dropped} 文字を消した")
+        if tailed != fixed:
+            notes.append("値を書いていない資料の番号を外した（引用の刈り込み）")
         record_system(
             runtime.stream_writer,
             "system-citation-cleanup",
@@ -548,7 +550,7 @@ class CitationMiddleware(AgentMiddleware[Any, RunContext]):
             output={
                 "after": fixed[:4000],
                 "removed_numbers": removed,
-                "tail_dropped_chars": len(stripped) - len(fixed),
+                "tail_dropped_chars": tail_dropped,
                 "thinking_chars": len(thought or ""),
             },
         )
@@ -563,6 +565,10 @@ def _prune(runtime: Runtime[RunContext], answer: str) -> str:
         for c in reg.items()
     }
     pruned_text, pruned = prune_citations(answer, materials)
+    names = {c.n: c.document_name for c in reg.items()}
+    for p in pruned:
+        # 番号は保存のときに振り直されるので、どの資料を外し・残したかを名前でも残す
+        p["documents"] = {str(n): names.get(n, "") for n in sorted([*p["removed"], *p["kept"]])}
     if pruned:
         removed = sorted({n for p in pruned for n in p["removed"]})
         record_system(

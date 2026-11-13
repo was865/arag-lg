@@ -661,9 +661,18 @@ async def test_citations_without_the_value_are_pruned_and_recorded() -> None:
     assert state["messages"][-1].text == "締付トルクは 52 N·m です[1]。"
     step = system_steps(custom)["citation_pruned"]
     assert step["label"] == "引用の刈り込み"
+    # 番号は検索で振った番号で、保存のときに振り直されるので、資料の名前も添えて後から追えるようにする
     assert step["output"]["pruned"] == [
-        {"sentence": "締付トルクは 52 N·m です[1][2]。", "removed": [2], "kept": [1], "values": ["52"]}
+        {
+            "sentence": "締付トルクは 52 N·m です[1][2]。",
+            "removed": [2],
+            "kept": [1],
+            "values": ["52"],
+            "documents": {"1": "規程.pdf", "2": "規程.pdf"},
+        }
     ]
+    # 刈り込みで短くなった分を「末尾の言い直し」に数えない
+    assert system_steps(custom)["citation_cleanup"]["output"]["tail_dropped_chars"] == 0
 
 
 async def test_pruning_can_be_turned_off() -> None:
