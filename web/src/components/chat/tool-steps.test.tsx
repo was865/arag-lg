@@ -82,6 +82,14 @@ describe("systemFieldValue（システムの処理の値）", () => {
         { removed: "外した", kept: "残した", values: "値" },
       ),
     ).toBe("「締付トルクは 52 N·m です」外した [2] w04-議事録.docx・残した [1] w03-手順書.docx（値: 52）");
+    // 質問に出た値は判断に使わなかったことを添える（specs/026 T34）
+    expect(
+      systemFieldValue(
+        [{ sentence: "HP-300 は 52 N·m", removed: [2], kept: [1], values: ["52"], ignored: ["300", "HP-300"] }],
+        {},
+        { removed: "外した", kept: "残した", values: "値", ignored: "質問の値（判断に使わない）" },
+      ),
+    ).toBe("「HP-300 は 52 N·m」外した [2]・残した [1]（値: 52／質問の値（判断に使わない）: 300・HP-300）");
   });
 });
 

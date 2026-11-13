@@ -60,6 +60,9 @@ class RunContext:
     sessionmaker: async_sessionmaker[AsyncSession]
     search: SearchFn
     question: str = ""
+    # 利用者が書いた質問の文そのまま（画像の説明を足す前）。
+    # 引用の刈り込みで質問の値を除くのに使う（specs/026 T34）
+    user_question: str = ""
     kb_ids: list[uuid.UUID] | None = None
     document_ids: list[uuid.UUID] | None = None
     include_archived: bool = False

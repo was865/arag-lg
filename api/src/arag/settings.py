@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     utility_model: str = ""
     # 回答のあとに続けて聞く質問の候補を作る（specs/028 R7）
     followups: bool = True
+    # 続けて聞く候補の作成の打ち切り（秒。specs/028 T25）
+    followups_timeout_sec: float = 5.0
     # 回答の文から、値を書いていない資料の引用番号を外す（specs/026 T31）
     citation_prune: bool = True
     # 画面で登録する API キーの暗号化鍵（Fernet。カンマ区切りで入れ替え。specs/013-llm-keys）

@@ -564,7 +564,9 @@ def _prune(runtime: Runtime[RunContext], answer: str) -> str:
         c.n: "\n".join(x for x in (c.document_name, c.heading_path, c.context, c.text) if x)
         for c in reg.items()
     }
-    pruned_text, pruned = prune_citations(answer, materials)
+    # 質問に出た値は判断に使わない（T34）。画像の説明は含めない
+    question = runtime.context.user_question or runtime.context.question
+    pruned_text, pruned = prune_citations(answer, materials, question=question)
     names = {c.n: c.document_name for c in reg.items()}
     for p in pruned:
         # 番号は保存のときに振り直されるので、どの資料を外し・残したかを名前でも残す

@@ -319,7 +319,11 @@ export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Di
 export function systemFieldValue(
   v: unknown,
   reasons: Record<string, string> = {},
-  prune: { removed: string; kept: string; values: string } = { removed: "-", kept: "+", values: "=" },
+  prune: { removed: string; kept: string; values: string; ignored?: string } = {
+    removed: "-",
+    kept: "+",
+    values: "=",
+  },
 ): string {
   if (!Array.isArray(v)) return String(v);
   if (!v.length) return "—";
@@ -337,6 +341,7 @@ export function systemFieldValue(
           removed: unknown[];
           kept?: unknown[];
           values?: unknown[];
+          ignored?: unknown[];
           documents?: Record<string, unknown>;
         };
         const docs = d.documents;
@@ -344,7 +349,9 @@ export function systemFieldValue(
           docs
             ? (ns ?? []).map((n) => `[${String(n)}] ${String(docs[String(n)] ?? "")}`.trim()).join("、")
             : (ns ?? []).map((n) => `[${String(n)}]`).join("");
-        return `「${String(d.sentence)}」${prune.removed} ${marks(d.removed)}・${prune.kept} ${marks(d.kept)}（${prune.values}: ${(d.values ?? []).map(String).join("・")}）`;
+        // 質問に出た値は判断に使わない（specs/026 T34）
+        const ignored = d.ignored?.length ? `／${prune.ignored ?? "?"}: ${d.ignored.map(String).join("・")}` : "";
+        return `「${String(d.sentence)}」${prune.removed} ${marks(d.removed)}・${prune.kept} ${marks(d.kept)}（${prune.values}: ${(d.values ?? []).map(String).join("・")}${ignored}）`;
       }
       if (x && typeof x === "object" && "question" in x && "reason" in x) {
         // 落とした候補（続けて聞く）。理由は読める名前にし、根拠の語句があれば添える（specs/028 T23）

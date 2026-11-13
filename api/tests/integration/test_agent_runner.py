@@ -405,6 +405,8 @@ async def test_followups_are_made_after_the_answer_and_saved(
         {"question": "停止の判断は誰がする？", "reason": "no_evidence", "evidence": "工場長が判断"}
     ]
     assert "model" in step["input"]
+    # 打ち切りの秒数は 5 秒（ARAG_FOLLOWUPS_TIMEOUT_SEC、specs/028 T25）
+    assert step["input"]["timeout_sec"] == 5.0
     # 検索に出た資料の抜粋を <資料> で囲んで渡し、件数と字数を記録する（T6b）
     human = utility.calls[-1][-1].text
     assert "規程.pdf" in human and "<資料>" in human and "MX-17 は即時停止を推奨する" in human
@@ -494,3 +496,55 @@ async def test_followups_see_previous_turns_and_drop_what_was_answered(
     ]
     human = utility.calls[-1][-1].text
     assert "MX-17 は？" in human and "即時停止を推奨します" in human
+
+
+async def test_next_question_runs_while_followups_are_being_made(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: Redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """候補を待っているあいだに、同じスレッドの次の質問がすぐ受け付けられ、枠が 1 つでも実行される（T26）。"""
+    from arag.agent import runner as runner_mod
+    from arag.agent.followups import Followups
+
+    gate = asyncio.Event()
+    entered = asyncio.Event()
+
+    async def slow_suggest(*_a: Any, **_k: Any) -> Followups:
+        entered.set()
+        await gate.wait()
+        return Followups(questions=("次は？",), ms=1)
+
+    monkeypatch.setattr(runner_mod, "suggest", slow_suggest)
+    model = FakeToolModel(messages=script(AIMessage(content="一回目[1]。"), AIMessage(content="二回目[1]。")))
+    deps = make_deps(sessionmaker, redis, model)
+    runner = Runner(deps, database_url=Settings().database_url, concurrency=1)
+
+    async def create(query: str, thread: Thread | None = None) -> tuple[Thread, Run]:
+        async with sessionmaker() as s:
+            th, run = await create_run(s, ALICE, thread, RunRequest(query=query), "fake")
+            await s.commit()
+        return th, run
+
+    th, r1 = await create("質問1")
+    assert await runner.tick() == 1
+    await asyncio.wait_for(entered.wait(), 5)
+    # 候補を作っているあいだ: run は完了で、同じスレッドの次の質問は弾かれない
+    async with sessionmaker() as s:
+        row = await s.get(Run, r1.id)
+        assert row is not None and row.status == "completed"
+    _, r2 = await create("質問2", th)
+    # 候補の作成は枠を塞がない（concurrency=1 でも次の run を claim する）
+    assert await runner.tick() == 1
+    t2 = runner.running[r2.id]
+    entered.clear()
+    await asyncio.wait_for(entered.wait(), 5)  # 2 つ目の run も回答まで進み、候補の作成に入った
+    assert not gate.is_set()
+    gate.set()
+    assert await asyncio.wait_for(t2, 5) == "completed"
+    await asyncio.wait_for(asyncio.gather(*runner.trailing.values()), 5)
+    assert not runner.trailing and not runner.running
+    async with sessionmaker() as s:
+        msgs = list(
+            await s.scalars(select(Message).where(Message.thread_id == th.id).order_by(Message.ordinal))
+        )
+        assert [m.answer_text for m in msgs] == ["一回目[1]。", "二回目[1]。"]
+        assert [m.suggestions for m in msgs] == [["次は？"], ["次は？"]]

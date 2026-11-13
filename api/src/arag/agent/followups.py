@@ -23,7 +23,7 @@ from arag.prompts import load_prompt
 MAX_QUESTIONS = 3
 MAX_CHARS = 40
 ANSWER_CHARS = 1500
-TIMEOUT_SEC = 3.0
+TIMEOUT_SEC = 5.0  # 候補は完了の後に届くので、待っても回答は遅れない（specs/028 T25。以前は 3 秒）
 # 検索に出た資料の抜粋（T6b・T23）: 1 件の本文の先頭・件数・全体の字数の上限。答えの値が入るよう広めに渡す
 EXCERPT_CHARS = 400
 EXCERPT_MAX = 8
