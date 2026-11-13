@@ -1,0 +1,117 @@
+{
+  "nodes": [
+    {
+      "id": "read_image",
+      "label": "画像",
+      "description": "添付画像を文章にして質問に添える（画像が無ければ素通り）"
+    },
+    {
+      "id": "understand",
+      "label": "理解",
+      "description": "質問の種類・検索語・表の集計の要否を整理する（初回は質問文での検索と並行）"
+    },
+    {
+      "id": "primer_search",
+      "label": "最初の検索",
+      "description": "整理した検索語で検索し、結果を質問に添える用意をする"
+    },
+    {
+      "id": "investigate",
+      "label": "調査",
+      "description": "モデルとツールの輪（create_agent。要約・モデルの切り替え・回数の上限を含む）"
+    },
+    {
+      "id": "guard",
+      "label": "見張り",
+      "description": "空の生成のやり直し・差し戻しへの返事や引用の消えた書き直しの取り消し"
+    },
+    {
+      "id": "review",
+      "label": "確認",
+      "description": "調べ残し・表の集計・数字を確かめ、当てはまれば差し戻す（種類ごとに 1 度）"
+    },
+    {
+      "id": "finalize",
+      "label": "確定",
+      "description": "数字の照合・引用の整形と刈り込み・回答の分類をして、完了を送る"
+    },
+    {
+      "id": "followups",
+      "label": "続けて聞く",
+      "description": "完了の後に、続けて聞く質問の候補を作って届ける"
+    }
+  ],
+  "edges": [
+    {
+      "source": "read_image",
+      "target": "understand",
+      "kind": "next"
+    },
+    {
+      "source": "understand",
+      "target": "primer_search",
+      "kind": "next",
+      "key": "docs",
+      "label": "資料"
+    },
+    {
+      "source": "understand",
+      "target": "investigate",
+      "kind": "skip",
+      "key": "chat",
+      "label": "雑談"
+    },
+    {
+      "source": "primer_search",
+      "target": "investigate",
+      "kind": "next"
+    },
+    {
+      "source": "investigate",
+      "target": "guard",
+      "kind": "next"
+    },
+    {
+      "source": "guard",
+      "target": "investigate",
+      "kind": "back",
+      "key": "retry",
+      "label": "やり直し"
+    },
+    {
+      "source": "guard",
+      "target": "review",
+      "kind": "next",
+      "key": "ok",
+      "label": "通過"
+    },
+    {
+      "source": "guard",
+      "target": "finalize",
+      "kind": "skip",
+      "key": "use_draft",
+      "label": "下書きへ"
+    },
+    {
+      "source": "review",
+      "target": "investigate",
+      "kind": "back",
+      "key": "send_back",
+      "label": "差し戻し"
+    },
+    {
+      "source": "review",
+      "target": "finalize",
+      "kind": "next",
+      "key": "pass",
+      "label": "通過"
+    },
+    {
+      "source": "finalize",
+      "target": "followups",
+      "kind": "next",
+      "key": "followups",
+      "label": "候補あり"
+    }
+  ]
+}

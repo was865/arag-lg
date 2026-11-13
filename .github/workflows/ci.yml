@@ -55,7 +55,7 @@ jobs:
       - run: pnpm build
 
   generated:
-    name: OpenAPI 生成物の一致
+    name: 生成物の一致（OpenAPI・回答の流れの図）
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -68,6 +68,7 @@ jobs:
       - run: cd api && uv sync --locked
       - run: cd web && pnpm install --frozen-lockfile
       - run: make gen-check
+      - run: make graph-check
 
   licenses:
     name: ライセンス走査

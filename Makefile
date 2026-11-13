@@ -1,5 +1,5 @@
 # 開発用コマンド（specs/001-p0-skeleton R2）。
-.PHONY: setup dev-api dev-web up-infra up down eval-api eval-api-down test lint gen gen-check licenses
+.PHONY: setup dev-api dev-web up-infra up down eval-api eval-api-down test lint gen gen-check graph graph-check licenses
 
 setup: ## 依存をロックどおりに導入
 	cd api && uv sync --locked
@@ -41,6 +41,12 @@ gen: ## OpenAPI 文書と TS 型を再生成
 
 gen-check: gen ## 生成物がコミット済みと一致するか
 	git diff --exit-code -- api/openapi.json web/src/lib/api/schema.d.ts
+
+graph: ## 回答の流れの図をグラフの定義から書き出す（docs/agent-graph.md・web の flow-graph.json）
+	cd api && uv run python -m arag.agent.diagram
+
+graph-check: ## 書き出した図がグラフの定義と一致するか
+	cd api && uv run python -m arag.agent.diagram --check
 
 licenses: ## 依存ライセンス走査（本番依存のみ）
 	mkdir -p .tmp
