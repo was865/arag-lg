@@ -2,7 +2,7 @@
 
 /** 技術者への報告（specs/028 R13〜R16）。左に一覧、行を押すと右（狭い幅では下）に詳細。読むだけで会話は続けない。 */
 import createClient from "openapi-fetch";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { StaticAnswer } from "@/components/chat/messages";
 import { ToolSteps } from "@/components/chat/tool-steps";
@@ -67,6 +67,8 @@ export function FeedbackView() {
   const [loadingMore, setLoadingMore] = useState(false);
   // 未対応の「良くない」の件数（ナビに出す。状態を変えたらここで合わせる）
   const [openCount, setOpenCount] = useState<number | undefined>(undefined);
+  // 絞り込みに合わなくなって一覧から外した行（状態を戻したら元の位置に戻す）
+  const removed = useRef(new Map<string, { row: FeedbackRow; index: number }>());
 
   const fetchPage = useCallback(
     async (after: string | null) => {
@@ -84,6 +86,7 @@ export function FeedbackView() {
     fetchPage(null).then(
       (p) => {
         if (!alive) return;
+        removed.current.clear();
         setRows(p.items);
         setCursor(p.next_cursor ?? null);
         setOpenCount(p.open_count);
@@ -185,7 +188,7 @@ export function FeedbackView() {
                 id={selected}
                 names={names}
                 onChanged={(d) => {
-                  const next = afterStatusChange(rows ?? [], openCount ?? 0, d, status);
+                  const next = afterStatusChange(rows ?? [], openCount ?? 0, d, status, removed.current);
                   setRows(next.rows);
                   setOpenCount(next.openCount);
                 }}

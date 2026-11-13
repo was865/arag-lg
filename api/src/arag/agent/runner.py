@@ -28,6 +28,7 @@ from arag.agent.context import RunContext, SearchFn
 from arag.agent.followups import HISTORY_TURNS, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
+from arag.agent.ops import best_score
 from arag.agent.query_image import with_image_description
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, StepClock, record_system
@@ -335,7 +336,16 @@ async def _followups(
     titles = [s["title"] for s in src.get("sources", [])]
     docs = excerpts(ctx.registry.items())
     try:
-        out = await suggest(model, question, answer, titles, docs, history=history or [])
+        out = await suggest(
+            model,
+            question,
+            answer,
+            titles,
+            docs,
+            history=history or [],
+            score=lambda q: best_score(ctx, q),
+            threshold=ctx.cfg.grade_threshold,
+        )
     except asyncio.CancelledError:
         # 本文を流し終えた後の取消は、回答をそのまま保存し、候補だけ諦める
         task = asyncio.current_task()
@@ -345,6 +355,10 @@ async def _followups(
     output: dict[str, Any] = {"ms": out.ms}
     if out.dropped:
         output["dropped"] = list(out.dropped)
+    if out.scores is not None:
+        # 候補ごとの検索の最上位スコア（「関連が低い」の閾値を下回れば落とす。None は確かめられなかった）
+        output["scores"] = [{"question": q, "score": v} for q, v in out.scores.items()]
+        output["threshold"] = ctx.cfg.grade_threshold
     if out.questions:
         output["questions"] = list(out.questions)
         summary = f"{len(out.questions)} 個の候補を作った（{out.ms} ms）"

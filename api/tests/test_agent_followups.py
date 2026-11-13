@@ -148,3 +148,49 @@ async def test_suggest_passes_recent_turns_and_records_dropped() -> None:
     assert "前の質問です" in human and "x" * 600 in human and "x" * 601 not in human
     assert out.questions == ("SK-300 のリードタイムは？",)
     assert out.dropped and out.dropped[0]["question"] == "P-1042 の部品番号は？"
+
+
+def test_words_only_in_questions_do_not_drop_a_candidate() -> None:
+    """3100: 「在庫」が前の質問にしか出ていないのに「SK-300 の在庫数は？」を落とした（specs/028 T19）。"""
+    from arag.agent.followups import drop_known
+
+    history = [("在庫が発注点を下回っている部品はどれですか？", "シールキット SK-300 と軸受 6309ZZ です。")]
+    kept, dropped = drop_known(
+        ["シールキット SK-300の在庫数は？", "在庫が発注点を下回っている部品はどれですか"],
+        "SK-300 の単価は？",
+        "シールキット SK-300 の単価は 18,400 円です。",
+        history,
+    )
+    assert kept == ["シールキット SK-300の在庫数は？"]
+    assert dropped[0]["reason"] == "これまでの質問と同じ"
+
+
+async def test_candidates_without_relevant_documents_are_dropped() -> None:
+    reply = AIMessage(content='{"questions": ["SK-300 の単価は？", "補充の担当者は？", "保管場所は？"]}')
+    model = FakeToolModel(messages=script(reply))
+    scores = {"SK-300 の単価は？": 0.91, "補充の担当者は？": 0.05}
+
+    async def score(q: str) -> float | None:
+        if q == "保管場所は？":
+            return None  # rerank が効かず比べられない → 確かめずに残す
+        return scores[q]
+
+    out = await suggest(model, "SK-300 は？", "SK-300 です。", [], [], score=score, threshold=0.3)
+    assert out.questions == ("SK-300 の単価は？", "保管場所は？")
+    assert out.dropped == ({"question": "補充の担当者は？", "reason": "low_relevance", "score": 0.05},)
+    assert out.scores == {"SK-300 の単価は？": 0.91, "補充の担当者は？": 0.05, "保管場所は？": None}
+
+
+async def test_slow_relevance_check_keeps_the_candidates() -> None:
+    reply = AIMessage(content='{"questions": ["SK-300 の単価は？"]}')
+    model = FakeToolModel(messages=script(reply))
+
+    async def slow(q: str) -> float | None:
+        await asyncio.sleep(5)
+        return 0.0
+
+    out = await suggest(
+        model, "SK-300 は？", "SK-300 です。", [], [], score=slow, threshold=0.3, limit_sec=0.2
+    )
+    assert out.questions == ("SK-300 の単価は？",) and out.dropped == ()
+    assert out.scores == {"SK-300 の単価は？": None}

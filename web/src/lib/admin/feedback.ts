@@ -63,18 +63,28 @@ export function diagnostics(d: FeedbackDetail, reporterName: string | null) {
 
 /**
  * 対応済み・未対応に変えたあとの一覧と、未対応の「良くない」の件数。
- * 状態の絞り込み（filter、"" はすべて）に合わなくなった行は一覧から外す。
+ * 状態の絞り込み（filter、"" はすべて）に合わなくなった行は一覧から外し、removed に元の位置ごと覚えておく。
+ * 外した行が絞り込みに合う状態に戻れば、再読み込みなしで元の位置に戻す（specs/028 T20）。
  */
 export function afterStatusChange(
   rows: FeedbackRow[],
   openCount: number,
   d: FeedbackDetail,
   filter: FeedbackStatus | "",
+  removed: Map<string, { row: FeedbackRow; index: number }> = new Map(),
 ): { rows: FeedbackRow[]; openCount: number } {
-  const prev = rows.find((r) => r.id === d.id)?.status ?? (d.status === "open" ? "resolved" : "open");
+  const kept = removed.get(d.id);
+  const prev = rows.find((r) => r.id === d.id)?.status ?? kept?.row.status ?? (d.status === "open" ? "resolved" : "open");
   const delta = d.rating !== "down" || prev === d.status ? 0 : d.status === "open" ? 1 : -1;
-  const next = rows
-    .map((r) => (r.id === d.id ? { ...r, status: d.status } : r))
-    .filter((r) => r.id !== d.id || !filter || r.status === filter);
+  const fits = !filter || d.status === filter;
+  let next = rows.map((r) => (r.id === d.id ? { ...r, status: d.status } : r));
+  const index = next.findIndex((r) => r.id === d.id);
+  if (index >= 0 && !fits) {
+    removed.set(d.id, { row: next[index], index });
+    next = next.filter((r) => r.id !== d.id);
+  } else if (index < 0 && fits && kept) {
+    removed.delete(d.id);
+    next = [...next.slice(0, kept.index), { ...kept.row, status: d.status }, ...next.slice(kept.index)];
+  }
   return { rows: next, openCount: Math.max(0, openCount + delta) };
 }

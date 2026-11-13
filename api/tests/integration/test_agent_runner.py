@@ -449,7 +449,8 @@ async def test_followups_see_previous_turns_and_record_dropped(
     """前のターンの質問と回答を渡し、会話で既に出たことを尋ねる候補を落として記録する（R2b・T15）。"""
     model = FakeToolModel(
         messages=script(
-            AIMessage(content="在庫は 6 個です[1]。"), AIMessage(content="仕入先は S-07 です[1]。")
+            AIMessage(content="SK-300 の在庫は 6 個です[1]。"),
+            AIMessage(content="仕入先は S-07 です[1]。"),
         )
     )
     understand = AIMessage(content='{"kind": "docs", "queries": ["SK-300"], "table": false}')
@@ -469,5 +470,8 @@ async def test_followups_see_previous_turns_and_record_dropped(
     assert evs[-1]["suggestions"] == ["SK-300 のリードタイムは？"]
     [step] = followup_steps(evs)
     assert step["output"]["dropped"][0]["question"] == "SK-300 の在庫数は？"
+    # 残った候補は検索で確かめ、最上位のスコアを記録する（T19）
+    assert [s["question"] for s in step["output"]["scores"]] == ["SK-300 のリードタイムは？"]
+    assert "threshold" in step["output"]
     human = utility.calls[-1][-1].text
     assert "SK-300 の在庫は？" in human and "在庫は 6 個です" in human

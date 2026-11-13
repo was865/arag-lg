@@ -89,4 +89,23 @@ describe("状態を変えたあとの一覧（3100 で見つけた不具合）",
     const up = { ...resolved, rating: "up" } as FeedbackDetail;
     expect(afterStatusChange(rows, 2, up, "").openCount).toBe(2);
   });
+
+  it("「未対応」で絞ったまま対応済み → 未対応に戻すと、再読み込みなしで元の位置に戻る（specs/028 T20）", async () => {
+    const { afterStatusChange } = await import("@/lib/admin/feedback");
+    const rows = [
+      { id: "f1", rating: "down", status: "open" },
+      { id: "f2", rating: "down", status: "open" },
+    ] as unknown as FeedbackRow[];
+    const removed = new Map();
+    const resolved = { ...detail, id: "f1", status: "resolved" } as FeedbackDetail;
+    const a = afterStatusChange(rows, 2, resolved, "open", removed);
+    expect(a.rows.map((r) => r.id)).toEqual(["f2"]);
+    const b = afterStatusChange(a.rows, a.openCount, { ...resolved, status: "open" } as FeedbackDetail, "open", removed);
+    expect(b.rows.map((r) => [r.id, r.status])).toEqual([
+      ["f1", "open"],
+      ["f2", "open"],
+    ]);
+    expect(b.openCount).toBe(2);
+    expect(removed.size).toBe(0);
+  });
 });

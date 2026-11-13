@@ -9,7 +9,7 @@ import json
 import re
 import time
 import unicodedata
-from collections.abc import Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -48,7 +48,9 @@ class Followups:
     ms: int = 0
     raw: str = ""
     # 会話で既に出たとして落とした候補と理由（T15）
-    dropped: tuple[dict[str, str], ...] = ()
+    dropped: tuple[dict[str, Any], ...] = ()
+    # 候補ごとの検索の最上位スコア（T19。確かめられなかった候補は None）
+    scores: dict[str, float | None] | None = None
 
 
 def parse(text: str, question: str) -> tuple[list[str], str]:
@@ -114,17 +116,17 @@ def _same_key(text: str) -> str:
 
 def drop_known(
     questions: list[str], question: str, answer: str, history: Sequence[tuple[str, str]]
-) -> tuple[list[str], list[dict[str, str]]]:
+) -> tuple[list[str], list[dict[str, Any]]]:
     """会話で既に出たことを尋ねる候補を落とす（R2b）。
 
     ① これまでの質問（今の質問を含む）と同じ文。
-    ② 内容の語がすべて、今のターンと前のターンの質問と回答に含まれる
+    ② 内容の語がすべて、今の回答と前のターンの回答に含まれる（質問の文は ① でしか見ない。T19）
     （3 字以上で末尾が「数・名・先・額」の語は、その 1 字を除いた形でも照合）。語が無い候補は落とさない。
     """
     asked = {_same_key(q) for q, _ in history} | {_same_key(question)}
-    seen = _norm("\n".join([question, answer, *(f"{q}\n{a}" for q, a in history)]))
+    seen = _norm("\n".join([answer, *(a for _, a in history)]))
     kept: list[str] = []
-    dropped: list[dict[str, str]] = []
+    dropped: list[dict[str, Any]] = []
     for q in questions:
         if _same_key(q) in asked:
             dropped.append({"question": q, "reason": "これまでの質問と同じ"})
@@ -179,9 +181,15 @@ async def suggest(
     docs: Sequence[str] = (),
     *,
     history: Sequence[tuple[str, str]] = (),
+    score: Callable[[str], Awaitable[float | None]] | None = None,
+    threshold: float = 0.0,
     limit_sec: float = TIMEOUT_SEC,
 ) -> Followups:
-    """質問・回答・引用した資料の題名・検索に出た資料の抜粋から候補を作る（抜粋はデータとして囲む）。"""
+    """質問・回答・引用した資料の題名・検索に出た資料の抜粋から候補を作る（抜粋はデータとして囲む）。
+
+    score があれば、残った候補をそれぞれ検索して最上位のスコアが threshold を下回るものを落とす（T19）。
+    時間の枠（limit_sec）は候補の生成と合わせたもの。間に合わなかった候補は確かめずに残す。
+    """
     t0 = time.monotonic()
 
     def ms() -> int:
@@ -200,4 +208,32 @@ async def suggest(
     text = str(out.text) if hasattr(out, "text") else str(out)
     questions, error = parse(text, question)
     kept, dropped = drop_known(questions, question, answer, history[-HISTORY_TURNS:])
-    return Followups(questions=tuple(kept), error=error, ms=ms(), raw=text[:1000], dropped=tuple(dropped))
+    scores: dict[str, float | None] | None = None
+    if score is not None and kept:
+        scores = await _scores(score, kept, limit_sec - (time.monotonic() - t0))
+        for q in list(kept):
+            v = scores[q]
+            if v is not None and v < threshold:
+                kept.remove(q)
+                dropped.append({"question": q, "reason": "low_relevance", "score": v})
+    return Followups(
+        questions=tuple(kept), error=error, ms=ms(), raw=text[:1000], dropped=tuple(dropped), scores=scores
+    )
+
+
+async def _scores(
+    score: Callable[[str], Awaitable[float | None]], questions: list[str], left: float
+) -> dict[str, float | None]:
+    """候補を並行して検索し、最上位のスコアを得る。時間切れ・失敗の候補は None（確かめずに残す）。"""
+    tasks = {q: asyncio.ensure_future(score(q)) for q in questions}
+    if left > 0:
+        await asyncio.wait(tasks.values(), timeout=left)
+    out: dict[str, float | None] = {}
+    for q, t in tasks.items():
+        if t.done() and not t.cancelled() and t.exception() is None:
+            v = t.result()
+            out[q] = round(v, 3) if v is not None else None
+        else:
+            t.cancel()
+            out[q] = None
+    return out
