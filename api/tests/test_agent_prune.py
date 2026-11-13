@@ -111,3 +111,10 @@ def test_codes_are_recorded_as_written_and_matched_case_insensitively() -> None:
     materials = {1: "シールキット sk-300（部品番号 P-1042）", 2: "羽根車 IM-320"}
     _text, pruned = prune_citations("仕入先は SK-300 の業者です [1][2]。", materials)
     assert pruned[0]["values"] == ["300", "SK-300"] and pruned[0]["removed"] == [2]
+
+
+def test_markers_used_as_nouns_in_the_sentence_are_untouched() -> None:
+    # hm59（026f）: 「資料 [1] や [2] には」の番号は文の中の名詞で、外すと「資料  や」が残る
+    materials = {1: "CR-02 の保守記録", 2: "CR-02 は 2022 年に導入"}
+    text = "資料 [1] や [2] には、導入年（2022年）の記載があります。"
+    assert prune_citations(text, materials, question="CR-02 の製造元は？") == (text, [])

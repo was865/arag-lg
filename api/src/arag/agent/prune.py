@@ -20,6 +20,8 @@ _MARK = re.compile(r"\[(\d+)\](?!\()")
 # 英数字の型番（英字と数字の両方を含む 3 字以上の連なり。P-1042・KG-5・HP-300）
 _CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9]")
 _ONE_DIGIT = re.compile(r"\d")
+# 文の中で名詞として使った番号（「資料 [1] や [2] には」）。直後が平仮名（助詞）の番号は引用ではない
+_PROSE = re.compile(r"\[\d+\](?!\()[ \t]*(?=[ぁ-ゖ])")
 _GAP = re.compile(r"(\])[ \t]+(?=[。．！？!?]|\n|$)")
 
 
@@ -84,6 +86,8 @@ def prune_citations(
     for start, end in _spans(text):
         sentence = text[start:end]
         cited = list(dict.fromkeys(int(n) for n in _MARK.findall(sentence)))
+        if _PROSE.search(sentence):  # 番号を文の中で名詞として使った文は触らない（026f の hm59）
+            cited = []
         all_nums, all_codes = _values(sentence) if len(cited) >= 2 else (set(), {})
         nums = all_nums - q_nums
         codes = {k: v for k, v in all_codes.items() if k not in q_codes}
