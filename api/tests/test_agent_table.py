@@ -207,6 +207,12 @@ def test_blank_and_note_rows_are_not_data_rows() -> None:
     s = summarize(r, "(発注点 - 在庫) * 単価")
     assert s["rows_total"] == 8 and s["notes"] == t.notes
     assert s["aggregates"]["計算（(発注点 - 在庫) * 単価）"]["sum"] == "85540"
+    # 索引の本文（Docling）では、注記が 1 列の表になり、区切りの行が続く。区切りの行も数えない
+    indexed = X01.replace("|  |  |  |  |  |  |  |\n", "").replace(
+        "発注する。 |  |  |  |  |  |  |\n", "発注する。 |\n|----------------------------------|\n"
+    )
+    t3 = parse_tables(indexed)[0]
+    assert len(t3.rows) == 8 and len(t3.notes) == 1
     # 先頭のセルだけでも、注記の言い方でなければデータの行のまま
     t2 = parse_tables("| 名称 | 数 |\n|---|---|\n| A | 1 |\n| B |  |")[0]
     assert len(t2.rows) == 2 and t2.notes == []

@@ -108,7 +108,9 @@ def parse_tables(text: str) -> list[Table]:
             j = i + 2
             rows: list[list[str]] = []
             while j < len(lines) and lines[j].lstrip().startswith("|"):
-                rows.append(_cells(lines[j]))
+                # 表の途中の区切りの行（注記が 1 列の表として続くときなど）はデータの行にしない
+                if not _SEP.match(lines[j].strip()):
+                    rows.append(_cells(lines[j]))
                 j += 1
             title = ""
             if sum(1 for c in header if c) <= 1 and len(rows) >= 2:

@@ -124,4 +124,4 @@ R21 の門（事実網羅 0.92・引用再現率 0.96 を下回らない）は�
 
 - [x] T28 「表にして」は出力の形であって、表の集計ではない。`agent_understand.md` に false の例（「HP-300 と HP-320 の仕様の違いを表にしてください」）を足し、`understand` の後に決定的な歯止め（`guard_table`。形の言い方があり集計の語が無ければ table=false、understand のステップの output に `table_overridden: true`）— R28
 - [x] T29 差し戻しへの返事を回答にしない: 差し戻しの直後にツールを呼ばずに書いた書き直しが (a) 下書きの引用をすべて失った（下書きに引用があったときだけ）・(b) 冒頭 40 字が依頼への返事、なら書き直しを捨てて下書きを回答にする。`system`（kind=`rewrite_discarded`、input に `reason`・`review`、output に `discarded`（冒頭 200 字）・`used: "draft"`・`pending_review`）。下書きに戻したときも数字の照合は下書きに行う。画面に「書き直しの取り消し」と理由の表示名 — R29
-- [x] T30 `parse_tables`: すべて空の行は捨て、先頭のセルだけの注記の行は `notes` に移す。`render` の末尾に「注記: …」、構造の出力に `notes`、画面に「表の注記」— R30
+- [x] T30 `parse_tables`: すべて空の行・表の途中の区切りの行（索引の本文では注記が 1 列の表として続く）は捨て、先頭のセルだけの注記の行は `notes` に移す。`render` の末尾に「注記: …」、構造の出力に `notes`、画面に「表の注記」— R30
