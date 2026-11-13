@@ -573,3 +573,10 @@ async def test_empty_generation_is_retried_only_once_per_run() -> None:
     assert len(model.calls) == 3  # 2 度目の空はやり直さない
     assert [s["output"]["result"] for s in empty_steps(custom)] == ["retried_ok", "failed"]
     assert empty_steps(custom)[1]["input"]["retried"] is False
+
+
+def test_send_back_tail_asks_to_call_the_tool_first() -> None:
+    """ツールを求める差し戻しで、暗算で数字だけ書き換えず、まずそのツールを呼ばせる（026 T26）。"""
+    from arag.agent.middleware import SEND_BACK_TAIL
+
+    assert "まずそのツールを呼んで" in SEND_BACK_TAIL and "暗算" in SEND_BACK_TAIL
