@@ -1,0 +1,6194 @@
+{
+ "answer": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "MX-17 はどうする？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "MX-17 はどうする？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "MX-17 はどうする？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "停止する【1】",
+    "type": "answer.delta"
+   },
+   {
+    "text": "。根拠なし[9]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-citation-cleanup",
+     "input": {
+      "before": "停止する【1】。根拠なし[9]",
+      "kind": "citation_cleanup"
+     },
+     "label": "回答の整形",
+     "name": "system",
+     "output": {
+      "after": "停止する[1]。根拠なし",
+      "removed_numbers": [
+       9
+      ],
+      "tail_dropped_chars": 0,
+      "thinking_chars": 0
+     },
+     "status": "done",
+     "summary": "引用の書き方をそろえた・資料に無い番号 [9] を消した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "MX-17 はどうする？",
+    "type": "human"
+   },
+   {
+    "text": "停止する[1]。根拠なし",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "MX-17 はどうする？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "chat": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": true,
+      "question": "ありがとう"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": true,
+      "question": "ありがとう"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "kind": "chat",
+      "queries": [],
+      "raw": "{\"kind\": \"chat\", \"queries\": [], \"table\": false}",
+      "table": false
+     },
+     "status": "done",
+     "summary": "文書を調べる質問ではないと判断"
+    },
+    "type": "step"
+   },
+   {
+    "text": "どういた",
+    "type": "answer.delta"
+   },
+   {
+    "text": "しまして",
+    "type": "answer.delta"
+   }
+  ],
+  "messages": [
+   {
+    "text": "ありがとう",
+    "type": "human"
+   },
+   {
+    "text": "どういたしまして",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "ありがとう",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "empty_after_send_back_retried": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       },
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "2 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫 6\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 2 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "第3版の変更点と、関連部品の在庫は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在",
+    "type": "answer.delta"
+   },
+   {
+    "text": "庫数は資料に記載されていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "変更点はトルク値です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "text": "。在庫は 6 個です[2]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "retried_ok"
+     },
+     "status": "done",
+     "summary": "回答が空だったため、同じ要求でやり直して回答できた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？",
+    "type": "human"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在庫は 6 個です[2]。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫 6\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 1,
+   "empty_failed": false,
+   "empty_retries": 1,
+   "gap_reviews": 1,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "empty_after_send_back_uses_draft": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       },
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "2 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 2 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "第3版の変更点と、関連部品の在庫は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在",
+    "type": "answer.delta"
+   },
+   {
+    "text": "庫数は資料に記載されていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "pending_review": "gap",
+      "result": "used_draft"
+     },
+     "status": "done",
+     "summary": "書き直しが空だったため、差し戻す前の下書きを回答にした（確認は未了）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？",
+    "type": "human"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 1,
+   "empty_failed": false,
+   "empty_retries": 1,
+   "gap_reviews": 1,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "empty_failed": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "保存期間は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "failed"
+     },
+     "status": "done",
+     "summary": "回答が空のままで、使える下書きも無かった"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "保存期間は？",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 1,
+   "empty_failed": true,
+   "empty_retries": 1,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "empty_retry": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "保存期間は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "答えは 5 ",
+    "type": "answer.delta"
+   },
+   {
+    "text": "年です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "retried_ok"
+     },
+     "status": "done",
+     "summary": "回答が空だったため、同じ要求でやり直して回答できた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "保存期間は？",
+    "type": "human"
+   },
+   {
+    "text": "答えは 5 年です[1]",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 1,
+   "empty_failed": false,
+   "empty_retries": 1,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "empty_retry_then_tools": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "保存期間は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "保存期間は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "保存期間は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "retried_ok"
+     },
+     "status": "done",
+     "summary": "回答が空だったため、同じ要求でやり直して回答できた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "保存期間"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-1>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "保存期間"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-1>",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "保存期間"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「保存期間」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-empty-2",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": false,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "failed"
+     },
+     "status": "done",
+     "summary": "回答が空のままで、使える下書きも無かった"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "保存期間は？",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "保存期間は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   }
+  ],
+  "stats": {
+   "empty_events": 2,
+   "empty_failed": true,
+   "empty_retries": 1,
+   "gap_reviews": 0,
+   "model_calls": 2,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 1
+  }
+ },
+ "gap": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       },
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "2 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 2 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "第3版の変更点と、関連部品の在庫は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "第3版の変更点と、関連部品の在庫は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在",
+    "type": "answer.delta"
+   },
+   {
+    "text": "庫数は資料に記載されていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [
+       "search"
+      ],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → search を実行"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "SK-300 部品台帳 在庫"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 部品台帳 在庫"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-1>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 部品台帳 在庫"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       },
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-1>",
+     "status": "done",
+     "summary": "2 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "SK-300 部品台帳 在庫"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「SK-300 部品台帳 在庫」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 2 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在庫は",
+    "type": "answer.delta"
+   },
+   {
+    "text": " SK-300 のとおりです[2]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "変更点はトルク値です[1]。在庫は SK-300 のとおりです[2]。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "第3版の変更点と、関連部品の在庫は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 1,
+   "model_calls": 2,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 1
+  }
+ },
+ "gap_then_numbers": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "SK-300 の単価は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "SK-300 の単価は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "SK-300 の単価は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "単価は資料に記載さ",
+    "type": "answer.delta"
+   },
+   {
+    "text": "れていません[1]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "単価は資料に記載されていません[1]。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "単価は 17,80",
+    "type": "answer.delta"
+   },
+   {
+    "text": "0 円です[1]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "単価は資料に記載されていません[1]。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "review-2",
+     "input": {
+      "draft": "単価は 17,800 円です[1]。",
+      "kind": "numbers",
+      "searches": 1,
+      "trigger": "資料に無い数字 17,800"
+     },
+     "label": "数字の確認",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "単価は 18,40",
+    "type": "answer.delta"
+   },
+   {
+    "text": "0 円です[1]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-2",
+     "input": {
+      "draft": "単価は 17,800 円です[1]。",
+      "kind": "numbers",
+      "searches": 1,
+      "trigger": "資料に無い数字 17,800"
+     },
+     "label": "数字の確認",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きの数字 17,800 は、資料にも計算結果にも見当たりません。資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。資料に無い数字は書かないでください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「資料に無い数字 17,800」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "SK-300 の単価は？",
+    "type": "human"
+   },
+   {
+    "text": "単価は 18,400 円です[1]。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "SK-300 の単価は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きの数字 17,800 は、資料にも計算結果にも見当たりません。資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。資料に無い数字は書かないでください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 1,
+   "model_calls": 1,
+   "number_reviews": 1,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "gap_twice": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "q"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "q"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "q"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "資料に記載さ",
+    "type": "answer.delta"
+   },
+   {
+    "text": "れていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "やはり資料に記載",
+    "type": "answer.delta"
+   },
+   {
+    "text": "されていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "資料に記載されていません。",
+      "kind": "gap",
+      "searches": 1,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "q",
+    "type": "human"
+   },
+   {
+    "text": "やはり資料に記載されていません。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "q\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 1,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "numbers": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "SK-300 の単価は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "SK-300 の単価は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "SK-300 の単価は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "SK-300 の単価は？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "単価は 17,8",
+    "type": "answer.delta"
+   },
+   {
+    "text": "00 円です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "単価は 17,800 円です[1]",
+      "kind": "numbers",
+      "searches": 1,
+      "trigger": "資料に無い数字 17,800"
+     },
+     "label": "数字の確認",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "単価は 17,8",
+    "type": "answer.delta"
+   },
+   {
+    "text": "00 円です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "単価は 17,800 円です[1]",
+      "kind": "numbers",
+      "searches": 1,
+      "trigger": "資料に無い数字 17,800"
+     },
+     "label": "数字の確認",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きの数字 17,800 は、資料にも計算結果にも見当たりません。資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。資料に無い数字は書かないでください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「資料に無い数字 17,800」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": [
+       "17,800"
+      ]
+     },
+     "status": "done",
+     "summary": "回答の数字のうち 17,800 が資料・計算結果に見当たらない"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "SK-300 の単価は？",
+    "type": "human"
+   },
+   {
+    "text": "単価は 17,800 円です[1]",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "SK-300 の単価は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この下書きの数字 17,800 は、資料にも計算結果にも見当たりません。資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。資料に無い数字は書かないでください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 1,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 0
+  }
+ },
+ "rewrite_after_tool_kept": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "kind": "docs",
+      "queries": [
+       "在庫が発注点を下回る部品"
+      ],
+      "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "table": true
+     },
+     "status": "done",
+     "summary": "「在庫が発注点を下回る部品」 で検索（表の集計あり）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-2",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-2",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "| 項目 | HP-300 | HP-320 |\n|---|",
+    "type": "answer.delta"
+   },
+   {
+    "text": "---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "output": {
+      "next_tools": [
+       "table_query"
+      ],
+      "note": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「表の集計を計算していない」のため差し戻し → table_query を実行"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "source": "1",
+      "where": "在庫 < 発注点"
+     },
+     "label": "表の集計",
+     "name": "table_query",
+     "status": "running",
+     "summary": "表を集計中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "source": "1",
+      "where": "在庫 < 発注点"
+     },
+     "label": "表の集計",
+     "name": "table_query",
+     "output": {
+      "error": "'NoneType' object has no attribute 'get'"
+     },
+     "status": "error",
+     "summary": "失敗しました"
+    },
+    "type": "step"
+   },
+   {
+    "text": "了解しました。P",
+    "type": "answer.delta"
+   },
+   {
+    "text": "-1042 です。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "在庫が発注点を下回る部品は？",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "table_query"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "table_query",
+    "status": "error",
+    "type": "tool"
+   },
+   {
+    "text": "了解しました。P-1042 です。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   },
+   {
+    "name": "table_query",
+    "status": "error",
+    "type": "tool"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 2,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 1,
+   "tool_calls": 1
+  }
+ },
+ "rewrite_reply_uses_draft": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "kind": "docs",
+      "queries": [
+       "在庫が発注点を下回る部品"
+      ],
+      "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "table": true
+     },
+     "status": "done",
+     "summary": "「在庫が発注点を下回る部品」 で検索（表の集計あり）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-2",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-2",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "| 項目 | HP-300 | HP-320 |\n|---|",
+    "type": "answer.delta"
+   },
+   {
+    "text": "---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "了解いたしました。指示に従い、table",
+    "type": "answer.delta"
+   },
+   {
+    "text": "_query を使用して回答します[1]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「表の集計を計算していない」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-rewrite-discarded-1",
+     "input": {
+      "kind": "rewrite_discarded",
+      "reason": "reply_to_request",
+      "review": "table"
+     },
+     "label": "書き直しの取り消し",
+     "name": "system",
+     "output": {
+      "discarded": "了解いたしました。指示に従い、table_query を使用して回答します[1]。",
+      "pending_review": "table",
+      "used": "draft"
+     },
+     "status": "done",
+     "summary": "書き直しが差し戻しへの返事だったため、差し戻す前の下書きを回答にした（確認は未了）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 4,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": [
+       "300",
+       "320"
+      ]
+     },
+     "status": "done",
+     "summary": "回答の数字のうち 300・320 が資料・計算結果に見当たらない"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "在庫が発注点を下回る部品は？",
+    "type": "human"
+   },
+   {
+    "text": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 1,
+   "table_reviews": 1,
+   "tool_calls": 0
+  }
+ },
+ "second_turn": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": true,
+      "question": "二つ目"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": true,
+      "question": "二つ目"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "二つ目"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "二つ目"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "二つ目"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "二つ目"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "二つ目"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「二つ目」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-1>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-1>",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「b」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "二回目も資料に記",
+    "type": "answer.delta"
+   },
+   {
+    "text": "載されていません。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-empty-1",
+     "input": {
+      "finish_reason": null,
+      "kind": "empty_generation",
+      "reasoning_chars": 0,
+      "retried": true,
+      "tokens_out": 5
+     },
+     "label": "回答の生成のやり直し",
+     "name": "system",
+     "output": {
+      "result": "retried_ok"
+     },
+     "status": "done",
+     "summary": "回答が空だったため、同じ要求でやり直して回答できた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "二回目も資料に記載されていません。",
+      "kind": "gap",
+      "searches": 2,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "二回目の答",
+    "type": "answer.delta"
+   },
+   {
+    "text": "え[1]。",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "二回目も資料に記載されていません。",
+      "kind": "gap",
+      "searches": 2,
+      "trigger": "記載されていません"
+     },
+     "label": "調べ残しの見直し",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "二つ目",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "二回目の答え[1]。",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "二つ目\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「二つ目」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、その点に絞った語で search してください。数の計算が要るなら、値をそろえてから calculate で計算してください。調べても見つからない点だけを、見つからないと書いてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 1,
+   "empty_failed": false,
+   "empty_retries": 1,
+   "gap_reviews": 1,
+   "model_calls": 2,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 1
+  }
+ },
+ "step_budget": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "q"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "q"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "q"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "q"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "a"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "a"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-1>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "a"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-1>",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "a"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「a」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-2>",
+     "input": {
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-2>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-2>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-2>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-2>",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-2>",
+     "input": {
+      "query": "b"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「b」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-budget-3",
+     "input": {
+      "calls": 3,
+      "kind": "step_budget",
+      "max_steps": 3
+     },
+     "label": "呼び出しの上限",
+     "name": "system",
+     "output": {
+      "note": "## 最終回答\n検索の回数が上限に達しました。これ以上ツールは使えません。ここまでに得た資料だけで回答をまとめてください。足りない点は足りないと書いてください。"
+     },
+     "status": "done",
+     "summary": "3 回目で上限（3 回）に達したため、ツールを外して最終回答を求めた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "まとめ",
+    "type": "answer.delta"
+   },
+   {
+    "text": "[1]",
+    "type": "answer.delta"
+   }
+  ],
+  "messages": [
+   {
+    "text": "q",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "まとめ[1]",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "q\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 3,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 2
+  }
+ },
+ "table": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品は？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "在庫が発注点を下回る部品は？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "kind": "docs",
+      "queries": [
+       "在庫が発注点を下回る部品"
+      ],
+      "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "table": true
+     },
+     "status": "done",
+     "summary": "「在庫が発注点を下回る部品」 で検索（表の集計あり）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-2",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-2",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-2",
+     "input": {
+      "by": "system",
+      "query": "在庫が発注点を下回る部品"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "P-1042 と P",
+    "type": "answer.delta"
+   },
+   {
+    "text": "-1043 です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "P-1042 と P-1043 です[1]",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "status": "running",
+     "summary": "下書きを差し戻して書き直し中"
+    },
+    "type": "step"
+   },
+   {
+    "type": "answer.reset"
+   },
+   {
+    "text": "P-1042",
+    "type": "answer.delta"
+   },
+   {
+    "text": " です[1]",
+    "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "review-1",
+     "input": {
+      "draft": "P-1042 と P-1043 です[1]",
+      "kind": "table",
+      "searches": 2,
+      "trigger": "表の集計を計算していない"
+     },
+     "label": "表の集計の確認",
+     "name": "review",
+     "output": {
+      "next_tools": [],
+      "note": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
+     },
+     "status": "done",
+     "summary": "「表の集計を計算していない」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-number-check",
+     "input": {
+      "checked": 1,
+      "kind": "number_check"
+     },
+     "label": "数字の照合",
+     "name": "system",
+     "output": {
+      "derived": [],
+      "unverified": []
+     },
+     "status": "done",
+     "summary": "回答の数字 1 個を資料・計算結果と照合した（すべて確認）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   }
+  ],
+  "messages": [
+   {
+    "text": "在庫が発注点を下回る部品は？",
+    "type": "human"
+   },
+   {
+    "text": "P-1042 です[1]",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "text": "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、必要なら compute に行ごとの計算式）。その結果どおりに答えてください。書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。\n\nこの依頼は利用者の発言ではありません（システムの確認です）。上でツールを使うよう求めているときは、本文を書く前に、まずそのツールを呼んでください（暗算で数字だけ書き換えない）。本文を書くときは、返事・お詫び・経緯の説明は書かず、利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。",
+    "type": "human"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 1,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 1,
+   "tool_calls": 0
+  }
+ },
+ "tool_then_answer": {
+  "events": [
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "MX-17 はどうする？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "status": "running",
+     "summary": "質問を整理しています"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "primer-1",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "primer-1",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "primer-1",
+     "input": {
+      "by": "system",
+      "query": "MX-17 はどうする？"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "understand",
+     "input": {
+      "history": false,
+      "question": "MX-17 はどうする？"
+     },
+     "label": "質問の理解",
+     "name": "understand",
+     "output": {
+      "error": "補助モデルが無い",
+      "kind": "docs",
+      "queries": [
+       "MX-17 はどうする？"
+      ],
+      "raw": "",
+      "table": false
+     },
+     "status": "done",
+     "summary": "整理できなかったため、質問文のまま検索する（補助モデルが無い）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "MX-17 手順"
+     },
+     "label": "検索",
+     "name": "search",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 手順"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "parent_id": "<call-1>",
+     "status": "running",
+     "summary": "検索中"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>:search",
+     "input": {
+      "mode": "hybrid",
+      "query": "MX-17 手順"
+     },
+     "label": "検索",
+     "name": "retrieve",
+     "output": {
+      "degraded": [],
+      "hits": [
+       {
+        "heading": "第1章",
+        "score": 0.9,
+        "title": "規程.pdf"
+       }
+      ],
+      "stages": []
+     },
+     "parent_id": "<call-1>",
+     "status": "done",
+     "summary": "1 件（最高スコア 0.90）"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "<call-1>",
+     "input": {
+      "query": "MX-17 手順"
+     },
+     "label": "検索",
+     "name": "search",
+     "output": {
+      "result": "検索「MX-17 手順」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>"
+     },
+     "status": "done",
+     "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "text": "停止す",
+    "type": "answer.delta"
+   },
+   {
+    "text": "る[1]",
+    "type": "answer.delta"
+   }
+  ],
+  "messages": [
+   {
+    "text": "MX-17 はどうする？",
+    "type": "human"
+   },
+   {
+    "text": "",
+    "tools": [
+     "search"
+    ],
+    "type": "ai"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   },
+   {
+    "text": "停止する[1]",
+    "type": "ai"
+   }
+  ],
+  "model_calls": [
+   {
+    "text": "MX-17 はどうする？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "type": "human"
+   },
+   {
+    "name": "search",
+    "status": "success",
+    "type": "tool"
+   }
+  ],
+  "stats": {
+   "empty_events": 0,
+   "empty_failed": false,
+   "empty_retries": 0,
+   "gap_reviews": 0,
+   "model_calls": 2,
+   "number_reviews": 0,
+   "rewrites_discarded": 0,
+   "table_reviews": 0,
+   "tool_calls": 1
+  }
+ }
+}
