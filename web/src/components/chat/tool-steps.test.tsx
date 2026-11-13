@@ -132,3 +132,16 @@ describe("空の生成（empty_generation）の表示", () => {
     expect(html).toContain("差し戻す前の下書き");
   });
 });
+
+describe("SystemFields（確認の通過。specs/029）", () => {
+  it("済んだ確認の種類を読める名前にし、空の値は出さない", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="ja" dict={ja}>
+        <SystemFields data={{ kind: "review_passed", skip: null, done: ["table", "gap"] }} t={ja} />
+      </LocaleProvider>,
+    );
+    expect(html).toContain("済んだ確認");
+    expect(html).toContain("表の集計の確認・調べ残しの見直し");
+    expect(html).not.toContain("見直さなかった理由");
+  });
+});

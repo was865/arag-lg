@@ -44,6 +44,9 @@ export interface FlowStep {
   input: Record<string, unknown>;
   output?: Record<string, unknown> | null;
   node?: string;
+  /** 画面の表示名と要約（流れの停留所の短い説明に使う） */
+  label?: string;
+  summary?: string;
 }
 
 export interface FlowNodeRun extends FlowGraphNode {
@@ -97,6 +100,7 @@ export function inferNode(step: FlowStep, firstTurn: boolean): FlowNodeId {
     return firstTurn && step.id === "primer-1" ? "understand" : "primer_search";
   }
   if (step.name === "review") return "review";
+  if (kindOf(step) === "review_passed") return "review";
   const kind = kindOf(step);
   if (GUARD_KINDS.has(kind)) return "guard";
   if (FINALIZE_KINDS.has(kind)) return "finalize";
@@ -227,4 +231,154 @@ export function flowOf(
   });
 
   return { nodes, edges, sentBack, retried, usedDraft, inferred, current };
+}
+
+// ── 実際にたどった順の経路（「詳細」の流れの表示。specs/029 R7） ──
+
+/** 経路の 1 つの停留所の結果。確認・見張りだけが持つ。 */
+export type StopOutcome = "sent_back" | "passed" | "skipped" | "retried" | "used_draft" | "failed";
+
+export interface FlowStop {
+  /** 一覧を絞るときの鍵（`investigate-2` など。同じ節点を何度も通るので節点名とは別） */
+  key: string;
+  node: FlowNodeId;
+  label: string;
+  /** 調査・見張り・確認の周回（1 始まり） */
+  round: number;
+  outcome?: StopOutcome;
+  /** この停留所の親ステップ（時刻順） */
+  steps: FlowStep[];
+  /** 子ステップを含むステップの ID（一覧を絞るのに使う） */
+  stepIds: string[];
+  durationMs: number;
+  current: boolean;
+  /** 記録が無く、後ろの停留所から推定した（古い記録の確認の通過など） */
+  inferred?: boolean;
+}
+
+export interface FlowRoute {
+  stops: FlowStop[];
+  /** 調査の周回の数 */
+  rounds: number;
+  sentBack: number;
+  usedDraft: boolean;
+  chat: boolean;
+  inferred: boolean;
+}
+
+const LABEL = new Map(FLOW_GRAPH.nodes.map((n) => [n.id, n.label]));
+
+function guardOutcome(s: FlowStep): StopOutcome | undefined {
+  const kind = kindOf(s);
+  if (kind === "rewrite_discarded") return "used_draft";
+  if (kind !== "empty_generation") return undefined;
+  const result = (s.output as Record<string, unknown> | null | undefined)?.result;
+  return result === "used_draft" ? "used_draft" : result === "failed" ? "failed" : "retried";
+}
+
+/**
+ * ステップの列から、この回答が実際にたどった順の経路を作る。
+ * 調査 → 確認で差し戻されたら、次の調査は「2 周目」として新しい停留所にする（同じ節点を ×2 とまとめない）。
+ * 見張りは何かをしたとき（やり直し・下書きへの退避）だけ停留所にする。
+ */
+export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): FlowRoute {
+  const running = Boolean(opts.running);
+  const { nodes: nodeOf, inferred } = nodesOfSteps(steps);
+  const top = steps.filter((s) => !s.parentId);
+  const children = new Map<string, string[]>();
+  for (const s of steps) {
+    if (!s.parentId) continue;
+    // 子の子も、いちばん上の親に寄せる
+    let root = s;
+    for (let i = 0; i < 8 && root.parentId; i++) root = steps.find((x) => x.id === root.parentId) ?? { ...root, parentId: undefined };
+    children.set(root.id, [...(children.get(root.id) ?? []), s.id]);
+  }
+  const stop = (node: FlowNodeId, round: number, own: FlowStep[], extra: Partial<FlowStop> = {}): FlowStop => ({
+    key: `${node}-${round}`,
+    node,
+    label: LABEL.get(node) ?? node,
+    round,
+    steps: own,
+    stepIds: own.flatMap((s) => [s.id, ...(children.get(s.id) ?? [])]),
+    durationMs: own.reduce((a, s) => a + (s.durationMs || 0), 0),
+    current: false,
+    ...extra,
+  });
+  const of = (id: FlowNodeId) => top.filter((s) => nodeOf.get(s.id) === id);
+
+  const stops: FlowStop[] = [];
+  // 初回のターンは質問文での検索を理解と並行に行う（節点は理解）。見せるときは自動の検索をまとめて「最初の検索」に
+  const auto = (s: FlowStep) => s.input?.by === "system";
+  const prelude: [FlowNodeId, FlowStep[]][] = [
+    ["read_image", of("read_image")],
+    ["understand", of("understand").filter((s) => !auto(s))],
+    ["primer_search", [...of("understand").filter(auto), ...of("primer_search")]],
+  ];
+  for (const [id, own] of prelude) if (own.length) stops.push(stop(id, 1, own));
+  const understand = [...top].reverse().find((s) => s.name === "understand" && s.status !== "running");
+  const chat = (understand?.output as Record<string, unknown> | null | undefined)?.kind === "chat";
+
+  // 調査・見張り・確認を周回に分ける（確認か見張りの退避の後に来た調査は次の周回）
+  type Round = { inv: FlowStep[]; guard: FlowStep[]; review?: FlowStep };
+  const rounds: Round[] = [];
+  let cur: Round | undefined;
+  const fresh = () => {
+    cur = { inv: [], guard: [] };
+    rounds.push(cur);
+    return cur;
+  };
+  for (const s of top) {
+    const node = nodeOf.get(s.id);
+    if (node !== "investigate" && node !== "guard" && node !== "review") continue;
+    const r = !cur || cur.review ? fresh() : cur;
+    if (node === "investigate") r.inv.push(s);
+    else if (node === "guard") r.guard.push(s);
+    else r.review = s;
+  }
+  const finals = of("finalize");
+  const followups = of("followups");
+  const finalized = finals.length > 0 || followups.length > 0 || (!running && steps.length > 0);
+  // 差し戻しの後で、まだ何も記録の無い書き直しの周回（実行中）
+  const last = rounds[rounds.length - 1];
+  if (running && !finalized && (!last || last.review?.name === "review")) fresh();
+  // 古い記録・何もツールを使わない回答でも、確定まで進んだなら調査は通っている
+  if (!rounds.length && finalized) fresh();
+
+  let sentBack = 0;
+  let usedDraft = false;
+  rounds.forEach((r, i) => {
+    const n = i + 1;
+    stops.push(stop("investigate", n, r.inv));
+    for (const g of r.guard) {
+      const outcome = guardOutcome(g);
+      if (!outcome) continue;
+      if (outcome === "used_draft") usedDraft = true;
+      stops.push({ ...stop("guard", n, [g], { outcome }), key: `guard-${n}-${g.id}` });
+    }
+    if (r.review) {
+      if (r.review.name === "review") sentBack += 1;
+      const outcome: StopOutcome =
+        r.review.name === "review" ? "sent_back" : r.review.input?.skip ? "skipped" : "passed";
+      stops.push(stop("review", n, [r.review], { outcome }));
+    } else if (i === rounds.length - 1 && finalized && !usedDraft) {
+      // 確認の通過を記録していない古い記録。確定まで進んだので、確認は通っている
+      stops.push(stop("review", n, [], { outcome: chat ? "skipped" : "passed", inferred: true }));
+    }
+  });
+  if (finalized) stops.push(stop("finalize", 1, finals));
+  if (followups.length) stops.push(stop("followups", 1, followups));
+
+  if (running && stops.length) {
+    const live = stops.findLast((s) => s.steps.some((x) => x.status === "running"));
+    if (live) live.current = true;
+    else {
+      // 動いているステップが無いあいだは、モデルが考えるか書いている（最後の調査）。確定まで進んでいれば最後
+      const end = stops[stops.length - 1]!;
+      const passedReview = end.node === "review" && end.outcome !== "sent_back";
+      const target = finalized || passedReview ? end : stops.findLast((s) => s.node === "investigate");
+      if (target) target.current = true;
+      else stops.push({ ...stop("investigate", 1, []), current: true });
+    }
+  }
+  return { stops, rounds: rounds.length, sentBack, usedDraft, chat, inferred };
 }

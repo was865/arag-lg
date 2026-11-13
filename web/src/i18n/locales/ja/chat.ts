@@ -149,14 +149,30 @@ export const chat = {
   reviewNext: "そのあと",
   reviewRewrote: "回答を書き直した",
   // 系統が導く流れ（specs/026）
-  // 回答の流れ（specs/029）。節点の名前は flow-graph.json（グラフの定義）から
+  // 回答の流れ（specs/029）。実際にたどった順に並べる。節点の名前は flow-graph.json（グラフの定義）から
   flowTitle: "流れ",
-  flowSentBack: "差し戻し {n} 回",
-  flowRetried: "やり直し {n} 回",
-  flowUsedDraft: "下書きへ",
+  flowRound: "{n} 周目",
+  flowSummaryPassed: "確認をそのまま通過",
+  flowSummaryChat: "雑談として回答（資料は検索しない）",
+  flowSummarySentBack: "確認で {n} 回差し戻し、書き直して通過",
+  flowSummaryUsedDraft: "書き直しを取り消し、確認前の下書きを回答に",
+  flowSummaryRunning: "回答を作っています",
+  flowCompose: "回答を作成",
+  flowRewrite: "書き直し",
+  flowSearches: "検索 {n} 回",
+  flowSentBack: "差し戻し",
+  flowPassed: "通過",
+  flowSkipped: "見直し不要",
+  flowRetried: "空の生成 → やり直し",
+  flowEmptyDraft: "空の生成 → 下書きへ",
+  flowDiscarded: "書き直しを取り消し → 下書きへ",
+  flowFailed: "回答を生成できず",
+  flowFinalize: "引用を整えて確定",
+  flowFollowups: "候補 {n} 件",
   flowFiltered: "{node}のステップだけを表示中",
   flowClear: "解除",
-  flowInferred: "古い記録のため、流れは推定です",
+  flowInferred: "古い記録のため一部は推定です",
+  flowNoSteps: "この段階の記録はありません",
   bySystem: "自動",
   bySystemHint: "システムが質問をもとに先に行った検索",
   understandQuestion: "質問",
@@ -227,6 +243,8 @@ export const chat = {
     questions: "候補",
     error: "失敗の理由",
     raw: "モデルの出力",
+    skip: "見直さなかった理由",
+    done: "済んだ確認",
   } as Record<string, string>,
   // 続けて聞く候補を落とした理由の表示名（決まった値のもの）
   droppedReasons: {
@@ -239,6 +257,7 @@ export const chat = {
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     result: {
+      pass: "通過",
       retried_ok: "やり直して回答できた",
       used_draft: "確認前の下書きを回答にした",
       failed: "回答を生成できなかった",
@@ -252,6 +271,16 @@ export const chat = {
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
       numbers: "数字の確認",
+    },
+    // 確認の通過（specs/029）
+    done: {
+      gap: "調べ残しの見直し",
+      table: "表の集計の確認",
+      numbers: "数字の確認",
+    },
+    skip: {
+      limit: "回数に余裕が無い",
+      chat: "雑談",
     },
     reason: {
       no_citations: "引用が消えた",

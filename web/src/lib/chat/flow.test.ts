@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FLOW_GRAPH, flowOf, inferNode, nodesOfSteps, stepsOfNode, type FlowNodeId, type FlowStep } from "@/lib/chat/flow";
+import { FLOW_GRAPH, flowOf, inferNode, nodesOfSteps, routeOf, stepsOfNode, type FlowNodeId, type FlowStep } from "@/lib/chat/flow";
 
 /** api の偽モデルのテストが記録した、分岐ごとのイベントの列（specs/029 T2。節点の名前は除いてある = 古い記録と同じ形） */
 const SNAPSHOTS = JSON.parse(
@@ -135,5 +135,58 @@ describe("節点の名前（新しい記録）と推定（古い記録）", () =
     expect(run.current).toBe("review");
     expect(run.nodes.find((n) => n.id === "review")!.current).toBe(true);
     expect(run.nodes.find((n) => n.id === "finalize")!.passed).toBe(false);
+  });
+});
+
+describe("routeOf（実際にたどった順の経路）", () => {
+  const path = (name: string) =>
+    routeOf(stepsOf(name)).stops.map((s) => `${s.node}${s.round > 1 ? s.round : ""}${s.outcome ? `:${s.outcome}` : ""}`);
+
+  it("そのまま回答: 確認を 1 度通って確定", () => {
+    expect(path("answer")).toEqual(["understand", "primer_search", "investigate", "review:passed", "finalize"]);
+  });
+
+  it("差し戻し: 2 周目の調査と確認を別の停留所にする（×2 とまとめない）", () => {
+    expect(path("gap")).toEqual([
+      "understand", "primer_search", "investigate", "review:sent_back", "investigate2", "review2:passed", "finalize",
+    ]);
+    const r = routeOf(stepsOf("gap"));
+    expect(r).toMatchObject({ rounds: 2, sentBack: 1, usedDraft: false });
+    // 停留所の鍵は周回ごとに違う（一覧を周回ごとに絞れる）
+    expect(new Set(r.stops.map((s) => s.key)).size).toBe(r.stops.length);
+  });
+
+  it("2 回差し戻すと 3 周目まで並ぶ", () => {
+    expect(path("gap_then_numbers").filter((p) => p.startsWith("review"))).toEqual([
+      "review:sent_back", "review2:sent_back", "review3:passed",
+    ]);
+  });
+
+  it("下書きへの退避は見張りの停留所で示し、その周回の確認は並べない", () => {
+    const p = path("rewrite_reply_uses_draft");
+    expect(p).toContain("guard2:used_draft");
+    expect(p.at(-1)).toBe("finalize");
+    expect(p.at(-2)).toBe("guard2:used_draft");
+  });
+
+  it("雑談は最初の検索を通らず、確認は見直さずに通す", () => {
+    const p = path("chat");
+    expect(p).not.toContain("primer_search");
+    expect(p).toContain("review:skipped");
+    expect(routeOf(stepsOf("chat")).chat).toBe(true);
+  });
+
+  it("確認の通過の記録が無い古い記録は、通過を推定する", () => {
+    const old = stepsOf("answer").filter((s) => s.input?.kind !== "review_passed");
+    const review = routeOf(old).stops.find((s) => s.node === "review")!;
+    expect(review).toMatchObject({ outcome: "passed", inferred: true, stepIds: [] });
+  });
+
+  it("実行中: 差し戻しの直後は、次の周回の調査を今の停留所にする", () => {
+    const steps = stepsOf("gap");
+    const cut = steps.findIndex((s) => s.name === "review");
+    const r = routeOf(steps.slice(0, cut + 1), { running: true });
+    const now = r.stops.find((s) => s.current)!;
+    expect(now).toMatchObject({ node: "investigate", round: 2 });
   });
 });

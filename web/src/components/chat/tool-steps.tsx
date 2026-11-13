@@ -296,7 +296,7 @@ export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Di
   const rows: { k: string; v: React.ReactNode }[] = [];
   const texts: [string, string][] = [];
   for (const [k, v] of Object.entries(data)) {
-    if (k === "kind") continue;
+    if (k === "kind" || v === null || v === undefined) continue;
     if (typeof v === "string" && (v.length > 60 || v.includes("\n"))) texts.push([k, v]);
     else rows.push({ k: systemFieldLabel(k, t), v: systemValueLabel(k, v, t) });
   }
@@ -372,6 +372,9 @@ export function systemFieldValue(
 /** 決まった値（空の生成の結果・未了の確認の種類）は読める名前にする。それ以外は systemFieldValue のまま。 */
 function systemValueLabel(key: string, v: unknown, t: Dictionary): string {
   const names = (t.chat.systemValues as Record<string, Record<string, string>>)[key];
+  if (names && Array.isArray(v) && v.every((x) => typeof x === "string")) {
+    return v.length ? v.map((x) => names[x] ?? x).join("・") : "—";
+  }
   return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v, t.chat.droppedReasons, t.chat.pruneLabels);
 }
 

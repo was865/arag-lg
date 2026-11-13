@@ -172,6 +172,50 @@
    },
    {
     "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-number-check",
      "input": {
       "checked": 1,
@@ -334,6 +378,24 @@
    {
     "text": "しまして",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": "chat"
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "雑談なので、見直さずに通した"
+    },
+    "type": "step"
    }
   ],
   "messages": [
@@ -666,6 +728,64 @@
      },
      "status": "done",
      "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "gap"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（調べ残しの見直し は済み）"
     },
     "type": "step"
    },
@@ -1381,6 +1501,50 @@
      }
     ],
     "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    }
   ],
   "messages": [
@@ -1603,6 +1767,50 @@
      },
      "status": "done",
      "summary": "回答が空だったため、同じ要求でやり直して回答できた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した"
     },
     "type": "step"
    },
@@ -2031,6 +2239,50 @@
      },
      "status": "done",
      "summary": "回答が空のままで、使える下書きも無かった"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した"
     },
     "type": "step"
    },
@@ -2512,6 +2764,64 @@
    },
    {
     "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "gap"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（調べ残しの見直し は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-number-check",
      "input": {
       "checked": 1,
@@ -2935,6 +3245,53 @@
    },
    {
     "step": {
+     "id": "system-review-pass-3",
+     "input": {
+      "done": [
+       "gap",
+       "numbers"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（調べ残しの見直し・数字の確認 は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-number-check",
      "input": {
       "checked": 1,
@@ -3257,6 +3614,52 @@
      }
     ],
     "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "gap"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（調べ残しの見直し は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    }
   ],
   "messages": [
@@ -3506,6 +3909,52 @@
      },
      "status": "done",
      "summary": "「資料に無い数字 17,800」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "numbers"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（数字の確認 は済み）"
     },
     "type": "step"
    },
@@ -3987,6 +4436,52 @@
    {
     "text": "-1042 です。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "table"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（表の集計の確認 は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -4908,6 +5403,52 @@
      }
     ],
     "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "gap"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（調べ残しの見直し は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    }
   ],
   "messages": [
@@ -5370,6 +5911,50 @@
    {
     "text": "[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": "limit"
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "回数に余裕が無いので、見直さずに通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    }
   ],
   "messages": [
@@ -5777,6 +6362,52 @@
    },
    {
     "step": {
+     "id": "system-review-pass-2",
+     "input": {
+      "done": [
+       "table"
+      ],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した（表の集計の確認 は済み）"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-number-check",
      "input": {
       "checked": 1,
@@ -6118,6 +6749,50 @@
    {
     "text": "る[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-review-pass-1",
+     "input": {
+      "done": [],
+      "kind": "review_passed",
+      "skip": null
+     },
+     "label": "確認の通過",
+     "name": "system",
+     "output": {
+      "result": "pass"
+     },
+     "status": "done",
+     "summary": "当てはまる見直しが無いので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    }
   ],
   "messages": [

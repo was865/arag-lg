@@ -37,6 +37,8 @@ from arag.agent.middleware import (
     record_discarded,
     record_empty,
     record_number_check,
+    record_review_pass,
+    review_skip,
     searches,
     turn_start,
 )
@@ -249,8 +251,10 @@ async def review(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, An
     calls = sum(1 for m in turn if isinstance(m, AIMessage))
     has_tools = calls < ctx.cfg.max_steps
     done = list(state.get("reviews_done") or [])
-    found = pick_review(ctx, turn, answer, calls + state.get("chain", 0), has_tools, done)
+    used = calls + state.get("chain", 0)
+    found = pick_review(ctx, turn, answer, used, has_tools, done)
     if found is None:
+        record_review_pass(emit, len(done) + 1, review_skip(ctx, used, has_tools), done)
         return {"send_back": None}
     assert last is not None and last.id is not None
     send_back = open_send_back(ctx, emit, found, answer, searches(ctx, turn))

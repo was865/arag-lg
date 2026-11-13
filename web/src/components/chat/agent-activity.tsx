@@ -12,7 +12,7 @@ import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
-import { flowOf, stepsOfNode, type FlowNodeId } from "@/lib/chat/flow";
+import { flowOf, routeOf } from "@/lib/chat/flow";
 import { FlowRail, RunFlow } from "@/components/chat/run-flow";
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
@@ -34,7 +34,7 @@ export function AgentActivity({
   // 段階の明細は既定で畳む（実行中は見出しに今の段階名が流れる）。利用者が開閉した値を優先する。
   const [open, setOpen] = useState<boolean | null>(null);
   // 流れの節点で一覧を絞る（specs/029 R8）
-  const [only, setOnly] = useState<FlowNodeId | null>(null);
+  const [only, setOnly] = useState<string | null>(null);
   const isOpen = open ?? false;
   const { t } = useT();
   const { tweaks } = useTweaks();
@@ -63,6 +63,10 @@ export function AgentActivity({
   // 回答の流れ（specs/029）。見出しの段階の列と「詳細」の流れは同じ計算から出す
   // 実行中のステップが無いあいだはモデルが考えるか書いている（調査）。確認が入った後は、確認の段階のまま見せる
   const flow = flowOf(steps, { running, idle: reviewed ? "review" : "investigate" });
+  // 「詳細」の流れ（実際にたどった順）。停留所で一覧を絞る（R8）
+  const route = routeOf(steps, { running });
+  const pickedStop = only ? route.stops.find((x) => x.key === only) : undefined;
+  const picked = pickedStop ? new Set(pickedStop.stepIds) : null;
   // いましていることを言葉で言う: 実行中のステップの要約 → 考え中 → 書き直し中 → 書いている最中
   const nowLabel =
     current?.summary ??
@@ -166,8 +170,8 @@ export function AgentActivity({
       {isOpen && (
         <div className="animate-fade-up overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface-2 motion-reduce:animate-none">
           <CitedTitlesContext.Provider value={new Set((sources ?? []).map((x) => x.title))}>
-            {guided && <RunFlow flow={flow} selected={only} onSelect={setOnly} />}
-            <ToolSteps steps={only ? stepsOfNode(visibleSteps, only) : visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
+            {guided && <RunFlow route={route} running={running} selected={only} onSelect={setOnly} />}
+            <ToolSteps steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
           </CitedTitlesContext.Provider>
         </div>
       )}

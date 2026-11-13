@@ -406,6 +406,39 @@ def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[st
     return _check_numbers(ctx, turn, answer).missing
 
 
+REVIEW_NAMES = {"gap": "調べ残しの見直し", "table": "表の集計の確認", "numbers": "数字の確認"}
+
+
+def review_skip(ctx: RunContext, calls: int, has_tools: bool) -> str | None:
+    """見直しをしない理由（回数に余裕が無い・雑談）。見直す場合は None。"""
+    if not has_tools or calls + 2 > ctx.cfg.max_steps:
+        return "limit"
+    if ctx.primer is not None and ctx.primer.kind == "chat":
+        return "chat"
+    return None
+
+
+def record_review_pass(emit: Any, n: int, skip: str | None, done: Collection[str]) -> None:
+    """確認を差し戻さずに通したことを記録に残す（specs/029。通過も確認の節点の動き）。"""
+    if skip == "limit":
+        summary = "回数に余裕が無いので、見直さずに通した"
+    elif skip == "chat":
+        summary = "雑談なので、見直さずに通した"
+    else:
+        summary = "当てはまる見直しが無いので通した"
+        if done:
+            summary += "（" + "・".join(REVIEW_NAMES.get(k, k) for k in done) + " は済み）"
+    record_system(
+        emit,
+        f"system-review-pass-{n}",
+        "review_passed",
+        "確認の通過",
+        summary,
+        input={"skip": skip, "done": list(done)},
+        output={"result": "pass"},
+    )
+
+
 def pick_review(
     ctx: RunContext,
     turn: list[AnyMessage],
@@ -418,9 +451,7 @@ def pick_review(
 
     done はこのターンで済んだ確認の種類（種類ごとに 1 度まで）。
     """
-    if not has_tools or calls + 2 > ctx.cfg.max_steps:
-        return None
-    if ctx.primer is not None and ctx.primer.kind == "chat":
+    if review_skip(ctx, calls, has_tools):
         return None
     own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
     # 最初の検索が 0 件・関連度の低い資料だけなら、「見つからない」は資料に無い質問への正しい答え（T17）

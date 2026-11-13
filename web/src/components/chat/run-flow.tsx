@@ -2,7 +2,8 @@
 
 import { Fragment } from "react";
 import { cn, formatMs } from "@/lib/utils";
-import type { FlowNodeId, FlowRun } from "@/lib/chat/flow";
+import type { FlowNodeId, FlowRoute, FlowRun, FlowStop } from "@/lib/chat/flow";
+import type { Dictionary } from "@/i18n/dictionary";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 
@@ -52,121 +53,216 @@ export function FlowRail({ flow }: { flow: FlowRun }) {
   );
 }
 
+// ── 「詳細」の流れ（実際にたどった順の経路。specs/029 R7〜R9） ──
+
+/** 停留所の短い説明（何をしたか）。 */
+function detailOf(s: FlowStop, t: Dictionary): string {
+  const c = t.chat;
+  switch (s.node) {
+    case "understand": {
+      const kind = (s.steps.at(-1)?.output as Record<string, unknown> | null | undefined)?.kind;
+      return kind === "chat" ? c.understandKindChat : kind === "docs" ? c.understandKindDocs : "";
+    }
+    case "primer_search":
+      return interpolate(c.flowSearches, { n: String(s.steps.length) });
+    case "investigate": {
+      // 使ったツールを名前ごとに数える（推論の記録は除く）
+      const counts = new Map<string, number>();
+      for (const x of s.steps) {
+        if (x.name === "reasoning") continue;
+        const label = x.label || x.name;
+        counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
+      if (!counts.size) return s.round > 1 ? c.flowRewrite : c.flowCompose;
+      return [...counts].map(([k, n]) => (n > 1 ? `${k} ${n}` : k)).join("・");
+    }
+    case "guard": {
+      const kind = s.steps[0]?.input?.kind;
+      if (s.outcome === "retried") return c.flowRetried;
+      if (s.outcome === "failed") return c.flowFailed;
+      return kind === "rewrite_discarded" ? c.flowDiscarded : c.flowEmptyDraft;
+    }
+    case "review":
+      return s.outcome === "sent_back"
+        ? // 「表の集計の確認」→「表の集計」（停留所の名前が「確認」なので重ねない）
+          // 横一列では理由を 2 行目に（語の途中で折り返さない）。縦では 1 行に続ける
+          `${c.flowSentBack}\n${(s.steps[0]?.label ?? "").replace(/の(確認|見直し)$/, "")}`
+        : s.outcome === "skipped"
+          ? c.flowSkipped
+          : c.flowPassed;
+    case "finalize": {
+      const names = [...new Set(s.steps.map((x) => x.label).filter(Boolean))];
+      return names.length ? names.join("・") : c.flowFinalize;
+    }
+    case "followups": {
+      const q = (s.steps.at(-1)?.output as Record<string, unknown> | null | undefined)?.questions;
+      return Array.isArray(q) ? interpolate(c.flowFollowups, { n: String(q.length) }) : (s.steps.at(-1)?.summary ?? "");
+    }
+    default:
+      return s.steps.at(-1)?.summary ?? "";
+  }
+}
+
+/** 経路をひと言で（流れの見出しの右）。 */
+function summaryOf(r: FlowRoute, running: boolean, t: Dictionary): string {
+  const c = t.chat;
+  if (running) return c.flowSummaryRunning;
+  if (r.usedDraft) return c.flowSummaryUsedDraft;
+  if (r.sentBack > 0) return interpolate(c.flowSummarySentBack, { n: String(r.sentBack) });
+  if (r.chat) return c.flowSummaryChat;
+  return c.flowSummaryPassed;
+}
+
+/** 停留所の印。済み・差し戻し・通過・退避・失敗・いまの段階を、形と少しの色で見分ける。 */
+function StopMark({ s }: { s: FlowStop }) {
+  const base = "relative z-[1] grid h-4 w-4 shrink-0 place-items-center rounded-full";
+  if (s.current)
+    return (
+      <span className={cn(base, "border-[1.5px] border-accent bg-surface")}>
+        <span className="h-1.5 w-1.5 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />
+      </span>
+    );
+  const glyph = (d: string) => (
+    <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden>
+      <path d={d} stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  switch (s.outcome) {
+    case "sent_back": // 戻る矢印
+      return <span className={cn(base, "bg-accent-soft text-accent")}>{glyph("M6 4L3 7l3 3M3.5 7H10a3 3 0 010 6H8")}</span>;
+    case "passed":
+      return (
+        <span className={cn(base, "bg-accent text-surface", s.inferred && "bg-accent-soft text-accent")}>
+          {glyph("M4 8.3l2.6 2.5L12 5.4")}
+        </span>
+      );
+    case "used_draft":
+    case "retried": // 回り込む矢印
+      return <span className={cn(base, "bg-accent-soft text-accent")}>{glyph("M3 8a5 5 0 109-3M12 2v3H9")}</span>;
+    case "failed":
+      return <span className={cn(base, "bg-danger-soft text-danger")}>{glyph("M8 4.5v4M8 11.5v.01")}</span>;
+    case "skipped":
+      return <span className={cn(base, "border-[1.5px] border-divider-strong bg-surface text-muted-2")}>{glyph("M5.5 8h5")}</span>;
+    default:
+      return (
+        <span className={cn(base, "border-[1.5px] border-accent/55 bg-surface")}>
+          <span className="h-1.5 w-1.5 rounded-full bg-accent/80" />
+        </span>
+      );
+  }
+}
+
 /**
- * この回答が通った流れ（specs/029 R7〜R9）。節点を左から右に並べ、通った節点を強く、通らなかったものを薄く見せる。
- * 戻り（差し戻し・やり直し）は上の弧、下書きへの退避は下の弧。節点を押すと、その節点のステップだけに一覧を絞る。
+ * この回答が実際にたどった順の流れ。差し戻されたら「2 周目」の調査・確認を続けて並べる（同じ節点を ×2 にまとめない）。
+ * 幅があり停留所が少なければ横一列、狭いか長い経路は縦に並べる。停留所を押すと、そこで出たステップだけに一覧を絞る（R8）。
  */
 export function RunFlow({
-  flow,
+  route,
+  running = false,
   selected,
   onSelect,
 }: {
-  flow: FlowRun;
-  selected?: FlowNodeId | null;
-  onSelect?: (node: FlowNodeId | null) => void;
+  route: FlowRoute;
+  running?: boolean;
+  selected?: string | null;
+  onSelect?: (key: string | null) => void;
 }) {
   const { t } = useT();
-  // 画像の読み取りは、画像のあるターンだけ並べる（いつも薄い札が 1 つ余ると、流れが読みにくい）
-  const nodes = flow.nodes.filter((n) => n.id !== "read_image" || n.passed);
-  const col = (id: FlowNodeId) => nodes.findIndex((n) => n.id === id);
-  const pct = (i: number) => `${((i + 0.5) / nodes.length) * 100}%`;
-  const arc = (from: FlowNodeId, to: FlowNodeId) => {
-    const [a, b] = [col(from), col(to)].sort((x, y) => x - y);
-    return { left: pct(a), width: `${((b - a) / nodes.length) * 100}%` };
-  };
-  const notes: { key: string; text: string; from: FlowNodeId; to: FlowNodeId; below?: boolean }[] = [];
-  if (flow.sentBack > 0)
-    notes.push({ key: "back", text: interpolate(t.chat.flowSentBack, { n: String(flow.sentBack) }), from: "investigate", to: "review" });
-  if (flow.retried > 0)
-    notes.push({ key: "retry", text: interpolate(t.chat.flowRetried, { n: String(flow.retried) }), from: "investigate", to: "guard" });
-  if (flow.usedDraft) notes.push({ key: "draft", text: t.chat.flowUsedDraft, from: "guard", to: "finalize", below: true });
-  const above = notes.filter((n) => !n.below);
-  const below = notes.filter((n) => n.below);
-
-  const Arc = ({ n, down }: { n: (typeof notes)[number]; down?: boolean }) => (
-    <div className="relative h-5" aria-hidden>
-      <div
-        className={cn(
-          "absolute h-2.5 border-accent/60",
-          down ? "top-0 rounded-b-md border-x border-b border-dashed" : "bottom-0 rounded-t-md border-x border-t",
-        )}
-        style={arc(n.from, n.to)}
-      />
-      <span
-        className={cn(
-          "absolute -translate-x-1/2 whitespace-nowrap rounded-full bg-surface-2 px-1.5 text-caption text-accent",
-          down ? "top-1" : "-top-0.5",
-        )}
-        style={{ left: `calc(${arc(n.from, n.to).left} + ${arc(n.from, n.to).width} / 2)` }}
-      >
-        {n.text}
-      </span>
-    </div>
-  );
+  const { stops } = route;
+  // 横一列は 8 つまで（それより長い経路は縦の方が読みやすい）
+  const wide = stops.length <= 8;
+  const row = (cls: string) => (wide ? cls : "");
+  const picked = stops.find((s) => s.key === selected);
+  const name = (s: FlowStop) => (s.round > 1 ? `${s.label}（${interpolate(t.chat.flowRound, { n: String(s.round) })}）` : s.label);
 
   return (
-    <div className="flex flex-col gap-0.5 border-b-[0.5px] border-divider px-3.5 pb-2.5 pt-2 max-md:px-3">
-      <div className="flex items-baseline justify-between gap-2">
+    <div className="@container border-b-[0.5px] border-divider px-3.5 pb-3 pt-2.5 max-md:px-3">
+      <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-caption font-semibold text-muted">{t.chat.flowTitle}</span>
-        {flow.inferred && <span className="text-caption text-muted-2">{t.chat.flowInferred}</span>}
+        <span className="text-caption text-fg-2">{summaryOf(route, running, t)}</span>
+        {route.inferred && <span className="ml-auto text-caption text-muted-2">{t.chat.flowInferred}</span>}
       </div>
-      {above.map((n) => (
-        <Arc key={n.key} n={n} />
-      ))}
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${nodes.length}, minmax(0, 1fr))` }}>
-        {nodes.map((n, i) => {
-          const next = nodes[i + 1];
-          const linkPassed = next && n.passed && next.passed;
-          const active = selected === n.id;
-          const usable = n.passed && n.stepIds.length > 0 && onSelect;
+      <ol className={cn("m-0 flex list-none flex-col p-0", row("@[480px]:flex-row"))}>
+        {stops.map((s, i) => {
+          const detail = detailOf(s, t);
+          const active = selected === s.key;
+          const usable = Boolean(onSelect) && s.stepIds.length > 0;
+          const next = stops[i + 1];
           return (
-            <div key={n.id} className="relative flex min-w-0 justify-center">
+            <li
+              key={s.key}
+              style={{ animationDelay: `${i * 45}ms` }}
+              className={cn(
+                "relative min-w-0 animate-fade-up pb-2.5 last:pb-0 motion-reduce:animate-none",
+                row("@[480px]:flex-1 @[480px]:pb-0"),
+              )}
+            >
               {next && (
+                // 次の停留所への線。差し戻しの後は、戻ってやり直す区間として点線にする
                 <span
                   aria-hidden
+                  style={{ animationDelay: `${i * 45 + 120}ms` }}
                   className={cn(
-                    "absolute left-1/2 top-1/2 w-full border-t",
-                    linkPassed ? "border-accent/40" : "border-dashed border-divider-strong",
+                    "absolute left-[7.5px] top-[19px] bottom-[3px] w-0 animate-draw border-l motion-reduce:animate-none",
+                    row("@[480px]:bottom-auto @[480px]:left-[calc(50%+11px)] @[480px]:right-[calc(-50%+11px)] @[480px]:top-[7.5px] @[480px]:h-0 @[480px]:w-auto @[480px]:border-l-0 @[480px]:border-t"),
+                    s.outcome === "sent_back" || s.outcome === "retried"
+                      ? "border-dashed border-accent/60"
+                      : "border-accent/35",
                   )}
                 />
               )}
               <button
                 type="button"
                 disabled={!usable}
-                onClick={() => onSelect?.(active ? null : n.id)}
-                title={n.description}
                 aria-pressed={active}
+                title={usable ? undefined : t.chat.flowNoSteps}
+                onClick={() => onSelect?.(active ? null : s.key)}
                 className={cn(
-                  "relative z-[1] inline-flex min-w-0 max-w-full flex-col items-center rounded-control border-[0.5px] px-1.5 py-0.5 text-caption max-sm:px-1 leading-tight outline-none transition-colors duration-(--duration-mid) focus-visible:ring-2 focus-visible:ring-accent/50",
-                  n.passed ? "border-divider-strong bg-surface text-fg" : "border-dashed border-divider bg-surface-2 text-muted-2",
-                  n.current && "border-accent/60 text-accent",
-                  active && "ring-2 ring-accent/60",
-                  usable ? "cursor-pointer hover:border-accent/50" : "cursor-default",
+                  "group flex w-full min-w-0 items-start gap-2.5 rounded-control border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+                  row("@[480px]:flex-col @[480px]:items-center @[480px]:gap-1.5 @[480px]:px-1 @[480px]:text-center"),
+                  usable ? "cursor-pointer" : "cursor-default",
                 )}
               >
-                <span className="inline-flex max-w-full items-center gap-1">
-                  {n.current && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full bg-accent motion-reduce:animate-none" />}
-                  {/* 幅が足りないときは切らずに折り返す（「最初の / 検索」）。横スクロールはさせない */}
-                  <span className="truncate max-sm:whitespace-normal max-sm:text-center max-sm:[word-break:break-all]">{n.label}</span>
+                <span className={cn("rounded-full transition-shadow duration-(--duration-mid)", active && "ring-[3px] ring-accent/25")}>
+                  <StopMark s={s} />
                 </span>
-                {/* 2 行目: 通った回数と所要時間（幅が足りないときは回数だけ） */}
-                {(n.visits > 1 || (n.passed && n.durationMs > 0)) && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted">
-                    {n.visits > 1 && <span className="nums font-sans font-medium text-accent">×{n.visits}</span>}
-                    {n.passed && n.durationMs > 0 && <span className="nums max-sm:hidden">{formatMs(n.durationMs)}</span>}
+                <span className={cn("flex min-w-0 flex-1 items-baseline gap-2", row("@[480px]:w-full @[480px]:flex-col @[480px]:items-center @[480px]:gap-0"))}>
+                  <span
+                    className={cn(
+                      "shrink-0 text-footnote font-medium transition-colors duration-(--duration-mid)",
+                      active || s.current ? "text-accent" : "text-fg",
+                      usable && "group-hover:text-accent",
+                      row("@[480px]:max-w-full @[480px]:truncate @[480px]:text-caption"),
+                    )}
+                  >
+                    {name(s)}
                   </span>
-                )}
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-caption",
+                      s.outcome === "sent_back" || s.outcome === "used_draft" ? "text-accent" : "text-muted",
+                      s.outcome === "failed" && "text-danger",
+                      // 横一列では 2 行まで折り返す（理由が切れて読めないのを防ぐ）
+                      row("@[480px]:line-clamp-2 @[480px]:w-full @[480px]:flex-none @[480px]:whitespace-pre-line @[480px]:leading-snug"),
+                    )}
+                    title={detail.replace("\n", " ")}
+                  >
+                    {detail}
+                  </span>
+                  {s.durationMs > 0 && (
+                    <span className={cn("nums shrink-0 font-mono text-[10px] text-muted-2", row("@[480px]:mt-0.5"))}>
+                      {formatMs(s.durationMs)}
+                    </span>
+                  )}
+                </span>
               </button>
-            </div>
+            </li>
           );
         })}
-      </div>
-      {below.map((n) => (
-        <Arc key={n.key} n={n} down />
-      ))}
-      {selected && onSelect && (
-        <div className="mt-1 flex items-center gap-1.5 text-caption text-muted">
-          <span>{interpolate(t.chat.flowFiltered, { node: flow.nodes.find((n) => n.id === selected)?.label ?? selected })}</span>
+      </ol>
+      {picked && onSelect && (
+        <div className="mt-2.5 flex animate-fade-in items-center gap-1.5 text-caption text-muted motion-reduce:animate-none">
+          <span>{interpolate(t.chat.flowFiltered, { node: name(picked) })}</span>
           <span aria-hidden>·</span>
           <button
             type="button"
