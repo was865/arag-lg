@@ -14,7 +14,13 @@ def test_only_citations_holding_the_value_are_kept() -> None:
     text, pruned = prune_citations("締付トルクは 52 N·m です [1][2][3]。", MATERIALS)
     assert text == "締付トルクは 52 N·m です [1]。"
     assert pruned == [
-        {"sentence": "締付トルクは 52 N·m です [1][2][3]。", "removed": [2, 3], "kept": [1], "values": ["52"]}
+        {
+            "sentence": "締付トルクは 52 N·m です [1][2][3]。",
+            "removed": [2, 3],
+            "kept": [1],
+            "values": ["52"],
+            "ignored": [],
+        }
     ]
 
 
@@ -68,3 +74,47 @@ def test_removed_documents_disappear_and_numbers_are_renumbered() -> None:
     text, _ = prune_citations("トルクは 45 N·m です [3][2]。", {c.n: c.text for c in reg.items()})
     fin = finalize_citations(text, reg)
     assert fin.answer == "トルクは 45 N·m です [1]。" and [s["title"] for s in fin.sources] == ["d2.docx"]
+
+
+# ── 質問に出た値は判断に使わない（specs/026 T34） ──
+
+SUBJECT = {
+    1: "HP-300 分解手順書 第3版: ケーシングボルトの締付トルクは 52 N·m とする。",
+    2: "HP-300 分解手順書 第2版: ケーシングボルトの締付トルクは 45 N·m とする。",
+    3: "HP-300 品質会議: シール部の漏れ対策を決めた。",
+}
+
+
+def test_values_from_the_question_are_ignored() -> None:
+    # HP-300 はどの資料にもあるが、質問に出た値なので判断に使わず、52 を含む資料だけ残る
+    text, pruned = prune_citations(
+        "HP-300 の締付トルクは 52 N·m です [1][2]。", SUBJECT, question="HP-300 の締付トルクは？"
+    )
+    assert text == "HP-300 の締付トルクは 52 N·m です [1]。"
+    assert pruned == [
+        {
+            "sentence": "HP-300 の締付トルクは 52 N·m です [1][2]。",
+            "removed": [2],
+            "kept": [1],
+            "values": ["52"],
+            "ignored": ["300", "HP-300"],
+        }
+    ]
+
+
+def test_sentence_with_only_question_values_is_untouched() -> None:
+    text = "HP-300 の手順書は改訂されました [1][3]。"
+    assert prune_citations(text, SUBJECT, question="hp-300 の手順書は？") == (text, [])
+
+
+def test_codes_are_recorded_as_written_and_matched_case_insensitively() -> None:
+    materials = {1: "シールキット sk-300（部品番号 P-1042）", 2: "羽根車 IM-320"}
+    _text, pruned = prune_citations("仕入先は SK-300 の業者です [1][2]。", materials)
+    assert pruned[0]["values"] == ["300", "SK-300"] and pruned[0]["removed"] == [2]
+
+
+def test_markers_used_as_nouns_in_the_sentence_are_untouched() -> None:
+    # hm59（026f）: 「資料 [1] や [2] には」の番号は文の中の名詞で、外すと「資料  や」が残る
+    materials = {1: "CR-02 の保守記録", 2: "CR-02 は 2022 年に導入"}
+    text = "資料 [1] や [2] には、導入年（2022年）の記載があります。"
+    assert prune_citations(text, materials, question="CR-02 の製造元は？") == (text, [])

@@ -669,6 +669,7 @@ async def test_citations_without_the_value_are_pruned_and_recorded() -> None:
             "removed": [2],
             "kept": [1],
             "values": ["52"],
+            "ignored": [],
             "documents": {"1": "規程.pdf", "2": "規程.pdf"},
         }
     ]
@@ -683,3 +684,15 @@ async def test_pruning_can_be_turned_off() -> None:
     state, custom = await run(agent, c, "締付トルクは？")
     assert state["messages"][-1].text == "締付トルクは 52 N·m です[1][2]。"
     assert "citation_pruned" not in system_steps(custom)
+
+
+async def test_pruning_ignores_values_from_the_users_question() -> None:
+    # 質問の型番（HP-300）はどの資料にもあるので判断に使わない。画像の説明は質問に含めない（T34）
+    model = FakeToolModel(messages=script(AIMessage(content="HP-300 の締付トルクは 52 N·m です[1][2]。")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("HP-300 の締付トルクは 52 N·m とする。", "HP-300 の品質会議で見直しを決めた。"))
+    c.user_question = "HP-300 の締付トルクは？"
+    state, custom = await run(agent, c, "HP-300 の締付トルクは？")
+    assert state["messages"][-1].text == "HP-300 の締付トルクは 52 N·m です[1]。"
+    [p] = system_steps(custom)["citation_pruned"]["output"]["pruned"]
+    assert p["values"] == ["52"] and p["ignored"] == ["300", "HP-300"]

@@ -78,3 +78,8 @@
 - output: `evidence: [{question, evidence}]`（残した候補）・`dropped: [{question, reason, evidence}]`。
 - 届け方（T24）: runner は `_persist` の後に `run.completed`（`suggestions: []`・`followups_pending: true`）を送り、`_deliver_followups` で候補を作って `followups`（`{message_id, suggestions}`）を送る。保存済みのメッセージの `suggestions` を更新し、`followups` のステップを `steps` の末尾に足す。ストリームは `followups_pending` の完了では閉じず、`followups` で閉じる（`events.closes_stream`）。候補を作らない条件のときは `followups_pending: false` で、完了で閉じる。`duration_ms` は完了の時点で止める（`_Turn.stop`）。
 
+
+## T25・T26（2026-11-14 追補）
+
+- 打ち切り（T25）: `RunnerDeps.followups_timeout_sec`（`Settings.followups_timeout_sec`、`ARAG_FOLLOWUPS_TIMEOUT_SEC`、既定 5.0）を `suggest(limit_sec=...)` に渡す。記録の input に `timeout_sec`。
+- 同時実行の枠（T26）: 調べた結果、run の行は `_persist` で `completed` になるので、`uq_runs_active_thread` は完了の時点で外れ、次の質問（`create_run`）は弾かれない。画面も `run.completed`（`endsRun`）で入力を戻している。一方 `Runner` は `execute_run` のタスクが終わるまで `running` に数えていたため、候補の作成（最大で打ち切りの秒数）のあいだ枠を 1 つ占め、`run_concurrency` が埋まるとほかの run の claim が遅れた。`execute_run(..., on_answered=cb)` を足し、`run.completed` を送った直後に呼ぶ。`Runner` はその時点でタスクを `running` から `trailing` に移して起こし、次の run を claim する。停止（`run` の終わり）では `running` と `trailing` の両方を待つ。

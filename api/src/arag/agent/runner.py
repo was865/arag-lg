@@ -29,7 +29,7 @@ from arag.agent.flow import NO_ANSWER_TEXT
 
 # _classify は以前の場所（テストが使う）
 from arag.agent.flow import classify as _classify  # noqa: F401
-from arag.agent.followups import HISTORY_TURNS, Followups, excerpts, suggest
+from arag.agent.followups import HISTORY_TURNS, TIMEOUT_SEC, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.model_switch import ModelChainError
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
@@ -78,6 +78,8 @@ class RunnerDeps:
     image_reader: ImageReader | None = None
     # 続けて聞く質問の候補を作るか（ARAG_FOLLOWUPS、specs/028 R7）
     followups: bool = True
+    # 続けて聞く候補の作成の打ち切り（ARAG_FOLLOWUPS_TIMEOUT_SEC、specs/028 T25）
+    followups_timeout_sec: float = TIMEOUT_SEC
     # 引用の刈り込み（ARAG_CITATION_PRUNE、specs/026 T31）
     citation_prune: bool = True
 
@@ -144,8 +146,14 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
         await agent.aupdate_state(config, {"messages": fix}, as_node="investigate")
 
 
-async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
-    """claim 済み（running）の run を最後まで実行し、終了状態を返す。"""
+async def execute_run(
+    deps: RunnerDeps, run_id: uuid.UUID, *, on_answered: Callable[[], None] | None = None
+) -> str:
+    """claim 済み（running）の run を最後まで実行し、終了状態を返す。
+
+    on_answered は完了を送った直後（続けて聞く候補を作る前）に呼ぶ。
+    runner はそこで同時実行の枠を返す（specs/028 T26）。
+    """
     async with deps.sessionmaker() as s:
         run = await s.get(Run, run_id)
         assert run is not None
@@ -161,6 +169,7 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
         sessionmaker=deps.sessionmaker,
         search=deps.search,
         question=req["query"],
+        user_question=req["query"],
         kb_ids=_uuids(req.get("kb_ids")),
         document_ids=_uuids(req.get("document_ids")),
         include_archived=bool(req.get("include_archived")),
@@ -236,6 +245,8 @@ async def execute_run(deps: RunnerDeps, run_id: uuid.UUID) -> str:
                     "followups_pending": c.followups,
                 }
             )
+            if on_answered is not None:
+                on_answered()  # runner の枠を空ける（続けて聞く候補はその後。specs/028 T26）
 
         async def followups() -> list[str]:
             assert done.completion is not None
@@ -357,7 +368,9 @@ async def _deliver_followups(
     suggestions: list[str] = []
     try:
         history = await _recent_turns(deps, thread_id, int(req["ordinal"]))
-        suggestions, step = await _followups(sink, turn, models, ctx, req["query"], answer, src, history)
+        suggestions, step = await _followups(
+            sink, turn, models, ctx, req["query"], answer, src, history, limit_sec=deps.followups_timeout_sec
+        )
         await asyncio.shield(_save_followups(deps, message_id, suggestions, step))
     except Exception:
         log.exception("followups_failed", message_id=str(message_id))
@@ -402,6 +415,7 @@ async def _followups(
     answer: str,
     src: dict[str, Any],
     history: list[tuple[str, str]] | None = None,
+    limit_sec: float = TIMEOUT_SEC,
 ) -> tuple[list[str], dict[str, Any]]:
     """続けて聞く質問の候補を作り、作ったこと（モデル・時間・結果か失敗の理由）を記録に残す（R4・R5）。"""
     model = models.utility or models.model
@@ -409,7 +423,7 @@ async def _followups(
     titles = [s["title"] for s in src.get("sources", [])]
     docs = excerpts(ctx.registry.items())
     try:
-        out = await suggest(model, question, answer, titles, docs, history=history or [])
+        out = await suggest(model, question, answer, titles, docs, history=history or [], limit_sec=limit_sec)
     except asyncio.CancelledError:
         # 完了の後の取消は、回答をそのまま残し、候補だけ諦める
         task = asyncio.current_task()
@@ -442,6 +456,7 @@ async def _followups(
             "excerpts": len(docs),
             "excerpt_chars": sum(len(d) for d in docs),
             "history_turns": len(history or []),
+            "timeout_sec": limit_sec,
         },
         output=output,
     )
@@ -723,12 +738,14 @@ class Runner:
         self.stale = timedelta(seconds=stale_sec)
         self.worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
         self.running: dict[uuid.UUID, asyncio.Task[str]] = {}
+        # 完了を送り、続けて聞く候補を作っている run（同時実行の枠に数えない。specs/028 T26）
+        self.trailing: dict[uuid.UUID, asyncio.Task[str]] = {}
         self._wake = asyncio.Event()
 
     async def _run_one(self, run_id: uuid.UUID) -> str:
         task = asyncio.current_task()
         assert task is not None
-        inner = asyncio.create_task(execute_run(self.deps, run_id))
+        inner = asyncio.create_task(execute_run(self.deps, run_id, on_answered=lambda: self._settle(run_id)))
 
         async def watch() -> None:
             last_beat = time.monotonic()
@@ -753,9 +770,17 @@ class Runner:
             with contextlib.suppress(asyncio.CancelledError):
                 await watcher
 
+    def _settle(self, rid: uuid.UUID) -> None:
+        """完了を送った run を枠から外し（候補の作成は続く）、次の run を claim させる。"""
+        task = self.running.pop(rid, None)
+        if task is not None and not task.done():
+            self.trailing[rid] = task
+        self._wake.set()
+
     def _forget(self, rid: uuid.UUID) -> Callable[[asyncio.Task[str]], None]:
         def cb(_t: asyncio.Task[str]) -> None:
             self.running.pop(rid, None)
+            self.trailing.pop(rid, None)
 
         return cb
 
@@ -802,9 +827,10 @@ class Runner:
                     await asyncio.wait_for(self._wake.wait(), timeout=1.0)
         finally:
             listener.cancel()
-            if self.running:
-                log.info("waiting_running_runs", count=len(self.running))
-                await asyncio.gather(*self.running.values(), return_exceptions=True)
+            tasks = [*self.running.values(), *self.trailing.values()]
+            if tasks:
+                log.info("waiting_running_runs", count=len(self.running), trailing=len(self.trailing))
+                await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def main() -> None:
@@ -864,6 +890,7 @@ async def main() -> None:
             storage=LocalStorage(settings.storage_dir),
             image_reader=build_query_image_reader(settings),
             followups=settings.followups,
+            followups_timeout_sec=settings.followups_timeout_sec,
             citation_prune=settings.citation_prune,
         )
         runner = Runner(

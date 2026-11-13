@@ -231,7 +231,7 @@ export const chat = {
     same_question: "これまでの質問と同じ",
   } as Record<string, string>,
   // 引用の刈り込みの 1 文の表示（外した番号・残した番号・その文の値）
-  pruneLabels: { removed: "外した", kept: "残した", values: "値" },
+  pruneLabels: { removed: "外した", kept: "残した", values: "値", ignored: "質問の値（判断に使わない）" },
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     result: {
