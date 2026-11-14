@@ -16,6 +16,7 @@ from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
 from arag.agent.ops import op_search, weak_result
+from arag.agent.prior import last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
 
@@ -62,9 +63,19 @@ ROLES = {
 }
 
 
-async def _search(ctx: RunContext, emit: Emit, index: int, query: str, role: str) -> str:
+async def _search(
+    ctx: RunContext,
+    emit: Emit,
+    index: int,
+    query: str,
+    role: str,
+    scope: tuple[list[str], list[str]] | None = None,
+) -> str:
+    """scope は（文書 ID, 文書名）。「さっきの資料」のとき、前のターンで引用した文書に絞る。"""
     sid = f"primer-{index}"
     label, purpose = ROLES[role]
+    if scope and scope[0]:
+        purpose += "。前のターンで引用した文書に絞る: " + "・".join(f"「{n}」" for n in scope[1])
     clock = StepClock(
         emit,
         Step(
@@ -72,13 +83,22 @@ async def _search(ctx: RunContext, emit: Emit, index: int, query: str, role: str
             name="search",
             label=label,
             status="running",
-            input={"query": query, "by": "system", "role": role, "purpose": purpose},
+            input={"query": query, "by": "system", "role": role, "purpose": purpose}
+            | ({"scope_documents": scope[1]} if scope and scope[0] else {}),
             summary="検索中",
         ),
     )
     ctx.stats.primer_searches += 1
     try:
-        text = await op_search(ctx, emit, sid, query)
+        if scope and scope[0]:
+            text = await op_search(ctx, emit, sid, query, document_ids=scope[0])
+            if weak_result(text):
+                # 絞った範囲に答えが無いときは、範囲を外して探し直す（記録に残る）
+                text = await op_search(
+                    ctx, emit, sid, query, step_tag="all", label="範囲を外して再検索", running="再検索中"
+                )
+        else:
+            text = await op_search(ctx, emit, sid, query)
     except Exception as e:
         ctx.stats.tool_errors += 1
         clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
@@ -177,7 +197,13 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
     def finish(u: Understanding) -> None:
         clock.done(
             _describe(u),
-            {"kind": u.kind, "queries": list(u.queries), "table": u.table, "raw": u.raw[:1000]}
+            {
+                "kind": u.kind,
+                "queries": list(u.queries),
+                "table": u.table,
+                "refers_prior": u.refers_prior,
+                "raw": u.raw[:1000],
+            }
             | ({"error": u.error} if u.error else {})
             | ({"table_overridden": True} if u.table_overridden else {}),
         )
@@ -200,12 +226,26 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
         start = 1
     if u.kind == "chat":
         ctx.primer = Primer(kind="chat")
+    scope: tuple[list[str], list[str]] = ([], [])
+    if u.refers_prior and not first_turn and u.kind == "docs":
+        scope = last_cited_scope(history)
+        if scope[0]:
+            record_system(
+                emit,
+                "system-scope-prior",
+                "scope_prior",
+                "前の文書に絞る",
+                f"「さっきの資料」とみなし、前のターンで引用した文書 {len(scope[0])} 件に絞って検索する",
+                input={"question": question[:300]},
+                output={"documents": scope[1]},
+            )
     understanding = {
         "kind": u.kind,
         "queries": list(u.queries),
         "table": u.table,
         "extra": extra,
         "start": start,
+        "scope": {"ids": scope[0], "names": scope[1]},
     }
     return {"understanding": understanding}
 
@@ -220,7 +260,10 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     if extra := u["extra"]:
         start = u["start"]
         texts += await asyncio.gather(
-            *(_search(ctx, emit, start + i, q, "understood") for i, q in enumerate(extra))
+            *(
+                _search(ctx, emit, start + i, q, "understood", (u["scope"]["ids"], u["scope"]["names"]))
+                for i, q in enumerate(extra)
+            )
         )
     ctx.primer_texts = texts
     ctx.primer = Primer(

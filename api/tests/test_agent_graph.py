@@ -770,3 +770,38 @@ def test_similarity_and_distinct_part() -> None:
     q = "9月の冷却水ポンプ PM-04 の保守による停止時間は合計何時間ですか？"
     assert distinct_part("9月の冷却水ポンプ PM-04 の保守による停止時間の合計", q).startswith("…")
     assert distinct_part("全然ちがう", q) == "全然ちがう"
+
+
+async def test_refers_prior_scopes_the_search_to_previously_cited_documents() -> None:
+    from .agent_fakes import DOC
+
+    model = FakeToolModel(messages=script(AIMessage(content="一回目[1]"), AIMessage(content="二回目[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("担当は小野寺。")
+    u = utility(
+        '{"kind": "docs", "queries": ["PM-04 停止時間"], "table": false}',
+        '{"kind": "docs", "queries": ["担当者"], "table": false, "refers_prior": true}',
+    )
+    await run(agent, ctx(search, utility_model=u), "PM-04 の停止時間は？", thread="s1")
+    _, custom = await run(agent, ctx(search, utility_model=u), "その資料に担当者は？", thread="s1")
+    # 前のターンが引用した文書（規程.pdf）に絞って検索し、その記録を残す
+    assert search.requests[-1].document_ids == [DOC]
+    sys = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
+    scope = next(s for s in sys if s["input"]["kind"] == "scope_prior")
+    assert scope["output"]["documents"] == ["規程.pdf"]
+    assert any(
+        e["step"]["input"].get("scope_documents") == ["規程.pdf"] for e in custom if e["type"] == "step"
+    )
+
+
+async def test_refers_prior_is_ignored_without_cited_documents() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="一回目"), AIMessage(content="二回目")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("本文")
+    u = utility(
+        '{"kind": "docs", "queries": ["a"], "table": false}',
+        '{"kind": "docs", "queries": ["b"], "table": false, "refers_prior": true}',
+    )
+    await run(agent, ctx(search, utility_model=u), "最初の質問", thread="s2")
+    await run(agent, ctx(search, utility_model=u), "その資料は？", thread="s2")
+    assert search.requests[-1].document_ids is None

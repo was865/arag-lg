@@ -204,6 +204,7 @@ export const chat = {
     replaced: "置き換えた件数",
     placeholder: "代わりに渡した文",
     placeholders: "代わりに渡した文",
+    documents: "文書",
     calls: "呼び出しの回数",
     max_steps: "上限",
     note: "モデルへの指示",

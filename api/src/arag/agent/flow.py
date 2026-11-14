@@ -312,14 +312,12 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
     fin = finalize_citations(text, ctx.registry)
     # 引用した文書名を回答のメッセージに残す。出典番号は保存のときに振り直され、最初の検索の結果は
     # 会話の履歴に残らないので、次のターンで「さっきの資料」を文書名に直せるようにする
-    cited = list(dict.fromkeys(c.document_name for c in fin.items.values() if c.document_name))
+    docs = {str(c.document_id): c.document_name for c in fin.items.values() if c.document_name}
     target = update["messages"][0] if update.get("messages") else last
-    if cited and isinstance(target, AIMessage) and not target.tool_calls:
-        update["messages"] = [
-            target.model_copy(
-                update={"additional_kwargs": {**target.additional_kwargs, "cited_documents": cited}}
-            )
-        ]
+    if docs and isinstance(target, AIMessage) and not target.tool_calls:
+        kwargs = {**target.additional_kwargs, "cited_documents": list(dict.fromkeys(docs.values()))}
+        kwargs["cited_document_ids"] = list(docs)
+        update["messages"] = [target.model_copy(update={"additional_kwargs": kwargs})]
     reason = classify(fin.answer, ctx)
     shown = NO_ANSWER_TEXT[reason] if reason and not fin.answer.strip() else fin.answer
     chat = ctx.primer is not None and ctx.primer.kind == "chat"

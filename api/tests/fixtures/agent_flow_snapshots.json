@@ -133,6 +133,7 @@
        "MX-17 はどうする？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -368,6 +369,7 @@
       "kind": "chat",
       "queries": [],
       "raw": "{\"kind\": \"chat\", \"queries\": [], \"table\": false}",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -581,6 +583,7 @@
        "第3版の変更点と、関連部品の在庫は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -1079,6 +1082,7 @@
        "第3版の変更点と、関連部品の在庫は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -1439,6 +1443,7 @@
        "保存期間は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -1729,6 +1734,7 @@
        "保存期間は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -2071,6 +2077,7 @@
        "保存期間は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -2537,6 +2544,7 @@
        "第3版の変更点と、関連部品の在庫は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -3088,6 +3096,7 @@
        "SK-300 の単価は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -3537,6 +3546,7 @@
        "q"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -3864,6 +3874,7 @@
        "SK-300 の単価は？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -4236,6 +4247,7 @@
        "在庫が発注点を下回る部品"
       ],
       "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "refers_prior": false,
       "table": true
      },
      "status": "done",
@@ -4705,6 +4717,7 @@
        "在庫が発注点を下回る部品"
       ],
       "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "refers_prior": false,
       "table": true
      },
      "status": "done",
@@ -5026,6 +5039,7 @@
        "二つ目"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -5593,6 +5607,7 @@
        "q"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",
@@ -6110,6 +6125,7 @@
        "在庫が発注点を下回る部品"
       ],
       "raw": "{\"kind\": \"docs\", \"queries\": [\"在庫が発注点を下回る部品\"], \"table\": true}",
+      "refers_prior": false,
       "table": true
      },
      "status": "done",
@@ -6530,6 +6546,7 @@
        "MX-17 はどうする？"
       ],
       "raw": "",
+      "refers_prior": false,
       "table": false
      },
      "status": "done",

@@ -31,6 +31,8 @@ class Understanding:
     kind: Kind = "docs"
     queries: tuple[str, ...] = ()
     table: bool = False
+    # 「さっきの資料」のように、前のターンの回答が引用した文書を指しているか
+    refers_prior: bool = False
     # モデルは true と言ったが、出力の形の指定（「表にして」）だけなので false にした（specs/026 T28）
     table_overridden: bool = False
     # 記録用: モデルの出力そのままと、読めなかったときの理由
@@ -69,6 +71,7 @@ def parse(text: str, question: str) -> Understanding:
         kind=kind,
         queries=tuple(queries[:MAX_QUERIES]) if kind == "docs" else (),
         table=data.get("table") is True,
+        refers_prior=data.get("refers_prior") is True,
         raw=text,
     )
 

@@ -22,6 +22,7 @@ class Turn:
     question: str
     answer: str
     cited: tuple[str, ...]
+    cited_ids: tuple[str, ...] = ()
 
 
 def turns(messages: list[AnyMessage]) -> list[Turn]:
@@ -30,6 +31,7 @@ def turns(messages: list[AnyMessage]) -> list[Turn]:
     docs: dict[int, str] = {}
     question, answer = "", ""
     saved: list[str] = []  # 回答のメッセージに残した、引用した文書名（確定のときに記録）
+    saved_ids: list[str] = []
     started = False
 
     def close() -> None:
@@ -41,12 +43,12 @@ def turns(messages: list[AnyMessage]) -> list[Turn]:
             name = docs.get(n, "")
             if name and name not in names:
                 names.append(name)
-        out.append(Turn(question, answer, tuple(names)))
+        out.append(Turn(question, answer, tuple(names), tuple(saved_ids)))
 
     for m in messages:
         if isinstance(m, HumanMessage):
             close()
-            started, question, answer, docs, saved = True, m.text, "", {}, []
+            started, question, answer, docs, saved, saved_ids = True, m.text, "", {}, [], []
         elif isinstance(m, ToolMessage):
             for n, name in _DOC.findall(m.text):
                 docs.setdefault(int(n), name.strip()[:DOC_CHARS])
@@ -54,6 +56,8 @@ def turns(messages: list[AnyMessage]) -> list[Turn]:
             answer = split_thinking(m.text)[1].strip()
             kept = m.additional_kwargs.get("cited_documents")
             saved = [str(x)[:DOC_CHARS] for x in kept] if isinstance(kept, list) else []
+            ids = m.additional_kwargs.get("cited_document_ids")
+            saved_ids = [str(x) for x in ids] if isinstance(ids, list) else []
     close()
     return out
 
@@ -66,3 +70,11 @@ def cited_documents(messages: list[AnyMessage], *, limit: int = 8) -> list[str]:
             if name not in names:
                 names.append(name)
     return names[:limit]
+
+
+def last_cited_scope(messages: list[AnyMessage]) -> tuple[list[str], list[str]]:
+    """直近で引用のあった回答の、文書 ID と文書名（「さっきの資料」に検索を絞る）。ID が無ければ空。"""
+    for t in reversed(turns(messages)):
+        if t.cited:
+            return (list(t.cited_ids), list(t.cited)) if len(t.cited_ids) == len(t.cited) else ([], [])
+    return [], []
