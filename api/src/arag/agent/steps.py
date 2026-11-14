@@ -43,16 +43,25 @@ class StepClock:
         self.emit({"type": "step", "step": self.step.model_dump()})
 
 
-def record_system(emit: Any, step_id: str, kind: str, label: str, summary: str, **detail: Any) -> None:
+def elapsed_ms(t0: float) -> int:
+    """t0（perf_counter）からの経過ミリ秒。測った処理は最小 1 とする（0 は「測っていない」の意味）。"""
+    return max(1, round((time.perf_counter() - t0) * 1000))
+
+
+def record_system(
+    emit: Any, step_id: str, kind: str, label: str, summary: str, *, duration_ms: int = 0, **detail: Any
+) -> None:
     """後ろで行った処理を「システムの処理」のステップとして記録に残す（後端の動きは原則すべて記録に出す）。
 
     detail の input は入力に、output は出力にそのまま入れる。画面では 1 つの畳んだ組にまとめて見せる。
+    duration_ms は実際に測った所要時間。測っていない処理は 0 のままで、画面は時間を出さない。
     """
     step = Step(
         id=step_id,
         name="system",
         label=label,
         status="done",
+        duration_ms=duration_ms,
         input={"kind": kind, **detail.get("input", {})},
         output=detail.get("output"),
         summary=summary,

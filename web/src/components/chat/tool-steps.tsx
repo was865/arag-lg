@@ -25,6 +25,8 @@ const MARKER_STEPS = new Set<ToolName>(["reasoning", "skill", "rewrite_query"]);
 
 function stepDurationLabel(step: ToolCall): string | null {
   if (MARKER_STEPS.has(step.name) && !step.durationMs) return null;
+  // システムの処理は、実際に測った処理（続けて聞く質問・数字の照合・要約など）だけ時間を出す。0 は測っていない
+  if (step.name === "system" && !step.durationMs) return null;
   return formatMs(step.durationMs);
 }
 

@@ -30,7 +30,7 @@ from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.primer import with_primer
 from arag.agent.prior import cited_documents
 from arag.agent.prune import prune_citations
-from arag.agent.steps import Step, StepClock, record_system
+from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import LABELS
 from arag.prompts import load_prompt
@@ -545,7 +545,9 @@ def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answ
     found = numbers_in(_MARK.sub("", answer))
     if not found:
         return
+    t0 = time.perf_counter()
     res = _check_numbers(ctx, turn, answer)
+    took = elapsed_ms(t0)
     missing = res.missing
     # 回答の内訳から和・差で確かめた数字も、黙って通さず記録に残す（R24）
     derived = "・".join(d["value"] for d in res.derived[:8])
@@ -560,6 +562,7 @@ def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answ
             else f"回答の数字 {len(found)} 個を資料・計算結果と照合した（すべて確認"
             + (f"。{derived} は回答の内訳から確かめた）" if derived else "）")
         ),
+        duration_ms=took,
         input={"checked": len(found)},
         output={"unverified": missing[:20], "derived": res.derived[:20]},
     )
@@ -670,7 +673,9 @@ def _prune(ctx: RunContext, emit: Any, answer: str) -> str:
     }
     # 質問に出た値は判断に使わない（T34）。画像の説明は含めない
     question = ctx.user_question or ctx.question
+    t0 = time.perf_counter()
     pruned_text, pruned = prune_citations(answer, materials, question=question)
+    took = elapsed_ms(t0)
     names = {c.n: c.document_name for c in reg.items()}
     for p in pruned:
         # 番号は保存のときに振り直されるので、どの資料を外し・残したかを名前でも残す
@@ -685,6 +690,7 @@ def _prune(ctx: RunContext, emit: Any, answer: str) -> str:
             f"{len(pruned)} つの文から、値を書いていない資料の番号 "
             + "".join(f"[{n}]" for n in removed)
             + " を外した",
+            duration_ms=took,
             input={"sentences": len(pruned)},
             output={"pruned": pruned},
         )
@@ -696,7 +702,9 @@ class RecordedSummarization(SummarizationMiddleware):
 
     async def abefore_model(self, state: Any, runtime: Runtime[Any]) -> dict[str, Any] | None:
         before = list(state["messages"])
+        t0 = time.perf_counter()
         result = await super().abefore_model(state, runtime)
+        took = elapsed_ms(t0)
         if not result:
             return None
         ids = {m.id for m in before}
@@ -710,6 +718,7 @@ class RecordedSummarization(SummarizationMiddleware):
             "会話の要約",
             f"会話が長くなったため、前の {len(before) - kept} 件のメッセージを要約に置き換えた"
             f"（{kept} 件はそのまま）",
+            duration_ms=took,
             input={"messages_before": len(before), "kept": kept},
             output={"summary": summary[:4000]},
         )

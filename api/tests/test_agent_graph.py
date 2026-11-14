@@ -882,3 +882,13 @@ def test_named_document_refs() -> None:
     # 文書名でないものは拾わない
     assert named_document_refs("HP-300 の締付トルクはいくつですか？") == []
     assert named_document_refs("9月の PM-04 の停止時間は？") == []
+
+
+def test_record_system_carries_only_measured_durations() -> None:
+    from arag.agent.steps import elapsed_ms, record_system
+
+    got: list[dict[str, Any]] = []
+    record_system(got.append, "a", "k", "測った処理", "x", duration_ms=elapsed_ms(0.0))
+    record_system(got.append, "b", "k", "記録だけ", "y")
+    assert got[0]["step"]["duration_ms"] >= 1  # 測った処理は 0 にならない
+    assert got[1]["step"]["duration_ms"] == 0  # 測っていない処理は 0（画面は時間を出さない）

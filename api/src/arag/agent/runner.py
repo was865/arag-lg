@@ -450,6 +450,7 @@ async def _followups(
         "followups",
         "続けて聞く質問の作成",
         summary,
+        duration_ms=out.ms,
         input={
             "model": label,
             "titles": titles,
