@@ -8,7 +8,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
 from arag.agent.graph import build_agent
-from arag.agent.middleware import PRIOR_NOTE, PRIOR_TOOL_PLACEHOLDER, prior_placeholder
+from arag.agent.middleware import (
+    ANNOUNCE_NOTE,
+    PRIOR_NOTE,
+    PRIOR_TOOL_PLACEHOLDER,
+    is_announce_only,
+    prior_placeholder,
+)
 from arag.agent.prior import cited_documents, turns
 from arag.agent.understand import history_text
 from arag.auth.principal import Principal
@@ -805,3 +811,40 @@ async def test_refers_prior_is_ignored_without_cited_documents() -> None:
     await run(agent, ctx(search, utility_model=u), "最初の質問", thread="s2")
     await run(agent, ctx(search, utility_model=u), "その資料は？", thread="s2")
     assert search.requests[-1].document_ids is None
+
+
+def test_is_announce_only() -> None:
+    assert is_announce_only("まずは文書の章立てを取得します。")
+    assert is_announce_only("担当者を確認します。")
+    # 事実を述べた回答・引用のある回答・長い回答は予告ではない
+    assert not is_announce_only("異常時は即時停止します。")
+    assert not is_announce_only("まず点検してから停止します[1]。")
+    assert not is_announce_only("担当者は小野寺です。")
+    assert not is_announce_only("あ" * 200 + "確認します。")
+    assert not is_announce_only("")
+
+
+async def test_announce_only_answer_is_retried_once_with_a_request_to_call_tools() -> None:
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="まずは文書の章立てを取得します。"), AIMessage(content="停止する[1]。")
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    state, custom = await run(agent, ctx(FakeSearch("MX-17 は即時停止を推奨する。")), "MX-17 はどうする？")
+    # 予告は回答として残らず、2 回目の呼び出しにだけ予告と依頼が添えられる
+    assert state["messages"][-1].text == "停止する[1]。"
+    assert not any("取得します" in m.text for m in state["messages"])
+    assert len(model.calls) == 2
+    assert any(isinstance(m, HumanMessage) and m.text == ANNOUNCE_NOTE for m in model.calls[1])
+    sys = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
+    assert any(s["input"]["kind"] == "announce_only" for s in sys)
+
+
+async def test_announce_only_is_retried_only_once() -> None:
+    model = FakeToolModel(
+        messages=script(AIMessage(content="まず確認します。"), AIMessage(content="次に取得します。"))
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    state, _ = await run(agent, ctx(FakeSearch("本文")), "質問")
+    assert len(model.calls) == 2 and state["messages"][-1].text == "次に取得します。"

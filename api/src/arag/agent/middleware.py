@@ -60,6 +60,31 @@ def prior_placeholder(names: list[str] | None = None) -> str:
     return f"（前のターンの資料: {docs}{more}。本文は省略。{PRIOR_NOTE}）"
 
 
+# ツールを呼ばずに「これから〜します」と予告しただけで終わった回答（小さいモデルが、実行せずに止まる）
+ANNOUNCE_MAX_CHARS = 160
+_CITE = re.compile(r"\[\d+\]")
+_ANNOUNCE = re.compile(
+    r"(?:(?:まず|これから|次に|それでは)[^。！？\n]*(?:します|いたします|てみます)"
+    r"|(?:確認|取得|調査|検索|参照|読み取|読み込|探)(?:し|いた)(?:ます|てみます))[。.！!]?\s*$"
+)
+ANNOUNCE_NOTE = (
+    "あなたの直前の応答は、これから行うことの予告だけで、ツールを呼んでいません。"
+    "予告は書かず、実際にツール（search・get_outline・read_section・read_document など）を呼んで資料を調べ、"
+    "その結果に基づいて、根拠にした資料の出典番号を付けて答えてください。"
+)
+
+
+def is_announce_only(answer: str) -> bool:
+    """出典番号が無く、短く、「まず〜を取得します」のような予告で終わる回答か。"""
+    text = answer.strip()
+    return (
+        bool(text)
+        and len(text) <= ANNOUNCE_MAX_CHARS
+        and not _CITE.search(text)
+        and bool(_ANNOUNCE.search(text))
+    )
+
+
 # 差し戻しの依頼に添える（書き直しで出典番号が落ちて引用が付かなくなるのを防ぐ）。
 # 「[n]」と書くと小さいモデルがそのまま写すので、実際の数字の例で示す
 KEEP_CITATIONS = "書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。"
@@ -147,6 +172,8 @@ class InvestigateState(AgentState[Any]):
     draft: NotRequired[AIMessage | None]
     # 空の生成をやり直し中（やり直す前の応答の様子。guard が置き、やり直しの応答で消す）
     empty_pending: NotRequired[dict[str, Any] | None]
+    # 予告だけの回答のやり直し（直前の回答を渡して、ツールを呼ぶよう依頼する）
+    announce_pending: NotRequired[dict[str, Any] | None]
     # 差し戻しの直後に、ツールを呼ばずに書いた書き直しの元の下書き（guard が取り消しを判断する）
     rewrite_of: NotRequired[str | None]
     # 同じ呼び出しの続きとして数える差し戻しの回数（ツールを呼んだら 0 に戻す。回数の上限の判断に使う）
@@ -171,7 +198,7 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         state = cast(dict[str, Any], request.state)
         send_back: dict[str, Any] | None = state.get("send_back")
         # 差し戻し・空のやり直しで同じ呼び出しをし直すときは、ターンに 1 度の記録を繰り返さない
-        again = bool(send_back or state.get("empty_pending"))
+        again = bool(send_back or state.get("empty_pending") or state.get("announce_pending"))
         msgs = list(request.messages)
         start = turn_start(msgs)
         # 前のターンのツール結果は文脈を圧迫するので置き換える（checkpoint の状態は変えない）
@@ -226,6 +253,13 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
                     input={"calls": calls, "max_steps": ctx.cfg.max_steps},
                     output={"note": FINAL_NOTE.strip()},
                 )
+        if announce := state.get("announce_pending"):
+            # 予告だけで止まった回答: その回答と依頼を、この呼び出しの中だけに添える
+            overrides["messages"] = [
+                *compact,
+                AIMessage(content=announce["answer"]),
+                HumanMessage(ANNOUNCE_NOTE),
+            ]
         if send_back:
             # 差し戻し: 下書きと依頼はこの呼び出しの中だけに添える（会話の状態には入れない）
             overrides["messages"] = [*compact, state["draft"], HumanMessage(send_back["note"])]
@@ -246,6 +280,8 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         if not isinstance(last, AIMessage) or is_empty(last):
             return {}
         update: dict[str, Any] = {}
+        if state.get("announce_pending"):
+            update["announce_pending"] = None
         if (pending := state.get("empty_pending")) is not None:
             record_empty(ctx, emit, {**pending, "retried": True}, {"result": "retried_ok"})
             update["empty_pending"] = None

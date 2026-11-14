@@ -23,6 +23,7 @@ from langgraph.runtime import Runtime
 from arag.agent.citations import cited_numbers, finalize_citations
 from arag.agent.context import Completion, RunContext
 from arag.agent.middleware import (
+    ANNOUNCE_NOTE,
     AgentPolicyMiddleware,
     RecordedSummarization,
     StepMiddleware,
@@ -32,6 +33,7 @@ from arag.agent.middleware import (
     empty_detail,
     final_answer,
     finish_send_back,
+    is_announce_only,
     open_send_back,
     pick_review,
     record_discarded,
@@ -45,7 +47,7 @@ from arag.agent.middleware import (
 from arag.agent.model_switch import ModelSwitchMiddleware
 from arag.agent.primer import primer_search_node, understand_node
 from arag.agent.query_image import with_image_description
-from arag.agent.steps import Step, StepClock, tag_node
+from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.tools import TOOLS
 from arag.logging import get_logger
 
@@ -112,6 +114,7 @@ class FlowState(TypedDict):
     send_back: NotRequired[dict[str, Any] | None]
     draft: NotRequired[AIMessage | None]
     empty_pending: NotRequired[dict[str, Any] | None]
+    announce_pending: NotRequired[dict[str, Any] | None]
     rewrite_of: NotRequired[str | None]
     chain: NotRequired[int]
     # 差し戻した下書きの確認の種類
@@ -120,6 +123,8 @@ class FlowState(TypedDict):
     reviews_done: NotRequired[list[str]]
     # 空の生成のやり直しの回数（ターンに 1 度まで）
     empty_retries: NotRequired[int]
+    # 予告だけの回答のやり直しの回数（ターンに 1 度まで）
+    announce_retries: NotRequired[int]
     # 見張りの判断（retry・use_draft・ok）
     guard: NotRequired[str | None]
     # 確定の理由（answered・used_draft・empty_failed）
@@ -137,10 +142,12 @@ FRESH: dict[str, Any] = {
     "draft": None,
     "draft_kind": None,
     "empty_pending": None,
+    "announce_pending": None,
     "rewrite_of": None,
     "chain": 0,
     "reviews_done": [],
     "empty_retries": 0,
+    "announce_retries": 0,
     "guard": None,
     "outcome": None,
     "no_answer_reason": None,
@@ -218,6 +225,30 @@ async def guard(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any
         ctx.stats.empty_failed = True
         record_empty(ctx, emit, {**detail, "retried": retried}, {"result": "failed"})
         return {"empty_pending": None, "guard": "ok", "outcome": "empty_failed"}
+    chat = ctx.primer is not None and ctx.primer.kind == "chat"
+    if (
+        answer is not None
+        and not chat
+        and not state.get("announce_retries")
+        and not state.get("send_back")
+        and is_announce_only(answer)
+    ):
+        assert last is not None and last.id is not None
+        record_system(
+            emit,
+            "system-announce-retry",
+            "announce_only",
+            "予告だけの回答のやり直し",
+            "ツールを呼ばずに「これから〜する」と書いただけの回答だったので、ツールを呼ぶよう求めてやり直した",
+            input={"answer": answer[:300]},
+            output={"note": ANNOUNCE_NOTE},
+        )
+        return {
+            "messages": [RemoveMessage(id=last.id)],
+            "announce_retries": 1,
+            "announce_pending": {"answer": answer},
+            "guard": "retry",
+        }
     rewrite_of = state.get("rewrite_of")
     if answer is not None and rewrite_of is not None and draft is not None:
         assert last is not None and last.id is not None
