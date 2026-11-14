@@ -697,7 +697,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
       </div>
     );
   }
-  if ((step.name === "vector_search" || step.name === "bm25_search" || step.name === "retrieve") && Array.isArray(output.hits)) {
+  if ((step.name === "vector_search" || step.name === "bm25_search" || step.name === "retrieve" || step.name === "candidates") && Array.isArray(output.hits)) {
     const hits = output.hits as CandidateHit[];
     if (hits.length === 0) {
       if (output.fallback) {

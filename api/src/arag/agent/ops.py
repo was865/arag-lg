@@ -23,7 +23,7 @@ from arag.logging import get_logger
 from arag.prompts import load_prompt
 from arag.search.schemas import SearchHit, SearchRequest, SearchResult
 from arag.search.scope import Scope, resolve_scope
-from arag.search.service import stage_hook
+from arag.search.service import candidates_hook, stage_hook
 
 log = get_logger("arag.agent.ops")
 
@@ -184,6 +184,7 @@ class StageEmitter:
         self.emit, self.parent_id, self.step_id, self.query = emit, parent_id, step_id, query
         self.mode, self.candidate_k = mode, candidate_k
         self.seen: dict[str, Any] = {}
+        self.cands: list[dict[str, Any]] = []
 
     def _put(
         self,
@@ -206,6 +207,11 @@ class StageEmitter:
             summary=summary,
         )
         self.emit({"type": "step", "step": step.model_dump()})
+
+    def on_candidates(self, hits: list[dict[str, Any]]) -> None:
+        # 融合スコア（RRF）は小さい値なので、最高を 1 にした相対値で見せる
+        top = max((h["score"] for h in hits), default=0.0) or 1.0
+        self.cands = [{**h, "score": round(h["score"] / top, 3)} for h in hits]
 
     def on_stage(self, st: Any) -> None:
         self.seen[st.name] = st
@@ -240,7 +246,12 @@ class StageEmitter:
             "候補の取得",
             text,
             took,
-            {"mode": mode or self.mode, "candidate_k": self.candidate_k},
+            {
+                "mode": mode or self.mode,
+                "candidate_k": self.candidate_k,
+                "score": "融合スコア（最高を 1 とした相対値）",
+            },
+            {"hits": self.cands} if self.cands else None,
         )
 
     def finish(self, res: SearchResult) -> None:
@@ -296,11 +307,12 @@ async def _search_traced(
 ) -> SearchResult:
     """検索を行い、内部の段を終わった順に送る。"""
     se = StageEmitter(emit, parent_id, step_id, req.query, mode=req.mode, candidate_k=req.candidate_k)
-    token = stage_hook.set(se.on_stage)
+    token, token2 = stage_hook.set(se.on_stage), candidates_hook.set(se.on_candidates)
     try:
         res = await _run_search(ctx, req)
     finally:
         stage_hook.reset(token)
+        candidates_hook.reset(token2)
     se.finish(res)
     return res
 

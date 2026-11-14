@@ -112,6 +112,8 @@ export function searchStory(steps: ToolCall[], sources: Source[]): SearchStory {
   // 子の検索の hits で、どの箇所も関連がほぼ 0 だった文書（件数を埋めるだけの雑音）
   const best = new Map<string, number>();
   for (const step of steps) {
+    // 再ランキング前の候補（候補の取得）は、まだ絞る前の一覧なので「見つけた文書」には数えない
+    if (step.name === "candidates") continue;
     // 親の段階は出力の文字列から、子の検索の段階は hits の一覧から、見つけた文書の題を集める
     for (const hit of parseRetrieveHits(step.output?.result)) add(hit.title);
     const hits = step.output?.hits;

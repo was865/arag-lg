@@ -62,6 +62,12 @@ def _encode_sparse(factory: Callable[[], SparseEncoder], text: str) -> SparseVec
 stage_hook: ContextVar[Callable[[StageTiming], None] | None] = ContextVar("search_stage_hook", default=None)
 
 
+# rerank の前の候補（融合した順）。画面で「何が候補に上がったか」を見せるために送る
+candidates_hook: ContextVar[Callable[[list[dict[str, Any]]], None] | None] = ContextVar(
+    "search_candidates_hook", default=None
+)
+
+
 class _Clock:
     def __init__(self) -> None:
         self.stages: list[StageTiming] = []
@@ -151,6 +157,14 @@ async def search(
             for c in cands
             if c.chunk and all(t in _norm(f"{c.chunk.heading_path or ''}\n{c.chunk.text}") for t in terms)
         ]
+    if (cand_hook := candidates_hook.get()) is not None:
+        cand_hook(
+            [
+                {"title": c.doc[1], "heading": c.chunk.heading_path, "score": round(c.fused, 4)}
+                for c in cands
+                if c.chunk is not None and c.doc is not None
+            ]
+        )
     clock.lap("hydrate", len(cands))
 
     # ---- rerank（失敗したら融合順のまま）

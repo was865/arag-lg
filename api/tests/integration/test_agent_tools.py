@@ -250,3 +250,14 @@ async def test_table_query_errors_guide_and_repeated_failures_are_blocked(
     assert blocked[0]["input"]["where"] == "在庫 <" and blocked[0]["input"]["source"] == sid
     # 指定を変えれば、また計算する
     assert "1 行。" in await op_table_query(ctx, sid, "在庫 < 5", "", emit=events)
+
+
+async def test_candidates_step_lists_pre_rerank_hits(
+    world: World, sessionmaker: async_sessionmaker[AsyncSession], qdrant_index: QdrantIndex
+) -> None:
+    ctx = make_ctx(sessionmaker, qdrant_index, reranker=FakeReranker(constant=0.9))
+    ev = Events()
+    await op_search(ctx, ev, "c1", "MX-17")
+    cand = [s for s in ev.steps() if s["name"] == "candidates"][-1]
+    hits = cand["output"]["hits"]
+    assert hits and max(h["score"] for h in hits) == 1.0 and {"title", "heading"} <= set(hits[0])

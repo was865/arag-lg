@@ -48,6 +48,10 @@ describe("parseRetrieveHits / searchStory（検索の過程）", () => {
     expect(story.cited).toBe(1);
     expect(story.files).toEqual([{ title: "x02-保守記録.xlsx", cited: true }, { title: "w01-規程.docx", cited: false }]);
   });
+  it("再ランキング前の候補（candidates）は探した文書に数えない", () => {
+    const cands = step({ id: "c", name: "candidates", output: { hits: [{ title: "雑音.pdf", heading: "", score: 0.9 }] } });
+    expect(searchStory([step({}), cands], []).searched).toBe(2);
+  });
   it("この版の書式（<資料 n=… 文書=… 見出し=…>）も読む", () => {
     const text = '検索「HP-300」の結果 2 件（[n] が出典番号）:\n\n<資料 n="1" 文書="w03-手順書.docx" 見出し="手順書 > 2. 分解">\n本文 A\n</資料>\n\n<資料 n="2" 文書="w04-議事録.docx" 見出し="2. 対策">\n本文 B\n</資料>';
     const hits = parseRetrieveHits(text);
