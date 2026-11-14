@@ -28,6 +28,7 @@ from arag.agent.context import RunContext
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
 from arag.agent.primer import with_primer
+from arag.agent.prior import cited_documents
 from arag.agent.prune import prune_citations
 from arag.agent.steps import Step, StepClock, record_system
 from arag.agent.thinking import split_thinking
@@ -42,21 +43,7 @@ FINAL_NOTE = (
 PRIOR_TOOL_PLACEHOLDER = "（前のターンの資料。本文は省略）"
 # 置き換えた最初の 1 件にだけ添える説明（全部に付けると同じ文が何度も並ぶ）
 PRIOR_NOTE = "出典番号はこのターンでは使えないので、必要なら文書名を手がかりに検索し直す"
-# 前のターンの資料の文書名（追質問で「あの資料」と言われても、どの文書かをモデルが分かるように残す）
-_PRIOR_DOC = re.compile(r'<資料 n="\d+" 文書="([^"]*)"')
 PRIOR_DOCS_MAX = 8
-PRIOR_DOC_CHARS = 60
-
-
-def prior_documents(contents: list[str]) -> list[str]:
-    """前のターンのツール結果すべてに出た文書名（重複なし。出た順）。"""
-    names: list[str] = []
-    for content in contents:
-        for name in _PRIOR_DOC.findall(content):
-            name = name.strip()[:PRIOR_DOC_CHARS]
-            if name and name not in names:
-                names.append(name)
-    return names
 
 
 def prior_placeholder(names: list[str] | None = None) -> str:
@@ -189,7 +176,7 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         start = turn_start(msgs)
         # 前のターンのツール結果は文脈を圧迫するので置き換える（checkpoint の状態は変えない）
         first_prior = next((i for i, m in enumerate(msgs[:start]) if isinstance(m, ToolMessage)), None)
-        names = prior_documents([m.text for m in msgs[:start] if isinstance(m, ToolMessage)])
+        names = cited_documents(msgs[:start], limit=50)
         compact: list[AnyMessage] = [
             m.model_copy(update={"content": prior_placeholder(names if i == first_prior else None)})
             if i < start and isinstance(m, ToolMessage)
@@ -221,7 +208,6 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
                     "placeholders": list(
                         dict.fromkeys(m.text for m in compact[:start] if isinstance(m, ToolMessage))
                     ),
-                    "documents": names,
                 },
             )
         prompt = system_prompt(ctx)

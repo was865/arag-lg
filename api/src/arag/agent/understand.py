@@ -10,8 +10,9 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
 
+from arag.agent.prior import turns
 from arag.agent.thinking import split_thinking
 from arag.prompts import load_prompt
 
@@ -19,6 +20,7 @@ MAX_QUERIES = 3
 QUERY_MAX_CHARS = 300
 HISTORY_TURNS = 2
 HISTORY_ANSWER_CHARS = 300
+HISTORY_DOCS_MAX = 5
 TIMEOUT_SEC = 15.0
 
 Kind = Literal["docs", "chat"]
@@ -91,19 +93,19 @@ def guard_table(u: Understanding, question: str) -> Understanding:
 
 
 def history_text(messages: list[AnyMessage]) -> str:
-    """直近の会話（質問と回答の先頭）。ツールの結果は入れない。"""
-    turns: list[tuple[str, str]] = []
-    for m in messages:
-        if isinstance(m, HumanMessage):
-            turns.append((m.text, ""))
-        elif isinstance(m, AIMessage) and not m.tool_calls and turns:
-            _, answer = split_thinking(m.text)
-            turns[-1] = (turns[-1][0], answer.strip())
+    """直近の会話（質問・回答の先頭・回答が引用した文書名）。ツールの結果の本文は入れない。
+
+    文書名があると、「さっきの資料」のような言い方を、探す語に直せる。
+    """
     lines = []
-    for q, a in turns[-HISTORY_TURNS:]:
-        lines.append(f"利用者: {q.strip()[:QUERY_MAX_CHARS]}")
-        if a:
-            lines.append(f"アシスタント: {a[:HISTORY_ANSWER_CHARS]}")
+    for t in turns(messages)[-HISTORY_TURNS:]:
+        lines.append(f"利用者: {t.question.strip()[:QUERY_MAX_CHARS]}")
+        if t.answer:
+            lines.append(f"アシスタント: {t.answer[:HISTORY_ANSWER_CHARS]}")
+        if t.cited:
+            lines.append(
+                "（回答が引用した資料: " + "・".join(f"「{n}」" for n in t.cited[:HISTORY_DOCS_MAX]) + "）"
+            )
     return "\n".join(lines)
 
 
