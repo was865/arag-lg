@@ -23,6 +23,7 @@ from arag.logging import get_logger
 from arag.prompts import load_prompt
 from arag.search.schemas import SearchHit, SearchRequest, SearchResult
 from arag.search.scope import Scope, resolve_scope
+from arag.search.service import stage_hook
 
 log = get_logger("arag.agent.ops")
 
@@ -167,6 +168,143 @@ def _best(res: SearchResult) -> float:
     return max((h.score for h in res.hits), default=0.0)
 
 
+_MODE_NAME = {"hybrid": "ハイブリッド（意味＋語句）", "dense": "意味", "keyword": "語句"}
+
+
+class StageEmitter:
+    """検索の内部の段（埋め込み → 候補 → 絞り込み → rerank）を、終わった順に子ステップとして送る。
+
+    `search.service.stage_hook` に `on_stage` を掛けて使う。
+    rerank は検索が終わってから、残った上位を足して送り直す。
+    """
+
+    def __init__(
+        self, emit: Emit, parent_id: str, step_id: str, query: str, *, mode: str, candidate_k: int
+    ) -> None:
+        self.emit, self.parent_id, self.step_id, self.query = emit, parent_id, step_id, query
+        self.mode, self.candidate_k = mode, candidate_k
+        self.seen: dict[str, Any] = {}
+
+    def _put(
+        self,
+        name: str,
+        label: str,
+        summary: str,
+        took: int,
+        inp: dict[str, Any],
+        out: dict[str, Any] | None = None,
+    ) -> None:
+        step = Step(
+            id=f"{self.step_id}:{name}",
+            name=name,
+            parent_id=self.parent_id,
+            label=label,
+            status="done",
+            duration_ms=took,
+            input=inp,
+            output=out,
+            summary=summary,
+        )
+        self.emit({"type": "step", "step": step.model_dump()})
+
+    def on_stage(self, st: Any) -> None:
+        self.seen[st.name] = st
+        q = {"query": self.query}
+        if st.name == "embed":
+            if self.mode == "keyword":
+                self._put("embed", "検索語の解析", "語句検索のために語に分けた", st.ms, q)
+            else:
+                self._put(
+                    "embed", "クエリの埋め込み", "意味（密）と語句（疎）の両方のベクトルにした", st.ms, q
+                )
+        elif st.name == "query":
+            self._candidates(st.ms)
+        elif st.name == "hydrate":
+            self._candidates(self.seen["query"].ms + st.ms)
+        elif st.name == "rerank" and st.count:
+            self._put(
+                "rerank",
+                "再ランキング",
+                f"{st.count} 件を質問との関連で並べ替えた",
+                st.ms,
+                {"candidates": st.count},
+            )
+
+    def _candidates(self, took: int, mode: str | None = None) -> None:
+        q, h = self.seen["query"], self.seen.get("hydrate")
+        text = f"{_MODE_NAME[mode or self.mode]}で候補 {q.count} 件"
+        if h and h.count is not None and h.count != q.count:
+            text += f" → 閲覧できる本文 {h.count} 件"
+        self._put(
+            "candidates",
+            "候補の取得",
+            text,
+            took,
+            {"mode": mode or self.mode, "candidate_k": self.candidate_k},
+        )
+
+    def finish(self, res: SearchResult) -> None:
+        """縮退（埋め込み・rerank に接続できなかった）と、rerank の最終の上位を足して送り直す。"""
+        if "dense" in res.degraded and "embed" in self.seen:
+            st = self.seen["embed"]
+            self._put(
+                "embed",
+                "クエリの埋め込み",
+                "埋め込みに接続できず、語句検索だけで続行",
+                st.ms,
+                {"query": self.query},
+                {"degraded": True},
+            )
+            if "query" in self.seen:
+                self._candidates(
+                    self.seen["query"].ms + (self.seen["hydrate"].ms if "hydrate" in self.seen else 0),
+                    "keyword",
+                )
+        r = self.seen.get("rerank")
+        if r is None:
+            return
+        if "rerank" in res.degraded:
+            self._put(
+                "rerank",
+                "再ランキング",
+                "rerank に接続できず、検索の順位のまま",
+                r.ms,
+                {"candidates": self.seen["query"].count},
+                {"selected": []},
+            )
+        elif r.count:
+            selected = [
+                {
+                    "id": str(i),
+                    "score": round(x.score, 3),
+                    "title": f"{x.document_name} — {x.heading_path}" if x.heading_path else x.document_name,
+                }
+                for i, x in enumerate(res.hits, start=1)
+            ]
+            self._put(
+                "rerank",
+                "再ランキング",
+                f"{r.count} 件を質問との関連で並べ替え → 上位 {len(res.hits)} 件（最高 {_best(res):.2f}）",
+                r.ms,
+                {"candidates": r.count, "top_n": len(res.hits)},
+                {"selected": selected},
+            )
+
+
+async def _search_traced(
+    ctx: RunContext, emit: Emit, parent_id: str, step_id: str, req: SearchRequest
+) -> SearchResult:
+    """検索を行い、内部の段を終わった順に送る。"""
+    se = StageEmitter(emit, parent_id, step_id, req.query, mode=req.mode, candidate_k=req.candidate_k)
+    token = stage_hook.set(se.on_stage)
+    try:
+        res = await _run_search(ctx, req)
+    finally:
+        stage_hook.reset(token)
+    se.finish(res)
+    return res
+
+
 _JA = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
 
 
@@ -217,6 +355,9 @@ async def op_search(
         "candidate_k": max(ctx.cfg.candidate_k, ctx.cfg.top_k),
         "must_contain": must_contain,
     }
+    t0 = time.perf_counter()
+    # 内部の段（埋め込み → 候補 → rerank）を終わった順に送り、結果の行は最後に出す
+    res = await _search_traced(ctx, emit, call_id, f"{sid}:search", SearchRequest(query=query, **base))
     clock = StepClock(
         emit,
         Step(
@@ -229,7 +370,7 @@ async def op_search(
             summary=running,
         ),
     )
-    res = await _run_search(ctx, SearchRequest(query=query, **base))
+    clock.t0 = t0
     if must_contain and not res.hits:
         # 何が足りなかったのか・次に何をするのかを画面で分かるようにする
         words = "".join(f"「{t}」" for t in must_contain)
@@ -266,6 +407,10 @@ async def op_search(
             rw.done("書き換えられませんでした")
             break
         rw.done(f"「{new_q}」で再検索", {"rewritten": new_q})
+        t1 = time.perf_counter()
+        res2 = await _search_traced(
+            ctx, emit, call_id, f"{sid}:search{tries}", SearchRequest(query=new_q, **base)
+        )
         again = StepClock(
             emit,
             Step(
@@ -278,7 +423,7 @@ async def op_search(
                 summary="再検索しています",
             ),
         )
-        res2 = await _run_search(ctx, SearchRequest(query=new_q, **base))
+        again.t0 = t1
         better = _best(res2) > _best(res)
         adopted = "採用" if better else "元の結果を採用"
         again.done(f"{len(res2.hits)} 件（最高スコア {_best(res2):.2f}）・{adopted}", _hits_output(res2))

@@ -55,8 +55,9 @@ async def test_system_searches_first_and_model_can_answer_directly() -> None:
     # システムの検索は「検索」のステップとして記録に出る（by=system で見分ける）
     primer = [s for s in top_steps(custom) if s["id"] == "primer-1"]
     assert [s["status"] for s in primer] == ["running", "done"]
-    assert primer[1]["input"] == {"query": "MX-17 はどうする？", "by": "system"}
-    assert primer[1]["summary"] == "資料 1 件"
+    assert primer[1]["input"]["by"] == "system" and primer[1]["input"]["role"] == "question"
+    assert primer[1]["label"] == "質問文で検索"
+    assert primer[1]["summary"] == "「MX-17 はどうする？」・資料 1 件"
     assert any(e["step"]["parent_id"] == "primer-1" for e in custom if e["type"] == "step")
     # 検索結果は質問に添えてモデルに渡すが、会話の状態には保存しない
     human = next(m for m in model.calls[0] if isinstance(m, HumanMessage))
@@ -103,7 +104,10 @@ async def test_followup_is_searched_with_rewritten_query() -> None:
     await run(agent, ctx(search, utility_model=u), "SK-300 の単価は？", thread="f1")
     _, custom = await run(agent, ctx(search, utility_model=u), "それの仕入先は？", thread="f1")
     # 追質問は指示語を含むので、整理したクエリだけで検索する（質問文では検索しない）
-    assert [r.query for r in search.requests] == ["SK-300 の単価は？", "SK-300 の単価", "SK-300 の仕入先"]
+    assert [r.query for r in search.requests] == [
+        "SK-300 の単価は？",
+        "SK-300 の仕入先",
+    ]  # 1 回目の「SK-300 の単価」は質問文とほぼ同じなので省かれる
     understood = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "understand"]
     assert understood[-1]["output"]["queries"] == ["SK-300 の仕入先"]
     assert understood[-1]["input"]["history"] is True
@@ -696,3 +700,30 @@ async def test_pruning_ignores_values_from_the_users_question() -> None:
     assert state["messages"][-1].text == "HP-300 の締付トルクは 52 N·m です[1]。"
     [p] = system_steps(custom)["citation_pruned"]["output"]["pruned"]
     assert p["values"] == ["52"] and p["ignored"] == ["300", "HP-300"]
+
+
+async def test_query_almost_same_as_question_is_skipped_and_recorded() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="答え[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("停止は 2.25 時間。")
+    q = "9月の冷却水ポンプ PM-04 の保守による停止時間は合計何時間ですか？"
+    u = utility(
+        '{"kind": "docs", "queries": ["9月の冷却水ポンプ PM-04 の保守による停止時間の合計"], "table": false}'
+    )
+    c = ctx(search, utility_model=u)
+    _, custom = await run(agent, c, q)
+    # 質問文での検索だけ行い、省いたことは「システムの処理」に残す
+    assert [r.query for r in search.requests] == [q]
+    sys = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
+    skipped = next(s for s in sys if s["input"]["kind"] == "query_skipped")
+    assert skipped["output"]["skipped_queries"] == ["9月の冷却水ポンプ PM-04 の保守による停止時間の合計"]
+
+
+def test_similarity_and_distinct_part() -> None:
+    from arag.agent.primer import distinct_part, similarity
+
+    assert similarity("第2版 締付トルク", "第2版と第3版のトルクの違いは？") < 0.85
+    assert similarity("PM-04 停止時間", "PM-04　停止時間") == 1.0
+    q = "9月の冷却水ポンプ PM-04 の保守による停止時間は合計何時間ですか？"
+    assert distinct_part("9月の冷却水ポンプ PM-04 の保守による停止時間の合計", q).startswith("…")
+    assert distinct_part("全然ちがう", q) == "全然ちがう"

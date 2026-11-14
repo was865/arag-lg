@@ -198,6 +198,9 @@ export const chat = {
   systemGroup: "システムの処理",
   systemCount: "{n} 件",
   systemFields: {
+    skipped_queries: "検索しなかったクエリ",
+    similarity: "質問文との近さ",
+    threshold: "省く近さ",
     replaced: "置き換えた件数",
     placeholder: "代わりに渡した文",
     calls: "呼び出しの回数",

@@ -71,7 +71,7 @@ async def test_search_registers_numbers_within_scope(
     out2 = await op_search(ctx, ev, "c2", "MX-17")  # 同じチャンクは同じ番号
     assert len(ctx.registry) == first and '<資料 n="1"' in out2
     st = ev.steps()
-    assert st[0]["parent_id"] == "c1" and st[0]["status"] == "running" and st[1]["status"] == "done"
+    assert st[0]["parent_id"] == "c1" and st[0]["name"] == "embed"
     # 出典番号で文書に絞る
     n1 = ctx.registry.get(1)
     assert n1 is not None
@@ -99,15 +99,29 @@ async def test_crag_rewrites_when_scores_are_low(
     out = await op_search(ctx, ev, "c1", "MX-17 対応")
     # 書き換えても低いままなら、関連が薄いことを結果に添える
     assert out.startswith("注意: ") and "見つからなかった" in out
-    names = [s["name"] for s in ev.steps() if s["status"] != "running"]
-    assert names == ["retrieve", "rewrite_query", "retrieve"]
+    # 同じ ID は上書きされる。検索ごとに、内部の段が終わった順に出て、結果の行が最後に来る
+    first_seen = {s["id"]: s["name"] for s in ev.steps()}
+    names = list(first_seen.values())
+    assert names == [
+        "embed",
+        "candidates",
+        "rerank",
+        "retrieve",
+        "rewrite_query",
+        "embed",
+        "candidates",
+        "rerank",
+        "retrieve",
+    ]
+    rr = [s for s in ev.steps() if s["name"] == "rerank"][-1]
+    assert rr["parent_id"] == "c1" and rr["output"]["selected"] and "上位" in rr["summary"]
     rw = next(s for s in ev.steps() if s["name"] == "rewrite_query" and s["status"] == "done")
     assert rw["output"] == {"rewritten": "MX-17 判定"}
     # 閾値以上なら書き換えない
     ctx2 = make_ctx(sessionmaker, qdrant_index, reranker=FakeReranker(constant=0.9), utility=util)
     ev2 = Events()
     out2 = await op_search(ctx2, ev2, "c1", "MX-17")
-    assert {s["name"] for s in ev2.steps()} == {"retrieve"}
+    assert {s["name"] for s in ev2.steps()} == {"retrieve", "embed", "candidates", "rerank"}
     assert not out2.startswith("注意: ")
 
 

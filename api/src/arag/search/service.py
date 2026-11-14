@@ -10,6 +10,7 @@ import time
 import unicodedata
 import uuid
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -57,6 +58,10 @@ def _encode_sparse(factory: Callable[[], SparseEncoder], text: str) -> SparseVec
     return enc.encode_query(text)
 
 
+# 段が終わるたびに呼ばれる（呼び出し側が画面へ逐次送るため。呼んだタスクの中だけで有効）
+stage_hook: ContextVar[Callable[[StageTiming], None] | None] = ContextVar("search_stage_hook", default=None)
+
+
 class _Clock:
     def __init__(self) -> None:
         self.stages: list[StageTiming] = []
@@ -64,8 +69,11 @@ class _Clock:
 
     def lap(self, name: Any, count: int | None = None) -> None:
         now = time.perf_counter()
-        self.stages.append(StageTiming(name=name, ms=round((now - self._t) * 1000), count=count))
+        stage = StageTiming(name=name, ms=round((now - self._t) * 1000), count=count)
+        self.stages.append(stage)
         self._t = now
+        if (hook := stage_hook.get()) is not None:
+            hook(stage)
 
 
 def _norm(s: str) -> str:

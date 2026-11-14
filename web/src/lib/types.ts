@@ -42,6 +42,7 @@ export type ToolName =
   | "retrieve"
   | "embed"
   | "vector_search"
+  | "candidates"
   | "bm25_search"
   | "rerank"
   | "expand"

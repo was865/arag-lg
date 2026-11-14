@@ -6,7 +6,9 @@
 """
 
 import asyncio
+import difflib
 import re
+import unicodedata
 from typing import Any
 
 from langchain_core.messages import AnyMessage, HumanMessage
@@ -14,7 +16,7 @@ from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
 from arag.agent.ops import op_search, weak_result
-from arag.agent.steps import Step, StepClock, tag_node
+from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
 
 _BLOCK = re.compile(r'<資料 n="(\d+)".*?</資料>', re.DOTALL)
@@ -50,16 +52,27 @@ def with_primer(question: str, primer: Primer | None) -> str:
     return f"{question}\n\n{PRIMER_OPEN}\n{PRIMER_HEAD}\n\n{primer.text}\n{PRIMER_CLOSE}\n{PRIMER_LANGUAGE}"
 
 
-async def _search(ctx: RunContext, emit: Emit, index: int, query: str) -> str:
+# なぜこの検索をするのか（質問文での検索と、整理したクエリでの検索は、狙いが違う）
+ROLES = {
+    "question": ("質問文で検索", "質問の言葉そのままで探す（整理を待たずに始める）"),
+    "understood": (
+        "整理したクエリで検索",
+        "補助モデルが言い換え・分けたクエリで探す（言葉の違いによる取りこぼしを減らす）",
+    ),
+}
+
+
+async def _search(ctx: RunContext, emit: Emit, index: int, query: str, role: str) -> str:
     sid = f"primer-{index}"
+    label, purpose = ROLES[role]
     clock = StepClock(
         emit,
         Step(
             id=sid,
             name="search",
-            label="検索",
+            label=label,
             status="running",
-            input={"query": query, "by": "system"},
+            input={"query": query, "by": "system", "role": role, "purpose": purpose},
             summary="検索中",
         ),
     )
@@ -71,8 +84,30 @@ async def _search(ctx: RunContext, emit: Emit, index: int, query: str) -> str:
         clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
         return f"検索「{query}」は失敗しました（{type(e).__name__}）。"
     n = len(_BLOCK.findall(text))
-    clock.done(f"資料 {n} 件" if n else "資料なし", {"result": text[:2000]})
+    base = distinct_part(query, ctx.question) if role == "understood" else query
+    shown = base if len(base) <= 28 else base[:27] + "…"
+    clock.done(f"「{shown}」・" + (f"資料 {n} 件" if n else "資料なし"), {"result": text[:2000]})
     return text
+
+
+# 整理したクエリが質問文とほぼ同じなら、同じ資料が返るだけなので検索しない（記録には残す）
+SIMILAR_RATIO = 0.85
+_PUNCT = re.compile(r"[\s\W_]+")
+
+
+def similarity(a: str, b: str) -> float:
+    def norm(x: str) -> str:
+        return _PUNCT.sub("", unicodedata.normalize("NFKC", x)).casefold()
+
+    return difflib.SequenceMatcher(None, norm(a), norm(b)).ratio()
+
+
+def distinct_part(query: str, question: str) -> str:
+    """質問文と先頭が同じなら、違い始める所から見せる（行の要約で 2 つの検索の差が見えるように）。"""
+    n = 0
+    while n < min(len(query), len(question)) and query[n] == question[n]:
+        n += 1
+    return query if n < 8 else "…" + query[max(0, n - 2) :]
 
 
 def _describe(u: Understanding) -> str:
@@ -82,6 +117,31 @@ def _describe(u: Understanding) -> str:
         return "文書を調べる質問ではないと判断"
     head = "・".join(f"「{q}」" for q in u.queries)
     return f"{head} で検索" + ("（表の集計あり）" if u.table else "")
+
+
+def _drop_similar(emit: Emit, question: str, queries: list[str]) -> list[str]:
+    kept: list[str] = []
+    dropped: list[tuple[str, float]] = []
+    for q in queries:
+        r = similarity(q, question)
+        if r >= SIMILAR_RATIO:
+            dropped.append((q, r))
+        else:
+            kept.append(q)
+    if dropped:
+        record_system(
+            emit,
+            "system-query-skipped",
+            "query_skipped",
+            "近いクエリの省略",
+            f"質問文とほぼ同じ（{max(r for _, r in dropped):.2f}）なので、{len(dropped)} 件は検索しない",
+            input={"question": question[:300], "threshold": SIMILAR_RATIO},
+            output={
+                "skipped_queries": [q for q, _ in dropped],
+                "similarity": [round(r, 2) for _, r in dropped],
+            },
+        )
+    return kept
 
 
 def _last_question(msgs: list[AnyMessage]) -> int | None:
@@ -125,11 +185,12 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
     if first_turn:
         # 質問文での検索は整理を待たずに始める（待ち時間を増やさない）
         u, text = await asyncio.gather(
-            understand(ctx.utility_model, history, question), _search(ctx, emit, 1, question)
+            understand(ctx.utility_model, history, question), _search(ctx, emit, 1, question, "question")
         )
         finish(u)
         ctx.primer_texts = [text]
-        extra = [q for q in u.queries if q != question][: MAX_QUERIES - 1]
+        extra = [q for q in u.queries if q != question]
+        extra = _drop_similar(emit, question, extra)[: MAX_QUERIES - 1]
         start = 2
     else:
         # 追質問は指示語を含むので、整理したクエリで検索する
@@ -158,7 +219,9 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     texts = list(ctx.primer_texts)
     if extra := u["extra"]:
         start = u["start"]
-        texts += await asyncio.gather(*(_search(ctx, emit, start + i, q) for i, q in enumerate(extra)))
+        texts += await asyncio.gather(
+            *(_search(ctx, emit, start + i, q, "understood") for i, q in enumerate(extra))
+        )
     ctx.primer_texts = texts
     ctx.primer = Primer(
         kind=u["kind"],

@@ -20,9 +20,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "MX-17 はどうする？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "MX-17 はどうする？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -75,15 +77,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "MX-17 はどうする？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "MX-17 はどうする？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「MX-17 はどうする？」・資料 1 件"
     },
     "type": "step"
    },
@@ -447,9 +451,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -507,15 +513,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫 6\n</資料>"
      },
      "status": "done",
-     "summary": "資料 2 件"
+     "summary": "「第3版の変更点と、関連部品の在庫は？」・資料 2 件"
     },
     "type": "step"
    },
@@ -941,9 +949,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -1001,15 +1011,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>"
      },
      "status": "done",
-     "summary": "資料 2 件"
+     "summary": "「第3版の変更点と、関連部品の在庫は？」・資料 2 件"
     },
     "type": "step"
    },
@@ -1314,9 +1326,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -1369,15 +1383,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「保存期間は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -1600,9 +1616,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -1655,15 +1673,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「保存期間は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -1938,9 +1958,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -1993,15 +2015,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "保存期間は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "保存期間は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「保存期間は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n保存は 5 年\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「保存期間は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -2383,9 +2407,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -2443,15 +2469,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "第3版の変更点と、関連部品の在庫は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "第3版の変更点と、関連部品の在庫は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「第3版の変更点と、関連部品の在庫は？」の結果 2 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nHP-300 第3版\n</資料>\n\n<資料 n=\"2\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nSK-300 在庫\n</資料>"
      },
      "status": "done",
-     "summary": "資料 2 件"
+     "summary": "「第3版の変更点と、関連部品の在庫は？」・資料 2 件"
     },
     "type": "step"
    },
@@ -2947,9 +2975,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "SK-300 の単価は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "SK-300 の単価は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -3002,15 +3032,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "SK-300 の単価は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "SK-300 の単価は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「SK-300 の単価は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -3392,9 +3424,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "q"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "q",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -3447,15 +3481,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "q"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "q",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「q」・資料 1 件"
     },
     "type": "step"
    },
@@ -3715,9 +3751,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "SK-300 の単価は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "SK-300 の単価は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -3770,15 +3808,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "SK-300 の単価は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "SK-300 の単価は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「SK-300 の単価は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nシールキット SK-300 の単価は 18,400 円。\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「SK-300 の単価は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -4084,9 +4124,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -4139,15 +4181,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「在庫が発注点を下回る部品は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -4227,73 +4271,24 @@
    },
    {
     "step": {
-     "id": "primer-2",
+     "id": "system-query-skipped",
      "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
+      "kind": "query_skipped",
+      "question": "在庫が発注点を下回る部品は？",
+      "threshold": 0.85
      },
-     "label": "検索",
-     "name": "search",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
-     "parent_id": "primer-2",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
+     "label": "近いクエリの省略",
+     "name": "system",
      "output": {
-      "degraded": [],
-      "hits": [
-       {
-        "heading": "第1章",
-        "score": 0.9,
-        "title": "規程.pdf"
-       }
+      "similarity": [
+       0.96
       ],
-      "stages": []
-     },
-     "parent_id": "primer-2",
-     "status": "done",
-     "summary": "1 件（最高スコア 0.90）"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2",
-     "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "search",
-     "output": {
-      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+      "skipped_queries": [
+       "在庫が発注点を下回る部品"
+      ]
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "質問文とほぼ同じ（0.96）なので、1 件は検索しない"
     },
     "type": "step"
    },
@@ -4337,7 +4332,7 @@
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -4356,7 +4351,7 @@
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -4552,7 +4547,7 @@
   ],
   "model_calls": [
    {
-    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
     "type": "human"
    },
    {
@@ -4598,9 +4593,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -4653,15 +4650,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「在庫が発注点を下回る部品は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -4741,73 +4740,24 @@
    },
    {
     "step": {
-     "id": "primer-2",
+     "id": "system-query-skipped",
      "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
+      "kind": "query_skipped",
+      "question": "在庫が発注点を下回る部品は？",
+      "threshold": 0.85
      },
-     "label": "検索",
-     "name": "search",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
-     "parent_id": "primer-2",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
+     "label": "近いクエリの省略",
+     "name": "system",
      "output": {
-      "degraded": [],
-      "hits": [
-       {
-        "heading": "第1章",
-        "score": 0.9,
-        "title": "規程.pdf"
-       }
+      "similarity": [
+       0.96
       ],
-      "stages": []
-     },
-     "parent_id": "primer-2",
-     "status": "done",
-     "summary": "1 件（最高スコア 0.90）"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2",
-     "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "search",
-     "output": {
-      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+      "skipped_queries": [
+       "在庫が発注点を下回る部品"
+      ]
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "質問文とほぼ同じ（0.96）なので、1 件は検索しない"
     },
     "type": "step"
    },
@@ -4851,7 +4801,7 @@
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -4878,7 +4828,7 @@
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -5024,7 +4974,7 @@
   ],
   "model_calls": [
    {
-    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
     "type": "human"
    },
    {
@@ -5088,9 +5038,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "二つ目"
+      "purpose": "補助モデルが言い換え・分けたクエリで探す（言葉の違いによる取りこぼしを減らす）",
+      "query": "二つ目",
+      "role": "understood"
      },
-     "label": "検索",
+     "label": "整理したクエリで検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -5143,15 +5095,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "二つ目"
+      "purpose": "補助モデルが言い換え・分けたクエリで探す（言葉の違いによる取りこぼしを減らす）",
+      "query": "二つ目",
+      "role": "understood"
      },
-     "label": "検索",
+     "label": "整理したクエリで検索",
      "name": "search",
      "output": {
       "result": "検索「二つ目」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「二つ目」・資料 1 件"
     },
     "type": "step"
    },
@@ -5526,9 +5480,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "q"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "q",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -5581,15 +5537,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "q"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "q",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「q」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n本文\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「q」・資料 1 件"
     },
     "type": "step"
    },
@@ -6040,9 +5998,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -6095,15 +6055,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "在庫が発注点を下回る部品は？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "在庫が発注点を下回る部品は？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「在庫が発注点を下回る部品は？」・資料 1 件"
     },
     "type": "step"
    },
@@ -6183,73 +6145,24 @@
    },
    {
     "step": {
-     "id": "primer-2",
+     "id": "system-query-skipped",
      "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
+      "kind": "query_skipped",
+      "question": "在庫が発注点を下回る部品は？",
+      "threshold": 0.85
      },
-     "label": "検索",
-     "name": "search",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
-     "parent_id": "primer-2",
-     "status": "running",
-     "summary": "検索中"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2:search",
-     "input": {
-      "mode": "hybrid",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "retrieve",
+     "label": "近いクエリの省略",
+     "name": "system",
      "output": {
-      "degraded": [],
-      "hits": [
-       {
-        "heading": "第1章",
-        "score": 0.9,
-        "title": "規程.pdf"
-       }
+      "similarity": [
+       0.96
       ],
-      "stages": []
-     },
-     "parent_id": "primer-2",
-     "status": "done",
-     "summary": "1 件（最高スコア 0.90）"
-    },
-    "type": "step"
-   },
-   {
-    "step": {
-     "id": "primer-2",
-     "input": {
-      "by": "system",
-      "query": "在庫が発注点を下回る部品"
-     },
-     "label": "検索",
-     "name": "search",
-     "output": {
-      "result": "検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>"
+      "skipped_queries": [
+       "在庫が発注点を下回る部品"
+      ]
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "質問文とほぼ同じ（0.96）なので、1 件は検索しない"
     },
     "type": "step"
    },
@@ -6293,7 +6206,7 @@
      "input": {
       "draft": "P-1042 と P-1043 です[1]",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -6320,7 +6233,7 @@
      "input": {
       "draft": "P-1042 と P-1043 です[1]",
       "kind": "table",
-      "searches": 2,
+      "searches": 1,
       "trigger": "表の集計を計算していない"
      },
      "label": "表の集計の確認",
@@ -6463,7 +6376,7 @@
   ],
   "model_calls": [
    {
-    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n\n検索「在庫が発注点を下回る部品」の結果 1 件（[n] が出典番号）:\n\n（資料 [1] は上と同じ）\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
+    "text": "在庫が発注点を下回る部品は？\n\n<検索結果>\n次は、システムがこの質問をもとに先に検索した結果です（[n] が出典番号）。足りるならこのまま答え、足りない点だけツールで調べてください。\n\n検索「在庫が発注点を下回る部品は？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\n| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |\n</資料>\n</検索結果>\n資料の言語にかかわらず、上の質問と同じ言語で答える。",
     "type": "human"
    },
    {
@@ -6504,9 +6417,11 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "MX-17 はどうする？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "MX-17 はどうする？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "status": "running",
      "summary": "検索中"
@@ -6559,15 +6474,17 @@
      "id": "primer-1",
      "input": {
       "by": "system",
-      "query": "MX-17 はどうする？"
+      "purpose": "質問の言葉そのままで探す（整理を待たずに始める）",
+      "query": "MX-17 はどうする？",
+      "role": "question"
      },
-     "label": "検索",
+     "label": "質問文で検索",
      "name": "search",
      "output": {
       "result": "検索「MX-17 はどうする？」の結果 1 件（[n] が出典番号）:\n\n<資料 n=\"1\" 文書=\"規程.pdf\" 見出し=\"第1章\" ページ=\"2\">\nMX-17 は即時停止を推奨する。\n</資料>"
      },
      "status": "done",
-     "summary": "資料 1 件"
+     "summary": "「MX-17 はどうする？」・資料 1 件"
     },
     "type": "step"
    },

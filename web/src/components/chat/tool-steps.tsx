@@ -85,6 +85,11 @@ const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
     </>
   ),
   rewrite_query: <path d="M3 8h7M7 5l-3 3 3 3M13 4v8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
+  candidates: (
+    <>
+      <path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
   vector_search: (
     <>
       <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" fill="none" />
@@ -610,6 +615,7 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if (step.name === "rerank") {
     const rows: { k: string; v: React.ReactNode }[] = [];
     if (step.input.model != null) rows.push({ k: "model", v: String(step.input.model) });
+    if (step.input.candidates != null) rows.push({ k: "candidates", v: String(step.input.candidates) });
     if (step.input.top_n != null) rows.push({ k: "top_n", v: String(step.input.top_n) });
     if (rows.length) return <KeyValueGrid rows={rows} />;
   }
@@ -691,7 +697,7 @@ function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
       </div>
     );
   }
-  if ((step.name === "vector_search" || step.name === "bm25_search") && Array.isArray(output.hits)) {
+  if ((step.name === "vector_search" || step.name === "bm25_search" || step.name === "retrieve") && Array.isArray(output.hits)) {
     const hits = output.hits as CandidateHit[];
     if (hits.length === 0) {
       if (output.fallback) {
@@ -1214,6 +1220,13 @@ function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; expanded:
   );
 }
 
+/** 自動の検索が何のために行われたか（質問文での検索・整理したクエリでの検索）。 */
+function PurposeNote({ step }: { step: ToolCall }) {
+  const purpose = step.input.purpose;
+  if (typeof purpose !== "string" || !purpose) return null;
+  return <div className="pb-1.5 text-caption leading-[1.5] text-muted">{purpose}</div>;
+}
+
 function SubSteps({ steps, expandedMap, onToggleStep, t }: {
   steps: ToolCall[] | undefined;
   expandedMap: Record<string, boolean>;
@@ -1298,6 +1311,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep, systemOpe
             <ToolStepTimeline step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} isLast={i === roots.length - 1} t={t} hasChildren={childrenOf.has(s.id)} />
             {childrenOf.has(s.id) && expandedMap[s.id] && (
               <div className="mb-2 ml-[22px] animate-fade-up pl-1 motion-reduce:animate-none">
+                <PurposeNote step={s} />
                 <SubSteps steps={childrenOf.get(s.id)} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
               </div>
             )}
@@ -1314,6 +1328,7 @@ export function ToolSteps({ steps, variant, expandedMap, onToggleStep, systemOpe
           <ToolStepCard step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} hasChildren={childrenOf.has(s.id)} />
           {childrenOf.has(s.id) && expandedMap[s.id] && (
             <div className="animate-fade-up border-b-[0.5px] border-divider bg-surface px-3.5 py-2 pl-10 motion-reduce:animate-none max-md:pl-6">
+              <PurposeNote step={s} />
               <SubSteps steps={childrenOf.get(s.id)} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
             </div>
           )}
