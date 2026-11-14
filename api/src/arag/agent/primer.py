@@ -15,7 +15,7 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.ops import op_search, weak_result
+from arag.agent.ops import op_search, read_document, weak_result
 from arag.agent.prior import last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
@@ -63,6 +63,37 @@ ROLES = {
 }
 
 
+async def _read_scoped(
+    ctx: RunContext, emit: Emit, sid: str, scope: tuple[list[str], list[str]]
+) -> str | None:
+    """絞った文書が 1 つで、上限に収まるなら、検索せずに文書を読む。長いときは None（検索に任せる）。"""
+    clock = StepClock(
+        emit,
+        Step(
+            id=f"{sid}:read",
+            name="read_document",
+            parent_id=sid,
+            label="文書を読む",
+            status="running",
+            input={"document": scope[1][0], "document_id": scope[0][0]},
+            summary="文書を読んでいます",
+        ),
+    )
+    try:
+        got = await read_document(ctx, scope[0][0])
+    except Exception as e:  # 読めなくても、検索で続ける
+        clock.done(f"読めなかった（{type(e).__name__}）。検索で絞る", {"error": str(e)[:200]}, error=True)
+        return None
+    if isinstance(got, str):
+        clock.done(got[:120], error=True)
+        return None
+    if got.truncated:
+        clock.done(f"長いため全部は読めない（先頭 {got.sections} 節）。検索で絞る", {"truncated": True})
+        return None
+    clock.done(f"{got.sections} 節を読んだ", {"result": got.text[:2000], "sections": got.sections})
+    return got.text
+
+
 async def _search(
     ctx: RunContext,
     emit: Emit,
@@ -89,10 +120,15 @@ async def _search(
         ),
     )
     ctx.stats.primer_searches += 1
+    how = "search"
     try:
         if scope and scope[0]:
-            text = await op_search(ctx, emit, sid, query, document_ids=scope[0])
-            if weak_result(text):
+            read = await _read_scoped(ctx, emit, sid, scope) if len(scope[0]) == 1 else None
+            if read is not None:
+                text, how = read, "read"
+            else:
+                text = await op_search(ctx, emit, sid, query, document_ids=scope[0])
+            if how != "read" and weak_result(text):
                 # 絞った範囲に答えが無いときは、範囲を外して探し直す（記録に残る）
                 text = await op_search(
                     ctx, emit, sid, query, step_tag="all", label="範囲を外して再検索", running="再検索中"
@@ -106,7 +142,21 @@ async def _search(
     n = len(_BLOCK.findall(text))
     base = distinct_part(query, ctx.question) if role == "understood" else query
     shown = base if len(base) <= 28 else base[:27] + "…"
-    clock.done(f"「{shown}」・" + (f"資料 {n} 件" if n else "資料なし"), {"result": text[:2000]})
+    if how == "read":
+        # 検索ではなく読んだので、行の名前と狙いもそれに合わせる
+        doc = scope[1][0] if scope else ""
+        clock.step = clock.step.model_copy(
+            update={
+                "label": "指定の文書を読む",
+                "input": {
+                    **clock.step.input,
+                    "purpose": f"前のターンで引用した文書「{doc}」を、検索せずに読む",
+                },
+            }
+        )
+    found = f"資料 {n} 件" if n else "資料なし"
+    summary = f"文書を直接読んだ・{found}" if how == "read" else f"「{shown}」・{found}"
+    clock.done(summary, {"result": text[:2000]})
     return text
 
 

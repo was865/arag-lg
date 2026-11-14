@@ -69,7 +69,7 @@ async def test_system_searches_first_and_model_can_answer_directly() -> None:
     assert saved.text == "MX-17 はどうする？"
     assert not any(isinstance(m, ToolMessage) for m in state["messages"])
     # ツールは強制しない（どのモデルでも同じ流れで動く）。7 つとも渡す
-    assert model.tool_choices == [None] and model.tool_counts == [7]
+    assert model.tool_choices == [None] and model.tool_counts == [8]
     assert c.stats.primer_searches == 1 and c.stats.tool_calls == 0 and c.stats.model_calls == 1
     sys = model.calls[0][0]
     assert isinstance(sys, SystemMessage) and "<検索結果>" in sys.text and "必ず付ける" in sys.text
@@ -198,7 +198,7 @@ async def test_step_budget_forces_final_answer_without_tools() -> None:
     c = ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3))
     state, _ = await run(agent, c, "q")
     assert state["messages"][-1].text == "まとめ[1]"
-    assert model.tool_counts == [7, 7, 0]  # 3 回目はツールなし
+    assert model.tool_counts == [8, 8, 0]  # 3 回目はツールなし
     assert "最終回答" in model.calls[2][0].text
 
 

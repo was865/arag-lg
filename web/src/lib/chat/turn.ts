@@ -14,7 +14,7 @@ export type ApiSource = S["SourceView"];
 export type ApiMessage = S["MessageOut"];
 export type ApiCitationMap = Record<string, S["CitationRef"]>;
 
-const DOC_TOOLS = new Set(["list_documents", "get_outline", "read_section"]);
+const DOC_TOOLS = new Set(["list_documents", "get_outline", "read_section", "read_document"]);
 
 /** サーバのステップ名を旧版の表示種別に写す。 */
 function viewName(step: ApiStep): ToolName {

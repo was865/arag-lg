@@ -16,9 +16,11 @@ from arag.agent.ops import (
     op_get_outline,
     op_keyword_search,
     op_list_documents,
+    op_read_document,
     op_read_section,
     op_search,
     op_table_query,
+    read_document,
 )
 from arag.auth.principal import Principal
 from arag.db.models import Section
@@ -261,3 +263,25 @@ async def test_candidates_step_lists_pre_rerank_hits(
     cand = [s for s in ev.steps() if s["name"] == "candidates"][-1]
     hits = cand["output"]["hits"]
     assert hits and max(h["score"] for h in hits) == 1.0 and {"title", "heading"} <= set(hits[0])
+
+
+async def test_read_document_reads_by_name_without_search(
+    world: World, sessionmaker: async_sessionmaker[AsyncSession], qdrant_index: QdrantIndex
+) -> None:
+    ctx = make_ctx(sessionmaker, qdrant_index)
+    # 文書名の一部・文書 ID のどちらでも、検索を通さず先頭から章ごとに読め、出典番号が付く
+    by_name = await op_read_document(ctx, "a.m")
+    assert '<資料 n="1"' in by_name and "即時停止" in by_name
+    assert len(ctx.registry) >= 2  # 判定・補足の章
+    by_id = await op_read_document(make_ctx(sessionmaker, qdrant_index), world.doc_a)
+    assert "即時停止" in by_id
+    # 上限を超えるときは、読んだ節数と続きの案内を返す
+    got = await read_document(make_ctx(sessionmaker, qdrant_index), world.doc_a, budget=1)
+    assert not isinstance(got, str) and got.truncated and got.sections == 1 and "get_outline" in got.text
+    # 見えない文書・当てはまる文書が無い・複数ある
+    bob = make_ctx(sessionmaker, qdrant_index, p=Principal(user_id="bob"))
+    assert "ありません" in await op_read_document(bob, "a.md") or "見つかりません" in await op_read_document(
+        bob, world.doc_a
+    )
+    assert "名前に含む文書はありません" in await op_read_document(ctx, "存在しない文書")
+    assert "複数あります" in await op_read_document(ctx, ".md")

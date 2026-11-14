@@ -37,7 +37,7 @@ graph TD;
 	subgraph investigate
 	investigate\3a__start__(<p>__start__</p>)
 	investigate\3amodel(モデル)
-	investigate\3atools(ツール<hr/><small><em>__tools = search, keyword_search, list_documents, get_outline, read_section, table_query, calculate</em></small>)
+	investigate\3atools(ツール<hr/><small><em>__tools = search, keyword_search, list_documents, get_outline, read_section, read_document, table_query, calculate</em></small>)
 	investigate\3aRecordedSummarization\2ebefore_model(会話の要約)
 	investigate\3a__end__(<p>__end__</p>)
 	investigate\3aRecordedSummarization\2ebefore_model --> investigate\3amodel;

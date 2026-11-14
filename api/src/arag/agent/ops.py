@@ -30,6 +30,8 @@ log = get_logger("arag.agent.ops")
 LIST_MAX = 50
 OUTLINE_MAX = 200
 SECTION_MAX_CHARS = 6000
+# read_document が 1 回で渡す本文の上限（文字）。超えた分は get_outline / read_section で続きを読む
+DOC_READ_MAX_CHARS = 12000
 _UUID = re.compile(r"[0-9a-fA-F-]{32,36}")
 
 
@@ -593,6 +595,96 @@ async def op_get_outline(ctx: RunContext, document: str) -> str:
     if len(secs) > OUTLINE_MAX:
         lines.append(f"…ほか {len(secs) - OUTLINE_MAX} 節")
     return "\n".join(lines)
+
+
+class DocRead(NamedTuple):
+    """read_document の読んだ結果。text は資料タグ付きの本文、truncated は上限で打ち切ったか。"""
+
+    text: str
+    truncated: bool
+    document: str
+    sections: int
+
+
+async def _find_document(s: AsyncSession, ctx: RunContext, ref: str) -> tuple[Document | None, str]:
+    """文書 ID・出典番号・文書名（の一部）から文書を 1 つ決める。決められないときは理由を返す。"""
+    doc = await _visible_document(s, ctx, ref)
+    if doc is not None:
+        return doc, ""
+    name = ref.strip()
+    if not name or _ref_number(name) is not None or _uuids([name]):
+        return None, f"文書「{ref}」は見つかりません（文書名・文書 ID・出典番号のどれかを指定してください）。"
+    scope = await _scope(s, ctx)
+    if scope.empty:
+        return None, "検索範囲に文書がありません。"
+    q = select(Document).where(
+        Document.deleted_at.is_(None),
+        Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
+        Document.filename.ilike(f"%{name}%"),
+    )
+    if scope.document_ids is not None:
+        q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
+    rows = list((await s.scalars(q.order_by(Document.filename).limit(6))).all())
+    if len(rows) == 1:
+        return rows[0], ""
+    if not rows:
+        return None, f"「{ref}」を名前に含む文書はありません。list_documents で文書名を確かめてください。"
+    names = "、".join(f"「{d.filename}」" for d in rows[:5])
+    return (
+        None,
+        f"「{ref}」に当てはまる文書が複数あります（{names}）。文書名を詳しく書くか、ID を指定してください。",
+    )
+
+
+async def read_document(ctx: RunContext, ref: str, *, budget: int = DOC_READ_MAX_CHARS) -> DocRead | str:
+    """文書を先頭から章ごとに読む（検索を通さない）。読んだ章は出典番号を付けて引用できる。
+
+    budget を超える分は読まず、続きの章を案内する。失敗したときは理由の文を返す。
+    """
+    async with ctx.sessionmaker() as s:
+        doc, why = await _find_document(s, ctx, ref)
+        if doc is None:
+            return why
+        secs = list(
+            await s.scalars(
+                select(Section).where(Section.content_hash == doc.content_hash).order_by(Section.ordinal)
+            )
+        )
+    if not secs:
+        return f"「{doc.filename}」には読める本文がありません。"
+    parts: list[str] = []
+    used = 0
+    rest: list[Section] = []
+    for i, sec in enumerate(secs):
+        text = sec.text[:SECTION_MAX_CHARS]
+        if parts and used + len(text) > budget:
+            rest = secs[i:]
+            break
+        used += len(text)
+        num = ctx.registry.add_section(
+            document_id=doc.id,
+            document_name=doc.filename,
+            section_id=sec.id,
+            heading_path=sec.heading_path,
+            page=sec.page_start,
+            text=text,
+        )
+        c = ctx.registry.get(num)
+        assert c is not None
+        parts.append(format_material(num, c))
+    out = "\n\n".join(parts)
+    if rest:
+        heads = "、".join(f"「{r.heading_path or '（見出しなし）'}」" for r in rest[:5])
+        out += (
+            f"\n\n（長いため先頭の {len(parts)} 節まで。残り {len(rest)} 節: {heads}"
+            f"{' ほか' if len(rest) > 5 else ''}。続きは get_outline と read_section で読む）"
+        )
+    return DocRead(out, bool(rest), doc.filename, len(parts))
+
+
+async def op_read_document(ctx: RunContext, document: str) -> str:
+    got = await read_document(ctx, document)
+    return got if isinstance(got, str) else got.text
 
 
 async def _visible_section(ctx: RunContext, ref: str) -> tuple[Section, Document] | None:

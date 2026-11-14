@@ -10,6 +10,7 @@ from arag.agent.ops import (
     op_get_outline,
     op_keyword_search,
     op_list_documents,
+    op_read_document,
     op_read_section,
     op_search,
     op_table_query,
@@ -81,6 +82,18 @@ async def read_section(section: str, runtime: Runtime) -> str:
 
 
 @tool
+async def read_document(document: str, runtime: Runtime) -> str:
+    """文書を検索を通さずに先頭から読む（章ごとに出典番号が付く）。文書が決まっていて、その中身を確かめたいときに使う。
+
+    長い文書は先頭から上限まで。続きは get_outline と read_section で読む。
+
+    Args:
+        document: 文書名（の一部）・文書 ID・出典番号
+    """
+    return await op_read_document(runtime.context, document)
+
+
+@tool
 async def table_query(
     source: str, runtime: Runtime, where: str = "", compute: str = "", table: int = 1
 ) -> str:
@@ -121,7 +134,16 @@ async def calculate(expression: str) -> str:
         return f"計算できませんでした: {e}"
 
 
-TOOLS = [search, keyword_search, list_documents, get_outline, read_section, table_query, calculate]
+TOOLS = [
+    search,
+    keyword_search,
+    list_documents,
+    get_outline,
+    read_section,
+    read_document,
+    table_query,
+    calculate,
+]
 
 LABELS = {
     "search": ("検索", "検索中"),
@@ -129,6 +151,7 @@ LABELS = {
     "list_documents": ("文書一覧", "文書一覧を取得中"),
     "get_outline": ("目次を取得", "目次を取得中"),
     "read_section": ("セクションを読む", "本文を読み込み中"),
+    "read_document": ("文書を読む", "文書を読み込み中"),
     "table_query": ("表の集計", "表を集計中"),
     "calculate": ("計算", "計算中"),
 }
