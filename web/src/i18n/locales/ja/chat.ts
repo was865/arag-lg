@@ -203,6 +203,7 @@ export const chat = {
     threshold: "省く近さ",
     replaced: "置き換えた件数",
     placeholder: "代わりに渡した文",
+    placeholders: "代わりに渡した文",
     calls: "呼び出しの回数",
     max_steps: "上限",
     note: "モデルへの指示",

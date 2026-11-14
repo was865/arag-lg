@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
 from arag.agent.graph import build_agent
-from arag.agent.middleware import PRIOR_TOOL_PLACEHOLDER
+from arag.agent.middleware import PRIOR_TOOL_PLACEHOLDER, prior_placeholder
 from arag.auth.principal import Principal
 
 from .agent_fakes import FakeSearch, FakeToolModel, null_sessionmaker, script, tool_call
@@ -213,7 +213,30 @@ async def test_prior_turn_tool_results_are_compacted() -> None:
     await run(agent, ctx(FakeSearch("本文")), "二つ目", thread="t2")
     second = model.calls[-1]
     tools = [m for m in second if isinstance(m, ToolMessage)]
-    assert tools and all(m.text == PRIOR_TOOL_PLACEHOLDER for m in tools)
+    # 本文は省くが、どの文書を調べたかは残す
+    assert tools and all(
+        m.text.startswith("（前のターンの資料: 「") and "本文は省略" in m.text for m in tools
+    )
+
+
+def test_prior_placeholder_keeps_document_names_only() -> None:
+    def tag(n: int, name: str, heading: str, body: str) -> str:
+        return f'<資料 n="{n}" 文書="{name}" 見出し="{heading}">\n{body}\n</資料>'
+
+    text = prior_placeholder(
+        "\n".join(
+            [
+                tag(1, "x02-保守記録.xlsx", "9月", "秘密の本文"),
+                tag(2, "x02-保守記録.xlsx", "8月", "b"),
+                tag(3, "s01-点検票.pdf", "", "c"),
+            ]
+        )
+    )
+    assert "「x02-保守記録.xlsx」・「s01-点検票.pdf」" in text and "秘密の本文" not in text
+    many = "".join(f'<資料 n="{i}" 文書="d{i}.pdf" 見出し="">\nx\n</資料>' for i in range(8))
+    assert "ほか 3 件" in prior_placeholder(many)
+    # 文書が読み取れない結果（計算など）は従来の文
+    assert prior_placeholder("135 / 60 = 2.25") == PRIOR_TOOL_PLACEHOLDER
 
 
 async def test_tool_failure_becomes_error_step_and_message() -> None:
