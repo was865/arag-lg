@@ -39,28 +39,29 @@ FINAL_NOTE = (
     "\n\n## 最終回答\n検索の回数が上限に達しました。これ以上ツールは使えません。"
     "ここまでに得た資料だけで回答をまとめてください。足りない点は足りないと書いてください。"
 )
-PRIOR_TOOL_PLACEHOLDER = "（前のターンの資料。出典番号はこのターンでは使えないので、必要なら検索し直す）"
+PRIOR_TOOL_PLACEHOLDER = "（前のターンの資料。本文は省略）"
+# 置き換えた最初の 1 件にだけ添える説明（全部に付けると同じ文が何度も並ぶ）
+PRIOR_NOTE = "出典番号はこのターンでは使えないので、必要なら文書名を手がかりに検索し直す"
 # 前のターンの資料の文書名（追質問で「あの資料」と言われても、どの文書かをモデルが分かるように残す）
 _PRIOR_DOC = re.compile(r'<資料 n="\d+" 文書="([^"]*)"')
 PRIOR_DOCS_MAX = 5
 PRIOR_DOC_CHARS = 60
 
 
-def prior_placeholder(content: str) -> str:
+def prior_placeholder(content: str, *, note: bool = False) -> str:
     """前のターンのツール結果の代わりに渡す文。本文は省くが、どの文書を調べたかは残す。"""
     names: list[str] = []
     for name in _PRIOR_DOC.findall(content):
         name = name.strip()[:PRIOR_DOC_CHARS]
         if name and name not in names:
             names.append(name)
-    if not names:
-        return PRIOR_TOOL_PLACEHOLDER
-    docs = "・".join(f"「{n}」" for n in names[:PRIOR_DOCS_MAX])
-    more = f"ほか {len(names) - PRIOR_DOCS_MAX} 件" if len(names) > PRIOR_DOCS_MAX else ""
-    return (
-        f"（前のターンの資料: {docs}{more}。本文は省略。"
-        "出典番号はこのターンでは使えないので、必要なら文書名を手がかりに検索し直す）"
-    )
+    if names:
+        docs = "・".join(f"「{n}」" for n in names[:PRIOR_DOCS_MAX])
+        more = f"ほか {len(names) - PRIOR_DOCS_MAX} 件" if len(names) > PRIOR_DOCS_MAX else ""
+        text = f"前のターンの資料: {docs}{more}。本文は省略"
+    else:
+        text = "前のターンの資料。本文は省略"
+    return f"（{text}。{PRIOR_NOTE}）" if note else f"（{text}）"
 
 
 # 差し戻しの依頼に添える（書き直しで出典番号が落ちて引用が付かなくなるのを防ぐ）。
@@ -178,8 +179,9 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         msgs = list(request.messages)
         start = turn_start(msgs)
         # 前のターンのツール結果は文脈を圧迫するので置き換える（checkpoint の状態は変えない）
+        first_prior = next((i for i, m in enumerate(msgs[:start]) if isinstance(m, ToolMessage)), None)
         compact: list[AnyMessage] = [
-            m.model_copy(update={"content": prior_placeholder(m.text)})
+            m.model_copy(update={"content": prior_placeholder(m.text, note=i == first_prior)})
             if i < start and isinstance(m, ToolMessage)
             else m
             for i, m in enumerate(msgs)
