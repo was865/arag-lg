@@ -430,14 +430,14 @@ async def _followups(
         if task is not None:
             task.uncancel()
         out = Followups(error="取り消された")
-    output: dict[str, Any] = {"ms": out.ms}
+    output: dict[str, Any] = {}
     if out.evidence:
         output["evidence"] = list(out.evidence)
     if out.dropped:
         output["dropped"] = list(out.dropped)
     if out.questions:
         output["questions"] = list(out.questions)
-        summary = f"{len(out.questions)} 個の候補を作った（{out.ms} ms）"
+        summary = f"{len(out.questions)} 個の候補を作った"
     else:
         output["error"] = out.error or "候補が無かった"
         if out.raw:

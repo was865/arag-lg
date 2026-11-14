@@ -397,7 +397,7 @@ async def test_followups_are_made_after_the_answer_and_saved(
     assert last["suggestions"] == ["MX-17 の推奨は何ですか？"]
     [step] = followup_steps(evs)
     assert types.index("run.completed") < evs.index(next(e for e in evs if e.get("step") == step))
-    assert step["output"]["questions"] == last["suggestions"] and "ms" in step["output"]
+    assert step["output"]["questions"] == last["suggestions"] and "duration_ms" in step
     assert step["output"]["evidence"] == [
         {"question": "MX-17 の推奨は何ですか？", "evidence": "即時停止を推奨する"}
     ]
