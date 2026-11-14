@@ -572,9 +572,9 @@ async def _visible_document(s: AsyncSession, ctx: RunContext, ref: str) -> Docum
 
 async def op_get_outline(ctx: RunContext, document: str) -> str:
     async with ctx.sessionmaker() as s:
-        doc = await _visible_document(s, ctx, document)
+        doc, why = await _find_document(s, ctx, document)
         if doc is None:
-            return f"文書「{document}」は見つかりません（文書 ID か出典番号を指定してください）。"
+            return why
         secs = list(
             await s.scalars(
                 select(Section).where(Section.content_hash == doc.content_hash).order_by(Section.ordinal)
@@ -628,7 +628,7 @@ async def _find_document(s: AsyncSession, ctx: RunContext, ref: str) -> tuple[Do
     if len(rows) == 1:
         return rows[0], ""
     if not rows:
-        return None, f"「{ref}」を名前に含む文書はありません。list_documents で文書名を確かめてください。"
+        return None, f"「{ref}」を名前に含む文書は見つかりません。list_documents で文書名を確かめてください。"
     names = "、".join(f"「{d.filename}」" for d in rows[:5])
     return (
         None,

@@ -193,6 +193,8 @@ async def test_list_outline_and_read_section(
     assert "見つかりません" in await op_get_outline(bob, world.doc_a)
     assert "見つかりません" in await op_read_section(bob, sec_id.group(1))
     assert "見つかりません" in await op_get_outline(ctx, "なにか")
+    # 文書名（の一部）でも章立てを引ける
+    assert "判定" in await op_get_outline(ctx, "a.m")
 
 
 async def test_table_query_reads_the_section_table(
@@ -283,5 +285,5 @@ async def test_read_document_reads_by_name_without_search(
     assert "ありません" in await op_read_document(bob, "a.md") or "見つかりません" in await op_read_document(
         bob, world.doc_a
     )
-    assert "名前に含む文書はありません" in await op_read_document(ctx, "存在しない文書")
+    assert "名前に含む文書は見つかりません" in await op_read_document(ctx, "存在しない文書")
     assert "複数あります" in await op_read_document(ctx, ".md")

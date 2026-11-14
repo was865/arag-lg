@@ -214,6 +214,16 @@ def _drop_similar(emit: Emit, question: str, queries: list[str]) -> list[str]:
     return kept
 
 
+def strip_documents(query: str, names: list[str]) -> str:
+    """絞った文書の名前（拡張子つき・なし）をクエリから外す。絞ってあるので、文書名は検索語として余る。"""
+    out = query
+    for n in names:
+        for form in (n, n.rsplit(".", 1)[0]):
+            out = out.replace(form, " ")
+    out = " ".join(out.split())
+    return out or query
+
+
 def _last_question(msgs: list[AnyMessage]) -> int | None:
     return next((i for i in range(len(msgs) - 1, -1, -1) if isinstance(msgs[i], HumanMessage)), None)
 
@@ -255,7 +265,8 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
                 "raw": u.raw[:1000],
             }
             | ({"error": u.error} if u.error else {})
-            | ({"table_overridden": True} if u.table_overridden else {}),
+            | ({"table_overridden": True} if u.table_overridden else {})
+            | ({"refers_overridden": True} if u.refers_overridden else {}),
         )
 
     if first_turn:
@@ -289,6 +300,7 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
                 input={"question": question[:300]},
                 output={"documents": scope[1]},
             )
+            extra = [strip_documents(q, scope[1]) for q in extra]
     understanding = {
         "kind": u.kind,
         "queries": list(u.queries),

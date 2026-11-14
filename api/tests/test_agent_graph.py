@@ -848,3 +848,24 @@ async def test_announce_only_is_retried_only_once() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     state, _ = await run(agent, ctx(FakeSearch("本文")), "質問")
     assert len(model.calls) == 2 and state["messages"][-1].text == "次に取得します。"
+
+
+def test_guard_refers_needs_a_demonstrative_and_a_document_word() -> None:
+    from arag.agent.primer import strip_documents
+    from arag.agent.understand import Understanding, guard_refers
+
+    u = Understanding(refers_prior=True)
+    assert guard_refers(u, "その資料に担当者は書いてありますか？").refers_prior
+    assert guard_refers(u, "さっきの手順書で 9月19日の作業は？").refers_prior
+    assert guard_refers(u, "Is it in that document?").refers_prior
+    # 話題の続き（旧版・それ・そこ）は前の文書を指さない
+    g = guard_refers(u, "旧版ではいくつでしたか？")
+    assert not g.refers_prior and g.refers_overridden
+    assert not guard_refers(u, "そこのリードタイムは？").refers_prior
+    assert not guard_refers(Understanding(), "その資料は？").refers_overridden
+    # 絞ったときは、検索語から文書名を外す
+    assert strip_documents("x02-保守記録_2026-09.xlsx 担当者", ["x02-保守記録_2026-09.xlsx"]) == "担当者"
+    assert (
+        strip_documents("x02-保守記録_2026-09.xlsx", ["x02-保守記録_2026-09.xlsx"])
+        == "x02-保守記録_2026-09.xlsx"
+    )

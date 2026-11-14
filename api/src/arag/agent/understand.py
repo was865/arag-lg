@@ -33,6 +33,8 @@ class Understanding:
     table: bool = False
     # 「さっきの資料」のように、前のターンの回答が引用した文書を指しているか
     refers_prior: bool = False
+    # モデルは true と言ったが、質問に「その資料」のような言い方が無いので false にした
+    refers_overridden: bool = False
     # モデルは true と言ったが、出力の形の指定（「表にして」）だけなので false にした（specs/026 T28）
     table_overridden: bool = False
     # 記録用: モデルの出力そのままと、読めなかったときの理由
@@ -88,6 +90,28 @@ _AGGREGATE = re.compile(
 )
 
 
+# 前のターンの資料を指す言い方: 指示語と、文書を指す語の両方があるとき
+_DEMO = re.compile(
+    r"その|さっき|先ほど|先程|上の|前の|この|同じ|あの|前回|直前|that|this|same|previous|earlier|above", re.I
+)
+_DOC = re.compile(
+    r"資料|文書|ドキュメント|ファイル|書類|マニュアル|手順書|仕様書|議事録|報告書|シート|"
+    r"document|file|doc\b|manual|report|sheet",
+    re.I,
+)
+
+
+def guard_refers(u: Understanding, question: str) -> Understanding:
+    """「さっきの資料」とみなすのは、質問に指示語と文書を指す語が両方あるときだけ。
+
+    「旧版ではいくつでしたか？」のような話題の続きまでモデルが true にすると、前の文書に絞って
+    探すべき文書（旧版）を取りこぼす。
+    """
+    if u.refers_prior and not (_DEMO.search(question) and _DOC.search(question)):
+        return replace(u, refers_prior=False, refers_overridden=True)
+    return u
+
+
 def guard_table(u: Understanding, question: str) -> Understanding:
     """出力の形の言い方があり、集計の語が無い質問は、モデルが true と言っても table=false にする。"""
     if u.table and _FORM.search(question) and not _AGGREGATE.search(question):
@@ -124,4 +148,4 @@ async def understand(model: BaseChatModel | None, history: list[AnyMessage], que
         )
     except Exception as e:
         return fallback(question, f"{type(e).__name__}: {e}"[:200])
-    return guard_table(parse(out.text, question), question)
+    return guard_refers(guard_table(parse(out.text, question), question), question)

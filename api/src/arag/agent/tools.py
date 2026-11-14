@@ -66,7 +66,7 @@ async def get_outline(document: str, runtime: Runtime) -> str:
     """文書の章立て（見出しの階層・ページ・セクション ID）を返す。
 
     Args:
-        document: 文書 ID か出典番号（例 "3"）
+        document: 文書名（の一部）・文書 ID・出典番号（例 "3"）
     """
     return await op_get_outline(runtime.context, document)
 
