@@ -791,7 +791,9 @@ async def test_refers_prior_scopes_the_search_to_previously_cited_documents() ->
     await run(agent, ctx(search, utility_model=u), "PM-04 の停止時間は？", thread="s1")
     _, custom = await run(agent, ctx(search, utility_model=u), "その資料に担当者は？", thread="s1")
     # 前のターンが引用した文書（規程.pdf）に絞って検索し、その記録を残す
-    assert search.requests[-1].document_ids == [DOC]
+    scopes = [r.document_ids for r in search.requests[1:]]
+    assert [DOC] in scopes  # 絞った検索
+    assert None in scopes  # 「新版と比べて」のように他の文書も要るときのため、絞らない検索も足す
     sys = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "system"]
     scope = next(s for s in sys if s["input"]["kind"] == "scope_prior")
     assert scope["output"]["documents"] == ["規程.pdf"]
@@ -810,7 +812,7 @@ async def test_refers_prior_is_ignored_without_cited_documents() -> None:
     )
     await run(agent, ctx(search, utility_model=u), "最初の質問", thread="s2")
     await run(agent, ctx(search, utility_model=u), "その資料は？", thread="s2")
-    assert search.requests[-1].document_ids is None
+    assert all(r.document_ids is None for r in search.requests)
 
 
 def test_is_announce_only() -> None:

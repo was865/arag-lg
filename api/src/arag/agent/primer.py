@@ -221,7 +221,9 @@ def strip_documents(query: str, names: list[str]) -> str:
         for form in (n, n.rsplit(".", 1)[0]):
             out = out.replace(form, " ")
     out = " ".join(out.split())
-    return out or query
+    # 助詞しか残らないとき（「A.docx と B.docx の違い」→「と の違い」）は、元のクエリのままにする
+    left = re.sub(r"[\sとのをはがにでも・、,]+", "", out)
+    return out if len(left) >= 3 else query
 
 
 def _last_question(msgs: list[AnyMessage]) -> int | None:
@@ -288,6 +290,9 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
     if u.kind == "chat":
         ctx.primer = Primer(kind="chat")
     scope: tuple[list[str], list[str]] = ([], [])
+    plain: list[
+        str
+    ] = []  # 絞ったとき、絞らずに探す元のクエリ（「新版と比べて」のように他の文書も要るとき用）
     if u.refers_prior and not first_turn and u.kind == "docs":
         scope = last_cited_scope(history)
         if scope[0]:
@@ -300,6 +305,7 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
                 input={"question": question[:300]},
                 output={"documents": scope[1]},
             )
+            plain = list(extra)
             extra = [strip_documents(q, scope[1]) for q in extra]
     understanding = {
         "kind": u.kind,
@@ -308,6 +314,7 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
         "extra": extra,
         "start": start,
         "scope": {"ids": scope[0], "names": scope[1]},
+        "plain": plain,
     }
     return {"understanding": understanding}
 
@@ -321,12 +328,14 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     texts = list(ctx.primer_texts)
     if extra := u["extra"]:
         start = u["start"]
-        texts += await asyncio.gather(
-            *(
-                _search(ctx, emit, start + i, q, "understood", (u["scope"]["ids"], u["scope"]["names"]))
-                for i, q in enumerate(extra)
-            )
-        )
+        scope = (u["scope"]["ids"], u["scope"]["names"])
+        jobs = [_search(ctx, emit, start + i, q, "understood", scope) for i, q in enumerate(extra)]
+        # 絞ったときも、絞らない普通の検索を足す。「この資料と新版の違い」のように、前の文書だけでは足りない
+        jobs += [
+            _search(ctx, emit, start + len(extra) + i, q, "understood")
+            for i, q in enumerate(u.get("plain") or [])
+        ]
+        texts += await asyncio.gather(*jobs)
     ctx.primer_texts = texts
     ctx.primer = Primer(
         kind=u["kind"],
