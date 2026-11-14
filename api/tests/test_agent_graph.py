@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
 from arag.agent.graph import build_agent
-from arag.agent.middleware import PRIOR_TOOL_PLACEHOLDER, prior_placeholder
+from arag.agent.middleware import PRIOR_NOTE, PRIOR_TOOL_PLACEHOLDER, prior_documents, prior_placeholder
 from arag.auth.principal import Principal
 
 from .agent_fakes import FakeSearch, FakeToolModel, null_sessionmaker, script, tool_call
@@ -219,24 +219,27 @@ async def test_prior_turn_tool_results_are_compacted() -> None:
     )
 
 
-def test_prior_placeholder_keeps_document_names_only() -> None:
+def test_prior_placeholder_lists_documents_once() -> None:
     def tag(n: int, name: str, heading: str, body: str) -> str:
         return f'<資料 n="{n}" 文書="{name}" 見出し="{heading}">\n{body}\n</資料>'
 
-    text = prior_placeholder(
-        "\n".join(
-            [
-                tag(1, "x02-保守記録.xlsx", "9月", "秘密の本文"),
-                tag(2, "x02-保守記録.xlsx", "8月", "b"),
-                tag(3, "s01-点検票.pdf", "", "c"),
-            ]
-        )
+    first = "\n".join(
+        [tag(1, "x02-保守記録.xlsx", "9月", "秘密の本文"), tag(2, "x02-保守記録.xlsx", "8月", "b")]
     )
-    assert "「x02-保守記録.xlsx」・「s01-点検票.pdf」" in text and "秘密の本文" not in text
-    many = "".join(f'<資料 n="{i}" 文書="d{i}.pdf" 見出し="">\nx\n</資料>' for i in range(8))
-    assert "ほか 3 件" in prior_placeholder(many)
-    # 文書が読み取れない結果（計算など）は従来の文
-    assert prior_placeholder("135 / 60 = 2.25") == PRIOR_TOOL_PLACEHOLDER
+    second = tag(3, "s01-点検票.pdf", "", "c")
+    names = prior_documents([first, second, "135 / 60 = 2.25"])
+    assert names == ["x02-保守記録.xlsx", "s01-点検票.pdf"]
+    text = prior_placeholder(names)
+    assert (
+        "「x02-保守記録.xlsx」・「s01-点検票.pdf」" in text
+        and "秘密の本文" not in text
+        and PRIOR_NOTE in text
+    )
+    many = [f"d{i}.pdf" for i in range(10)]
+    assert "ほか 2 件" in prior_placeholder(many)
+    # 文書が読み取れないときは説明だけ。2 件目以降は短い 1 文
+    assert PRIOR_NOTE in prior_placeholder([])
+    assert prior_placeholder() == PRIOR_TOOL_PLACEHOLDER
 
 
 async def test_tool_failure_becomes_error_step_and_message() -> None:
