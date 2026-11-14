@@ -15,10 +15,11 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.ops import op_search, read_document, weak_result
+from arag.agent.ops import find_named_documents, op_search, read_document, weak_result
 from arag.agent.prior import last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
+from arag.logging import get_logger
 
 _BLOCK = re.compile(r'<資料 n="(\d+)".*?</資料>', re.DOTALL)
 PRIMER_OPEN = "<検索結果>"
@@ -54,8 +55,11 @@ def with_primer(question: str, primer: Primer | None) -> str:
 
 
 # なぜこの検索をするのか（質問文での検索と、整理したクエリでの検索は、狙いが違う）
+log = get_logger("arag.agent.primer")
+
 ROLES = {
     "question": ("質問文で検索", "質問の言葉そのままで探す（整理を待たずに始める）"),
+    "named": ("指定の文書を読む", "質問に書かれた文書名の文書を、検索せずに読む"),
     "understood": (
         "整理したクエリで検索",
         "補助モデルが言い換え・分けたクエリで探す（言葉の違いによる取りこぼしを減らす）",
@@ -92,6 +96,43 @@ async def _read_scoped(
         return None
     clock.done(f"{got.sections} 節を読んだ", {"result": got.text[:2000], "sections": got.sections})
     return got.text
+
+
+async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str], question: str) -> str:
+    """質問に名前が書かれた文書を、検索せずに読む。長くて読み切れないときは、その文書の中を質問で探す。"""
+    sid = f"primer-{index}"
+    label, purpose = ROLES["named"]
+    clock = StepClock(
+        emit,
+        Step(
+            id=sid,
+            name="search",
+            label=label,
+            status="running",
+            input={
+                "query": question[:300],
+                "by": "system",
+                "role": "named",
+                "purpose": f"{purpose}: 「{doc[1]}」",
+                "scope_documents": [doc[1]],
+            },
+            summary="読んでいます",
+        ),
+    )
+    ctx.stats.primer_searches += 1
+    try:
+        text = await _read_scoped(ctx, emit, sid, ([doc[0]], [doc[1]]))
+        how = "直接読んだ"
+        if text is None:
+            text = await op_search(ctx, emit, sid, question, document_ids=[doc[0]])
+            how = "長いため文書の中を検索した"
+    except Exception as e:
+        ctx.stats.tool_errors += 1
+        clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
+        return f"文書「{doc[1]}」を読めませんでした（{type(e).__name__}）。"
+    n = len(_BLOCK.findall(text))
+    clock.done(f"「{doc[1]}」を{how}・資料 {n} 件", {"result": text[:2000]})
+    return text
 
 
 async def _search(
@@ -315,6 +356,7 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
         "start": start,
         "scope": {"ids": scope[0], "names": scope[1]},
         "plain": plain,
+        "question": question[:2000],
     }
     return {"understanding": understanding}
 
@@ -336,6 +378,18 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
             for i, q in enumerate(u.get("plain") or [])
         ]
         texts += await asyncio.gather(*jobs)
+    # 質問に文書名が書かれているときは、検索に頼らず、その文書を確実に読む
+    named: list[tuple[str, str]] = []
+    if u["kind"] == "docs":
+        try:
+            named = await find_named_documents(ctx, u.get("question", ""))
+        except Exception as e:  # 文書名で決められなくても、検索で続ける
+            log.warning("named_documents_failed", error=str(e)[:200])
+    if named:
+        base = u["start"] + len(u["extra"]) * 2 + 1
+        texts = [
+            await _read_named(ctx, emit, base + i, d, u["question"]) for i, d in enumerate(named)
+        ] + texts
     ctx.primer_texts = texts
     ctx.primer = Primer(
         kind=u["kind"],

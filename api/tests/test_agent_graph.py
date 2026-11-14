@@ -871,3 +871,14 @@ def test_guard_refers_needs_a_demonstrative_and_a_document_word() -> None:
         strip_documents("x02-保守記録_2026-09.xlsx", ["x02-保守記録_2026-09.xlsx"])
         == "x02-保守記録_2026-09.xlsx"
     )
+
+
+def test_named_document_refs() -> None:
+    from arag.agent.ops import named_document_refs
+
+    assert named_document_refs("p03-新人安全教育.pptx 总结一下这篇文章讲了啥") == ["p03-新人安全教育.pptx"]
+    assert named_document_refs("x02-保守記録_2026-09.xlsx を全部読んで") == ["x02-保守記録_2026-09.xlsx"]
+    assert named_document_refs("w03-HP-300分解手順書_第3版 の最後の節は？") == ["w03-HP-300分解手順書_第3版"]
+    # 文書名でないものは拾わない
+    assert named_document_refs("HP-300 の締付トルクはいくつですか？") == []
+    assert named_document_refs("9月の PM-04 の停止時間は？") == []

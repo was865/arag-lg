@@ -5,6 +5,7 @@
 
 import re
 import time
+import unicodedata
 import uuid
 from typing import Any, NamedTuple
 
@@ -680,6 +681,48 @@ async def read_document(ctx: RunContext, ref: str, *, budget: int = DOC_READ_MAX
             f"{' ほか' if len(rest) > 5 else ''}。続きは get_outline と read_section で読む）"
         )
     return DocRead(out, bool(rest), doc.filename, len(parts))
+
+
+_FILE_TOKEN = re.compile(
+    r"[\w\-.（）()・]+\.(?:pdf|docx?|xlsx?|pptx?|md|txt|csv|png|jpe?g)\b|"
+    r"\b[A-Za-z]{1,3}\d{1,3}[-_][^\s、。，,！？!?「」『』]+",
+    re.IGNORECASE,
+)
+NAMED_DOCS_MAX = 2
+
+
+def named_document_refs(question: str) -> list[str]:
+    """質問に書かれた文書名らしい語（ファイル名、または p03-… のような番号付きの名前）。"""
+    out: list[str] = []
+    for m in _FILE_TOKEN.finditer(unicodedata.normalize("NFKC", question)):
+        tok = m.group(0).strip(".-_")
+        if len(tok) >= 4 and tok not in out:
+            out.append(tok)
+    return out
+
+
+async def find_named_documents(ctx: RunContext, question: str) -> list[tuple[str, str]]:
+    """質問に書かれた名前で、見える文書を決める（文書 ID・ファイル名）。1 件に決まる名前だけ。"""
+    refs = named_document_refs(question)
+    if not refs:
+        return []
+    found: list[tuple[str, str]] = []
+    async with ctx.sessionmaker() as s:
+        scope = await _scope(s, ctx)
+        if scope.empty:
+            return []
+        for ref in refs:
+            q = select(Document.id, Document.filename).where(
+                Document.deleted_at.is_(None),
+                Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
+                Document.filename.ilike(f"%{ref}%"),
+            )
+            if scope.document_ids is not None:
+                q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
+            rows = (await s.execute(q.limit(2))).all()
+            if len(rows) == 1 and str(rows[0].id) not in {i for i, _ in found}:
+                found.append((str(rows[0].id), rows[0].filename))
+    return found[:NAMED_DOCS_MAX]
 
 
 async def op_read_document(ctx: RunContext, document: str) -> str:

@@ -13,6 +13,7 @@ from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
 from arag.agent.ops import (
     code_terms,
+    find_named_documents,
     op_get_outline,
     op_keyword_search,
     op_list_documents,
@@ -287,3 +288,16 @@ async def test_read_document_reads_by_name_without_search(
     )
     assert "名前に含む文書は見つかりません" in await op_read_document(ctx, "存在しない文書")
     assert "複数あります" in await op_read_document(ctx, ".md")
+
+
+async def test_find_named_documents_resolves_names_written_in_the_question(
+    world: World, sessionmaker: async_sessionmaker[AsyncSession], qdrant_index: QdrantIndex
+) -> None:
+    ctx = make_ctx(sessionmaker, qdrant_index)
+    got = await find_named_documents(ctx, "a.md を要約して")
+    assert [name for _, name in got] == ["a.md"] and got[0][0] == world.doc_a
+    assert await find_named_documents(ctx, "海外リージョンの対応は？") == []
+    assert await find_named_documents(ctx, "zzz-none.pdf を読んで") == []
+    # 見えない文書は決めない
+    bob = make_ctx(sessionmaker, qdrant_index, p=Principal(user_id="bob"))
+    assert await find_named_documents(bob, "a.md を要約して") == []
