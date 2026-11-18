@@ -434,6 +434,36 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 面（カード）。角丸・縁・面の色の組み合わせを 1 か所で決める（部品は ui/card の Card・cardClass）。
+   縁は divider-strong に揃える。並び・余白・幅は使う側で足す。 */
+@utility card {
+  border-radius: var(--radius-card);
+  border: 0.5px solid var(--color-divider-strong);
+  background-color: var(--color-surface);
+}
+@utility card-sunken {
+  border-radius: var(--radius-card);
+  border: 0.5px solid var(--color-divider-strong);
+  background-color: var(--color-surface-2);
+}
+@utility card-raised {
+  border-radius: var(--radius-card);
+  border: 0.5px solid var(--color-divider-strong);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-e1);
+}
+
+/* 区切りの小見出し（大文字・字間の広いラベル。「ナレッジベース」「目次」、表の列見出しなど）。
+   本文の見出しには使わない。色を変えたいときは使わずに書く（字間・太さを揃えるための 1 か所）。 */
+@utility eyebrow {
+  font-size: var(--text-mini);
+  line-height: var(--text-mini--line-height);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted-2);
+}
+
 /* ドキュメント本文のスクリーンショット画像。背景に溶けないよう枠線・角丸・影を付与し、
    直後の斜体だけの段落をキャプションとして中央寄せ・小さめに見せる。
    remark は画像も斜体もそれぞれ独立した <p> に包むため :has() で隣接段落を狙う。 */

@@ -161,7 +161,7 @@ export function CancelledNotice({ onRetry, report }: { onRetry: () => void; repo
 export function UncitedNotice() {
   const { t } = useT();
   return (
-    <div className="flex items-start gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2.5 text-footnote text-muted">
+    <div className="flex items-start gap-2.5 card-sunken px-3.5 py-2.5 text-footnote text-muted">
       <svg viewBox="0 0 16 16" width="14" height="14" className="mt-px shrink-0" aria-hidden>
         <path d="M8 2.5l6 10.5H2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
         <path d="M8 6.5v3M8 11.2v.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -179,7 +179,7 @@ export function UnverifiedNumbersNotice({ numbers }: { numbers: string[] }) {
   const { t } = useT();
   if (numbers.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-card border-[0.5px] border-divider-strong bg-surface-2 px-3.5 py-2 text-footnote text-muted">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 card-sunken px-3.5 py-2 text-footnote text-muted">
       <svg viewBox="0 0 16 16" width="14" height="14" className="shrink-0" aria-hidden>
         <path d="M8 2.5l6 10.5H2z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
         <path d="M8 6.5v3M8 11.2v.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

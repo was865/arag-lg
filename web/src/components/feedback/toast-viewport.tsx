@@ -63,7 +63,7 @@ export function ToastViewport({ toasts, onDismiss, onPause, onResume }: Props) {
               aria-hidden={s.hidden || undefined}
               style={{ zIndex: 10 - index, gridArea: "1 / 1" }}
               className={
-                "inline-flex min-w-[240px] max-w-[420px] origin-bottom items-center gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface py-2.5 pl-[14px] pr-3 text-body font-medium text-fg shadow-e2 max-md:w-full max-md:min-w-0 max-md:max-w-none " +
+                "inline-flex min-w-[240px] max-w-[420px] origin-bottom items-center gap-2.5 card py-2.5 pl-[14px] pr-3 text-body font-medium text-fg shadow-e2 max-md:w-full max-md:min-w-0 max-md:max-w-none " +
                 (s.hidden ? "pointer-events-none" : "pointer-events-auto")
               }
             >

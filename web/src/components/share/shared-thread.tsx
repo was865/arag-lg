@@ -49,7 +49,7 @@ export function SharedThread({ thread }: { thread: SharedThreadData }) {
             <AnswerMarkdown text={m.answer || "（回答はありません）"} onCite={(n) => cite(i, n)} citationStyle="numbered" />
             {m.sources.length > 0 && (
               <ol className="m-0 flex list-none flex-col gap-1 rounded-card border-[0.5px] border-divider p-2.5">
-                <li className="px-1 pb-0.5 text-mini font-bold uppercase tracking-[0.07em] text-muted-2">出典</li>
+                <li className="px-1 pb-0.5 eyebrow">出典</li>
                 {m.sources.map((s) => (
                   <li
                     key={s.n}

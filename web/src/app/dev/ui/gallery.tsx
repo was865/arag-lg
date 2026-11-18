@@ -14,6 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { FileTile } from "@/components/ui/file-tile";
+import { linkHandlers, linkMarks } from "@/components/ui/link-marks";
+import { Spinner } from "@/components/ui/spinner";
 import { Seal } from "@/components/ui/seal";
 import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/feedback/toast-provider";
@@ -99,7 +103,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
   const [n, setN] = useState(0);
   return (
     <section className={cn(theme, "flex flex-col gap-8 bg-bg-2 px-6 py-6 text-fg")}>
-      <p className="m-0 text-caption font-medium uppercase tracking-[0.06em] text-muted">
+      <p className="eyebrow m-0">
         {theme === "theme-light" ? "ライト" : "ダーク"}
       </p>
 
@@ -137,7 +141,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             </span>
             <BrandTile size={44} />
             <Seal n={3} size="md" />
-            <div className="flex items-center gap-2 rounded-card border-[0.5px] border-divider-strong bg-surface px-3 py-2 shadow-e2">
+            <div className="flex items-center gap-2 card px-3 py-2 shadow-e2">
               <Seal n={1} />
               <span className="text-footnote font-semibold">x02-保守記録_2026-09.xlsx</span>
               <span className="text-caption text-muted">関連度 0.98</span>
@@ -319,6 +323,54 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
             </TabsList>
             <TabsContent value="a" />
           </Tabs>
+        </div>
+      </Block>
+
+      <Block title="面・小見出し・処理中・形式の札（className に同じ組み合わせを書き写さない）">
+        <div data-gallery className="grid gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
+            <Card className="p-3 text-footnote text-fg-2">surface（既定）</Card>
+            <Card tone="sunken" className="p-3 text-footnote text-fg-2">
+              sunken（補足）
+            </Card>
+            <Card tone="raised" className="p-3 text-footnote text-fg-2">
+              raised（押せる）
+            </Card>
+          </div>
+          <Card
+            tone="linked"
+            tabIndex={0}
+            data-gallery-link
+            {...linkHandlers((from, on) => linkMarks(from, "[data-gallery]", "[data-gallery-link],[data-gallery-mark]", on))}
+            className="p-3 text-footnote text-fg-2"
+          >
+            linked: ホバーすると同じ鍵の印{" "}
+            <span data-gallery-mark className="rounded-[3px] px-1 data-[on]:bg-accent-soft data-[on]:text-accent">
+              [1]
+            </span>{" "}
+            と一緒に光る（ui/link-marks）
+          </Card>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="eyebrow">eyebrow（区切りの小見出し）</span>
+          <span className="flex items-center gap-1.5 text-caption text-muted">
+            <Spinner size="xs" /> xs
+          </span>
+          <span className="flex items-center gap-1.5 text-caption text-muted">
+            <Spinner /> sm
+          </span>
+          <span className="flex items-center gap-1.5 text-caption text-muted">
+            <Spinner size="md" /> md
+          </span>
+          <Button variant="primary" size="sm">
+            <Spinner size="md" tone="current" />
+            送信中
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          {["手順書.pdf", "台帳.xlsx", "報告.docx", "説明.pptx", "メモ.md", "不明.bin"].map((f) => (
+            <FileTile key={f} filename={f} />
+          ))}
         </div>
       </Block>
 

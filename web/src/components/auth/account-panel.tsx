@@ -6,7 +6,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Notice, Spinner } from "@/components/auth/auth-card";
+import { Notice } from "@/components/auth/auth-card";
+import { Spinner } from "@/components/ui/spinner";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -259,7 +260,7 @@ export function AccountPanel() {
                 キャンセル
               </Button>
               <Button type="submit" variant="primary" size="sm" disabled={pwBusy}>
-                {pwBusy && <Spinner />}
+                {pwBusy && <Spinner size="md" tone="current" />}
                 変更
               </Button>
             </ListItem>

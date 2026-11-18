@@ -5,7 +5,6 @@ import {
   boxToRect,
   chunksOnPage,
   firstPageOf,
-  headingCrumb,
   nextWarningPage,
   warningsByPage,
   type ChunkOut,
@@ -84,8 +83,5 @@ describe("頁の移動", () => {
     expect(nextWarningPage(report, 4)).toBe(7);
     expect(nextWarningPage(report, 7)).toBe(4);
     expect(nextWarningPage(null, 1)).toBeNull();
-  });
-  it("見出しの区切り", () => {
-    expect(headingCrumb("総則 > 目的")).toBe("総則 › 目的");
   });
 });

@@ -9,6 +9,8 @@
  * - 文書の削除はごみ箱へ移すだけ（戻せる）なので確認は出さず、トーストで知らせる。
  *   フォルダは中身ごと移るので確認を出す。
  */
+import { fileTileStyle } from "@/components/ui/file-tile";
+import { Spinner } from "@/components/ui/spinner";
 import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
@@ -718,7 +720,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             <div
               className={cn(
                 ROW_GRID,
-                "border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden",
+                "border-b-[0.5px] border-divider px-2 py-2 eyebrow max-md:hidden",
               )}
             >
               <span>名前</span>
@@ -872,7 +874,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                       style={
                         selecting
                           ? undefined
-                          : { color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }
+                          : fileTileStyle(meta.color)
                       }
                     >
                       {selecting ? (
@@ -939,7 +941,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                   </div>
                   <span className={cn("inline-flex items-center gap-1.5 text-footnote max-md:hidden", TONE[st.tone])}>
                     {busy && (
-                      <span className="h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+                      <Spinner />
                     )}
                     {st.tone === "ok" ? <span className="sr-only">{st.label}</span> : st.label}
                     {st.tone === "danger" && d.writable && d.job_id && (

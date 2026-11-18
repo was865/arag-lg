@@ -111,3 +111,19 @@ export function formatSegments(rows: FormatRow[], minWidth = 2): FormatSegment[]
     width: Math.round((i === widest ? raw[i] - over : raw[i]) * 100) / 100,
   }));
 }
+
+/** 頁の範囲の表示（p.3 / p.3–5）。頁が無ければ null。 */
+export function pageLabel(start: number | null | undefined, end?: number | null): string | null {
+  if (start == null) return null;
+  return end != null && end !== start ? `p.${start}–${end}` : `p.${start}`;
+}
+
+/** 見出しの道筋（"A > B > C"）を段に分ける。 */
+export function headingParts(path: string): string[] {
+  return path.split(/\s*>\s*/).filter(Boolean);
+}
+
+/** 見出しの道筋を画面の区切り（›）で 1 行にする。 */
+export function headingCrumb(path: string): string {
+  return headingParts(path).join(" › ");
+}

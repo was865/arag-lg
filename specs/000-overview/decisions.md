@@ -239,3 +239,9 @@ Query API の融合機能（https://qdrant.tech/documentation/concepts/hybrid-se
 - `StateGraph`・`get_graph().draw_mermaid()`・checkpoint は MIT の `langgraph` だけで使える。図と経路の表示は自前で作る（029 R5〜R9）。
 - Studio の画面が LangSmith のサイト上で動き、その接続を要するか: パッケージのメタデータからは**未確認**（`langgraph-api` が `langsmith[otel]` を依存に持つことまでは確認）。どちらにしても `langgraph-api` が ELv2 なので採らない。
 
+
+## 16. 画面の部品の見本: Storybook を入れず `/dev/ui` を使う（2026-11-19）
+
+- 見本は `web/src/app/dev/ui/`（開発時のみ表示）。アプリと同じ Tailwind v4・テーマ（ライト/ダーク）・i18n・Radix で描くので、Storybook のように設定を二重に持たなくてよい。
+- Storybook（MIT）は使える許可だが、Next.js 16・Tailwind v4 への追従と依存の量に対して、PoC の今は得るものが少ない。部品が 40 を超える、別チームに渡す、見た目の回帰テスト（画面の比較）が要る、のどれかになったら見直す。
+- 書き写しは見本ではなく ESLint（`web/eslint.config.mjs` の `UI_LOOKS`）で止める。

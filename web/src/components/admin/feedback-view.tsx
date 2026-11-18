@@ -139,7 +139,7 @@ export function FeedbackView() {
 
       <div className="min-h-0 overflow-y-auto md:overflow-hidden">
         <div className="mx-auto grid h-full max-w-[1240px] grid-cols-[minmax(0,380px)_minmax(0,1fr)] gap-4 px-[18px] py-4 max-md:grid-cols-[minmax(0,1fr)] max-md:px-2 max-md:py-2">
-          <div className="min-h-0 overflow-y-auto rounded-card border-[0.5px] border-divider-strong bg-surface p-1.5 shadow-e1">
+          <div className="min-h-0 overflow-y-auto card p-1.5 shadow-e1">
             {error && <p className="px-2 py-3 text-footnote text-danger">{error}</p>}
             {rows === null ? (
               <ListSkeleton />
@@ -183,7 +183,7 @@ export function FeedbackView() {
               </div>
             )}
           </div>
-          <div className="min-h-0 overflow-y-auto rounded-card border-[0.5px] border-divider-strong bg-surface shadow-e1">
+          <div className="min-h-0 overflow-y-auto card-raised">
             {selected ? (
               <FeedbackDetailPane
                 key={selected}

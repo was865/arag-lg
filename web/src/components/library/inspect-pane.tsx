@@ -9,7 +9,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Badge } from "@/components/ui/badge";
-import { linkedCard, linkHandlers, linkMarks } from "@/components/ui/link-marks";
+import { Card, cardClass } from "@/components/ui/card";
+import { linkHandlers, linkMarks } from "@/components/ui/link-marks";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { ListSkeleton, Skeleton } from "@/components/ui/skeleton";
@@ -24,13 +25,13 @@ import {
   chunksOnPage,
   CONTEXT_SOURCE_LABEL,
   firstPageOf,
-  headingCrumb,
   nextWarningPage,
   warningLabel,
   type ChunkOut,
   type ParseReport,
   type ParseWarning,
 } from "@/lib/library/inspect";
+import { headingCrumb, pageLabel } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
 
 export interface InspectPaneProps {
@@ -128,10 +129,10 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
 
   const loading = !chunks || report === undefined;
   const summary = loading ? (
-    <div className="grid gap-2 rounded-card border-[0.5px] border-divider bg-surface p-3.5">
+    <Card className="grid gap-2 p-3.5">
       <Skeleton className="h-3 w-[40%]" />
       <Skeleton className="h-2.5 w-[70%]" />
-    </div>
+    </Card>
   ) : (
     <ReportSummary report={report} page={paged ? page : null} onGoto={goto} docId={doc.id} isAdmin={isAdmin} />
   );
@@ -275,7 +276,7 @@ function ReportSummary({
 
   if (!report) {
     return (
-      <section className="rounded-card border-[0.5px] border-divider bg-surface p-3.5">
+      <section className={cn(cardClass(), "p-3.5")}>
         <div className="flex items-center justify-between gap-2">
           <h3 className="m-0 text-caption font-medium text-muted">解析の記録</h3>
           {links}
@@ -310,7 +311,7 @@ function ReportSummary({
   ];
 
   return (
-    <section className="rounded-card border-[0.5px] border-divider bg-surface">
+    <section className={cardClass()}>
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5">
         <h3 className="m-0 flex items-center gap-1.5 text-caption font-medium text-muted">
           解析の記録
@@ -445,14 +446,13 @@ function ChunkRow({
   /** 原本の上の位置を持たない（枠を描けない） */
   noBox: boolean;
 }) {
-  const pages =
-    c.page_start == null ? null : c.page_end && c.page_end !== c.page_start ? `p.${c.page_start}–${c.page_end}` : `p.${c.page_start}`;
+  const pages = pageLabel(c.page_start, c.page_end);
   return (
     <li
       data-chunk={c.id}
       data-selected={selected}
       {...chunkLink(c.id)}
-      className={cn(linkedCard, "min-w-0", selected && "border-accent")}
+      className={cn(cardClass({ tone: "linked" }), "min-w-0", selected && "border-accent")}
     >
       <button onClick={onPick} aria-expanded={selected} className="block w-full rounded-card px-2.5 py-2 text-left outline-none">
         <span className="flex min-w-0 items-center gap-1.5">

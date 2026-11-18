@@ -95,7 +95,7 @@ export function HtmlTable({ html, className, renderMath }: { html: string; class
   return (
     <div
       className={cn(
-        "group/tbl relative min-w-0 overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface",
+        "group/tbl relative min-w-0 overflow-hidden card",
         className,
       )}
     >

@@ -2,7 +2,8 @@
 
 /** メールのリンクから新しいパスワードを設定する（specs/006-auth R9）。 */
 import { useState } from "react";
-import { AuthCard, FIELD, Field, Notice, PRIMARY, Spinner } from "@/components/auth/auth-card";
+import { AuthCard, FIELD, Field, Notice, PRIMARY } from "@/components/auth/auth-card";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 
 export function ResetPasswordForm({
@@ -96,7 +97,7 @@ export function ResetPasswordForm({
         </Field>
         {error && <Notice tone="error">{error}</Notice>}
         <button type="submit" disabled={busy || !token} className={`mt-1 ${PRIMARY}`}>
-          {busy && <Spinner />}
+          {busy && <Spinner size="md" tone="current" />}
           {busy ? "変更しています…" : "パスワードを変更"}
         </button>
       </form>

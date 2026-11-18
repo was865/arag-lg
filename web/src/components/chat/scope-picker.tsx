@@ -52,7 +52,7 @@ export function ScopePicker({ open, onOpenChange, children, value, onChange, att
       >
       <div className="overflow-y-auto p-1.5">
         {/* 実検索範囲 = ナレッジベース。ここの選択だけが retrieve の kb_ids に反映される。 */}
-        <div className="px-2.5 pb-1 pt-2 text-mini font-bold uppercase tracking-[0.07em] text-muted-2">{t.chat.scopeKbSection}</div>
+        <div className="px-2.5 pb-1 pt-2 eyebrow">{t.chat.scopeKbSection}</div>
         {[{ scope: allKbsScope, archived: false }, ...kbs.map((kb) => ({ scope: kbScope(kb), archived: kb.status === "archived" }))].map(({ scope: s, archived }) => (
           <PopoverOption
             key={s.id}

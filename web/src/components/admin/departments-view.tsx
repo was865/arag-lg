@@ -242,7 +242,7 @@ function DepartmentDetail({
       />
 
       <div>
-        <div className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-3 border-b-[0.5px] border-divider px-2 py-2 eyebrow">
           <span>メンバー（{members?.length ?? 0}）</span>
           <span>役割</span>
           <span />
@@ -347,7 +347,7 @@ function AddMember({
         placeholder="名前・メールで検索して追加"
       />
       {shown.length > 0 && (
-        <ul className="absolute inset-x-0 top-10 z-20 m-0 max-h-[260px] list-none overflow-y-auto rounded-card border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2">
+        <ul className="absolute inset-x-0 top-10 z-20 m-0 max-h-[260px] list-none overflow-y-auto card p-1 shadow-e2">
           {shown.map((p) => (
             <li key={p.id}>
               <button

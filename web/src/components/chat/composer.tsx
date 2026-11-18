@@ -1,5 +1,6 @@
 "use client";
 
+import { Spinner } from "@/components/ui/spinner";
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
@@ -210,12 +211,12 @@ export function Composer({
         )}
         {(image || imageBusy) && (
           <div className="flex items-center gap-2 px-3 pt-3">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface-2">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden card-sunken">
               {image ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL の縮小表示
                 <img src={image.dataUrl} alt={t.chat.imageAttached} className="h-full w-full object-cover" />
               ) : (
-                <span className="absolute inset-0 m-auto h-4 w-4 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+                <Spinner size="md" className="absolute inset-0 m-auto" />
               )}
               {image && onRemoveImage && !running && (
                 <button

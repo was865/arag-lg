@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { KbInfo } from "@/hooks/use-kbs";
-import { docStatus, formatBytes, filterStatuses, formatDate, uploadTarget, formatRows, formatSegments } from "@/lib/library/view";
+import {
+  docStatus,
+  filterStatuses,
+  formatBytes,
+  formatDate,
+  formatRows,
+  formatSegments,
+  headingCrumb,
+  headingParts,
+  pageLabel,
+  uploadTarget,
+} from "@/lib/library/view";
 
 const kb = (over: Partial<KbInfo>): KbInfo => ({
   id: "k",
@@ -98,5 +109,19 @@ describe("formatSegments（形式の内訳の積み上げ棒）", () => {
   });
   it("文書が無ければ空", () => {
     expect(formatSegments([])).toEqual([]);
+  });
+});
+
+describe("頁と見出しの表示", () => {
+  it("頁の範囲", () => {
+    expect(pageLabel(3)).toBe("p.3");
+    expect(pageLabel(3, 3)).toBe("p.3");
+    expect(pageLabel(3, 5)).toBe("p.3–5");
+    expect(pageLabel(null)).toBeNull();
+  });
+  it("見出しの道筋", () => {
+    expect(headingParts("総則 > 目的")).toEqual(["総則", "目的"]);
+    expect(headingCrumb("総則 >目的")).toBe("総則 › 目的");
+    expect(headingCrumb("")).toBe("");
   });
 });

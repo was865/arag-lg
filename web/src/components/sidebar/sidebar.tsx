@@ -1,5 +1,6 @@
 "use client";
 
+import { Spinner } from "@/components/ui/spinner";
 import { SHORTCUT_LABEL } from "@/lib/shortcuts";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
@@ -198,7 +199,7 @@ export function Sidebar(props: SidebarProps) {
         <>
         <div className="mb-2" data-tour="kb-section">
           <div className="flex items-center justify-between px-2 pb-1 pt-2">
-            <span className="text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">{t.sidebar.kbHeading}</span>
+            <span className="eyebrow">{t.sidebar.kbHeading}</span>
             {canCreateKb && (
               <IconButton size="icon-sm"
                 onClick={() => setCreatingKb(true)}
@@ -275,7 +276,7 @@ export function Sidebar(props: SidebarProps) {
 
         {!searching && groups.map((g) => (
           <div key={g.label} className="mb-2">
-            <div className="px-2 pb-1 pt-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
+            <div className="px-2 pb-1 pt-2 eyebrow">
               {g.label}
             </div>
             {/* map の要素名はここだけ th とする（外側 useT() の t.sidebar.* を同スコープで
@@ -308,10 +309,7 @@ export function Sidebar(props: SidebarProps) {
                 }
                 trailing={
                   th.running ? (
-                    <span
-                      aria-label={t.sidebar.threadRunning}
-                      className="block h-2.5 w-2.5 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent"
-                    />
+                    <Spinner label={t.sidebar.threadRunning} className="block" />
                   ) : undefined
                 }
               />

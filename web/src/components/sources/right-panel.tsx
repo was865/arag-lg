@@ -163,7 +163,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
       {/* Meta */}
       <div className="flex min-w-0 flex-col gap-1 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2.5 max-md:px-3.5">
         <div className="flex items-baseline gap-2 text-caption">
-          <span className="min-w-[32px] font-mono text-mini uppercase tracking-[0.05em] text-muted-2">{t.sources.metaPath}</span>
+          <span className="eyebrow min-w-[32px] font-mono">{t.sources.metaPath}</span>
           <code className="break-all font-mono text-caption text-fg-2">{active.path}</code>
         </div>
         {active && (

@@ -3,6 +3,7 @@
 /** 文書ビューア（specs/007-document-viewer）。ライブラリの上に重ねて、解析結果（章ごとの整形表示・目次）と原本を読む。
  * - 章は 50 件ずつ読み、末尾が見えたら続きを読む（R4）。目次から未読の章へ飛ぶときはそこまで読み足す。
  * - 「この文書に質問」で検索範囲をこの文書に絞ってチャットへ戻る（R9）。 */
+import { FileTile } from "@/components/ui/file-tile";
 import { m } from "motion/react";
 import { DURATION, EASE } from "@/lib/motion";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +14,7 @@ import { OriginalPreview } from "@/components/documents/original-preview";
 import { InspectPane } from "@/components/library/inspect-pane";
 import { RenderedSectionBody } from "@/components/sources/rendered-section-body";
 import { ApiError } from "@/lib/chat/api";
-import { getFileMeta, getTextPreviewKind } from "@/lib/file-types";
+import { getTextPreviewKind } from "@/lib/file-types";
 import { libraryApi, originalUrl, type DocumentOut, type OutlineSection, type SectionOut } from "@/lib/library/api";
 import { docStatus, formatBytes } from "@/lib/library/view";
 import { activeSectionId, outlineIndent, pipeTablesToHtml, resolveAssets } from "@/lib/library/viewer";
@@ -40,7 +41,6 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
   const ready = doc.status === "ready";
   const [tab, setTab] = useState<Tab>(ready ? (initialSectionId ? "inspect" : "parsed") : "original");
   const [outlineOpen, setOutlineOpen] = useState(false);
-  const meta = getFileMeta(doc.filename);
   const st = docStatus(doc.status);
 
   // 状態・件数は開いた時点の最新を取り直す
@@ -85,12 +85,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
     >
       <header className="flex h-[56px] items-center gap-2.5 border-b-[0.5px] border-divider px-4 max-md:h-[52px] max-md:gap-1.5 max-md:px-2">
         <IconButton label="閉じる" icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-control max-md:hidden"
-          style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
-        >
-          <Icon name={meta.iconName} size={15} />
-        </span>
+        <FileTile filename={doc.filename} className="max-md:hidden" />
         <div className="min-w-0 flex-1">
           <h2 className="m-0 truncate text-callout font-semibold text-fg" title={doc.filename}>
             {doc.filename}
@@ -292,7 +287,7 @@ function ParsedPane({
   const indents = outline ? outlineIndent(outline) : [];
   const toc = (
     <nav aria-label="目次" className="flex flex-col gap-px p-2">
-      <div className="px-2 pb-1.5 pt-1 text-mini font-bold uppercase tracking-[0.07em] text-muted-2">目次</div>
+      <div className="px-2 pb-1.5 pt-1 eyebrow">目次</div>
       {outline === null ? (
         <div className="px-2 py-1 text-footnote text-muted">読み込み中…</div>
       ) : outline.length === 0 ? (

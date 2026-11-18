@@ -2,7 +2,8 @@
 
 /** ログイン・登録・パスワード再設定の申請（specs/006-auth R1〜R4・R9）。 */
 import { useState } from "react";
-import { AuthCard, FIELD, Field, LinkButton, Notice, PRIMARY, Spinner } from "@/components/auth/auth-card";
+import { AuthCard, FIELD, Field, LinkButton, Notice, PRIMARY } from "@/components/auth/auth-card";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { safeNext } from "@/lib/auth/guard";
 import { Button } from "@/components/ui/button";
@@ -159,7 +160,7 @@ export function LoginForm({ next }: { next: string | null }) {
         {error && <Notice tone="error">{error}</Notice>}
         {info && <Notice tone="info">{info}</Notice>}
         <button type="submit" disabled={busy} className={`mt-1 ${PRIMARY}`}>
-          {busy && <Spinner />}
+          {busy && <Spinner size="md" tone="current" />}
           {busy ? c.busy : c.submit}
         </button>
       </form>

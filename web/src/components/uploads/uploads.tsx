@@ -1,5 +1,6 @@
 "use client";
 
+import { Spinner } from "@/components/ui/spinner";
 import { AnimatePresence, m } from "motion/react";
 import { DURATION, EASE } from "@/lib/motion";
 import { useState } from "react";
@@ -84,19 +85,19 @@ function AttachmentChip({ file, onRemove, onRetry }: { file: StagedFile; onRemov
         <div className="mt-0.5 flex items-center gap-[5px] font-mono text-mini text-muted">
           {file.status === "uploading" && (
             <>
-              <span className="h-[9px] w-[9px] shrink-0 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+              <Spinner size="xs" />
               <span>{interpolate(t.uploads.uploading, { progress: file.progress })}</span>
             </>
           )}
           {file.status === "queued" && (
             <>
-              <span className="h-[9px] w-[9px] shrink-0 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+              <Spinner size="xs" />
               <span>{t.uploads.queued}</span>
             </>
           )}
           {file.status === "processing" && (
             <>
-              <span className="h-[9px] w-[9px] shrink-0 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />
+              <Spinner size="xs" />
               <span>
                 {processingText}
                 {file.stage === "embedding" && file.chunks ? ` · ${interpolate(t.uploads.chunkSuffix, { n: file.chunks })}` : ""}
@@ -178,8 +179,8 @@ export function UserAttachments({ files }: { files: StagedFile[] }) {
   const { t } = useT();
   if (!files.length) return null;
   return (
-    <div className="mb-1 rounded-card border-[0.5px] border-divider bg-surface-2 px-3 py-2.5">
-      <div className="mb-2 flex items-center gap-1.5 text-mini font-semibold uppercase tracking-[0.05em] text-muted">
+    <div className="mb-1 card-sunken px-3 py-2.5">
+      <div className="mb-2 flex items-center gap-1.5 eyebrow">
         <Icon name="paperclip" size={11} />
         {t.uploads.attachedFiles}
       </div>
@@ -283,7 +284,7 @@ function QueueGroup({ folder, files, onRemove, onRetry }: {
           {failed ? ` · ${interpolate(t.uploads.groupFailed, { n: failed })}` : ""}
           {skipped ? ` · ${interpolate(t.uploads.groupSkipped, { n: skipped })}` : ""}
         </span>
-        {active > 0 && <span className="h-[10px] w-[10px] shrink-0 animate-spin-fast rounded-full border-[1.5px] border-divider-strong border-t-accent" />}
+        {active > 0 && <Spinner size="xs" />}
         <svg viewBox="0 0 12 12" width="10" height="10" className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")}>
           <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -312,7 +313,7 @@ export function DocumentsUploadQueue({ files, onRemove, onRetry, onClear }: {
   return (
     <div className="flex min-h-0 max-h-[50vh] flex-col border-b-[0.5px] border-divider bg-surface-2 max-md:max-h-[55vh]">
       <div className="flex items-center gap-2 px-3 py-2">
-        <span className="text-caption font-semibold uppercase tracking-[0.05em] text-muted">{t.uploads.queueHeader}</span>
+        <span className="eyebrow">{t.uploads.queueHeader}</span>
         <span className="font-mono text-mini text-muted">
           {interpolate(t.uploads.queueProgress, { done, target })}
           {skipped ? ` · ${interpolate(t.uploads.queueSkipped, { n: skipped })}` : ""}

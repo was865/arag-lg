@@ -54,7 +54,7 @@ export function SidebarSearchResults({
 
   return (
     <div className="mb-2">
-      <div className="flex items-baseline justify-between px-2 pb-1 pt-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
+      <div className="flex items-baseline justify-between px-2 pb-1 pt-2 eyebrow">
         <span>{t.sidebar.searchResults}</span>
         {state.status === "loading" && <span className="font-normal normal-case tracking-normal">{t.sidebar.searchSearching}</span>}
       </div>

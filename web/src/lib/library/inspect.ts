@@ -110,8 +110,3 @@ export function nextWarningPage(report: ParseReport | null, page: number): numbe
   );
   return warned.find((p) => p > page) ?? warned[0] ?? null;
 }
-
-/** 見出しの道筋（"A > B > C"）を画面の区切り（›）に直す。 */
-export function headingCrumb(path: string): string {
-  return path.split(/\s*>\s*/).filter(Boolean).join(" › ");
-}

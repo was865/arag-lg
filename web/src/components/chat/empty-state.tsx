@@ -61,7 +61,7 @@ function useSuggestions(): Suggestion[] | null {
 }
 
 const CARD =
-  "tilt group relative flex min-w-0 animate-fade-in flex-col justify-between gap-2.5 rounded-card border-[0.5px] border-divider-strong bg-surface/70 p-3 text-left shadow-e1  hover:bg-surface hover:shadow-e2 motion-reduce:animate-none";
+  "tilt group relative flex min-w-0 animate-fade-in flex-col justify-between gap-2.5 card/70 p-3 text-left shadow-e1  hover:bg-surface hover:shadow-e2 motion-reduce:animate-none";
 
 /** 入力欄の下: 文書から作った質問の候補（無ければ使い方のヒント）と件数。押すと入力欄に入る（送信はしない）。 */
 export function HomeSuggestions({

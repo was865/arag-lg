@@ -2,6 +2,7 @@
 
 /** ごみ箱。削除した文書・フォルダ・ナレッジベースを一覧し、元に戻す／完全に削除する。
  * 完全な削除は取り消せないので確認を出す（文書のみ。フォルダ・KB は期限が来たら自動で消える）。 */
+import { FileTile } from "@/components/ui/file-tile";
 import { ListSkeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
@@ -149,19 +150,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                   key={`${item.kind}:${item.id}`}
                   className="flex items-center gap-3 rounded-control px-2 py-2.5 hover:bg-surface-2 max-md:flex-wrap"
                 >
-                  <span
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-surface-2 text-muted"
-                    style={
-                      icon.color
-                        ? {
-                            color: icon.color,
-                            background: `color-mix(in srgb, ${icon.color} 12%, transparent)`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <Icon name={icon.name} size={15} />
-                  </span>
+                  <FileTile icon={icon.name} color={icon.color} />
                   <div className="min-w-0 flex-1">
                     <div
                       className="truncate text-body font-medium text-fg"

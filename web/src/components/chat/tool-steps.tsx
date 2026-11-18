@@ -210,7 +210,7 @@ function StatusIcon({ status, t, name }: { status: ToolStatus; t: Dictionary; na
 const preCls =
   "m-0 whitespace-pre-wrap break-words rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5 font-mono text-caption leading-[1.55] text-fg-2";
 
-const sectionLabelCls = "mb-1 text-mini font-semibold uppercase tracking-[0.06em] text-muted";
+const sectionLabelCls = "mb-1 eyebrow";
 
 function hasInputData(input: Record<string, unknown>): boolean {
   return Object.keys(input).length > 0;
@@ -574,7 +574,7 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if (step.name === "retrieve" && typeof step.input.query === "string") {
     return (
       <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
-        <div className="mb-1 font-mono text-mini uppercase tracking-[0.06em] text-muted-2">query</div>
+        <div className="eyebrow mb-1 font-mono">query</div>
         <div className="text-footnote leading-[1.5] text-fg">{step.input.query}</div>
       </div>
     );
@@ -607,7 +607,7 @@ function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
         {rows.length > 0 && <KeyValueGrid rows={rows} />}
         {typeof step.input.query === "string" && (
           <div className="rounded-control border-[0.5px] border-divider bg-code-bg px-3 py-2.5">
-            <div className="mb-1 font-mono text-mini uppercase tracking-[0.06em] text-muted-2">query</div>
+            <div className="eyebrow mb-1 font-mono">query</div>
             <div title={step.input.query} className="line-clamp-3 break-words text-footnote leading-[1.5] text-fg [overflow-wrap:anywhere]">{step.input.query}</div>
           </div>
         )}

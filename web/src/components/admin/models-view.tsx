@@ -167,7 +167,7 @@ export function ModelsView() {
                 </div>
               )}
 
-              <section className="rounded-card border-[0.5px] border-divider bg-surface">
+              <section className="card">
                 <SectionHead
                   title="接続（API キー）"
                   hint="キーは暗号化して保存し、画面には末尾 4 文字だけを表示します。"
@@ -223,7 +223,7 @@ export function ModelsView() {
                 )}
               </section>
 
-              <section className="rounded-card border-[0.5px] border-divider bg-surface">
+              <section className="card">
                 <SectionHead
                   title="モデル一覧"
                   hint="会話で選べるモデルです。使える先頭のものが既定になります。変更は次の質問から効きます。.env のモデルを画面で編集するには「一覧に登録」を押してください。"

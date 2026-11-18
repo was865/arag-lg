@@ -88,7 +88,7 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
           {shown.map((it, i) => (
             <div key={it.id}>
               {(i === 0 || shown[i - 1].group !== it.group) && (
-                <div className="px-2.5 pb-1 pt-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">{it.group}</div>
+                <div className="px-2.5 pb-1 pt-2 eyebrow">{it.group}</div>
               )}
               <div
                 id={`palette-${it.id}`}

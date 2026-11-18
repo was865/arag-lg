@@ -54,6 +54,18 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
 - 回答の正誤は評価用の元の文書と突き合わせる（例 `eval/assets/harukaze_mix/docs/`。xlsx・pptx は openpyxl・python-pptx で読める）。もっともらしい数字に正しく見える出典番号が付いていることがあるので、数字は元の表で確かめる。
 - Next.js 16 は学習データと違う点がある。`web/AGENTS.md` のとおり `web/node_modules/next/dist/docs/` を先に読む。
 
+## 画面の部品（`web/src/components/ui/`）
+
+- 部品の見本は **`/dev/ui`**（開発時のみ。ライトとダークを並べる）。新しい部品や形を足したら見本にも足す。Storybook は入れない（見本はアプリの Tailwind・テーマ・i18n をそのまま使えるこの 1 ページで足りる）。
+- 画面を作る前に `ui/` と見本を見る。あるものを使い、同じ見た目の className を書き写さない。主なもの:
+  - 面: `Card`（tone: surface・sunken・raised・linked）、文字列だけなら class の `card`・`card-sunken`・`card-raised`
+  - 区切りの小見出し: class の `eyebrow`。処理中の輪: `Spinner`（画面の読み込みは `Skeleton`）。形式の札: `FileTile`
+  - 印とカードが互いに光る連動: `ui/link-marks`（`data-on` を切り替えるだけ）
+  - ボタン `Button`/`IconButton`、札 `Badge`、入力 `Input`/`SearchField`、切り替え `Segmented`/`Tabs`、一覧 `ListGroup`、メニュー `Menu`、ダイアログ `Dialog`
+- 決まりは ESLint で止める（`web/eslint.config.mjs` の `UI_PARTS`・`UI_LOOKS`）。手書きのモーダル・メニュー・輪・小見出し・面・形式の札は lint で落ちる。わざと違う見た目（警告の面・強調の札など）は色を変えて書く。
+- 2 つ以上の画面で同じ形が出たら `ui/` に移す。見た目の組み合わせは CSS（`globals.css` の `@utility`）、振る舞いを持つものは部品にする。表示の整形（頁 `pageLabel`・見出し `headingCrumb`・日付・大きさ）は `web/src/lib/` の純関数にしてテストする。
+- 色の使い分け: 朱（accent）は引用の印・送信・選択中だけ。警告は `danger`。文言は日本語（`web/src/i18n/locales/ja/`）。
+
 ## 後端の動きはすべて記録に出す
 
 - エージェント・RAG の動き（検索・再検索・差し戻し・ツールの強制・回数の上限・履歴の省略・回答の整形・要約など）は黙って行わず、必ずステップ（`StepClock` / `record_system`、`api/src/arag/agent/middleware.py`）として送り、保存する。技術者が「詳細」で後から追えるようにする。モデルに渡す履歴に入れないのは構わないが、記録から外さない。

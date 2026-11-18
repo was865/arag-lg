@@ -161,7 +161,7 @@ function Overview({
           <button
             key={c.n}
             onClick={() => onJump(c.t)}
-            className="group/jc flex items-center gap-3.5 rounded-card border-[0.5px] border-divider-strong bg-surface px-4 py-3.5 text-left transition-[border-color,background,transform] hover:-translate-y-px hover:border-accent hover:bg-accent-soft"
+            className="group/jc flex items-center gap-3.5 card px-4 py-3.5 text-left transition-[border-color,background,transform] hover:-translate-y-px hover:border-accent hover:bg-accent-soft"
           >
             <div className="font-mono text-caption font-semibold tracking-[0.04em] text-muted">{c.n}</div>
             <div className="min-w-0 flex-1">
@@ -280,7 +280,7 @@ function Features() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-card border-[0.5px] border-divider-strong bg-surface p-3.5"
+            className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 card p-3.5"
           >
             <div className="grid h-9 w-9 place-items-center rounded-control bg-accent/[0.08] text-accent">
               <FeatIcon name={f.icon} />
@@ -377,7 +377,7 @@ function Tips() {
         {TIPS.map((tip) => (
           <div
             key={tip.title}
-            className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-card border-[0.5px] border-divider-strong bg-surface p-3.5"
+            className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 card p-3.5"
           >
             <div
               className={cn(

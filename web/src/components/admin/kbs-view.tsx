@@ -72,8 +72,8 @@ export function KbsView() {
       </div>
 
       <div className="min-h-0 overflow-y-auto">
-        <div className="mx-auto my-4 w-[calc(100%-36px)] max-w-[1000px] rounded-card border-[0.5px] border-divider-strong bg-surface px-3 pb-3 pt-1 shadow-e1 max-md:my-2 max-md:w-[calc(100%-16px)] max-md:px-1.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+        <div className="mx-auto my-4 w-[calc(100%-36px)] max-w-[1000px] card px-3 pb-3 pt-1 shadow-e1 max-md:my-2 max-md:w-[calc(100%-16px)] max-md:px-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_150px_70px_70px_72px] gap-3 border-b-[0.5px] border-divider px-2 py-2 eyebrow max-md:hidden">
             <span>名前</span>
             <span>あなたの役割</span>
             <span className="text-right">文書</span>

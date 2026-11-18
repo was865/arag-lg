@@ -205,7 +205,7 @@ export function KbShareDialog({ kbId, kbName, onClose, onSaved }: KbShareDialogP
                 {candidates.length > 0 && (
                   <ul
                     role="listbox"
-                    className="absolute inset-x-5 top-10 z-10 m-0 list-none overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface p-1 shadow-e2"
+                    className="absolute inset-x-5 top-10 z-10 m-0 list-none overflow-hidden card p-1 shadow-e2"
                   >
                     {candidates.map((c) => (
                       <li key={c.kind === "department" ? `d:${c.dept.id}` : `u:${c.person.id}`}>

@@ -124,7 +124,7 @@ export function LibraryOverview({
           {/* よく引用される文書: プレビュー付きのカード */}
           {ov.top_cited.length > 0 && (
             <div className="grid gap-2">
-              <h3 className="m-0 flex items-baseline gap-2 text-mini font-semibold uppercase tracking-[0.06em] text-muted-2">
+              <h3 className="m-0 flex items-baseline gap-2 eyebrow">
                 よく引用される文書 <span className="font-normal normal-case tracking-normal">この 30 日の回答</span>
               </h3>
               <div className="grid grid-cols-4 gap-2.5 max-lg:grid-cols-2">
@@ -159,7 +159,7 @@ function CitedCard({ doc, citations, index, onOpen }: { doc: DocumentOut; citati
       title={doc.filename}
       style={{ animationDelay: `${index * 50}ms` }}
       {...tilt}
-      className="tilt group relative flex min-w-0 animate-fade-in flex-col overflow-hidden rounded-card border-[0.5px] border-divider-strong bg-surface p-0 text-left shadow-e1 outline-none hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:animate-none"
+      className="tilt group relative flex min-w-0 animate-fade-in flex-col overflow-hidden card p-0 text-left shadow-e1 outline-none hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:animate-none"
     >
       <span className="relative block h-[72px] border-b-[0.5px] border-divider bg-surface-2 px-3 py-2.5" aria-hidden>
         {sheet ? (
@@ -192,7 +192,7 @@ function CitedCard({ doc, citations, index, onOpen }: { doc: DocumentOut; citati
 
 function Card({ title, hint, tone, children }: { title: string; hint?: string; tone?: "danger"; children: React.ReactNode }) {
   return (
-    <div className="min-w-0 rounded-card border-[0.5px] border-divider bg-surface px-3 py-2.5">
+    <div className="min-w-0 card px-3 py-2.5">
       <div className="mb-2 flex items-baseline gap-2">
         <h3 className={cn("m-0 text-footnote font-semibold", tone === "danger" ? "text-danger" : "text-fg")}>{title}</h3>
         {hint && <span className="text-caption text-muted-2">{hint}</span>}

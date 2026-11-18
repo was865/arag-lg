@@ -62,10 +62,6 @@ export function Notice({ tone, children }: { tone: "error" | "info"; children: R
   );
 }
 
-export function Spinner() {
-  return <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />;
-}
-
 export function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="plain" size="sm" className="hover:underline hover:opacity-100" onClick={onClick}>

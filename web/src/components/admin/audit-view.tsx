@@ -143,8 +143,8 @@ export function AuditView() {
       </div>
 
       <div className="min-h-0 overflow-y-auto">
-        <div className="mx-auto my-4 w-[calc(100%-36px)] max-w-[1100px] rounded-card border-[0.5px] border-divider-strong bg-surface px-3 pb-3 pt-1 shadow-e1 max-md:my-2 max-md:w-[calc(100%-16px)] max-md:px-1.5">
-          <div className="grid grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] gap-3 border-b-[0.5px] border-divider px-2 py-2 text-mini font-semibold uppercase tracking-[0.05em] text-muted-2 max-md:hidden">
+        <div className="mx-auto my-4 w-[calc(100%-36px)] max-w-[1100px] card px-3 pb-3 pt-1 shadow-e1 max-md:my-2 max-md:w-[calc(100%-16px)] max-md:px-1.5">
+          <div className="grid grid-cols-[150px_200px_170px_minmax(0,1fr)_60px] gap-3 border-b-[0.5px] border-divider px-2 py-2 eyebrow max-md:hidden">
             <span>日時</span>
             <span>操作した人</span>
             <span>操作</span>
