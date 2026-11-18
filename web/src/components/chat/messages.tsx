@@ -269,6 +269,23 @@ export function UserMessage({
   );
 }
 
+/**
+ * ターンの見え方。編集中は作り直しで消える後のターンを淡くし（dimmed）、
+ * 送ると淡いまま上へ畳んで消える（exit）。畳むことで下のものが跳ねずに引き上がる。
+ * custom はターンどうしの間隔（px）。
+ */
+const turnVariants = {
+  shown: { opacity: 1, transition: { duration: DURATION.slow, ease: EASE.out } },
+  dimmed: { opacity: 0.35, transition: { duration: DURATION.slow, ease: EASE.out } },
+  exit: (gap: number) => ({
+    opacity: 0,
+    height: 0,
+    marginTop: -gap,
+    overflow: "hidden",
+    transition: { duration: DURATION.slow, ease: EASE.out, opacity: { duration: DURATION.mid } },
+  }),
+};
+
 /** ターン間の日付セパレータ（今日/昨日/月日）。 */
 function DateSeparator({ label }: { label: string }) {
   return (
@@ -360,11 +377,18 @@ export function Transcript({
   const dim = (idx: number, from: "this" | "later") =>
     onEdit != null && editingIdx != null && (from === "this" ? idx === editingIdx : idx > editingIdx);
   const fade = "transition-opacity duration-(--duration-slow) ease-(--ease-out)";
+  // ターンどうしの間隔（並べる側の gap）。消えるターンが畳み終わったとき、間隔の分だけ跳ねないように一緒に詰める
+  const [gap, setGap] = useState(0);
+  const measureGap = (el: HTMLDivElement | null) => {
+    const g = el?.parentElement ? parseFloat(getComputedStyle(el.parentElement).rowGap) || 0 : 0;
+    if (el && g !== gap) setGap(g);
+  };
   // 保存したメッセージがあるときだけ（受付前の取消・runner_lost の失敗では出さない）
   const report = (turn: Turn, idx: number) =>
     canReport(turn) ? <ReportProblem onSubmit={(v) => onFeedbackDetail(v, idx)} /> : undefined;
   return (
     <>
+      <AnimatePresence initial={false} custom={gap}>
       {turns.map((turn, idx) => {
         const isLast = idx === turns.length - 1;
         const running = turn.status === "running";
@@ -373,7 +397,15 @@ export function Transcript({
         const showSeparator = !!turn.createdAt &&
           (idx === 0 || !prev?.createdAt || !sameLocalDay(new Date(prev.createdAt), new Date(turn.createdAt)));
         return (
-          <div key={idx} data-turn={idx} className={cn("flex flex-col gap-6 max-md:gap-[18px]", fade, dim(idx, "later") && "opacity-35")}>
+          <m.div
+            key={idx}
+            data-turn={idx}
+            ref={idx === 0 ? measureGap : undefined}
+            variants={turnVariants}
+            animate={dim(idx, "later") ? "dimmed" : "shown"}
+            exit="exit"
+            className="flex flex-col gap-6 max-md:gap-[18px]"
+          >
             {showSeparator && <DateSeparator label={dateSeparator(turn.createdAt!, now, { today: t.chat.dateToday, yesterday: t.chat.dateYesterday })} />}
             <UserMessage
               text={turn.query}
@@ -454,9 +486,10 @@ export function Transcript({
                 />
               )}
             </AssistantMessage>
-          </div>
+          </m.div>
         );
       })}
+      </AnimatePresence>
     </>
   );
 }
