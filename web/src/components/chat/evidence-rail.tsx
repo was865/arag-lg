@@ -6,11 +6,14 @@
  * 連動は DOM の属性を切り替えるだけにし、回答の Markdown を描き直さない。
  */
 import { Icon } from "@/components/icons";
+import { cardClass } from "@/components/ui/card";
 import { Seal } from "@/components/ui/seal";
+import { overflowData, useOverflow } from "@/components/ui/use-overflow";
 import type { Evidence } from "@/lib/chat/evidence";
 import { getFileMeta } from "@/lib/file-types";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
+import { cn } from "@/lib/utils";
 
 /** 同じターンの中で、番号 n の印とカードを光らせる（消す）。 */
 export function linkEvidence(from: Element, n: number, on: boolean): void {
@@ -24,14 +27,24 @@ export function linkEvidence(from: Element, n: number, on: boolean): void {
 
 export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n: number) => void }) {
   const { t } = useT();
+  const { ref: listRef, overflow } = useOverflow<HTMLDivElement>();
   if (items.length === 0) return null;
   return (
-    <aside aria-label={t.chat.evidenceHeading} className="flex min-w-0 flex-col gap-2 @[760px]:sticky @[760px]:top-4 @[760px]:max-h-[calc(100dvh-230px)] @[760px]:self-start @[760px]:-ml-1.5 @[760px]:overflow-y-auto @[760px]:pb-1 @[760px]:pl-1.5 @[760px]:pr-1">
-      <h3 className="m-0 flex items-center justify-between text-mini font-semibold uppercase tracking-[0.08em] text-muted-2">
+    // 横並びのときは、この外枠の高さを回答本文に合わせる（contain:size で中身の高さを行の高さに数えない）。
+    // カードが多ければカードの列だけが内側で縦にスクロールし（見出しは残す）、回答の終わりと一回分の下端（操作の行）がそろう。
+    // 続きのある端は薄くして、カードが途中で切れて見えないようにする（scroll-fade-*）。
+    <div className="min-w-0 @[760px]:relative @[760px]:min-h-[200px] @[760px]:[contain:size]">
+    <aside aria-label={t.chat.evidenceHeading} className="flex min-w-0 flex-col gap-2 @[760px]:sticky @[760px]:top-0 @[760px]:max-h-[min(100%,calc(100dvh-230px))]">
+      <h3 className="eyebrow m-0 flex shrink-0 items-center justify-between">
         <span>{t.chat.evidenceHeading}</span>
         <span className="nums">{interpolate(t.chat.evidenceCount, { n: String(items.length) })}</span>
       </h3>
-      <div className="flex min-w-0 flex-row flex-wrap gap-2 @[760px]:flex-col">
+      {/* 狭いときは横に滑らせる一列（縦に積むと画面を占めるため）。影と光りが切れないよう周りに余白を取る */}
+      <div
+        ref={listRef}
+        {...overflowData(overflow)}
+        className="scroll-fade-x -mx-1 -my-1 flex min-w-0 snap-x snap-proximity flex-row gap-2 overflow-x-auto px-1 py-1 [scrollbar-width:none] @[760px]:scroll-fade-y @[760px]:-mx-1.5 @[760px]:min-h-0 @[760px]:snap-none @[760px]:flex-col @[760px]:overflow-x-visible @[760px]:overflow-y-auto @[760px]:px-1.5 @[760px]:pb-2 [&::-webkit-scrollbar]:hidden"
+      >
         {items.map((e) => {
           const meta = getFileMeta(e.title);
           const each = (on: boolean) => (ev: { currentTarget: Element }) => e.numbers.forEach((n) => linkEvidence(ev.currentTarget, n, on));
@@ -46,7 +59,10 @@ export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n:
               onFocus={each(true)}
               onBlur={each(false)}
               title={interpolate(t.chat.openCitation, { n: String(e.numbers[0]) })}
-              className="flex w-[240px] max-w-full min-w-0 flex-col gap-1.5 rounded-card border-[0.5px] border-divider-strong bg-surface p-2.5 text-left shadow-e1 outline-none transition-[transform,box-shadow,border-color] duration-(--duration-mid) ease-out hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-accent/50 data-[on]:border-accent data-[on]:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow-2)] @[760px]:w-full @[760px]:data-[on]:-translate-x-0.5 motion-reduce:transition-none"
+              className={cn(
+                cardClass({ tone: "linked" }),
+                "flex w-[220px] max-w-[78%] min-w-0 shrink-0 snap-start flex-col gap-1.5 p-2.5 text-left @[760px]:w-full @[760px]:max-w-full @[760px]:shrink-0 @[760px]:data-[on]:-translate-x-0.5",
+              )}
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 {e.numbers.map((n) => (
@@ -63,7 +79,7 @@ export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n:
                   {e.page != null && <span className="nums shrink-0">{interpolate(t.chat.evidencePage, { n: String(e.page) })}</span>}
                 </span>
               )}
-              {e.excerpt && <span className="line-clamp-3 text-caption leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">{e.excerpt}</span>}
+              {e.excerpt && <span className="line-clamp-2 text-caption @[760px]:line-clamp-3 leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">{e.excerpt}</span>}
               {e.score != null && (
                 <span className="flex items-center gap-2 text-mini text-muted-2">
                   <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-divider">
@@ -77,5 +93,6 @@ export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n:
         })}
       </div>
     </aside>
+    </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { parseTableHtml, type InlineSegment } from "@/components/sources/parse-table-html";
 import { TeXText } from "@/components/sources/tex-text";
-import { useOverflow } from "@/components/sources/use-overflow";
+import { useOverflow } from "@/components/ui/use-overflow";
 import { TableSheet } from "@/components/sources/table-sheet";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/context";

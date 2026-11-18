@@ -35,20 +35,13 @@ const UI_LOOKS = [
   },
 ];
 
-// 別の作業で書き換え中のファイル。共通の部品に移したら、ここから外す。
-const LOOKS_PENDING = ["src/components/chat/evidence-rail.tsx"];
-
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
     files: ["src/**/*.tsx"],
-    ignores: ["src/components/ui/**", ...LOOKS_PENDING],
+    ignores: ["src/components/ui/**"],
     rules: { "no-restricted-syntax": ["error", ...UI_PARTS, ...UI_LOOKS] },
-  },
-  {
-    files: LOOKS_PENDING,
-    rules: { "no-restricted-syntax": ["error", ...UI_PARTS] },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([

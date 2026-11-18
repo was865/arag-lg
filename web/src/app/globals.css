@@ -453,6 +453,31 @@
   box-shadow: var(--shadow-e1);
 }
 
+/* スクロールの続きがある端を薄くする（ui/use-overflow の overflowData が付ける data-more-* を見る）。
+   カードの列など、地の上に並ぶものに使う。面の中の表は影（--edge-shadow）で示す。 */
+@utility scroll-fade-y {
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
+  &[data-more-top] {
+    --fade-top: 28px;
+  }
+  &[data-more-bottom] {
+    --fade-bottom: 40px;
+  }
+}
+@utility scroll-fade-x {
+  --fade-left: 0px;
+  --fade-right: 0px;
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent);
+  &[data-more-left] {
+    --fade-left: 24px;
+  }
+  &[data-more-right] {
+    --fade-right: 32px;
+  }
+}
+
 /* 区切りの小見出し（大文字・字間の広いラベル。「ナレッジベース」「目次」、表の列見出しなど）。
    本文の見出しには使わない。色を変えたいときは使わずに書く（字間・太さを揃えるための 1 か所）。 */
 @utility eyebrow {
