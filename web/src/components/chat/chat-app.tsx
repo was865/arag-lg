@@ -933,6 +933,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           })()}
           onClose={closeDocument}
           onAsk={askInDocument}
+          isAdmin={sessionUser?.role === "owner" || sessionUser?.role === "admin"}
         />
       )}
       </AnimatePresence>

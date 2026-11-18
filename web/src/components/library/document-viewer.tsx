@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { OriginalPreview } from "@/components/documents/original-preview";
+import { InspectPane } from "@/components/library/inspect-pane";
 import { RenderedSectionBody } from "@/components/sources/rendered-section-body";
 import { ApiError } from "@/lib/chat/api";
 import { getFileMeta, getTextPreviewKind } from "@/lib/file-types";
@@ -20,19 +21,23 @@ import { cn } from "@/lib/utils";
 const PAGE = 50;
 const TEXT_LIMIT = 1024 * 1024;
 
-type Tab = "parsed" | "original";
+type Tab = "parsed" | "inspect" | "original";
 
 export interface DocumentViewerProps {
   doc: DocumentOut;
   kbName: string;
   onClose: () => void;
   onAsk: (doc: DocumentOut) => void;
+  /** 管理者なら Docling の生 JSON へのリンクを出す（specs/030 R4） */
+  isAdmin?: boolean;
+  /** 指定すると「対照」を、このチャンクを選んだ状態で開く（回答の出典から。specs/030 R13） */
+  initialChunkId?: string | null;
 }
 
-export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: DocumentViewerProps) {
+export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin = false, initialChunkId = null }: DocumentViewerProps) {
   const [doc, setDoc] = useState(initial);
   const ready = doc.status === "ready";
-  const [tab, setTab] = useState<Tab>(ready ? "parsed" : "original");
+  const [tab, setTab] = useState<Tab>(ready ? (initialChunkId ? "inspect" : "parsed") : "original");
   const [outlineOpen, setOutlineOpen] = useState(false);
   const meta = getFileMeta(doc.filename);
   const st = docStatus(doc.status);
@@ -62,6 +67,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
     st.label,
     doc.page_count ? `${doc.page_count} ページ` : null,
     ready ? `${doc.chunk_count} チャンク` : null,
+    doc.parse_warnings ? `解析の警告 ${doc.parse_warnings} 件` : null,
     formatBytes(doc.size),
   ].filter(Boolean);
 
@@ -126,9 +132,12 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
         {(
           [
             ["parsed", "整形表示"],
+            ["inspect", "対照"],
             ["original", "原本"],
           ] as const
-        ).map(([key, label]) => (
+        )
+          .filter(([key]) => key !== "inspect" || ready)
+          .map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -146,6 +155,8 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk }: Documen
       <div className="min-h-0">
         {tab === "original" ? (
           <OriginalPane doc={doc} onShowParsed={ready ? () => setTab("parsed") : undefined} />
+        ) : tab === "inspect" && ready ? (
+          <InspectPane doc={doc} isAdmin={isAdmin} initialChunkId={initialChunkId} />
         ) : ready ? (
           <ParsedPane docId={doc.id} outlineOpen={outlineOpen} onCloseOutline={() => setOutlineOpen(false)} />
         ) : (

@@ -145,6 +145,27 @@ export const libraryApi = {
     if (!data) fail(response.status, error);
     return data;
   },
+  /** 解析の記録（specs/030）。記録の無い古い文書は null。 */
+  async parseReport(id: string) {
+    const { data, error, response } = await client.GET("/v1/documents/{doc_id}/parse-report", {
+      params: { path: { doc_id: id } },
+    });
+    if (response.status === 404) return null;
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  /** チャンクをすべて（500 件ずつ読み足す）。 */
+  async allChunks(id: string) {
+    const out: S["ChunkOut"][] = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data, error, response } = await client.GET("/v1/documents/{doc_id}/chunks", {
+        params: { path: { doc_id: id }, query: { offset, limit: 500 } },
+      });
+      if (!data) fail(response.status, error);
+      out.push(...data);
+      if (data.length < 500) return out;
+    }
+  },
   /** 章を本文つきで順に（R4: 50 件ずつ）。 */
   async sections(id: string, offset: number, limit = 50) {
     const { data, error, response } = await client.GET("/v1/documents/{doc_id}/sections", {
@@ -199,6 +220,10 @@ export function uploadFile(
 
 export function originalUrl(id: string): string {
   return `/api/v1/documents/${encodeURIComponent(id)}/original`;
+}
+
+export function doclingJsonUrl(id: string): string {
+  return `/api/v1/documents/${encodeURIComponent(id)}/docling`;
 }
 
 export function jobEventsUrl(jobIds: string[]): string {

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-pdfjs-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-pdfjs-assets.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -29,6 +31,7 @@
     "next": "16.4.5",
     "nodemailer": "10.4.0",
     "openapi-fetch": "0.17.0",
+    "pdfjs-dist": "^6.5.438",
     "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",

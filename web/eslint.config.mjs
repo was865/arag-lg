@@ -31,6 +31,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // pdf.js の CMap・wasm（scripts/copy-pdfjs-assets.mjs が作る生成物）
+    "public/pdfjs/**",
   ]),
 ]);
 

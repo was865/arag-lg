@@ -149,6 +149,35 @@ class ChunkOut(BaseModel):
     """埋め込みに送った本文（文脈 + チャンクの文。specs/030 R10）"""
 
 
+class ParseWarningOut(BaseModel):
+    code: str
+    severity: Literal["info", "warn"]
+    page: int | None
+    message: str
+
+
+class ParsePageOut(BaseModel):
+    page: int
+    items: int
+    chars: int
+    tables: int
+    pictures: int
+    chunks: int
+    size: list[float] | None
+    """頁の大きさ（幅・高さ）。枠の座標を直すのに使う"""
+
+
+class ParseReportOut(BaseModel):
+    """解析の記録（specs/030 R1）。本文は含まない。"""
+
+    version: int
+    parser: str
+    docling: dict[str, Any] | None
+    totals: dict[str, int]
+    pages: list[ParsePageOut]
+    warnings: list[ParseWarningOut]
+
+
 class TrashItem(BaseModel):
     kind: Literal["document", "folder", "kb"]
     id: uuid.UUID
@@ -540,15 +569,15 @@ async def rendered(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> PlainTex
     return PlainTextResponse((await storage.read(key)).decode(), media_type="text/markdown; charset=utf-8")
 
 
-@router.get("/v1/documents/{doc_id}/parse-report")
-async def parse_report(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> dict[str, Any]:
+@router.get("/v1/documents/{doc_id}/parse-report", response_model=ParseReportOut)
+async def parse_report(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> ParseReportOut:
     """解析の記録（本文は含まない。specs/030 R3）。"""
     doc, _ = await _readable_doc(ctx, doc_id)
     storage: Storage = request.app.state.storage
     report = await load_report_dict(storage, content_prefix(doc.content_hash))
     if report is None:
         raise not_found("解析の記録がありません")
-    return report
+    return ParseReportOut.model_validate(report)
 
 
 @router.get("/v1/documents/{doc_id}/docling")

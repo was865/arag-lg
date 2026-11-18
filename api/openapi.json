@@ -2479,6 +2479,154 @@
         "title": "OutlineSection",
         "type": "object"
       },
+      "ParsePageOut": {
+        "properties": {
+          "chars": {
+            "title": "Chars",
+            "type": "integer"
+          },
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "items": {
+            "title": "Items",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pictures": {
+            "title": "Pictures",
+            "type": "integer"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "items",
+          "chars",
+          "tables",
+          "pictures",
+          "chunks",
+          "size"
+        ],
+        "title": "ParsePageOut",
+        "type": "object"
+      },
+      "ParseReportOut": {
+        "description": "解析の記録（specs/030 R1）。本文は含まない。",
+        "properties": {
+          "docling": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docling"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/ParsePageOut"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "parser": {
+            "title": "Parser",
+            "type": "string"
+          },
+          "totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Totals",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ParseWarningOut"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "parser",
+          "docling",
+          "totals",
+          "pages",
+          "warnings"
+        ],
+        "title": "ParseReportOut",
+        "type": "object"
+      },
+      "ParseWarningOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warn"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "page",
+          "message"
+        ],
+        "title": "ParseWarningOut",
+        "type": "object"
+      },
       "PathHit": {
         "properties": {
           "chunk_id": {
@@ -6297,9 +6445,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Parse Report V1 Documents  Doc Id  Parse Report Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ParseReportOut"
                 }
               }
             },

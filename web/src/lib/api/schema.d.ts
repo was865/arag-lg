@@ -2134,6 +2134,59 @@ export interface components {
             /** Token Len */
             token_len: number;
         };
+        /** ParsePageOut */
+        ParsePageOut: {
+            /** Chars */
+            chars: number;
+            /** Chunks */
+            chunks: number;
+            /** Items */
+            items: number;
+            /** Page */
+            page: number;
+            /** Pictures */
+            pictures: number;
+            /** Size */
+            size: number[] | null;
+            /** Tables */
+            tables: number;
+        };
+        /**
+         * ParseReportOut
+         * @description 解析の記録（specs/030 R1）。本文は含まない。
+         */
+        ParseReportOut: {
+            /** Docling */
+            docling: {
+                [key: string]: unknown;
+            } | null;
+            /** Pages */
+            pages: components["schemas"]["ParsePageOut"][];
+            /** Parser */
+            parser: string;
+            /** Totals */
+            totals: {
+                [key: string]: number;
+            };
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: components["schemas"]["ParseWarningOut"][];
+        };
+        /** ParseWarningOut */
+        ParseWarningOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Page */
+            page: number | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warn";
+        };
         /** PathHit */
         PathHit: {
             /**
@@ -4108,9 +4161,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ParseReportOut"];
                 };
             };
             /** @description Validation Error */
