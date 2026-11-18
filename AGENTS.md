@@ -66,6 +66,7 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
   - ボタン `Button`/`IconButton`、札 `Badge`、入力 `Input`/`SearchField`、切り替え `Segmented`/`Tabs`、一覧 `ListGroup`、メニュー `Menu`、ダイアログ `Dialog`
 - 決まりは ESLint で止める（`web/eslint.config.mjs` の `UI_PARTS`・`UI_LOOKS`）。手書きのモーダル・メニュー・輪・小見出し・面・形式の札は lint で落ちる。わざと違う見た目（警告の面・強調の札など）は色を変えて書く。
 - 2 つ以上の画面で同じ形が出たら `ui/` に移す。見た目の組み合わせは CSS（`globals.css` の `@utility`）、振る舞いを持つものは部品にする。表示の整形（頁 `pageLabel`・見出し `headingCrumb`・日付・大きさ）は `web/src/lib/` の純関数にしてテストする。
+- class の定数（`tabsTriggerClass` など）を export するファイルには `"use client"` を付けない。付けるとサーバーの描画でその値が null になり、見た目が崩れる（hydration の不一致）。フォルダに分けた部品は入口のファイルだけに付ける。
 - 色の使い分け: 朱（accent）は引用の印・送信・選択中だけ。警告は `danger`。文言は日本語（`web/src/i18n/locales/ja/`）。
 
 ## 後端の動きはすべて記録に出す
