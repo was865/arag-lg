@@ -39,7 +39,7 @@
 | 機能 | 区分 | 新版の実現 | 旧版の出処 |
 |---|---|---|---|
 | 質問 → エージェント検索 → 引用付き回答（ストリーム表示） | MVP | `create_agent` + tools、`messages`+`custom` ストリーム | `lib/agent/run.ts`, `chat/messages.tsx` |
-| ツール実行の可視化（検索中・改写・リランク・評価…、所要時間・件数） | MVP | custom イベント → selector で旧 `ToolCall` へ写像 | `chat/tool-steps.tsx`, `agent-activity.tsx` |
+| ツール実行の可視化（検索中・改写・リランク・評価…、所要時間・件数） | MVP | custom イベント → selector で旧 `ToolCall` へ写像 | `chat/tool-steps/`, `agent-activity.tsx` |
 | ツール表示形式（カード / タイムライン / ログ）・推論過程の表示切替 | MVP | 旧コンポーネント流用 | 設定「外観」 |
 | 引用 `[n]` → 右パネルで原文（見出し・ページ・ハイライト） | MVP | 引用登録イベント + 生成後の `[n]` 実在検証 middleware | `lib/agent/citations.ts`, `sources/right-panel.tsx` |
 | 引用スタイル（上付き / チップ / ピル） | MVP | 旧コンポーネント流用 | `answer-markdown.tsx` |

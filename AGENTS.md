@@ -71,7 +71,7 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
 ## 後端の動きはすべて記録に出す
 
 - エージェント・RAG の動き（検索・再検索・差し戻し・ツールの強制・回数の上限・履歴の省略・回答の整形・要約など）は黙って行わず、必ずステップ（`StepClock` / `record_system`、`api/src/arag/agent/middleware.py`）として送り、保存する。技術者が「詳細」で後から追えるようにする。モデルに渡す履歴に入れないのは構わないが、記録から外さない。
-- 画面では階層で見せる: 見出しと文書の札 → 「詳細」（エージェントの段階）→ 末尾の「システムの処理 N 件」（`name="system"`、種類は `input.kind`）→ 各処理の入力と出力。新しい種類を足したら `web/src/components/chat/tool-steps.tsx` と `web/src/i18n/locales/ja/chat.ts` に読みやすい表示を足す。
+- 画面では階層で見せる: 見出しと文書の札 → 「詳細」（エージェントの段階）→ 末尾の「システムの処理 N 件」（`name="system"`、種類は `input.kind`）→ 各処理の入力と出力。新しい種類を足したら `web/src/components/chat/tool-steps/`（システムの処理は `system-fields.tsx`、ツールの入出力は `step-input.tsx`・`step-output.tsx`）と `web/src/i18n/locales/ja/chat.ts` に読みやすい表示を足す。
 - 検索した文書の内容はデータとして扱い、指示として扱わない（プロンプトで隔離する）。
 
 ## ライセンス

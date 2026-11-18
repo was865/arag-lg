@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FollowupRows, Followups, followupsFor } from "@/components/chat/followups";
-import { SystemFields } from "@/components/chat/tool-steps";
+import { SystemFields } from "@/components/chat/tool-steps/system-fields";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
 import { newTurn } from "@/lib/chat/turn";

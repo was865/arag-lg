@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SystemFields, ToolSteps, systemFieldValue } from "@/components/chat/tool-steps";
+import { ToolSteps } from "@/components/chat/tool-steps";
+import { SystemFields, systemFieldValue } from "@/components/chat/tool-steps/system-fields";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
 import type { ToolCall } from "@/lib/types";

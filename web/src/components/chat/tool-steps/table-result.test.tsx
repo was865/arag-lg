@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { TableResult } from "@/components/chat/tool-steps";
+import { TableResult } from "@/components/chat/tool-steps/table-result";
 import { ja } from "@/i18n/locales/ja";
 
 const render = (output: Record<string, unknown>) => renderToStaticMarkup(<TableResult output={output} t={ja} />);
