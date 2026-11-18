@@ -27,7 +27,7 @@ export function Switch({
       onCheckedChange={onChange}
       disabled={disabled}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer rounded-full bg-divider-strong transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-45 data-[state=checked]:bg-accent",
+        "relative inline-flex shrink-0 cursor-pointer rounded-full bg-divider-strong transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-45 data-[state=checked]:bg-accent-fill",
         size === "sm" ? "h-4 w-7" : "h-[22px] w-[38px]",
         className,
       )}

@@ -14,6 +14,7 @@ import { useAgentCfg } from "@/hooks/use-agent-cfg";
 import { useTweaks } from "@/hooks/use-tweaks";
 import { AGENT_DEFAULTS, AGENT_FIELDS, changedCount, type AgentField, type AgentSettings } from "@/lib/agent-settings";
 import { ACCENT_PRESETS } from "@/lib/constants";
+import { ACCENT_TONES } from "@/lib/accent";
 import type { CitationStyle, Density, ToolView } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -117,7 +118,8 @@ function AppearancePanel() {
                     "grid h-6 w-6 place-items-center rounded-full text-white ring-offset-2 ring-offset-surface",
                     on && "ring-2 ring-fg/30",
                   )}
-                  style={{ background: c }}
+                  // 画面で実際に使う塗り（白い文字が読める濃さ）を見せる
+                  style={{ background: ACCENT_TONES[c].ink }}
                 >
                   {on && <Icon name="check" size={ICON.sm} />}
                 </button>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { DEFAULT_ACCENT, THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/constants";
 import type { Tweaks } from "@/lib/types";
 import { migrateStoredTweaks } from "@/lib/tweaks-migrate";
+import { accentVars } from "@/lib/accent";
 
 const DEFAULTS: Tweaks = {
   dark: false,
@@ -34,7 +35,10 @@ function applyToRoot(t: Tweaks) {
   const el = document.documentElement;
   el.classList.toggle("theme-dark", t.dark);
   el.classList.toggle("theme-light", !t.dark);
-  el.style.setProperty("--accent", t.accent);
+  for (const [name, value] of Object.entries(accentVars(t.accent))) {
+    if (value) el.style.setProperty(name, value);
+    else el.style.removeProperty(name);
+  }
   const alt = t.accent.toLowerCase() === "#3fa77e" ? "#D2402B" : "#3FA77E";
   el.style.setProperty("--accent-alt-glow", `color-mix(in srgb, ${alt} 30%, transparent)`);
   // standalone PWA のステータスバー背景（theme-color meta）をテーマに追従させる。

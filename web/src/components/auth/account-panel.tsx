@@ -144,7 +144,7 @@ export function AccountPanel() {
     <div className="flex flex-col gap-6 px-5 py-5">
       {/* プロフィール */}
       <div className="flex items-center gap-3.5 px-1">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-title font-semibold text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent-fill text-title font-semibold text-white">
           {initial(user?.name, user?.email)}
         </span>
         <div className="min-w-0">

@@ -132,7 +132,7 @@ function StopMark({ s }: { s: FlowStop }) {
       return <span className={cn(base, "bg-accent-soft text-accent")}>{glyph("M6 4L3 7l3 3M3.5 7H10a3 3 0 010 6H8")}</span>;
     case "passed":
       return (
-        <span className={cn(base, "bg-accent text-surface", s.inferred && "bg-accent-soft text-accent")}>
+        <span className={cn(base, "bg-accent-fill text-white", s.inferred && "bg-accent-soft text-accent")}>
           {glyph("M4 8.3l2.6 2.5L12 5.4")}
         </span>
       );

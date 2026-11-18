@@ -29,7 +29,7 @@ function citeBtnClass(style: CitationStyle) {
   if (style === "chip")
     return cn(base, "mx-0.5 h-[18px] rounded-control border border-accent-soft bg-surface px-[5px] text-mini font-semibold text-accent hover:bg-accent-soft");
   if (style === "pill")
-    return cn(base, "mx-0.5 h-[18px] rounded-full bg-accent px-[7px] text-mini font-semibold text-white");
+    return cn(base, "mx-0.5 h-[18px] rounded-full bg-accent-fill px-[7px] text-mini font-semibold text-white");
   // numbered: 朱の印（specs/025 R43）。ホバーで少し浮き、周りに淡い輪が出る
   return cn(sealClass({ size: "sm" }), "mx-0.5 cursor-pointer border-0 align-[2px] transition-[transform,box-shadow] duration-(--duration-fast) hover:-translate-y-px hover:scale-110 hover:shadow-[0_0_0_4px_var(--accent-soft)] motion-reduce:hover:transform-none");
 }

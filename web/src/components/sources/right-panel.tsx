@@ -206,7 +206,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
               )}
             >
               {isHl && (
-                <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-accent px-1.5 py-0.5 text-mini font-semibold uppercase tracking-[0.04em] text-white">
+                <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-accent-fill px-1.5 py-0.5 text-mini font-semibold uppercase tracking-[0.04em] text-white">
                   <svg viewBox="0 0 12 12" width="9" height="9">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

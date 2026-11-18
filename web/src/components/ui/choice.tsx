@@ -36,7 +36,7 @@ export function ChoiceList<T extends string | null>({
               <span
                 className={cn(
                   "grid h-7 w-7 shrink-0 place-items-center rounded-control",
-                  on ? "bg-accent text-white" : "bg-surface-2 text-muted",
+                  on ? "bg-accent-fill text-white" : "bg-surface-2 text-muted",
                 )}
               >
                 <Icon name={o.icon} size={ICON.md} />

@@ -56,6 +56,7 @@ const COLORS = [
   ["bg-fg", "墨 fg"],
   ["bg-muted", "灰 muted"],
   ["bg-accent", "朱 accent"],
+  ["bg-accent-fill", "朱の塗り accent-fill"],
   ["bg-danger", "紅 danger"],
 ] as const;
 

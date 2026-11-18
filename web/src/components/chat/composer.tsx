@@ -401,7 +401,7 @@ export function Composer({
               onClick={onStop}
               title={t.chat.stopTitle}
               aria-label={t.chat.stopTitle}
-              className="grid h-8 w-8 shrink-0 animate-[ar-hl-pulse_1.6s_ease-in-out_infinite] place-items-center rounded-control border-0 bg-accent text-white max-md:h-[34px] max-md:w-[34px]"
+              className="grid h-8 w-8 shrink-0 animate-[ar-hl-pulse_1.6s_ease-in-out_infinite] place-items-center rounded-control border-0 bg-accent-fill text-white max-md:h-[34px] max-md:w-[34px]"
             >
               <svg viewBox="0 0 16 16" width="10" height="10">
                 <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor" />
@@ -415,7 +415,7 @@ export function Composer({
               aria-label={t.chat.sendTitle}
               className={cn(
                 "grid h-8 w-8 shrink-0 place-items-center rounded-control border-0 text-white transition-[background,filter] max-md:h-[34px] max-md:w-[34px]",
-                canSubmit ? "bg-accent hover:brightness-105" : "cursor-not-allowed bg-divider text-muted-2",
+                canSubmit ? "bg-accent-fill hover:brightness-105" : "cursor-not-allowed bg-divider text-muted-2",
               )}
             >
               <svg viewBox="0 0 16 16" width="13" height="13">

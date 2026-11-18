@@ -54,6 +54,8 @@
 
   /* 画面に出すアクセントは --accent-ui（ダークでは明るめにして読みやすさを保つ。R42） */
   --color-accent: var(--accent-ui);
+  /* 白い文字を載せる塗り（送信・番号の印・選択中のチェックなど）。両テーマで白に対して 4.5:1 以上 */
+  --color-accent-fill: var(--accent-fill);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-accent-soft: var(--accent-soft);
@@ -121,7 +123,7 @@
   --shadow-3: 0 22px 60px rgba(20, 20, 25, 0.18);
   /* 横スクロールの「続きがある」端の影（地の色に依存しない） */
   --edge-shadow: rgba(23, 24, 26, 0.1);
-  --accent-ui: var(--accent);
+  --accent-ui: var(--accent-ink);
 }
 
 .theme-dark {
@@ -149,15 +151,21 @@
   --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.45);
   --shadow-3: 0 22px 60px rgba(0, 0, 0, 0.6);
   --edge-shadow: rgba(0, 0, 0, 0.45);
-  /* 利用者が選んだ色を、暗い地でも読める明るさへ寄せる */
-  --accent-ui: color-mix(in oklab, var(--accent) 80%, white);
+  /* 利用者が選んだ色を、暗い地でも読める明るさへ寄せる（色ごとの値は lib/accent） */
+  --accent-ui: var(--accent-bright);
 }
 
 /* Accent is user-selectable; default = 朱（vermilion）. Soft/glow derived via color-mix
    so a single --accent change updates every tinted surface. */
 :root {
   --accent: #d2402b;
-  --accent-ui: var(--accent);
+  /* 色ごとに読みやすさを揃えた値（lib/accent の ACCENT_TONES）を JS が <html> に当てる。
+     ここは一覧に無い色のときの既定の式。朱ではどちらも ACCENT_TONES と同じ値になる */
+  --accent-ink: var(--accent);
+  --accent-bright: color-mix(in oklab, var(--accent) 80%, white);
+  --accent-ui: var(--accent-ink);
+  /* 塗りは両テーマとも ink（暗いテーマで明るい塗りに白い文字を載せると読めない） */
+  --accent-fill: var(--accent-ink);
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --accent-glow: color-mix(in srgb, var(--accent) 25%, transparent);
   /* Secondary decorative glow for the login backdrop (set per-accent at runtime). */
@@ -435,21 +443,23 @@
 }
 
 /* 面（カード）。角丸・縁・面の色の組み合わせを 1 か所で決める（部品は ui/card の Card・cardClass）。
-   縁は divider-strong に揃える。並び・余白・幅は使う側で足す。 */
+   縁は divider-strong に揃える。並び・余白・幅は使う側で足す。
+   色はテーマの変数（--surface など）を直接読む。--color-* は :root で一度だけ解決されるので、
+   入れ子の .theme-dark（/dev/ui の見本）で明るい色のままになる。 */
 @utility card {
   border-radius: var(--radius-card);
-  border: 0.5px solid var(--color-divider-strong);
-  background-color: var(--color-surface);
+  border: 0.5px solid var(--divider-strong);
+  background-color: var(--surface);
 }
 @utility card-sunken {
   border-radius: var(--radius-card);
-  border: 0.5px solid var(--color-divider-strong);
-  background-color: var(--color-surface-2);
+  border: 0.5px solid var(--divider-strong);
+  background-color: var(--surface-2);
 }
 @utility card-raised {
   border-radius: var(--radius-card);
-  border: 0.5px solid var(--color-divider-strong);
-  background-color: var(--color-surface);
+  border: 0.5px solid var(--divider-strong);
+  background-color: var(--surface);
   box-shadow: var(--shadow-e1);
 }
 
@@ -486,7 +496,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-muted-2);
+  color: var(--muted-2);
 }
 
 /* ドキュメント本文のスクリーンショット画像。背景に溶けないよう枠線・角丸・影を付与し、

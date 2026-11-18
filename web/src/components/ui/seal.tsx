@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 export const sealClass = cva(
-  "inline-grid shrink-0 place-items-center rounded-[3px] bg-accent font-mono font-bold leading-none text-white nums",
+  "inline-grid shrink-0 place-items-center rounded-[3px] bg-accent-fill font-mono font-bold leading-none text-white nums",
   {
     variants: {
       size: {

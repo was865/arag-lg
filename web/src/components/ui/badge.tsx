@@ -17,7 +17,7 @@ export const badgeVariants = cva(
         /** 前向きな状態・推奨 */
         accent: "bg-accent-soft text-accent",
         /** 強調（目印として面の上に重ねるもの） */
-        solid: "bg-accent text-white",
+        solid: "bg-accent-fill text-white",
         /** 失敗・取り消し */
         danger: "bg-danger-soft text-danger",
       },

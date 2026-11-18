@@ -50,7 +50,7 @@ export function SidebarUserFooter({
             data-tour="user-menu"
             className="flex w-full items-center gap-2.5 rounded-control bg-transparent px-2 py-1.5 outline-none hover:bg-divider focus-visible:ring-2 focus-visible:ring-accent/50 data-[state=open]:bg-divider"
           >
-            <div className="grid h-[30px] w-[30px] place-items-center rounded-full bg-accent text-caption font-semibold tracking-[0.02em] text-white">
+            <div className="grid h-[30px] w-[30px] place-items-center rounded-full bg-accent-fill text-caption font-semibold tracking-[0.02em] text-white">
               {user.initials}
             </div>
             <div className="min-w-0 flex-1 text-left">
@@ -80,7 +80,7 @@ export function SidebarUserFooter({
                 className="mb-1 gap-2.5 rounded-control border-[0.5px] border-divider bg-accent-soft px-2 py-2 data-[highlighted]:border-divider-strong data-[highlighted]:bg-accent-soft"
               >
                 <span className="flex items-center gap-2.5">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-white">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent-fill text-white">
                     <Icon name="building" size={14} />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
