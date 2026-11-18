@@ -3,10 +3,13 @@
 /** 解析の確認（specs/030-parse-inspection）。原件の頁にチャンクの枠を重ね、チャンクの文・文脈・埋め込みに送った本文を確かめる。
  * - PDF は左に頁（pdf.js）と枠、右に解析の記録とその頁のチャンク。枠とチャンクは互いに選び合う（R9・R10）。
  * - PDF 以外は枠を重ねず、整形表示と同じ幅の 1 列で記録とチャンクを並べる（R11）。
- * - 警告は記録の欄にまとめ、押すとその頁へ飛ぶ。頁の移動は ← → でもできる（R12）。 */
+ * - 警告は記録の欄にまとめ、押すとその頁へ飛ぶ。頁の移動は ← → でもできる（R12）。
+ * - 枠と一覧の行は同じ番号の印を持ち、ホバー・フォーカスで互いに光る（回答の印と根拠カードと同じ部品。ui/link-marks）。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Badge } from "@/components/ui/badge";
+import { linkedCard, linkedMark, linkHandlers, linkMarks } from "@/components/ui/link-marks";
+import { Seal } from "@/components/ui/seal";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { ListSkeleton, Skeleton } from "@/components/ui/skeleton";
@@ -43,7 +46,6 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   // 一覧から選んだら頁の枠へ、枠から選んだら一覧の行へ、見える位置まで送る
   const [reveal, setReveal] = useState<{ target: "box" | "row"; n: number }>({ target: "box", n: 0 });
@@ -141,7 +143,6 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
       selectedId={selectedId}
       revealRow={reveal.target === "row" ? reveal.n : 0}
       onPick={(c) => pick(c, "list")}
-      onHover={setHoveredId}
     />
   );
   const nav = paged && !loading && (
@@ -150,7 +151,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
 
   if (!pdf) {
     return (
-      <div className="h-full overflow-y-auto">
+      <div data-inspect className="h-full overflow-y-auto">
         <div className="mx-auto flex max-w-[820px] flex-col gap-4 px-8 pb-24 pt-6 max-md:px-4">
           {summary}
           <p className="m-0 text-caption text-muted">
@@ -164,7 +165,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_400px] max-lg:grid-cols-[minmax(0,1fr)_340px] max-md:grid-cols-1 max-md:grid-rows-[minmax(0,55fr)_minmax(0,45fr)]">
+    <div data-inspect className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_400px] max-lg:grid-cols-[minmax(0,1fr)_340px] max-md:grid-cols-1 max-md:grid-rows-[minmax(0,55fr)_minmax(0,45fr)]">
       <div className="flex min-h-0 min-w-0 flex-col border-r-[0.5px] border-divider max-md:border-b-[0.5px] max-md:border-r-0">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b-[0.5px] border-divider px-3">{nav}</div>
         <div className="min-h-0 flex-1 overflow-auto bg-bg-2 px-6 py-5 max-md:px-3 max-md:py-3">
@@ -174,7 +175,6 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
             pageSize={pageSize}
             chunks={onPage}
             selectedId={selectedId}
-            hoveredId={hoveredId}
             revealBox={reveal.target === "box" ? reveal.n : 0}
             onPick={(c) => pick(c, "box")}
           />
@@ -365,7 +365,6 @@ function ChunkList({
   selectedId,
   revealRow,
   onPick,
-  onHover,
 }: {
   chunks: ChunkOut[];
   page: number | null;
@@ -373,7 +372,6 @@ function ChunkList({
   /** 0 以外に変わったら選んだ行を見える位置まで送る */
   revealRow: number;
   onPick: (c: ChunkOut) => void;
-  onHover: (id: string | null) => void;
 }) {
   const ref = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -392,15 +390,9 @@ function ChunkList({
           {page != null ? "この頁にはチャンクがありません。" : "チャンクがありません。"}
         </p>
       ) : (
-        <ul ref={ref} className="m-0 flex list-none flex-col gap-1 p-0">
+        <ul ref={ref} className="m-0 flex list-none flex-col gap-2 p-0">
           {chunks.map((c) => (
-            <ChunkRow
-              key={c.id}
-              chunk={c}
-              selected={c.id === selectedId}
-              onPick={() => onPick(c)}
-              onHover={(on) => onHover(on ? c.id : null)}
-            />
+            <ChunkRow key={c.id} chunk={c} selected={c.id === selectedId} onPick={() => onPick(c)} />
           ))}
         </ul>
       )}
@@ -408,38 +400,34 @@ function ChunkList({
   );
 }
 
-function ChunkRow({
-  chunk: c,
-  selected,
-  onPick,
-  onHover,
-}: {
-  chunk: ChunkOut;
-  selected: boolean;
-  onPick: () => void;
-  onHover: (on: boolean) => void;
-}) {
+/** 枠と行を互いに光らせる（同じ番号の印・枠・行）。 */
+function chunkLink(id: string) {
+  return linkHandlers((from, on) => linkMarks(from, "[data-inspect]", `[data-chunk="${id}"]`, on));
+}
+
+/** チャンクの番号（文書の中の順。枠と行で同じ） */
+const chunkNo = (c: ChunkOut) => c.ordinal + 1;
+
+function ChunkRow({ chunk: c, selected, onPick }: { chunk: ChunkOut; selected: boolean; onPick: () => void }) {
   const pages =
     c.page_start == null ? null : c.page_end && c.page_end !== c.page_start ? `p.${c.page_start}–${c.page_end}` : `p.${c.page_start}`;
   return (
     <li
+      data-chunk={c.id}
       data-selected={selected}
-      onMouseEnter={() => onHover(true)}
-      onMouseLeave={() => onHover(false)}
-      className={cn(
-        "rounded-control border-[0.5px] transition-colors",
-        selected ? "border-accent/50 bg-surface shadow-e1" : "border-transparent hover:bg-divider",
-      )}
+      {...chunkLink(c.id)}
+      className={cn(linkedCard, "min-w-0", selected && "border-accent")}
     >
-      <button onClick={onPick} aria-expanded={selected} className="block w-full px-2.5 py-2 text-left">
-        <span className="flex items-center gap-1.5">
-          <Badge tone={selected ? "accent" : "neutral"}>{BLOCK_LABEL[c.block_type] ?? c.block_type}</Badge>
-          <span className="min-w-0 flex-1 truncate text-caption text-muted-2" title={headingCrumb(c.heading_path)}>
+      <button onClick={onPick} aria-expanded={selected} className="block w-full rounded-card px-2.5 py-2 text-left outline-none">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Seal n={chunkNo(c)} tone={selected ? "accent" : "neutral"} data-chunk={c.id} className={linkedMark} />
+          <Badge>{BLOCK_LABEL[c.block_type] ?? c.block_type}</Badge>
+          <span className="min-w-0 flex-1 truncate text-mini text-muted" title={headingCrumb(c.heading_path)}>
             {headingCrumb(c.heading_path) || "（見出しなし）"}
           </span>
-          {pages && <span className="shrink-0 font-mono text-mini text-muted-2">{pages}</span>}
+          {pages && <span className="nums shrink-0 font-mono text-mini text-muted-2">{pages}</span>}
         </span>
-        {!selected && <span className="mt-1 line-clamp-3 text-footnote leading-[1.55] text-fg-2">{c.text}</span>}
+        {!selected && <span className="mt-1.5 line-clamp-3 text-caption leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">{c.text}</span>}
       </button>
       {selected && <ChunkDetail chunk={c} />}
     </li>
@@ -518,7 +506,6 @@ function PdfPage({
   pageSize,
   chunks,
   selectedId,
-  hoveredId,
   revealBox,
   onPick,
 }: {
@@ -528,7 +515,6 @@ function PdfPage({
   pageSize: number[] | null;
   chunks: ChunkOut[];
   selectedId: string | null;
-  hoveredId: string | null;
   /** 0 以外に変わったら選んだ枠を見える位置まで送る */
   revealBox: number;
   onPick: (c: ChunkOut) => void;
@@ -602,24 +588,32 @@ function PdfPage({
           boxesOnPage(c, page).map((b, i) => {
             const r = boxToRect(b, drawn.h, scale);
             const on = c.id === selectedId;
-            const hover = c.id === hoveredId;
             return (
               <button
                 key={`${c.id}-${i}`}
+                data-chunk={c.id}
                 data-selected={on && i === 0}
                 onClick={() => onPick(c)}
-                aria-label={`チャンク: ${c.text.slice(0, 40)}`}
+                {...chunkLink(c.id)}
+                aria-label={`チャンク ${chunkNo(c)}: ${c.text.slice(0, 40)}`}
                 aria-pressed={on}
                 className={cn(
-                  "absolute rounded-[3px] border transition-colors",
+                  "absolute rounded-[3px] border outline-none transition-[background-color,border-color,box-shadow] duration-(--duration-fast) focus-visible:ring-2 focus-visible:ring-accent/50",
                   on
-                    ? "z-10 border-accent bg-accent/15 ring-2 ring-accent/25"
-                    : hover
-                      ? "border-accent/70 bg-accent-soft/60"
-                      : "border-fg/15 hover:border-accent/60 hover:bg-accent-soft/50",
+                    ? "z-10 border-accent bg-accent/10 ring-2 ring-accent/25"
+                    : "border-fg/15 data-[on]:z-10 data-[on]:border-accent data-[on]:bg-accent-soft/60",
                 )}
                 style={{ left: r.left - 2, top: r.top - 2, width: r.width + 4, height: r.height + 4 }}
-              />
+              >
+                {i === 0 && (
+                  <Seal
+                    n={chunkNo(c)}
+                    tone={on ? "accent" : "neutral"}
+                    data-chunk={c.id}
+                    className={cn(linkedMark, "pointer-events-none absolute -left-2 -top-2 bg-surface shadow-e1", on && "bg-accent")}
+                  />
+                )}
+              </button>
             );
           }),
         )}

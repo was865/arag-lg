@@ -42,6 +42,7 @@
 - PDF の描画は `pdfjs-dist`（Apache-2.0）。`licenses.md` に追記。原件は既存の `/original` から取る。
 - 座標: `BOTTOMLEFT` は `y_view = page_height - y`。頁の大きさは `docling.json` の `pages[n].size`。`/parse-report` の頁に `size` を足す（枠の計算に要る）。
 - 描画は頁ごとの canvas の上に絶対配置の枠。選んだチャンクの枠だけ強調する。
+- 枠と一覧の行は同じ番号の印（`Seal` の `tone="neutral"`）を持ち、ホバー・フォーカスで互いに光る。回答の印と根拠カードの連動と同じ部品（`components/ui/link-marks.ts`）を使う。チャット側（`evidence-rail.tsx`）の移行は別の変更で行う。
 
 ## テスト
 
