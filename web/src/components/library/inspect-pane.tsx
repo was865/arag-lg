@@ -4,12 +4,12 @@
  * - PDF は左に頁（pdf.js）と枠、右に解析の記録とその頁のチャンク。枠とチャンクは互いに選び合う（R9・R10）。
  * - PDF 以外は枠を重ねず、整形表示と同じ幅の 1 列で記録とチャンクを並べる（R11）。
  * - 警告は記録の欄にまとめ、押すとその頁へ飛ぶ。頁の移動は ← → でもできる（R12）。
- * - 枠と一覧の行は同じ番号の印を持ち、ホバー・フォーカスで互いに光る（回答の印と根拠カードと同じ部品。ui/link-marks）。 */
+ * - 枠と一覧の行はホバー・フォーカスで互いに光る（回答の印と根拠カードと同じ部品。ui/link-marks）。
+ * - 「読み順」を入れると枠にチャンクの番号（Docling が読んだ順）を出す。段組みの読み違いを見つけるため。普段は原件を隠さないよう出さない。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Badge } from "@/components/ui/badge";
-import { linkedCard, linkedMark, linkHandlers, linkMarks } from "@/components/ui/link-marks";
-import { Seal } from "@/components/ui/seal";
+import { linkedCard, linkHandlers, linkMarks } from "@/components/ui/link-marks";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { ListSkeleton, Skeleton } from "@/components/ui/skeleton";
@@ -47,6 +47,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [showOrder, setShowOrder] = useState(false);
   // 一覧から選んだら頁の枠へ、枠から選んだら一覧の行へ、見える位置まで送る
   const [reveal, setReveal] = useState<{ target: "box" | "row"; n: number }>({ target: "box", n: 0 });
   const pdf = isPdf(doc.filename);
@@ -167,7 +168,20 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
   return (
     <div data-inspect className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_400px] max-lg:grid-cols-[minmax(0,1fr)_340px] max-md:grid-cols-1 max-md:grid-rows-[minmax(0,55fr)_minmax(0,45fr)]">
       <div className="flex min-h-0 min-w-0 flex-col border-r-[0.5px] border-divider max-md:border-b-[0.5px] max-md:border-r-0">
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b-[0.5px] border-divider px-3">{nav}</div>
+        <div className="flex h-11 shrink-0 items-center gap-2 border-b-[0.5px] border-divider px-3">
+          {nav}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={showOrder}
+            onClick={() => setShowOrder((x) => !x)}
+            title="枠にチャンクの番号（Docling が読んだ順）を出す"
+            className={cn("ml-auto", showOrder ? "bg-divider text-fg" : "text-muted")}
+          >
+            <Icon name="layers" size={12} />
+            読み順
+          </Button>
+        </div>
         <div className="min-h-0 flex-1 overflow-auto bg-bg-2 px-6 py-5 max-md:px-3 max-md:py-3">
           <PdfPage
             docId={doc.id}
@@ -175,6 +189,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
             pageSize={pageSize}
             chunks={onPage}
             selectedId={selectedId}
+            showOrder={showOrder}
             revealBox={reveal.target === "box" ? reveal.n : 0}
             onPick={(c) => pick(c, "box")}
           />
@@ -420,7 +435,7 @@ function ChunkRow({ chunk: c, selected, onPick }: { chunk: ChunkOut; selected: b
     >
       <button onClick={onPick} aria-expanded={selected} className="block w-full rounded-card px-2.5 py-2 text-left outline-none">
         <span className="flex min-w-0 items-center gap-1.5">
-          <Seal n={chunkNo(c)} tone={selected ? "accent" : "neutral"} data-chunk={c.id} className={linkedMark} />
+          <span className="nums shrink-0 font-mono text-mini text-muted-2">#{chunkNo(c)}</span>
           <Badge>{BLOCK_LABEL[c.block_type] ?? c.block_type}</Badge>
           <span className="min-w-0 flex-1 truncate text-mini text-muted" title={headingCrumb(c.heading_path)}>
             {headingCrumb(c.heading_path) || "（見出しなし）"}
@@ -506,6 +521,7 @@ function PdfPage({
   pageSize,
   chunks,
   selectedId,
+  showOrder,
   revealBox,
   onPick,
 }: {
@@ -515,6 +531,8 @@ function PdfPage({
   pageSize: number[] | null;
   chunks: ChunkOut[];
   selectedId: string | null;
+  /** 枠にチャンクの番号（読み順）を出す */
+  showOrder: boolean;
   /** 0 以外に変わったら選んだ枠を見える位置まで送る */
   revealBox: number;
   onPick: (c: ChunkOut) => void;
@@ -605,13 +623,13 @@ function PdfPage({
                 )}
                 style={{ left: r.left - 2, top: r.top - 2, width: r.width + 4, height: r.height + 4 }}
               >
-                {i === 0 && (
-                  <Seal
-                    n={chunkNo(c)}
-                    tone={on ? "accent" : "neutral"}
-                    data-chunk={c.id}
-                    className={cn(linkedMark, "pointer-events-none absolute -left-2 -top-2 bg-surface shadow-e1", on && "bg-accent")}
-                  />
+                {showOrder && i === 0 && (
+                  <span
+                    aria-hidden
+                    className="nums pointer-events-none absolute -left-px -top-[15px] rounded-[3px] bg-fg/80 px-1 font-mono text-[9.5px] leading-[14px] text-bg"
+                  >
+                    #{chunkNo(c)}
+                  </span>
                 )}
               </button>
             );

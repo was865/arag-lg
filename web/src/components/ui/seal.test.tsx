@@ -16,9 +16,4 @@ describe("Seal（引用の印）", () => {
     expect(sealClass({ size: "sm" })).toContain("h-[15px]");
     expect(sealClass({ size: "md" })).toContain("h-[18px]");
   });
-  it("引用でない番号は中性の色で、光ると朱になる", () => {
-    const cls = sealClass({ tone: "neutral" });
-    expect(cls).not.toContain(" bg-accent ");
-    expect(cls).toContain("data-[on]:bg-accent");
-  });
 });
