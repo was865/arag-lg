@@ -1,5 +1,5 @@
 # 開発用コマンド（specs/001-p0-skeleton R2）。
-.PHONY: setup dev-api dev-web up-infra up down eval-api eval-api-down test lint gen gen-check graph graph-check licenses
+.PHONY: setup dev-api dev-web up-infra up up-prod down eval-api eval-api-down test lint gen gen-check graph graph-check licenses
 
 setup: ## 依存をロックどおりに導入
 	cd api && uv sync --locked
@@ -14,17 +14,20 @@ dev-web: ## Web を開発モードで起動
 up-infra: ## postgres / qdrant / redis だけ起動
 	docker compose up -d postgres qdrant redis
 
-up: ## 全サービスを build して起動
-	docker compose up -d --build --wait
+up: ## 全サービスを開発構成で起動（compose.override.yaml。ソースを載せ、変えたらその場で反映）
+	docker compose up -d --build --wait --renew-anon-volumes
+
+up-prod: ## 全サービスを本番と同じ構成で起動（build した image で動かす。push 前の確認など）
+	docker compose -f compose.yaml up -d --build --wait
 
 down:
 	docker compose --profile eval down
 
 eval-api: ## 評価・CLI 用の api（開発用ヘッダで認証、127.0.0.1:8101）を起動
-	docker compose --profile eval up -d --build --wait api-eval
+	docker compose -f compose.yaml --profile eval up -d --build --wait api-eval
 
 eval-api-down: ## 評価・CLI 用の api を止める
-	docker compose --profile eval stop api-eval
+	docker compose -f compose.yaml --profile eval stop api-eval
 
 test: ## 単体テスト
 	cd api && uv run pytest -q

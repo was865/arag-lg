@@ -89,6 +89,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [api, web]
     env:
+      # 本番の構成を確かめる（開発用の compose.override.yaml を読まない）
+      COMPOSE_FILE: compose.yaml
       ARAG_TEI_EMBED_URL: http://tei-embed:80
       ARAG_TEI_RERANK_URL: http://tei-rerank:80
     steps:

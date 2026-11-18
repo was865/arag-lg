@@ -6,7 +6,8 @@
 
 ```bash
 cp .env.example .env   # 初回だけ。推論の構成 [A] オフライン / [B] 軽量 / [C] 混在 は .env.example の先頭を参照
-make up                # compose で全体（postgres・qdrant・redis・api・worker・runner・web・mailpit）
+make up                # compose で全体（postgres・qdrant・redis・api・worker・runner・web・mailpit）。開発構成
+make up-prod           # 本番と同じ構成（build した image。compose.override.yaml を読まない）
 ```
 
 | URL | 中身 |
@@ -14,15 +15,11 @@ make up                # compose で全体（postgres・qdrant・redis・api・w
 | http://localhost:3100 | 画面（compose の `web`）。実際の質問はここで |
 | http://localhost:8100 | API（`/healthz`・`/readyz`。readyz は推論の部品まで確かめる） |
 | http://localhost:8025 | mailpit（確認・再設定のメール） |
+| http://localhost:3100/dev/ui | UI 部品の見本（開発構成のときだけ） |
 
 - `.env` の値は画面・ログ・コミットに出さない。テスト用アカウントも `.env` にある。
-- コードを変えたら作り直す: エージェント・プロンプト → `runner`、ルート → `api`、入庫 → `worker`、画面 → `web`。
-
-  ```bash
-  docker compose up -d --build --no-deps runner web
-  ```
-
-- 画面だけを速く回すなら `make dev-web`（ただし質問は 3100 からしか送れない。`AGENTS.md` 参照）。
+- 開発構成（`make up`）ではソースを容器に載せているので、保存すれば反映する（`web` は next dev、`api` は --reload、`runner`・`worker` は watchfiles で再起動）。作り直しは依存（`pyproject.toml`・`package.json`）を変えたときだけ `make up`。
+- 本番の構成（`make up-prod`）では image で動くので、変えたら作り直す: `docker compose -f compose.yaml up -d --build --no-deps runner web`。開発構成に戻すときは `make up`。
 
 ## 2. GPU 機（Windows + RTX 4090、Docker Desktop + WSL2）
 
@@ -99,7 +96,7 @@ cd .. && make eval-api-down
 
 | 症状 | 原因と対処 |
 |---|---|
-| 変えたはずのエージェントの動きが変わらない | `runner` を作り直していない。`docker compose up -d --build --no-deps runner` |
+| 変えたはずのエージェントの動きが変わらない | 本番の構成（`make up-prod`）で動いている。`make up` で開発構成に戻すか、`docker compose -f compose.yaml up -d --build --no-deps runner`。開発構成なら `docker compose logs runner` に `change detected` が出ているか見る |
 | 開発サーバから質問が送れない | 送信元を 3100 に限っている。3100 で確かめる |
 | 回答がすぐ失敗する・モデルが切り替わる | GPU 機の vLLM が落ちている、または外部 API の残高切れ（402）。「詳細」のモデル切り替えのステップに理由が出る |
 | 入庫が進まない | `worker` のログ、api の `/readyz`、docling-serve（5001）の `/health` を見る |

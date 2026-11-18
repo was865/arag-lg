@@ -38,7 +38,8 @@ make gen            # API を変えたら: OpenAPI → web の TS 型（CI の g
 make graph          # 回答の流れ（api/src/arag/agent/flow.py）を変えたら: 図と画面用の JSON を書き出す（CI の graph-check）
 make licenses       # 本番依存のライセンス走査
 make up-infra       # postgres・qdrant・redis だけ
-make up / make down # 全体を compose で
+make up / make down # 全体を compose で（開発構成。ソースを載せ、保存で反映）
+make up-prod        # 本番と同じ構成（build した image）で確かめる
 make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、127.0.0.1:8101）。終わったら make eval-api-down
 ```
 
@@ -48,15 +49,16 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
 ## 動かして確かめる（docker compose）
 
 - compose のサービス: `api`（:8100、HTTP を受けるだけ）・`runner`（エージェントの実行）・`worker`（入庫）・`web`（:3100）・postgres・qdrant・redis・mailpit（:8025、確認メール）。
-- **エージェントは `runner` コンテナで動く**。`api/src/arag/agent/`・`api/src/arag/prompts/` を変えたら `docker compose up -d --build --no-deps runner`（ルートを変えたら `api`、入庫を変えたら `worker` も）。画面を変えたら `web` を作り直す。作り直さないと 3100 は古いまま。
-- 実際の質問は **3100**（compose の `web`）で確かめる。プロキシ（`web/src/lib/api/proxy.ts`）が送信元を 3100 に限るので、開発サーバ（3200 など）からは質問を送れない。開発サーバでも `BETTER_AUTH_URL=http://localhost:3100` のままにする。
+- **ふだんは開発構成**（`compose.override.yaml`。素の `docker compose` が自動で読む）。ソースを容器に載せ、保存すると反映する: `web` は `next dev`、`api` は `--reload`、`runner`（エージェントの実行）・`worker`（入庫）は watchfiles で再起動（実行中の回答・入庫は切れる）。作り直し（`--build`）は依存を変えたときだけ。依存を変えたら `make up`（node_modules を作り直す）。
+- **本番の構成で確かめる**ときは `make up-prod`（`docker compose -f compose.yaml`。上書きを読まない）。build の失敗・表示の差・速さは開発構成では分からない。画面の大きな変更は push 前に一度ここで見る。CI の compose スモークもこの構成。戻すときは `make up`。
+- 実際の質問は **3100**（compose の `web`）で確かめる。プロキシ（`web/src/lib/api/proxy.ts`）が送信元を 3100 に限るので、ホストで別に開いた開発サーバ（3200 など）からは質問を送れない。
 - 推論（埋め込み・rerank・解析・vLLM）は GPU 機で動かし、`.env` の URL（`ARAG_TEI_EMBED_URL` など、`.env.example` 参照）で指す。Mac では TEI を動かさない（CPU イメージが amd64 のみ）。
 - 回答の正誤は評価用の元の文書と突き合わせる（例 `eval/assets/harukaze_mix/docs/`。xlsx・pptx は openpyxl・python-pptx で読める）。もっともらしい数字に正しく見える出典番号が付いていることがあるので、数字は元の表で確かめる。
 - Next.js 16 は学習データと違う点がある。`web/AGENTS.md` のとおり `web/node_modules/next/dist/docs/` を先に読む。
 
 ## 画面の部品（`web/src/components/ui/`）
 
-- 部品の見本は **`/dev/ui`**（開発時のみ。ライトとダークを並べる）。新しい部品や形を足したら見本にも足す。Storybook は入れない（見本はアプリの Tailwind・テーマ・i18n をそのまま使えるこの 1 ページで足りる）。
+- 部品の見本は **http://localhost:3100/dev/ui**（開発構成のときだけ。ライトとダークを並べる）。新しい部品や形を足したら見本にも足す。Storybook は入れない（見本はアプリの Tailwind・テーマ・i18n をそのまま使えるこの 1 ページで足りる）。
 - 画面を作る前に `ui/` と見本を見る。あるものを使い、同じ見た目の className を書き写さない。主なもの:
   - 面: `Card`（tone: surface・sunken・raised・linked）、文字列だけなら class の `card`・`card-sunken`・`card-raised`
   - 区切りの小見出し: class の `eyebrow`。処理中の輪: `Spinner`（画面の読み込みは `Skeleton`）。形式の札: `FileTile`
