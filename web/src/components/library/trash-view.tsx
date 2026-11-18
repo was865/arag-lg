@@ -14,11 +14,13 @@ import { getFileMeta } from "@/lib/file-types";
 import { libraryApi, type TrashItem } from "@/lib/library/api";
 import { formatDate } from "@/lib/library/view";
 import { IconButton, Button } from "@/components/ui/button";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 const KIND_LABEL: Record<TrashItem["kind"], string> = {
-  document: "文書",
-  folder: "フォルダ",
-  kb: "ナレッジベース",
+  document: t.trash.kindDocument,
+  folder: t.trash.kindFolder,
+  kb: t.trash.kindKb,
 };
 
 function kindIcon(item: TrashItem): { name: IconName; color?: string } {
@@ -40,7 +42,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
     } catch (e) {
       setItems((x) => x ?? []);
       push(
-        e instanceof ApiError ? e.message : "ごみ箱を取得できませんでした",
+        e instanceof ApiError ? e.message : t.trash.loadFailed,
         "error",
       );
     }
@@ -54,7 +56,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
         if (!alive) return;
         setItems([]);
         push(
-          e instanceof ApiError ? e.message : "ごみ箱を取得できませんでした",
+          e instanceof ApiError ? e.message : t.trash.loadFailed,
           "error",
         );
       },
@@ -69,10 +71,10 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
     try {
       await libraryApi.restore(item);
       setItems((all) => all?.filter((x) => x.id !== item.id) ?? null);
-      push(`「${item.name}」を元に戻しました`, "success");
+      push(interpolate(t.trash.restored, { name: item.name }), "success");
       void refreshKbs();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "元に戻せませんでした", "error");
+      push(e instanceof ApiError ? e.message : t.trash.restoreFailed, "error");
       void reload();
     } finally {
       setBusyId(null);
@@ -81,12 +83,12 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   const purge = async (item: TrashItem) => {
     const ok = await confirm({
-      title: `「${item.name}」を完全に削除しますか？`,
+      title: interpolate(t.trash.purgeTitle, { name: item.name }),
       description:
         item.kind === "folder"
-          ? "中のフォルダと文書も含め、元の文書と検索用のデータがすべて消えます。この操作は取り消せません。"
-          : "元の文書と検索用のデータがすべて消えます。この操作は取り消せません。",
-      confirmLabel: "完全に削除",
+          ? t.trash.purgeBodyFolder
+          : t.trash.purgeBody,
+      confirmLabel: t.trash.purgeConfirm,
       tone: "danger",
     });
     if (!ok) return;
@@ -96,9 +98,9 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
       setItems((all) => all?.filter((x) => x.id !== item.id) ?? null);
       // フォルダは中の（別に消した）項目も消えるので取り直す
       if (item.kind === "folder") void reload();
-      push(`「${item.name}」を完全に削除しました`, "success");
+      push(interpolate(t.trash.purged, { name: item.name }), "success");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "削除できませんでした", "error");
+      push(e instanceof ApiError ? e.message : t.library.deleteFailed, "error");
     } finally {
       setBusyId(null);
     }
@@ -108,7 +110,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
     <main className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden bg-bg">
       <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:px-2.5">
         <IconButton
-          label="メニューを開く"
+          label={t.common.openMenu}
           tooltip={false}
           icon="menu"
           iconSize={15}
@@ -116,11 +118,11 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
           className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
         />
         <h1 className="m-0 flex-1 truncate text-body font-semibold text-fg">
-          ごみ箱
+          {t.trash.title}
         </h1>
         {items && items.length > 0 && (
           <span className="font-mono text-caption text-muted">
-            {items.length} 件
+            {interpolate(t.trash.count, { length: items.length })}
           </span>
         )}
       </header>
@@ -128,7 +130,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[900px] px-[18px] pb-10 pt-4 max-md:px-2">
           <p className="m-0 mb-3 px-2 text-footnote leading-[1.6] text-muted">
-            ごみ箱の項目は検索の対象外です。期限が来ると自動で完全に削除されます。
+            {t.trash.note}
           </p>
           {items === null ? (
             <ListSkeleton />
@@ -138,7 +140,7 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                 <Icon name="trash" size={18} />
               </span>
               <span className="text-body font-medium text-fg">
-                ごみ箱は空です
+                {t.trash.empty}
               </span>
             </div>
           ) : (
@@ -162,14 +164,13 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                       {KIND_LABEL[item.kind]}
                       {item.kind !== "kb" && item.kb_name
                         ? ` · ${item.kb_name}`
-                        : ""}{" "}
-                      · {formatDate(item.deleted_at)} に削除 ·{" "}
+                        : ""}{interpolate(t.trash.deletedAt, { deleted_at: formatDate(item.deleted_at) })}
                       <span
                         className={
                           item.remaining_days <= 3 ? "text-danger" : undefined
                         }
                       >
-                        あと {item.remaining_days} 日で消去
+                        {interpolate(t.trash.remaining, { remaining_days: item.remaining_days })}
                       </span>
                     </div>
                   </div>
@@ -179,14 +180,14 @@ export function TrashView({ onOpenMenu }: { onOpenMenu: () => void }) {
                       onClick={() => void restore(item)}
                     >
                       <Icon name="refresh" size={12} />
-                      元に戻す
+                      {t.trash.restore}
                     </Button>
                     {item.kind !== "kb" && item.purgeable && (
                       <Button variant="danger-ghost" size="sm"
                         disabled={busy}
                         onClick={() => void purge(item)}
                       >
-                        完全に削除
+                        {t.trash.purgeConfirm}
                       </Button>
                     )}
                   </div>

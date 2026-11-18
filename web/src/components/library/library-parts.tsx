@@ -3,6 +3,8 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Icon, type IconName } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 /** 一覧の列（名前・状態・ページ・サイズ・追加日・メニュー）。見出しの行と各行で同じものを使う */
 export const ROW_GRID =
@@ -62,7 +64,7 @@ export function RowMenu({ open, onToggle, items }: { open: boolean; onToggle: (o
       <Menu open={open} onOpenChange={onToggle}>
         <MenuTrigger asChild>
           <IconButton
-            label="操作メニュー"
+            label={t.library.rowMenu}
             icon="more"
             tooltip={false}
             className={cn(!open && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100")}
@@ -94,13 +96,13 @@ export function EmptyLibrary({ canUpload, onPick }: { canUpload: boolean; onPick
           <Icon name="database" size={20} />
         </span>
         <span className="text-headline font-semibold text-fg">
-          {canUpload ? "文書を追加して、質問に使いましょう" : "このナレッジベースにはまだ文書がありません"}
+          {canUpload ? t.library.emptyTitle : t.library.emptyReadOnly}
         </span>
         {canUpload && (
           <span className="text-footnote leading-[1.6] text-muted">
-            ここにドラッグ＆ドロップするか、クリックして選んでください。
+            {t.library.emptyHint}
             <br />
-            PDF・Word・Excel・PowerPoint・テキスト・画像に対応。追加すると自動で解析され、検索できるようになります。
+            {t.library.emptyFormats}
           </span>
         )}
       </button>
@@ -114,7 +116,7 @@ export function CheckBox({ checked }: { checked: boolean }) {
       aria-hidden
       className={cn(
         "grid h-[18px] w-[18px] place-items-center rounded-control border-[1.5px]",
-        checked ? "border-accent bg-accent text-white" : "border-divider-strong bg-surface text-transparent",
+        checked ? "border-accent-fill bg-accent-fill text-white" : "border-divider-strong bg-surface text-transparent",
       )}
     >
       <Icon name="check" size={11} />
@@ -147,24 +149,24 @@ export function BulkBar({
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex justify-center px-3 pb-[max(14px,env(safe-area-inset-bottom))]">
       <div
         role="toolbar"
-        aria-label="選択した文書の操作"
+        aria-label={t.library.bulkToolbar}
         className="pointer-events-auto flex max-w-full animate-pop-in items-center gap-1 rounded-sheet border-[0.5px] border-divider-strong bg-surface p-1.5 pl-3.5 shadow-e3"
       >
         <span className="mr-1 shrink-0 whitespace-nowrap text-footnote font-semibold text-fg">
-          {count} 件を選択
+          {interpolate(t.library.selectedCount, { count })}
         </span>
         <Button variant="ghost" onClick={onSelectAll} disabled={busy || count === total} className="text-fg-2 max-md:hidden">
-          すべて選択
+          {t.library.selectAll}
         </Button>
         <Button variant="ghost" onClick={onMove} disabled={busy || count === 0 || !canMove}>
           <Icon name="folder" size={13} />
-          移動
+          {t.library.move}
         </Button>
         <Button variant="danger-ghost" onClick={onRemove} disabled={busy || !canRemove}>
           <Icon name="trash" size={13} />
-          ごみ箱へ
+          {t.library.toTrashShort}
         </Button>
-        <IconButton label="選択を解除" tooltip={false} icon="close" onClick={onClear} className="h-8 w-8" />
+        <IconButton label={t.library.clearSelection} tooltip={false} icon="close" onClick={onClear} className="h-8 w-8" />
       </div>
     </div>
   );

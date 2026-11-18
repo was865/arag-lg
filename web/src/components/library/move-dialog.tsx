@@ -7,6 +7,7 @@ import { Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import type { FolderOut } from "@/lib/library/api";
 import { folderOptions } from "@/lib/library/folders";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 
 export interface MoveDialogProps {
   title: string;
@@ -44,7 +45,7 @@ export function MoveDialog({ title, folders, current, rootLabel, onPick, onCance
               >
                 <Icon name={o.root ? "database" : "folder"} size={ICON.md} />
                 <span className="min-w-0 flex-1 truncate">{o.name}</span>
-                {here && <span className="shrink-0 text-caption">現在の場所</span>}
+                {here && <span className="shrink-0 text-caption">{t.library.currentLocation}</span>}
               </button>
             );
           })}

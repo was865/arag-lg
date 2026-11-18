@@ -34,6 +34,8 @@ import { chunk, selectRange, toggleId } from "@/lib/library/selection";
 import { breadcrumb, childFolders } from "@/lib/library/folders";
 import { docStatus, formatBytes, kbLabel, uploadTarget, type StatusFilter } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 export interface LibraryViewProps {
   /** 表示する KB（null = アクセスできるすべての文書）。 */
@@ -79,8 +81,8 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
 
   // 名前の絞り込みは入力が落ち着いてからサーバーに問い合わせる（全件が対象）
   useEffect(() => {
-    const t = window.setTimeout(() => setSearch(query.trim()), 250);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setSearch(query.trim()), 250);
+    return () => window.clearTimeout(timer);
   }, [query]);
 
   // フォルダをたどるのは KB を開いていて、絞り込んでいないときだけ
@@ -122,12 +124,12 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     setDocs((all) => all?.filter((x) => x.id !== d.id) ?? null);
     try {
       await libraryApi.remove(d.id);
-      push(`「${d.filename}」をごみ箱に移しました`, "success");
+      push(interpolate(t.library.docTrashed, { filename: d.filename }), "success");
       void refreshKbs();
       void reload();
     } catch (e) {
       void reload();
-      push(errorMessage(e, "削除できませんでした"), "error");
+      push(errorMessage(e, t.library.deleteFailed), "error");
     }
   };
 
@@ -138,10 +140,10 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     if (browsing) setDocs((all) => all?.filter((x) => x.id !== docId) ?? null);
     try {
       await libraryApi.moveDocuments([docId], to);
-      const name = to ? (folders.find((f) => f.id === to)?.name ?? "フォルダ") : kbLabel(kb);
-      push(`「${d.filename}」を「${name}」に移しました`, "success");
+      const name = to ? (folders.find((f) => f.id === to)?.name ?? t.library.folder) : kbLabel(kb);
+      push(interpolate(t.library.docMoved, { filename: d.filename, name }), "success");
     } catch (e) {
-      push(errorMessage(e, "移動できませんでした"), "error");
+      push(errorMessage(e, t.library.moveFailed), "error");
     }
     void reload();
   };
@@ -150,10 +152,10 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     if (!d.job_id) return;
     try {
       await libraryApi.retryJob(d.job_id);
-      push(`「${d.filename}」を解析し直します`, "info");
+      push(interpolate(t.library.reparsing, { filename: d.filename }), "info");
       void reload();
     } catch (e) {
-      push(errorMessage(e, "再実行できませんでした"), "error");
+      push(errorMessage(e, t.library.retryFailed), "error");
     }
   };
 
@@ -175,20 +177,20 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const removeSelected = async () => {
     const ids = [...selected];
     const ok = await confirm({
-      title: `${ids.length} 件の文書をごみ箱に移しますか？`,
-      description: "検索の対象から外れます。ごみ箱から元に戻せます。",
-      confirmLabel: "ごみ箱に移す",
+      title: interpolate(t.library.bulkTrashTitle, { length: ids.length }),
+      description: t.library.bulkTrashBody,
+      confirmLabel: t.library.trashConfirm,
       tone: "danger",
     });
     if (!ok) return;
     setBulkBusy(true);
     try {
       for (const part of chunk(ids, 500)) await libraryApi.removeDocuments(part);
-      push(`${ids.length} 件をごみ箱に移しました`, "success");
+      push(interpolate(t.library.bulkTrashed, { length: ids.length }), "success");
       endSelection();
       void refreshKbs();
     } catch (e) {
-      push(errorMessage(e, "ごみ箱に移せませんでした"), "error");
+      push(errorMessage(e, t.library.bulkTrashFailed), "error");
     } finally {
       setBulkBusy(false);
       void reload();
@@ -200,11 +202,11 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     setBulkBusy(true);
     try {
       for (const part of chunk(ids, 500)) await libraryApi.moveDocuments(part, to);
-      const name = to ? (folders.find((f) => f.id === to)?.name ?? "フォルダ") : kbLabel(kb);
-      push(`${ids.length} 件を「${name}」に移しました`, "success");
+      const name = to ? (folders.find((f) => f.id === to)?.name ?? t.library.folder) : kbLabel(kb);
+      push(interpolate(t.library.bulkMoved, { length: ids.length, name }), "success");
       endSelection();
     } catch (e) {
-      push(errorMessage(e, "移動できませんでした"), "error");
+      push(errorMessage(e, t.library.moveFailed), "error");
     } finally {
       setBulkBusy(false);
       void reload();
@@ -232,25 +234,25 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       const f = await libraryApi.createFolder(kbId, name, folderId);
       setFolders((all) => [...all, f]);
     } catch (e) {
-      push(errorMessage(e, "フォルダを作成できませんでした"), "error");
+      push(errorMessage(e, t.library.folderCreateFailed), "error");
     }
   };
 
   const removeFolder = async (f: FolderOut) => {
     const ok = await confirm({
-      title: `フォルダ「${f.name}」をごみ箱に移しますか？`,
-      description: "中のフォルダと文書もまとめて移ります。ごみ箱から元に戻せます。",
-      confirmLabel: "ごみ箱に移す",
+      title: interpolate(t.library.folderTrashTitle, { name: f.name }),
+      description: t.library.folderTrashBody,
+      confirmLabel: t.library.trashConfirm,
       tone: "danger",
     });
     if (!ok) return;
     try {
       await libraryApi.removeFolder(f.id);
-      push(`フォルダ「${f.name}」をごみ箱に移しました`, "success");
+      push(interpolate(t.library.folderTrashed, { name: f.name }), "success");
       void refreshKbs();
       void reload();
     } catch (e) {
-      push(errorMessage(e, "削除できませんでした"), "error");
+      push(errorMessage(e, t.library.deleteFailed), "error");
     }
   };
 
@@ -267,7 +269,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
         await libraryApi.renameFolder(id, name);
       } catch (e) {
         setFolders((all) => all.map((x) => (x.id === id ? before : x)));
-        push(errorMessage(e, "名前を変更できませんでした"), "error");
+        push(errorMessage(e, t.library.renameFailed), "error");
       }
       return;
     }
@@ -278,7 +280,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       await libraryApi.rename(id, name);
     } catch (e) {
       setDocs((all) => all?.map((x) => (x.id === id ? before : x)) ?? null);
-      push(errorMessage(e, "名前を変更できませんでした"), "error");
+      push(errorMessage(e, t.library.renameFailed), "error");
     }
   };
 
@@ -341,14 +343,14 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       <DropOverlay visible={dragging && Boolean(target)} />
       <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:px-2.5">
         <IconButton
-          label="メニューを開く"
+          label={t.common.openMenu}
           tooltip={false}
           icon="menu"
           iconSize={15}
           onClick={onOpenMenu}
           className="-ml-1 hidden h-[34px] w-[34px] text-fg max-md:inline-flex"
         />
-        <nav aria-label="場所" className="flex min-w-0 flex-1 items-center gap-0.5 text-body">
+        <nav aria-label={t.library.breadcrumbLabel} className="flex min-w-0 flex-1 items-center gap-0.5 text-body">
           {crumbs.length === 0 ? (
             <h1 className="m-0 truncate text-body font-semibold text-fg">{kbLabel(kb)}</h1>
           ) : (
@@ -390,34 +392,34 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           {/* 概要（題と件数）を出しているときは、同じ件数をここに重ねない */}
           {stats && crumbs.length === 0 && (search || filter !== "all" || selecting || stats.documents === 0) && (
             <span className="ml-2 shrink-0 font-mono text-caption text-muted max-md:hidden">
-              {stats.documents.toLocaleString("ja-JP")} 件 · {formatBytes(stats.total_bytes)}
+              {interpolate(t.library.statsLine, { documents: stats.documents.toLocaleString("ja-JP"), total_bytes: formatBytes(stats.total_bytes) })}
             </span>
           )}
           {kb && !kb.canWrite && (
-            <Badge className="ml-2">閲覧のみ</Badge>
+            <Badge className="ml-2">{t.library.readOnly}</Badge>
           )}
         </nav>
         {docs && docs.length > 0 && (
           <button
             onClick={() => (selecting ? endSelection() : setSelecting(true))}
             aria-pressed={selecting}
-            title="複数の文書を選ぶ"
+            title={t.library.selectHint}
             className={cn(
               "inline-flex h-[30px] items-center gap-1.5 rounded-control border-[0.5px] px-2.5 text-footnote font-medium",
               selecting ? "border-accent bg-accent-soft text-accent" : "border-divider-strong text-fg hover:bg-divider",
             )}
           >
             <Icon name="check" size={13} />
-            <span className="max-md:hidden">{selecting ? "選択をやめる" : "選択"}</span>
+            <span className="max-md:hidden">{selecting ? t.library.selectEnd : t.library.select}</span>
           </button>
         )}
         {kb && kb.kind === "org" && <KbShareButton kbId={kb.id} kbName={kb.name} />}
         <Button variant="secondary" size="sm"
           onClick={() => onAsk(kbId)}
-          title={kb ? "このナレッジベースに質問" : "質問する"}
+          title={kb ? t.library.askKb : t.library.ask}
         >
           <Icon name="chat" size={13} />
-          <span className="max-lg:hidden">{kb ? "このナレッジベースに質問" : "質問する"}</span>
+          <span className="max-lg:hidden">{kb ? t.library.askKb : t.library.ask}</span>
         </Button>
         {canEditFolders && (
           <Button variant="secondary" size="sm"
@@ -427,10 +429,10 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               setFilter("all");
               setCreating("");
             }}
-            title="新しいフォルダ"
+            title={t.library.newFolder}
           >
             <Icon name="folder" size={13} />
-            <span className="max-md:hidden">フォルダ</span>
+            <span className="max-md:hidden">{t.library.folder}</span>
           </Button>
         )}
         {target && (
@@ -438,16 +440,16 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             <MenuTrigger asChild>
               <Button variant="primary" size="sm">
                 <Icon name="plus" size={13} />
-                追加
+                {t.library.add}
                 <Icon name="chevronDown" size={11} />
               </Button>
             </MenuTrigger>
             <MenuContent align="end">
               <MenuItem icon="doc" onSelect={() => fileRef.current?.click()}>
-                ファイルを選ぶ
+                {t.library.pickFiles}
               </MenuItem>
-              <MenuItem icon="folder" hint="中のフォルダ構成も再現します" onSelect={() => dirRef.current?.click()}>
-                フォルダを選ぶ
+              <MenuItem icon="folder" hint={t.library.pickFolderHint} onSelect={() => dirRef.current?.click()}>
+                {t.library.pickFolder}
               </MenuItem>
             </MenuContent>
           </Menu>
@@ -481,20 +483,20 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onClear={() => setQuery("")}
-          placeholder="文書名で探す"
+          placeholder={t.library.searchPlaceholder}
           className="min-w-[200px] flex-1 max-md:min-w-0"
         />
         <Segmented
-          label="状態で絞り込む"
+          label={t.library.filterLabel}
           size="md"
           value={filter}
           onChange={setFilter}
           className="shrink-0"
           options={(
             [
-              ["all", "すべて", null],
-              ["busy", "処理中", busyCount],
-              ["error", "失敗", errorCount],
+              ["all", t.library.filterAll, null],
+              ["busy", t.library.filterBusy, busyCount],
+              ["error", t.library.filterError, errorCount],
             ] as const
           ).map(([key, label, n]) => [
             key,
@@ -527,14 +529,14 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             )}
             <ListHeader />
             {!browsing && kbId && (search || filter !== "all") && (
-              <div className="px-2 pb-1 pt-2 text-caption text-muted">{kbLabel(kb)} 全体から探しています</div>
+              <div className="px-2 pb-1 pt-2 text-caption text-muted">{interpolate(t.library.searchingWhole, { kb: kbLabel(kb) })}</div>
             )}
 
             {creating !== null && (
               <NewFolderRow
                 rename={{
                   value: creating,
-                  placeholder: "フォルダ名",
+                  placeholder: t.library.folderName,
                   onChange: setCreating,
                   onCommit: () => void createFolder(),
                   onCancel: () => setCreating(null),
@@ -562,15 +564,15 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               <div className="py-10 text-center text-body text-muted">
                 {browsing ? (
                   <>
-                    このフォルダは空です
+                    {t.library.folderEmpty}
                     {target && (
                       <span className="mt-1 block text-footnote text-muted-2">
-                        ファイルをドロップすると「{here?.name}」に追加します
+                        {interpolate(t.library.folderDropHint, { name: here?.name ?? "" })}
                       </span>
                     )}
                   </>
                 ) : (
-                  "条件に合う文書はありません"
+                  t.library.noMatch
                 )}
               </div>
             )}
@@ -597,7 +599,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
             {cursor && (
               <div className="pt-4 text-center">
                 <Button variant="secondary" size="md" className="px-4" onClick={() => void loadMore()} disabled={loadingMore}>
-                  {loadingMore ? "読み込み中…" : "さらに読み込む"}
+                  {loadingMore ? t.common.loading : t.library.loadMore}
                 </Button>
               </div>
             )}
@@ -606,7 +608,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       </div>
       {moving && (
         <MoveDialog
-          title={`「${moving.filename}」の移動先`}
+          title={interpolate(t.library.moveTitleOne, { filename: moving.filename })}
           folders={folders}
           current={moving.folder_id}
           rootLabel={kbLabel(kb)}
@@ -633,7 +635,7 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       )}
       {bulkMoving && (
         <MoveDialog
-          title={`${selected.size} 件の移動先`}
+          title={interpolate(t.library.moveTitleMany, { size: selected.size })}
           folders={folders}
           current={browsing ? folderId : undefined}
           rootLabel={kbLabel(kb)}

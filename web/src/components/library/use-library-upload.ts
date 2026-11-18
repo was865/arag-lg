@@ -8,6 +8,8 @@ import { refreshKbs, type KbInfo } from "@/hooks/use-kbs";
 import { useUploadQueue } from "@/hooks/use-upload-queue";
 import { libraryApi } from "@/lib/library/api";
 import { dirKey, isAccepted, readDropped, resolveFolders, splitRelPath, type RelFile } from "@/lib/library/folder-upload";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 export function useLibraryUpload({
   target,
@@ -31,7 +33,7 @@ export function useLibraryUpload({
     },
   });
 
-  const readOnly = () => push("このナレッジベースには追加できません（閲覧のみ）", "error");
+  const readOnly = () => push(t.library.readOnlyUpload, "error");
 
   const startUpload = (list: FileList | File[] | null) => {
     const files = [...(list ?? [])];
@@ -60,7 +62,7 @@ export function useLibraryUpload({
     }
     const total = [...groups.values()].reduce((n, g) => n + g.files.length, 0);
     if (!total) {
-      push("追加できる形式のファイルがありませんでした", "error");
+      push(t.library.noAcceptedFiles, "error");
       return;
     }
     const base = target.id === kbId ? folderId : null;
@@ -74,14 +76,14 @@ export function useLibraryUpload({
       );
       for (const [key, g] of groups) queue.add(target.id, g.files, map.get(key) ?? null);
     } catch (e) {
-      push(errorMessage(e, "フォルダを作成できませんでした"), "error");
+      push(errorMessage(e, t.library.folderCreateFailed), "error");
       void reload();
       return;
     }
     push(
       skipped
-        ? `${total} 件のファイルをフォルダごと追加しています（対象外の ${skipped} 件は除きました）`
-        : `${total} 件のファイルをフォルダごと追加しています`,
+        ? interpolate(t.library.folderUploadSkipped, { total, skipped })
+        : interpolate(t.library.folderUpload, { total }),
       "success",
     );
     void reload();

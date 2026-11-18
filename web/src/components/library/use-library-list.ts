@@ -6,6 +6,7 @@ import { useToast } from "@/components/feedback/toast-provider";
 import { ApiError } from "@/lib/chat/api";
 import { libraryApi, type DocumentOut, type FolderOut } from "@/lib/library/api";
 import { docStatus, filterStatuses, type StatusFilter } from "@/lib/library/view";
+import { t } from "@/i18n";
 
 const PAGE = 100;
 
@@ -61,7 +62,7 @@ export function useLibraryList({
       apply(await fetchAll());
     } catch (e) {
       setDocs((d) => d ?? []);
-      push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
+      push(errorMessage(e, t.library.listLoadFailed), "error");
     }
   }, [fetchAll, apply, push]);
 
@@ -84,7 +85,7 @@ export function useLibraryList({
       (e: unknown) => {
         if (!alive) return;
         setDocs([]);
-        push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
+        push(errorMessage(e, t.library.listLoadFailed), "error");
       },
     );
     return () => {
@@ -100,7 +101,7 @@ export function useLibraryList({
       setDocs((d) => [...(d ?? []), ...page.items]);
       setCursor(page.next_cursor);
     } catch {
-      push("続きを読み込めませんでした", "error");
+      push(t.library.loadMoreFailed, "error");
     } finally {
       setLoadingMore(false);
     }
@@ -110,8 +111,8 @@ export function useLibraryList({
   const hasBusy = docs?.some((d) => docStatus(d.status).tone === "busy") ?? false;
   useEffect(() => {
     if (!hasBusy) return;
-    const t = window.setInterval(() => void reload(), 5000);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(() => void reload(), 5000);
+    return () => window.clearInterval(timer);
   }, [hasBusy, reload]);
 
   return { docs, setDocs, folders, setFolders, stats, cursor, loadingMore, loadMore, reload };

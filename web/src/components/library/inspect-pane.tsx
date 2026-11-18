@@ -33,6 +33,8 @@ import {
 } from "@/lib/library/inspect";
 import { headingCrumb, pageLabel } from "@/lib/library/view";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 export interface InspectPaneProps {
   doc: DocumentOut;
@@ -68,7 +70,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
           setReveal((x) => ({ target: "box", n: x.n + 1 }));
         }
       },
-      (e: unknown) => alive && setError(e instanceof ApiError ? e.message : "解析の記録を読み込めませんでした"),
+      (e: unknown) => alive && setError(e instanceof ApiError ? e.message : t.inspect.reportLoadFailed),
     );
     return () => {
       alive = false;
@@ -120,7 +122,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
             }}
             className="ml-2 underline"
           >
-            やり直す
+            {t.common.tryAgain}
           </button>
         </div>
       </div>
@@ -158,7 +160,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
         <div className="mx-auto flex max-w-[820px] flex-col gap-4 px-8 pb-24 pt-6 max-md:px-4">
           {summary}
           <p className="m-0 text-caption text-muted">
-            PDF 以外の形式は、原件の上に枠を重ねません。チャンクの文を原本と見比べてください。
+            {t.inspect.noOverlay}
           </p>
           {nav && <div className="flex items-center">{nav}</div>}
           {list}
@@ -177,11 +179,11 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
             size="sm"
             aria-pressed={showOrder}
             onClick={() => setShowOrder((x) => !x)}
-            title="枠にチャンクの番号（Docling が読んだ順）を出す"
+            title={t.inspect.readingOrderHint}
             className={cn("ml-auto", showOrder ? "bg-divider text-fg" : "text-muted")}
           >
             <Icon name="layers" size={12} />
-            読み順
+            {t.inspect.readingOrder}
           </Button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto bg-bg-2 px-6 py-5 max-md:px-3 max-md:py-3">
@@ -223,16 +225,16 @@ function PageNav({
   return (
     <>
       <div className="inline-flex items-center gap-0.5">
-        <IconButton label="前の頁（←）" icon="chevronLeft" disabled={prev == null} onClick={() => onGoto(prev)} />
+        <IconButton label={t.inspect.prevPage} icon="chevronLeft" disabled={prev == null} onClick={() => onGoto(prev)} />
         <span className="min-w-[64px] text-center font-mono text-footnote text-fg-2" aria-live="polite">
           {page} / {pages.length}
         </span>
-        <IconButton label="次の頁（→）" icon="chevronRight" disabled={next == null} onClick={() => onGoto(next)} />
+        <IconButton label={t.inspect.nextPage} icon="chevronRight" disabled={next == null} onClick={() => onGoto(next)} />
       </div>
       {nextWarning != null && nextWarning !== page && (
         <Button variant="ghost" size="sm" onClick={() => onGoto(nextWarning)} className="text-danger">
           <Icon name="alert" size={12} />
-          警告のある頁へ（p.{nextWarning}）
+          {interpolate(t.inspect.nextWarningPage, { nextWarning })}
         </Button>
       )}
     </>
@@ -265,7 +267,7 @@ function ReportSummary({
       </Button>
       {isAdmin && (
         <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-caption text-muted">
-          <a href={doclingJsonUrl(docId)} target="_blank" rel="noopener" title="Docling の生の JSON（管理者だけ）">
+          <a href={doclingJsonUrl(docId)} target="_blank" rel="noopener" title={t.inspect.rawJson}>
             Docling JSON
             <Icon name="external" size={11} />
           </a>
@@ -278,15 +280,15 @@ function ReportSummary({
     return (
       <section className={cn(cardClass(), "p-3.5")}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className="m-0 text-caption font-medium text-muted">解析の記録</h3>
+          <h3 className="m-0 text-caption font-medium text-muted">{t.inspect.reportTitle}</h3>
           {links}
         </div>
         <p className="m-0 mt-1.5 text-footnote leading-[1.6] text-muted">
-          この文書には解析の記録がありません（記録を残す前に入れた文書です）。
+          {t.inspect.noReportBefore}
           {isAdmin && (
             <>
               {" "}
-              <code className="rounded bg-code-bg px-1 font-mono text-caption">python -m arag.cli reparse-report</code> で作り直せます。
+              <code className="rounded bg-code-bg px-1 font-mono text-caption">python -m arag.cli reparse-report</code> {t.inspect.noReportAfter}
             </>
           )}
         </p>
@@ -294,7 +296,7 @@ function ReportSummary({
     );
   }
 
-  const t = report.totals;
+  const totals = report.totals;
   const docling = report.docling as { statuses?: string[]; elapsed_sec?: number } | null;
   const degraded = docling?.statuses?.filter((s) => s !== "success") ?? [];
   // warn を先に、同じ重さの中は頁の順
@@ -303,19 +305,19 @@ function ReportSummary({
   );
   const warnCount = warnings.filter((w) => w.severity === "warn").length;
   const stats: [string, number][] = [
-    ["ページ", t.pages ?? 0],
-    ["文", t.texts ?? 0],
-    ["表", t.tables ?? 0],
-    ["図", t.pictures ?? 0],
-    ["チャンク", t.chunks ?? 0],
+    [t.inspect.statPages, totals.pages ?? 0],
+    [t.inspect.statTexts, totals.texts ?? 0],
+    [t.inspect.statTables, totals.tables ?? 0],
+    [t.inspect.statPictures, totals.pictures ?? 0],
+    [t.inspect.statChunks, totals.chunks ?? 0],
   ];
 
   return (
     <section className={cardClass()}>
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5">
         <h3 className="m-0 flex items-center gap-1.5 text-caption font-medium text-muted">
-          解析の記録
-          {warnCount > 0 ? <Badge tone="danger">警告 {warnCount}</Badge> : <Badge>警告なし</Badge>}
+          {t.inspect.reportTitle}
+          {warnCount > 0 ? <Badge tone="danger">{interpolate(t.inspect.warnCount, { warnCount })}</Badge> : <Badge>{t.inspect.noWarnings}</Badge>}
         </h3>
         {links}
       </div>
@@ -329,8 +331,8 @@ function ReportSummary({
       </dl>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t-[0.5px] border-divider px-3.5 py-2 text-caption text-muted">
         <span className="font-mono">{report.parser}</span>
-        {docling?.elapsed_sec != null && <span>· 解析 {docling.elapsed_sec} 秒</span>}
-        <span>· {(t.chars ?? 0).toLocaleString("ja-JP")} 文字</span>
+        {docling?.elapsed_sec != null && <span>{interpolate(t.inspect.elapsed, { elapsed_sec: docling.elapsed_sec })}</span>}
+        <span>{interpolate(t.inspect.chars, { n: (totals.chars ?? 0).toLocaleString("ja-JP") })}</span>
         {degraded.length > 0 && <Badge tone="danger">docling-serve: {[...new Set(degraded)].join(", ")}</Badge>}
       </div>
       {warnings.length > 0 && (
@@ -402,12 +404,12 @@ function ChunkList({
   return (
     <section className="flex min-w-0 flex-col gap-1.5">
       <h3 className="m-0 flex items-center gap-1.5 px-1 text-caption font-medium text-muted">
-        {page != null ? `p.${page} のチャンク` : "チャンク"}
+        {page != null ? interpolate(t.inspect.chunksOnPage, { page }) : t.inspect.statChunks}
         <Badge>{chunks.length}</Badge>
       </h3>
       {chunks.length === 0 ? (
         <p className="m-0 rounded-card border-[0.5px] border-dashed border-divider-strong px-3.5 py-4 text-footnote text-muted">
-          {page != null ? "この頁にはチャンクがありません。" : "チャンクがありません。"}
+          {page != null ? t.inspect.noChunksOnPage : t.inspect.noChunks}
         </p>
       ) : (
         <ul ref={ref} className="m-0 flex list-none flex-col gap-2 p-0">
@@ -459,11 +461,11 @@ function ChunkRow({
           <span className="nums shrink-0 font-mono text-mini text-muted-2">#{chunkNo(c)}</span>
           <Badge>{BLOCK_LABEL[c.block_type] ?? c.block_type}</Badge>
           <span className="min-w-0 flex-1 truncate text-mini text-muted" title={headingCrumb(c.heading_path)}>
-            {headingCrumb(c.heading_path) || "（見出しなし）"}
+            {headingCrumb(c.heading_path) || t.viewer.untitledSection}
           </span>
           {noBox && (
-            <span className="shrink-0 text-mini text-muted-2" title="Docling がこのチャンクの位置を記録していないため、原本に枠を描けません">
-              位置なし
+            <span className="shrink-0 text-mini text-muted-2" title={t.inspect.noBoxHint}>
+              {t.inspect.noBox}
             </span>
           )}
           {pages && <span className="nums shrink-0 font-mono text-mini text-muted-2">{pages}</span>}
@@ -478,16 +480,16 @@ function ChunkRow({
 function ChunkDetail({ chunk: c }: { chunk: ChunkOut }) {
   return (
     <div className="grid gap-2.5 px-2.5 pb-2.5">
-      <Field label="チャンクの文" aside={`${c.token_len} トークン`}>
+      <Field label={t.inspect.chunkText} aside={interpolate(t.inspect.tokens, { token_len: c.token_len })}>
         {c.text}
       </Field>
-      <Field label="文脈" aside={CONTEXT_SOURCE_LABEL[c.context_source] ?? c.context_source}>
-        {c.context || "（なし）"}
+      <Field label={t.inspect.context} aside={CONTEXT_SOURCE_LABEL[c.context_source] ?? c.context_source}>
+        {c.context || t.inspect.none}
       </Field>
       <details className="group">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-caption font-medium text-muted hover:text-fg [&::-webkit-details-marker]:hidden">
           <Icon name="chevronRight" size={11} className="transition-transform group-open:rotate-90" />
-          埋め込みに送った本文（文脈 + チャンクの文）
+          {t.inspect.embeddedText}
         </summary>
         <pre className="m-0 mt-1 max-h-[220px] overflow-auto whitespace-pre-wrap break-words rounded-control bg-bg-2 p-2 font-sans text-footnote leading-[1.6] text-fg-2">
           {c.body}
@@ -532,7 +534,7 @@ function usePdf(docId: string) {
       destroy = () => task.destroy();
       const loaded = await task.promise;
       if (alive) setPdf(loaded);
-    })().catch(() => alive && setError("原本の PDF を表示できませんでした。原本のタブで開いてください。"));
+    })().catch(() => alive && setError(t.inspect.pdfFailed));
     return () => {
       alive = false;
       void destroy?.();
@@ -624,7 +626,7 @@ function PdfPage({
       {!ready && <div aria-hidden style={{ aspectRatio: ratio }} className="w-full animate-soft-pulse rounded-[4px] bg-fg/10 motion-reduce:animate-none" />}
       <canvas
         ref={canvasRef}
-        aria-label={`原本の ${page} 頁`}
+        aria-label={interpolate(t.inspect.pageAria, { page })}
         className={cn("block rounded-[4px] bg-white shadow-e2", !ready && "absolute inset-x-0 top-0 opacity-0")}
       />
       {ready &&
@@ -639,7 +641,7 @@ function PdfPage({
                 data-selected={on && i === 0}
                 onClick={() => onPick(c)}
                 {...chunkLink(c.id)}
-                aria-label={`チャンク ${chunkNo(c)}: ${c.text.slice(0, 40)}`}
+                aria-label={interpolate(t.inspect.boxTitle, { c: chunkNo(c), v: c.text.slice(0, 40) })}
                 aria-pressed={on}
                 className={cn(
                   "absolute rounded-[3px] border outline-none transition-[background-color,border-color,box-shadow] duration-(--duration-fast) focus-visible:ring-2 focus-visible:ring-accent/50",

@@ -1,5 +1,6 @@
 /** 解析の対照（specs/030-parse-inspection）の純粋関数。 */
 import type { components } from "@/lib/api/schema";
+import { t } from "@/i18n";
 
 type S = components["schemas"];
 export type ParseReport = S["ParseReportOut"];
@@ -65,16 +66,16 @@ export function warningsByPage(report: ParseReport): Map<number | null, ParseWar
 }
 
 export const WARNING_LABEL: Record<string, string> = {
-  empty_page: "空の頁",
-  image_only_page: "図だけの頁",
-  garbled_text: "文字化けの疑い",
-  table_sparse: "崩れた表の疑い",
-  missing_asset: "図の画像なし",
-  bbox_out_of_page: "枠が頁の外",
-  no_text: "文字なし",
-  chunk_page_gap: "チャンクなし",
-  docling_partial: "一部だけ成功",
-  docling_errors: "Docling のエラー",
+  empty_page: t.inspect.warnEmptyPage,
+  image_only_page: t.inspect.warnImageOnly,
+  garbled_text: t.inspect.warnGarbled,
+  table_sparse: t.inspect.warnTableSparse,
+  missing_asset: t.inspect.warnMissingAsset,
+  bbox_out_of_page: t.inspect.warnBboxOut,
+  no_text: t.inspect.warnNoText,
+  chunk_page_gap: t.inspect.warnChunkGap,
+  docling_partial: t.inspect.warnPartial,
+  docling_errors: t.inspect.warnErrors,
 };
 
 export function warningLabel(code: string): string {
@@ -82,17 +83,17 @@ export function warningLabel(code: string): string {
 }
 
 export const BLOCK_LABEL: Record<string, string> = {
-  text: "本文",
-  table: "表",
-  figure: "図",
-  code: "コード",
-  formula: "数式",
-  list: "リスト",
+  text: t.inspect.blockText,
+  table: t.inspect.blockTable,
+  figure: t.inspect.blockFigure,
+  code: t.inspect.blockCode,
+  formula: t.inspect.blockFormula,
+  list: t.inspect.blockList,
 };
 
 export const CONTEXT_SOURCE_LABEL: Record<string, string> = {
-  llm: "モデルが付与",
-  heading: "見出しから作成",
+  llm: t.inspect.contextModel,
+  heading: t.inspect.contextHeading,
 };
 
 /** 前後の頁（端では null）。 */

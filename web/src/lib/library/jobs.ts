@@ -1,6 +1,7 @@
 /** アップロード → 解析ジョブの進み具合を StagedFile（旧版のキュー表示の view model）に写す。 */
 import type { components } from "@/lib/api/schema";
 import type { IngestStage, StagedFile } from "@/lib/types";
+import { t } from "@/i18n";
 
 export type UploadItem = components["schemas"]["UploadItem"];
 
@@ -27,7 +28,7 @@ export const JOB_TERMINAL = new Set(["ready", "error", "cancelled"]);
 export function applyUploadItem(f: StagedFile, item: UploadItem): StagedFile {
   const base = { ...f, documentId: item.document_id, jobId: item.job_id ?? undefined };
   if (item.status === "duplicate") {
-    return { ...base, status: "skipped", progress: 100, stageDetail: "同じ内容の文書が既にあります" };
+    return { ...base, status: "skipped", progress: 100, stageDetail: t.library.jobDuplicate };
   }
   if (!item.job_id) return { ...base, status: "ready", stage: "ready", progress: 100 };
   return { ...base, status: "queued", progress: 0 };
@@ -48,7 +49,7 @@ export function applyJobEvent(f: StagedFile, ev: JobEvent): StagedFile {
     };
   }
   if (ev.status === "error" || ev.status === "cancelled") {
-    return { ...f, status: "error", error: ev.error || (ev.status === "cancelled" ? "取り消されました" : "解析に失敗しました") };
+    return { ...f, status: "error", error: ev.error || (ev.status === "cancelled" ? t.library.jobCancelled : t.library.jobFailed) };
   }
   return {
     ...f,

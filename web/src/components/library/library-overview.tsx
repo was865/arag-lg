@@ -8,6 +8,8 @@ import { getFileMeta, isSpreadsheet } from "@/lib/file-types";
 import { useTilt } from "@/hooks/use-tilt";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 const HIDE_KEY = "arag.library.overview.hidden";
 
@@ -77,29 +79,29 @@ export function LibraryOverview({
           <span className="nums font-display text-hero font-bold leading-none text-fg max-md:text-display">
             {ov.documents.toLocaleString("ja-JP")}
           </span>
-          <span>件 · {formatBytes(ov.total_bytes)}</span>
+          <span>{interpolate(t.library.overviewCountRest, { total_bytes: formatBytes(ov.total_bytes) })}</span>
         </p>
         <Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-caption text-muted hover:text-fg"
           onClick={toggle}
           aria-expanded={!hidden}
         >
-          {hidden ? "概要を表示" : "隠す"}
+          {hidden ? t.library.overviewShow : t.library.overviewHide}
           <Icon name="chevronDown" size={10} className={cn("transition-transform", !hidden && "rotate-180")} />
         </Button>
       </div>
       {!hidden && (
         <div className="mt-2 grid gap-4 px-2">
           <p className="m-0 flex flex-wrap gap-x-4 gap-y-0.5 text-caption text-muted">
-            {ov.added_7d > 0 && <span>この 7 日で <strong className="nums font-semibold text-fg-2">+{ov.added_7d.toLocaleString("ja-JP")}</strong> 件</span>}
-            {ov.recent[0] && <span>最終追加 {formatDate(ov.recent[0].created_at)}</span>}
+            {ov.added_7d > 0 && <span>{t.library.overviewLast7} <strong className="nums font-semibold text-fg-2">+{ov.added_7d.toLocaleString("ja-JP")}</strong> {t.library.countUnit}</span>}
+            {ov.recent[0] && <span>{interpolate(t.library.lastAdded, { created_at: formatDate(ov.recent[0].created_at) })}</span>}
             {failed > 0 ? (
               <button onClick={onShowFailed} className="border-0 bg-transparent p-0 font-semibold text-danger underline-offset-2 hover:underline">
-                失敗 {failed} 件を見る
+                {interpolate(t.library.showFailed, { failed })}
               </button>
             ) : busy > 0 ? (
-              <span className="font-semibold text-accent">処理中 {busy} 件</span>
+              <span className="font-semibold text-accent">{interpolate(t.library.busyCount, { busy })}</span>
             ) : (
-              <span>すべて検索できます</span>
+              <span>{t.library.allSearchable}</span>
             )}
           </p>
 
@@ -125,7 +127,7 @@ export function LibraryOverview({
           {ov.top_cited.length > 0 && (
             <div className="grid gap-2">
               <h3 className="m-0 flex items-baseline gap-2 eyebrow">
-                よく引用される文書 <span className="font-normal normal-case tracking-normal">この 30 日の回答</span>
+                {t.library.topCited} <span className="font-normal normal-case tracking-normal">{t.library.last30Answers}</span>
               </h3>
               <div className="grid grid-cols-4 gap-2.5 max-lg:grid-cols-2">
                 {ov.top_cited.slice(0, 4).map((c, i) => (
@@ -137,7 +139,7 @@ export function LibraryOverview({
 
           {/* 最近の文書は下の一覧が新しい順なので出さない。失敗したものだけ目立たせる */}
           {ov.failed.length > 0 && (
-            <Card title="処理に失敗した文書" tone="danger">
+            <Card title={t.library.failedDocs} tone="danger">
               <DocList items={ov.failed.map((d) => ({ doc: d, aside: formatDate(d.created_at) }))} onOpen={onOpenDocument} />
             </Card>
           )}
@@ -182,8 +184,8 @@ function CitedCard({ doc, citations, index, onOpen }: { doc: DocumentOut; citati
       <span className="grid gap-0.5 px-2.5 py-2">
         <span className="truncate text-footnote font-semibold text-fg">{doc.filename}</span>
         <span className="flex items-center justify-between gap-2 text-mini text-muted">
-          <span className="nums">{doc.page_count ? `${doc.page_count} ページ` : formatDate(doc.created_at)}</span>
-          <span className="nums font-semibold text-accent">引用 {citations.toLocaleString("ja-JP")} 回</span>
+          <span className="nums">{doc.page_count ? interpolate(t.viewer.pageCount, { page_count: doc.page_count }) : formatDate(doc.created_at)}</span>
+          <span className="nums font-semibold text-accent">{interpolate(t.library.citedTimes, { citations: citations.toLocaleString("ja-JP") })}</span>
         </span>
       </span>
     </button>

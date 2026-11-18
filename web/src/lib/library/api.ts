@@ -2,6 +2,7 @@
 import createClient from "openapi-fetch";
 import type { components, paths } from "@/lib/api/schema";
 import { ApiError } from "@/lib/chat/api";
+import { t } from "@/i18n";
 
 type S = components["schemas"];
 export type DocumentOut = S["DocumentOut"];
@@ -16,7 +17,7 @@ const client = createClient<paths>({ baseUrl: "/api" });
 
 function fail(status: number, error: unknown): never {
   const e = (error as { error?: { code?: string; message?: string } } | undefined)?.error;
-  throw new ApiError(status, e?.code ?? "unknown", e?.message ?? "通信に失敗しました。時間をおいてお試しください");
+  throw new ApiError(status, e?.code ?? "unknown", e?.message ?? t.library.networkRetry);
 }
 
 export interface DocumentQuery {
@@ -205,11 +206,11 @@ export function uploadFile(
       if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response as UploadResult);
       else {
         const e = (xhr.response as { error?: { code?: string; message?: string } } | null)?.error;
-        reject(new ApiError(xhr.status, e?.code ?? "upload_failed", e?.message ?? "アップロードに失敗しました"));
+        reject(new ApiError(xhr.status, e?.code ?? "upload_failed", e?.message ?? t.library.uploadFailed));
       }
     };
-    xhr.onerror = () => reject(new ApiError(0, "network", "通信に失敗しました"));
-    xhr.onabort = () => reject(new ApiError(0, "aborted", "アップロードを取り消しました"));
+    xhr.onerror = () => reject(new ApiError(0, "network", t.library.networkFailed));
+    xhr.onabort = () => reject(new ApiError(0, "aborted", t.library.uploadCancelled));
     signal?.addEventListener("abort", () => xhr.abort());
     const form = new FormData();
     form.append("files", file, file.name);

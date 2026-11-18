@@ -20,6 +20,8 @@ import { libraryApi, originalUrl, type DocumentOut, type OutlineSection, type Se
 import { docStatus, formatBytes } from "@/lib/library/view";
 import { activeSectionId, outlineIndent, pipeTablesToHtml, resolveAssets } from "@/lib/library/viewer";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { interpolate } from "@/i18n/interpolate";
 
 const PAGE = 50;
 const TEXT_LIMIT = 1024 * 1024;
@@ -67,8 +69,8 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
   const facts = [
     kbName,
     st.label,
-    doc.page_count ? `${doc.page_count} ページ` : null,
-    ready ? `${doc.chunk_count} チャンク` : null,
+    doc.page_count ? interpolate(t.viewer.pageCount, { page_count: doc.page_count }) : null,
+    ready ? interpolate(t.viewer.chunkCount, { chunk_count: doc.chunk_count }) : null,
     formatBytes(doc.size),
   ].filter(Boolean);
 
@@ -85,7 +87,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
       className="fixed inset-0 z-[200] grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] bg-bg"
     >
       <header className="flex h-[56px] items-center gap-2.5 border-b-[0.5px] border-divider px-4 max-md:h-[52px] max-md:gap-1.5 max-md:px-2">
-        <IconButton label="閉じる" icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
+        <IconButton label={t.common.close} icon="chevronLeft" iconSize={16} onClick={onClose} className="h-[34px] w-[34px] text-fg" />
         <FileTile filename={doc.filename} className="max-md:hidden" />
         <div className="min-w-0 flex-1">
           <h2 className="m-0 truncate text-callout font-semibold text-fg" title={doc.filename}>
@@ -94,18 +96,18 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
           <div className="flex min-w-0 items-center gap-1.5 text-caption text-muted">
             <span className="truncate">{facts.join(" · ")}</span>
             {ready && !!doc.parse_warnings && (
-              <button onClick={() => setTab("inspect")} title="解析の確認を開く" className="shrink-0 rounded-full">
-                <Badge tone="danger">解析の警告 {doc.parse_warnings}</Badge>
+              <button onClick={() => setTab("inspect")} title={t.viewer.openInspect} className="shrink-0 rounded-full">
+                <Badge tone="danger">{interpolate(t.library.parseWarnings, { parse_warnings: doc.parse_warnings })}</Badge>
               </button>
             )}
           </div>
         </div>
-        <IconButton asChild label="原本を新しいタブで開く" className="h-8 w-8">
+        <IconButton asChild label={t.viewer.openOriginalTab} className="h-8 w-8">
           <a href={originalUrl(doc.id)} target="_blank" rel="noopener">
             <Icon name="external" size={14} />
           </a>
         </IconButton>
-        <IconButton asChild label="ダウンロード" className="h-8 w-8">
+        <IconButton asChild label={t.common.download} className="h-8 w-8">
           <a href={originalUrl(doc.id)} download={doc.filename}>
             <Icon name="download" size={14} />
           </a>
@@ -113,12 +115,12 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
         <Button variant="primary" size="md"
           disabled={!ready}
           onClick={() => onAsk(doc)}
-          title={ready ? undefined : "解析が終わると質問できます"}
+          title={ready ? undefined : t.viewer.askAfterParse}
           className="max-md:px-2.5"
         >
           <Icon name="chat" size={13} />
-          <span className="max-md:hidden">この文書に質問</span>
-          <span className="hidden max-md:inline">質問</span>
+          <span className="max-md:hidden">{t.viewer.askThisDoc}</span>
+          <span className="hidden max-md:inline">{t.viewer.askShort}</span>
         </Button>
       </header>
 
@@ -126,19 +128,19 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
         <div className="flex items-center gap-1 border-b-[0.5px] border-divider px-4 py-2 max-md:px-2">
           {ready && (
             <IconButton
-              label="目次"
+              label={t.viewer.outline}
               icon="menu"
               aria-expanded={outlineOpen}
               onClick={() => setOutlineOpen((x) => !x)}
               className={cn("mr-1 hidden", tab === "parsed" && "max-md:inline-flex")}
             />
           )}
-          <TabsList aria-label="表示">
+          <TabsList aria-label={t.viewer.tabsLabel}>
             {(
               [
-                ["parsed", "整形表示"],
-                ["inspect", "解析の確認"],
-                ["original", "原本"],
+                ["parsed", t.viewer.tabParsed],
+                ["inspect", t.viewer.tabInspect],
+                ["original", t.viewer.tabOriginal],
               ] as const
             )
               .filter(([key]) => key !== "inspect" || ready)
@@ -178,17 +180,17 @@ function NotReady({ status, onShowOriginal }: { status: string; onShowOriginal: 
     <div className="grid h-full place-items-center p-8 text-center">
       <div className="max-w-[360px]">
         <div className="mb-1.5 text-body font-semibold text-fg">
-          {failed ? "この文書は解析できませんでした" : "解析しています"}
+          {failed ? t.viewer.parseFailedTitle : t.viewer.parsingTitle}
         </div>
         <div className="mb-4 text-footnote leading-[1.6] text-muted">
           {failed
-            ? "ライブラリの行のメニューから解析し直せます。原本はそのまま読めます。"
-            : "解析が終わると、章ごとの整形表示と目次がここに出ます。"}
+            ? t.viewer.parseFailedBody
+            : t.viewer.parsingBody}
         </div>
         <Button variant="secondary" size="sm"
           onClick={onShowOriginal}
         >
-          原本を見る
+          {t.viewer.showOriginal}
         </Button>
       </div>
     </div>
@@ -233,7 +235,7 @@ function ParsedPane({
           setDone(doneRef.current);
         }
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "本文を読み込めませんでした");
+        setError(e instanceof ApiError ? e.message : t.viewer.bodyLoadFailed);
       } finally {
         loading.current = false;
       }
@@ -289,12 +291,12 @@ function ParsedPane({
 
   const indents = outline ? outlineIndent(outline) : [];
   const toc = (
-    <nav aria-label="目次" className="flex flex-col gap-px p-2">
-      <div className="px-2 pb-1.5 pt-1 eyebrow">目次</div>
+    <nav aria-label={t.viewer.outline} className="flex flex-col gap-px p-2">
+      <div className="px-2 pb-1.5 pt-1 eyebrow">{t.viewer.outline}</div>
       {outline === null ? (
-        <div className="px-2 py-1 text-footnote text-muted">読み込み中…</div>
+        <div className="px-2 py-1 text-footnote text-muted">{t.common.loading}</div>
       ) : outline.length === 0 ? (
-        <div className="px-2 py-1 text-footnote text-muted">見出しはありません</div>
+        <div className="px-2 py-1 text-footnote text-muted">{t.viewer.noHeadings}</div>
       ) : (
         outline.map((s, i) => (
           <button
@@ -307,7 +309,7 @@ function ParsedPane({
               active === s.id ? "bg-accent-soft font-medium text-fg" : "text-fg-2 hover:bg-divider",
             )}
           >
-            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{headingOf(s.heading_path) || "（見出しなし）"}</span>
+            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{headingOf(s.heading_path) || t.viewer.untitledSection}</span>
             {s.page_start != null && <span className="shrink-0 font-mono text-mini text-muted-2">p.{s.page_start}</span>}
           </button>
         ))
@@ -346,7 +348,7 @@ function ParsedPane({
                 }}
                 className="ml-2 underline"
               >
-                やり直す
+                {t.common.tryAgain}
               </button>
             </div>
           ) : !done ? (
@@ -354,7 +356,7 @@ function ParsedPane({
               <span className="h-5 w-5 animate-[ar-spin_0.8s_linear_infinite] rounded-full border-2 border-divider-strong border-t-accent" />
             </div>
           ) : sections.length === 0 ? (
-            <div className="py-16 text-center text-body text-muted">本文がありません</div>
+            <div className="py-16 text-center text-body text-muted">{t.viewer.noBody}</div>
           ) : null}
         </div>
       </div>
@@ -452,14 +454,14 @@ function TextOriginal({ docId, kind }: { docId: string; kind: string }) {
     );
   }
   if ("error" in state) {
-    return <div className="grid h-full place-items-center text-footnote text-danger">原本を読み込めませんでした</div>;
+    return <div className="grid h-full place-items-center text-footnote text-danger">{t.viewer.originalLoadFailed}</div>;
   }
   const mono = kind !== "markdown";
   return (
     <div className="h-full overflow-auto">
       {state.truncated && (
         <div className="sticky top-0 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2 text-caption text-muted">
-          大きいファイルのため、先頭 {formatBytes(TEXT_LIMIT)} だけを表示しています。全体はダウンロードしてご覧ください。
+          {interpolate(t.viewer.textTruncated, { TEXT_LIMIT: formatBytes(TEXT_LIMIT) })}
         </div>
       )}
       <pre

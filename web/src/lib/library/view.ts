@@ -1,5 +1,6 @@
 /** 文書ライブラリの表示用の純関数。 */
 import type { KbInfo } from "@/hooks/use-kbs";
+import { t } from "@/i18n";
 
 export type StatusTone = "ok" | "busy" | "danger" | "muted";
 export type StatusFilter = "all" | "busy" | "error";
@@ -8,15 +9,15 @@ export type StatusFilter = "all" | "busy" | "error";
 export function docStatus(status: string): { label: string; tone: StatusTone } {
   switch (status) {
     case "ready":
-      return { label: "検索できます", tone: "ok" };
+      return { label: t.library.statusReady, tone: "ok" };
     case "error":
-      return { label: "解析に失敗", tone: "danger" };
+      return { label: t.library.statusError, tone: "danger" };
     case "cancelled":
-      return { label: "取り消し", tone: "muted" };
+      return { label: t.library.statusCancelled, tone: "muted" };
     case "queued":
-      return { label: "待機中", tone: "busy" };
+      return { label: t.library.statusQueued, tone: "busy" };
     default:
-      return { label: "解析中", tone: "busy" };
+      return { label: t.library.statusRunning, tone: "busy" };
   }
 }
 
@@ -35,8 +36,8 @@ export function uploadTarget(kbs: KbInfo[], kbId: string | null): KbInfo | null 
 }
 
 export function kbLabel(kb: Pick<KbInfo, "kind" | "name"> | null | undefined): string {
-  if (!kb) return "すべての文書";
-  return kb.kind === "personal" ? "個人ナレッジベース" : kb.name;
+  if (!kb) return t.library.allDocuments;
+  return kb.kind === "personal" ? t.library.personalKb : kb.name;
 }
 
 /** 1.2 GB / 340 MB / 12 KB。 */
@@ -57,7 +58,7 @@ export function formatDate(iso: string, now = new Date()): string {
 
 const EXT_LABELS: Record<string, string> = {
   pdf: "PDF", docx: "Word", doc: "Word", xlsx: "Excel", xls: "Excel", pptx: "PowerPoint", ppt: "PowerPoint",
-  md: "Markdown", txt: "テキスト", csv: "CSV", html: "HTML", htm: "HTML", png: "画像", jpg: "画像", jpeg: "画像",
+  md: "Markdown", txt: t.library.extText, csv: "CSV", html: "HTML", htm: "HTML", png: t.library.extImage, jpg: t.library.extImage, jpeg: t.library.extImage,
 };
 
 export interface FormatRow {
@@ -70,7 +71,7 @@ export interface FormatRow {
 export function formatRows(byExt: { ext: string; documents: number; bytes: number }[], max = 6): FormatRow[] {
   const merged = new Map<string, FormatRow>();
   for (const e of byExt) {
-    const label = EXT_LABELS[e.ext] ?? (e.ext ? e.ext.toUpperCase() : "その他");
+    const label = EXT_LABELS[e.ext] ?? (e.ext ? e.ext.toUpperCase() : t.library.extOther);
     const row = merged.get(label) ?? { label, documents: 0, bytes: 0 };
     row.documents += e.documents;
     row.bytes += e.bytes;
@@ -80,7 +81,7 @@ export function formatRows(byExt: { ext: string; documents: number; bytes: numbe
   if (rows.length <= max) return rows;
   const rest = rows.slice(max - 1).reduce(
     (acc, r) => ({ ...acc, documents: acc.documents + r.documents, bytes: acc.bytes + r.bytes }),
-    { label: "その他", documents: 0, bytes: 0 },
+    { label: t.library.extOther, documents: 0, bytes: 0 },
   );
   return [...rows.slice(0, max - 1), rest];
 }
