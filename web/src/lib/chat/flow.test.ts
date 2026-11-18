@@ -207,3 +207,28 @@ describe("answerTimeMs（見出しの所要時間）", () => {
     expect(answerTimeMs([step("a", 500), { ...fu, node: undefined }])).toBe(500);
   });
 });
+
+describe("routeOf の条件つきの辺（specs/029 T32）", () => {
+  const via = (steps: FlowStep[]) => routeOf(steps).stops.map((s) => [s.key, s.via?.key ?? null]);
+
+  it("条件つきの辺で着いた停留所に、選ばれた分岐を付ける", () => {
+    const v = Object.fromEntries(via(stepsOf("answer")));
+    expect(v["primer_search-1"]).toBe("docs");
+    expect(v["review-1"]).toBeNull(); // 見張り → 確認は見張りが何もしないと停留所が無いので付けない
+    expect(v["finalize-1"]).toBe("pass");
+    expect(Object.fromEntries(via(stepsOf("gap")))["investigate-2"]).toBe("send_back");
+    expect(Object.fromEntries(via(stepsOf("chat")))["investigate-1"]).toBe("chat");
+  });
+
+  it("続けて聞くを作らなかったときは、通らなかった停留所として「なし」の辺で示す", () => {
+    const off: FlowStep = {
+      id: "system-followups", name: "system", status: "done", durationMs: 0,
+      input: { kind: "followups" }, output: { skipped: "user_setting" }, node: "followups",
+    };
+    const fu = routeOf([...stepsOf("answer"), off]).stops.at(-1)!;
+    expect(fu).toMatchObject({ node: "followups", notRun: true, via: { key: "end", label: "なし" } });
+    const ran = routeOf([...stepsOf("answer"), { ...off, output: { questions: ["次は？"] } }]).stops.at(-1)!;
+    expect(ran).toMatchObject({ node: "followups", via: { key: "followups", label: "候補あり" } });
+    expect(ran.notRun).toBeFalsy();
+  });
+});

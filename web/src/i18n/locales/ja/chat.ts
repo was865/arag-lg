@@ -156,7 +156,15 @@ export const chat = {
   reviewRewrote: "回答を書き直した",
   // 系統が導く流れ（specs/026）
   // 回答の流れ（specs/029）。実際にたどった順に並べる。節点の名前は flow-graph.json（グラフの定義）から
-  flowTitle: "回答までの流れ",
+  flowTitle: "グラフの実行経路",
+  flowViewRoute: "経路",
+  flowViewGraph: "グラフ全体",
+  flowSent: "回答を送信",
+  flowSentHint: "ここで回答を送った（所要時間はここまで）。この後の節点は利用者を待たせない",
+  flowFollowupsOff: "設定でオフ",
+  flowNotPassed: "通らず",
+  flowConditionalEdges: "条件つきの辺",
+  flowEdgeCount: "{n} 回",
   flowRound: "{n} 周目",
   flowSummaryChat: "雑談として回答（資料は検索しない）",
   flowSummarySentBack: "確認で {n} 回差し戻し、書き直して通過",

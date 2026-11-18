@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FlowRail, RunFlow } from "@/components/chat/run-flow";
+import { FlowRail, GraphView, RunFlow } from "@/components/chat/run-flow";
 import { flowOf, routeOf, type FlowStep } from "@/lib/chat/flow";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -42,7 +42,7 @@ describe("RunFlow（実際にたどった順の流れ。specs/029 R7〜R9）", (
 
   it("いつもの経路（そのまま通過）と実行中は、見出しにひと言を足さない（停留所の印で分かる）", () => {
     const t = text(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />));
-    expect(t).toContain("回答までの流れ");
+    expect(t).toContain("グラフの実行経路");
     expect(t).not.toContain("確認をそのまま通過");
     const live = text(wrap(<RunFlow route={routeOf(stepsOf("gap"), { running: true })} running />));
     expect(live).not.toContain("書き直して通過");
@@ -76,6 +76,44 @@ describe("RunFlow（実際にたどった順の流れ。specs/029 R7〜R9）", (
     expect(route.stops.length).toBeGreaterThan(8);
     expect(wrap(<RunFlow route={route} />)).not.toContain("@[480px]:flex-row");
     expect(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />)).toContain("@[480px]:flex-row");
+  });
+});
+
+describe("RunFlow のグラフの特徴（specs/029 T32）", () => {
+  const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+  it("確定の後に「回答を送信」と run の所要時間を置く（実行中は置かない）", () => {
+    const route = routeOf(stepsOf("answer"));
+    expect(text(wrap(<RunFlow route={route} durationMs={3120} />))).toContain("回答を送信 3.12s");
+    expect(text(wrap(<RunFlow route={route} durationMs={3120} running />))).not.toContain("回答を送信");
+  });
+
+  it("条件つきの辺は、いつもと違う分岐（差し戻し・雑談など）だけ札を書く", () => {
+    const html = wrap(<RunFlow route={routeOf(stepsOf("gap"))} durationMs={1000} />);
+    expect(html).toContain('data-edge="send_back"');
+    // いつもの分岐（資料・通過）は札を書かない（停留所の印で分かる）
+    expect(html).not.toContain('data-edge="docs"');
+    expect(html).not.toContain('data-edge="pass"');
+    expect(wrap(<RunFlow route={routeOf(stepsOf("chat"))} />)).toContain('data-edge="chat"');
+  });
+
+  it("経路とグラフ全体を切り替えられる", () => {
+    const html = wrap(<RunFlow route={routeOf(stepsOf("answer"))} flow={flowOf(stepsOf("answer"))} />);
+    expect(text(html)).toContain("経路");
+    expect(text(html)).toContain("グラフ全体");
+  });
+});
+
+describe("GraphView（グラフ全体。specs/029 T32）", () => {
+  const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+  it("すべての節点を並べ、通らなかった節点と辺もそうと分かるように出す", () => {
+    const t = text(wrap(<GraphView flow={flowOf(stepsOf("gap"))} />));
+    for (const label of ["画像", "理解", "最初の検索", "調査", "見張り", "確認", "確定", "続けて聞く"]) expect(t).toContain(label);
+    expect(t).toContain("×2"); // 差し戻しで調査を 2 回通った
+    expect(t).toContain("条件つきの辺");
+    expect(t).toMatch(/確認 → 調査 差し戻し 1 回/);
+    expect(t).toMatch(/理解 → 調査 雑談 通らず/);
   });
 });
 

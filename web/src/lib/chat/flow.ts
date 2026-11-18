@@ -265,6 +265,10 @@ export interface FlowStop {
   current: boolean;
   /** 記録が無く、後ろの停留所から推定した（古い記録の確認の通過など） */
   inferred?: boolean;
+  /** 条件つきの辺で着いたとき、選ばれた分岐（グラフの辺の key と札。T32） */
+  via?: { key: string; label: string };
+  /** 通らなかった節点（続けて聞くを作らなかったなど）。経路の最後に淡く置き、「なし」の辺でつなぐ */
+  notRun?: boolean;
 }
 
 export interface FlowRoute {
@@ -278,6 +282,8 @@ export interface FlowRoute {
 }
 
 const LABEL = new Map(FLOW_GRAPH.nodes.map((n) => [n.id, n.label]));
+/** 確定から終わりへ進む辺（続けて聞くを作らない。グラフの書き出しには END への辺が無いので、ここで持つ） */
+const END_EDGE = { key: "end", label: "なし" };
 
 function guardOutcome(s: FlowStep): StopOutcome | undefined {
   const kind = kindOf(s);
@@ -377,7 +383,18 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
     }
   });
   if (finalized) stops.push(stop("finalize", 1, finals));
-  if (followups.length) stops.push(stop("followups", 1, followups));
+  if (followups.length) {
+    // 作らなかった（利用者の設定でオフ）なら、確定から END へ進んだ。続けて聞くは通らなかった節点として置く
+    const skipped = followups.every((s) => (s.output as Record<string, unknown> | null | undefined)?.skipped);
+    stops.push(stop("followups", 1, followups, skipped ? { notRun: true, via: END_EDGE } : {}));
+  }
+  // 条件つきの辺で着いた停留所に、選ばれた分岐を付ける（LangGraph の conditional edge。T32）
+  stops.forEach((s, i) => {
+    const prev = stops[i - 1];
+    if (!prev || s.via) return;
+    const e = FLOW_GRAPH.edges.find((x) => x.source === prev.node && x.target === s.node && x.key);
+    if (e?.key) s.via = { key: e.key, label: e.label ?? e.key };
+  });
 
   if (running && stops.length) {
     const live = stops.findLast((s) => s.steps.some((x) => x.status === "running"));

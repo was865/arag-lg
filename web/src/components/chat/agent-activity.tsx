@@ -171,7 +171,16 @@ export function AgentActivity({
       {isOpen && (
         <div className="animate-fade-up overflow-hidden card-sunken motion-reduce:animate-none">
           <CitedTitlesContext.Provider value={new Set((sources ?? []).map((x) => x.title))}>
-            {guided && <RunFlow route={route} running={running} selected={only} onSelect={setOnly} />}
+            {guided && (
+              <RunFlow
+                route={route}
+                flow={flow}
+                running={running}
+                durationMs={durationMs}
+                selected={only}
+                onSelect={setOnly}
+              />
+            )}
             <ToolSteps steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
           </CitedTitlesContext.Provider>
         </div>
