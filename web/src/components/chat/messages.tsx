@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, m } from "motion/react";
 import { createPortal } from "react-dom";
-import { Button, IconButton } from "@/components/ui/button";
+import { Button, ICON, IconButton } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { EvidenceRail } from "@/components/chat/evidence-rail";
@@ -22,6 +23,10 @@ import { UserAttachments } from "@/components/uploads/uploads";
 import type { CitationStyle, StagedFile, Turn, TurnImage, ToolView } from "@/lib/types";
 import type { FeedbackReasonTag, TurnFeedback } from "@/lib/feedback-types";
 import { useT } from "@/i18n/context";
+import { useToast } from "@/components/feedback/toast-provider";
+import { Icon } from "@/components/icons";
+import { DURATION, EASE } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { Followups, followupsFor } from "@/components/chat/followups";
 import { dateSeparator, formatTurnTimestamp, sameLocalDay } from "@/lib/datetime";
 
@@ -77,86 +82,189 @@ function QueryImageThumb({ image }: { image: TurnImage }) {
   );
 }
 
+/** 質問の下に並べる小さな操作（時刻・コピー・編集）。ホバーかフォーカスで、少し下りながら出す。触る端末では常に出す。 */
+const questionActionsClass =
+  "flex h-6 items-center gap-0.5 -translate-y-0.5 opacity-0 transition-[opacity,translate] duration-(--duration-mid) ease-(--ease-out) group-hover/q:translate-y-0 group-hover/q:opacity-100 group-focus-within/q:translate-y-0 group-focus-within/q:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100";
+
+/** 吹き出しの角。Motion の layout は style で渡した角丸だけを伸び縮みの間も補正する */
+const BUBBLE_RADIUS = { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 4 };
+
+/** 中身の差し替え。箱が形を変えるあいだ、少し遅れて淡く出す */
+const contentIn = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: DURATION.mid, ease: EASE.out, delay: 0.05 } },
+} as const;
+
 export function UserMessage({
   text,
-  time,
+  sentAt,
   onEdit,
+  onEditingChange,
+  laterTurns = 0,
   image,
 }: {
   text: string;
   /** 質問に添えた画像（specs/017） */
   image?: TurnImage;
-  time?: React.ReactNode;
-  /** 指定すると、ホバーで「編集」を出し、送信で作り直す（R34）。 */
+  /** 送った時刻（ISO）。質問の下の操作の列に時刻だけを出し、ツールチップで日付まで出す */
+  sentAt?: string;
+  /** 指定すると「編集」を出し、送信でこのターンから作り直す（R34）。 */
   onEdit?: (text: string) => void;
+  /** 編集を開いた・閉じたとき。作り直しで置き換わる回答を淡くするのに使う */
+  onEditingChange?: (editing: boolean) => void;
+  /** このターンより後のターンの数。編集で消えるものを先に伝える */
+  laterTurns?: number;
 }) {
   const { t } = useT();
-  const [editing, setEditing] = useState(false);
+  const push = useToast();
+  const [editing, setEditingState] = useState(false);
   const [draft, setDraft] = useState(text);
-  if (editing && onEdit) {
-    const submit = () => {
-      const v = draft.trim();
-      if (!v) return;
-      setEditing(false);
-      if (v !== text) onEdit(v);
-    };
-    return (
-      <div className="flex justify-end">
-        <div className="w-full max-w-[80%] rounded-[16px_16px_4px_16px] border-[0.5px] border-divider-strong bg-surface p-2.5 shadow-e1 max-md:max-w-[92%]">
-          <textarea
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                submit();
-              } else if (e.key === "Escape") {
-                setEditing(false);
-              }
-            }}
-            rows={Math.min(8, Math.max(2, draft.split("\n").length))}
-            aria-label={t.chat.editQuestion}
-            className="w-full resize-none border-0 bg-transparent px-1.5 py-1 text-callout leading-[1.55] text-fg outline-none"
-          />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="min-w-0 flex-1 text-caption text-muted">{t.chat.editHint}</span>
-            <Button variant="secondary" size="sm"
-              onClick={() => { setEditing(false); setDraft(text); }}
-            >{t.chat.editCancel}</Button>
-            <Button variant="primary" size="sm"
-              type="button"
-              onClick={submit}
-              disabled={!draft.trim()}
-            >{t.chat.editSubmit}</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const [copied, setCopied] = useState(false);
+  const time = sentAt ? formatTurnTimestamp(sentAt) : "";
+  const isEditing = editing && !!onEdit;
+
+  const setEditing = (v: boolean) => {
+    setEditingState(v);
+    onEditingChange?.(v);
+  };
+
+  // 押した場所でチェックに変えて知らせる（トーストは出さない）
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      push(t.feedback.copyFailed, "error");
+    }
+  };
+
+  // 文が同じでも送る（その質問で作り直す）。何も起きずに閉じると、送れたのか分からない
+  const submit = () => {
+    const v = draft.trim();
+    if (!v || !onEdit) return;
+    setEditing(false);
+    onEdit(v);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setDraft(text);
+  };
+
   return (
-    <div className="group flex items-end justify-end gap-2">
-      {onEdit && (
-        <IconButton
-          label={t.chat.editQuestion}
-          onClick={() => { setDraft(text); setEditing(true); }}
-          className="order-first mb-1 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
-        >
-          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
-            <path d="M10.5 3.2l2.3 2.3-6.6 6.6-2.9.6.6-2.9 6.6-6.6z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
-          </svg>
-        </IconButton>
-      )}
-      {/* 吹き出しを peer にし、ホバー時だけ時刻（order-first で左側）を出す。 */}
-      <div className="peer max-w-[80%] whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-bubble-user px-4 py-3 text-callout leading-[1.55] text-bubble-user-fg [overflow-wrap:anywhere] max-md:max-w-[88%] max-md:rounded-[14px_14px_4px_14px] max-md:px-3.5 max-md:py-[11px] max-md:text-callout">
-        {image && (
-          <div className="mb-2">
-            <QueryImageThumb image={image} />
-          </div>
+    <div className="group/q flex flex-col items-end gap-1">
+      {/* 吹き出しと編集欄は同じ箱。開閉で箱が形と色を変え、中身は少し遅れて出る */}
+      <m.div
+        layout
+        layoutDependency={isEditing}
+        style={BUBBLE_RADIUS}
+        className={cn(
+          "max-w-[80%] overflow-hidden border-[0.5px] transition-[background-color,border-color,box-shadow] duration-(--duration-mid) ease-(--ease-out)",
+          isEditing
+            ? "w-full border-divider-strong bg-surface p-2.5 shadow-e1 focus-within:ring-2 focus-within:ring-accent/30 max-md:max-w-[92%]"
+            : "border-transparent bg-bubble-user px-4 py-3 max-md:max-w-[88%] max-md:px-3.5 max-md:py-[11px]",
         )}
-        {text}
-      </div>
-      {time}
+      >
+        {isEditing ? (
+          <m.div key="edit" layout="position" layoutDependency={isEditing} {...contentIn}>
+            <textarea
+              // 開いたらカーソルを末尾に置く（足して直すことが多い）
+              ref={(el) => {
+                if (el && document.activeElement !== el) {
+                  el.focus({ preventScroll: true });
+                  el.setSelectionRange(el.value.length, el.value.length);
+                }
+              }}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  submit();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancel();
+                }
+              }}
+              rows={1}
+              aria-label={t.chat.editQuestion}
+              className="max-h-[40vh] min-h-[1.55em] w-full resize-none border-0 bg-transparent px-1.5 py-1 text-callout leading-[1.55] text-fg outline-none [field-sizing:content]"
+            />
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="min-w-0 flex-1 text-caption text-muted">
+                {laterTurns > 0
+                  ? t.chat.editHintBranch.replace("{n}", String(laterTurns))
+                  : t.chat.editHintLast}
+              </span>
+              <Button variant="secondary" size="sm" onClick={cancel}>{t.chat.editCancel}</Button>
+              <Button variant="primary" size="sm" type="button" onClick={submit} disabled={!draft.trim()}>
+                {t.chat.editSubmit}
+              </Button>
+            </div>
+          </m.div>
+        ) : (
+          <m.div
+            key="view"
+            layout="position"
+            layoutDependency={isEditing}
+            {...contentIn}
+            className="whitespace-pre-wrap text-callout leading-[1.55] text-bubble-user-fg [overflow-wrap:anywhere]"
+          >
+            {image && (
+              <div className="mb-2">
+                <QueryImageThumb image={image} />
+              </div>
+            )}
+            {text}
+          </m.div>
+        )}
+      </m.div>
+      {!isEditing && (
+        <div className={questionActionsClass}>
+          {time && (
+            <time
+              dateTime={sentAt}
+              title={new Date(sentAt!).toLocaleString("ja-JP")}
+              aria-label={t.chat.sentAt.replace("{time}", time)}
+              className="px-1.5 text-caption tabular-nums text-muted"
+            >
+              {time}
+            </time>
+          )}
+          <IconButton
+            label={copied ? t.chat.copied : t.chat.copyQuestion}
+            size="icon-sm"
+            onClick={() => void copy()}
+            className={cn(copied && "text-fg")}
+          >
+            <span className="grid place-items-center">
+              <AnimatePresence initial={false} mode="popLayout">
+                <m.span
+                  key={copied ? "done" : "copy"}
+                  className="col-start-1 row-start-1 grid place-items-center"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.5, transition: { duration: DURATION.exit } }}
+                >
+                  <Icon name={copied ? "check" : "copy"} size={ICON.sm} />
+                </m.span>
+              </AnimatePresence>
+            </span>
+          </IconButton>
+          {onEdit && (
+            <IconButton
+              label={t.chat.editQuestion}
+              icon="pencil"
+              size="icon-sm"
+              iconSize={ICON.sm}
+              onClick={() => {
+                setDraft(text);
+                setEditing(true);
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -176,8 +284,8 @@ function DateSeparator({ label }: { label: string }) {
  * アシスタントの発言。アバターは置かない: 右寄せの吹き出しが利用者、左端から始まる本文が回答、と位置だけで見分けが付く。
  * 先頭の「検索の過程」の行が回答の見出しを兼ねる（specs/025 R45）。
  */
-export function AssistantMessage({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-w-0 flex-col gap-3.5 max-md:gap-3">{children}</div>;
+export function AssistantMessage({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("flex min-w-0 flex-col gap-3.5 max-md:gap-3", className)}>{children}</div>;
 }
 
 /** 生成中の回答: 届いた文字が淡く現れ、末尾で印が呼吸する（specs/025 R20）。 */
@@ -247,6 +355,11 @@ export function Transcript({
 }) {
   const { t } = useT();
   const now = new Date();
+  // 編集中のターン。その回答と後のターンは作り直しで置き換わるので淡くして先に見せる
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const dim = (idx: number, from: "this" | "later") =>
+    onEdit != null && editingIdx != null && (from === "this" ? idx === editingIdx : idx > editingIdx);
+  const fade = "transition-opacity duration-(--duration-slow) ease-(--ease-out)";
   // 保存したメッセージがあるときだけ（受付前の取消・runner_lost の失敗では出さない）
   const report = (turn: Turn, idx: number) =>
     canReport(turn) ? <ReportProblem onSubmit={(v) => onFeedbackDetail(v, idx)} /> : undefined;
@@ -259,25 +372,18 @@ export function Transcript({
         const prev = turns[idx - 1];
         const showSeparator = !!turn.createdAt &&
           (idx === 0 || !prev?.createdAt || !sameLocalDay(new Date(prev.createdAt), new Date(turn.createdAt)));
-        const sentTime = turn.createdAt ? formatTurnTimestamp(turn.createdAt) : "";
         return (
-          <div key={idx} data-turn={idx} className="flex flex-col gap-6 max-md:gap-[18px]">
+          <div key={idx} data-turn={idx} className={cn("flex flex-col gap-6 max-md:gap-[18px]", fade, dim(idx, "later") && "opacity-35")}>
             {showSeparator && <DateSeparator label={dateSeparator(turn.createdAt!, now, { today: t.chat.dateToday, yesterday: t.chat.dateYesterday })} />}
             <UserMessage
               text={turn.query}
               image={turn.image}
-              onEdit={onEdit && turn.messageId && !running ? (v) => onEdit(idx, v) : undefined}
-              time={sentTime ? (
-                <time
-                  dateTime={turn.createdAt}
-                  aria-label={t.chat.sentAt.replace("{time}", sentTime)}
-                  className="order-first shrink-0 pb-1 text-caption text-muted opacity-0 transition-opacity duration-100 peer-hover:opacity-100"
-                >
-                  {sentTime}
-                </time>
-              ) : undefined}
+              sentAt={turn.createdAt}
+              laterTurns={turns.length - 1 - idx}
+              onEdit={onEdit && turn.messageId && !running ? (v) => { setEditingIdx(null); onEdit(idx, v); } : undefined}
+              onEditingChange={(v) => setEditingIdx((cur) => (v ? idx : cur === idx ? null : cur))}
             />
-            <AssistantMessage>
+            <AssistantMessage className={cn(fade, dim(idx, "this") && "opacity-35")}>
               {isLast && isLiveLastTurn && liveAttachments.length > 0 && <UserAttachments files={liveAttachments} />}
               {running && turn.steps.length === 0 && (
                 <div className="flex items-center gap-2 text-footnote text-muted">

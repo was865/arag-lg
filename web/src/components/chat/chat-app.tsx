@@ -319,6 +319,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     }
     const turn = turns[idx];
     if (!turn || !activeId) return;
+    stick();
     // 保存済みのメッセージがあればそこから分岐、無ければ（受付前に取り消した等）新しい質問として送る。
     // 画像つきのターンは同じ画像を送り直す（読み取りは作り直しのたびに行う）
     const go = (img: QueryImage | null) =>

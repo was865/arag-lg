@@ -98,7 +98,12 @@ export const chat = {
   editQuestion: "質問を編集",
   editSubmit: "送信",
   editCancel: "キャンセル",
-  editHint: "編集して送信すると、この質問から先の会話を作り直します。",
+  copyQuestion: "質問をコピー",
+  copied: "コピーしました",
+  /** 最後のターンを編集したとき */
+  editHintLast: "送信すると、この質問で回答を作り直します。",
+  /** 途中のターンを編集したとき。{n} は消えるあとのやり取りの数 */
+  editHintBranch: "送信すると、この質問から回答を作り直します。あとの {n} 件のやり取りは消えます。",
   noAnswerUncited: "資料から根拠を示せませんでした",
   noAnswerUncitedHint: "。この回答には出典が付いていないので、内容は資料で確かめてください。",
   reconnecting: "接続し直しています…",
