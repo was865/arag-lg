@@ -99,8 +99,11 @@ def _window_doc(start: int, end: int) -> dict[str, Any]:
 
 
 class FakeDocling:
-    def __init__(self, *, fail: str | None = None, pending_polls: int = 1) -> None:
+    def __init__(
+        self, *, fail: str | None = None, pending_polls: int = 1, result_status: str = "success"
+    ) -> None:
         self.fail = fail
+        self.result_status = result_status
         self.pending_polls = pending_polls
         self.requests: list[dict[str, Any]] = []
         self._tasks: dict[str, tuple[int, int]] = {}
@@ -125,7 +128,12 @@ class FakeDocling:
         if path.startswith("/v1/result/"):
             s, e = self._tasks[path.rsplit("/", 1)[1]]
             return httpx.Response(
-                200, json={"document": {"json_content": _window_doc(s, e)}, "status": "success", "errors": []}
+                200,
+                json={
+                    "document": {"json_content": _window_doc(s, e)},
+                    "status": self.result_status,
+                    "errors": [{"message": "ocr failed"}] if self.result_status != "success" else [],
+                },
             )
         return httpx.Response(404)
 
@@ -200,3 +208,22 @@ async def test_docling_ocr_lang_when_configured(tmp_path: Path) -> None:
     fake = FakeDocling()
     await _parser(fake, ocr_lang=["iso:ja"]).parse(_pdf(tmp_path, 1), "a.pdf", "pdf")
     assert fake.requests[0]["ocr_lang"] == ["iso:ja"]
+
+
+async def test_docling_meta_records_status_and_options(tmp_path: Path) -> None:
+    r = await _parser(FakeDocling(), page_window=2).parse(_pdf(tmp_path, 3), "a.pdf", "pdf")
+    assert r.meta is not None
+    assert r.meta["statuses"] == ["success", "success"] and r.meta["errors"] == []
+    assert r.meta["windows"] == 2 and r.meta["elapsed_sec"] >= 0
+    assert r.meta["options"] == {"do_ocr": True, "ocr_lang": [], "page_window": 2}
+
+
+async def test_docling_partial_success_is_kept_with_errors(tmp_path: Path) -> None:
+    r = await _parser(FakeDocling(result_status="partial_success")).parse(_pdf(tmp_path, 1), "a.pdf", "pdf")
+    assert r.meta is not None
+    assert r.meta["statuses"] == ["partial_success"]
+    assert r.meta["errors"] == [{"message": "ocr failed"}]
+
+
+async def test_plain_has_no_docling_meta(tmp_path: Path) -> None:
+    assert (await _parse_plain(tmp_path, "a.txt", "x")).meta is None

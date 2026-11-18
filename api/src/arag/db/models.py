@@ -161,6 +161,8 @@ class Content(Base):
     chunker_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     embed_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
     sparse_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    parse_warnings: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    """解析の体検で出た警告（warn 以上）の件数。null は記録なし（specs/030）"""
     indexed_at: Mapped[datetime | None] = _ts_nullable()
     created_at: Mapped[datetime] = _now()
 

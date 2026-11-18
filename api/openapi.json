@@ -467,6 +467,10 @@
             "title": "Block Type",
             "type": "string"
           },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
           "boxes": {
             "items": {
               "additionalProperties": true,
@@ -544,7 +548,8 @@
           "context",
           "context_source",
           "token_len",
-          "boxes"
+          "boxes",
+          "body"
         ],
         "title": "ChunkOut",
         "type": "object"
@@ -915,6 +920,17 @@
               }
             ],
             "title": "Page Count"
+          },
+          "parse_warnings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Warnings"
           },
           "size": {
             "title": "Size",
@@ -6114,6 +6130,48 @@
         ]
       }
     },
+    "/v1/documents/{doc_id}/docling": {
+      "get": {
+        "description": "Docling の生の JSON（管理者だけ。specs/030 R4）。",
+        "operationId": "docling_json_v1_documents__doc_id__docling_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Docling Json",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/v1/documents/{doc_id}/original": {
       "get": {
         "operationId": "original_v1_documents__doc_id__original_get",
@@ -6213,6 +6271,52 @@
           }
         },
         "summary": "Outline",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/v1/documents/{doc_id}/parse-report": {
+      "get": {
+        "description": "解析の記録（本文は含まない。specs/030 R3）。",
+        "operationId": "parse_report_v1_documents__doc_id__parse_report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Parse Report V1 Documents  Doc Id  Parse Report Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Parse Report",
         "tags": [
           "documents"
         ]

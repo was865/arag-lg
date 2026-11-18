@@ -119,3 +119,31 @@ async def test_sync_payload_command_rewrites_refs(
     assert await sync_payload(settings) == 0
     pts, _ = await qdrant_index.client.scroll(qdrant_index.alias, limit=1)
     assert pts[0].payload["document_ids"] == [item["document_id"]]  # type: ignore[index]
+
+
+async def test_reparse_report_rebuilds_from_saved_docling(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+    database_url: str,
+) -> None:
+    from pathlib import Path
+
+    from arag.cli import reparse_report
+    from arag.storage import content_prefix
+
+    kb = await _personal(client, ALICE)
+    job_id = (await _upload(client, kb, [("a.md", MD.encode())])).json()["items"][0]["job_id"]
+    await run_ingest(uuid.UUID(job_id), make_deps(sessionmaker, storage_root, qdrant_index))
+    async with sessionmaker() as s:
+        h = await s.scalar(text("SELECT content_hash FROM app.contents"))
+        await s.execute(text("UPDATE app.contents SET parse_warnings = NULL"))
+        await s.commit()
+    path = Path(storage_root) / content_prefix(h) / "parse_report.json"
+    path.unlink()
+    settings = Settings(database_url=database_url, storage_dir=storage_root)
+    assert await reparse_report(settings, hashes=[]) == 0
+    assert path.exists()
+    async with sessionmaker() as s:
+        assert await s.scalar(text("SELECT parse_warnings FROM app.contents")) is not None

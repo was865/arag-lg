@@ -4,6 +4,7 @@ python -m arag.cli reindex [--all | --content-hash H ... | --heading-context] [-
 python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin]
 python -m arag.cli gc [--retention-days N]
 python -m arag.cli sync-payload
+python -m arag.cli reparse-report [--content-hash H ...]
 """
 
 import argparse
@@ -25,10 +26,11 @@ from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
 from arag.ingest.gc import run_gc
 from arag.ingest.index import QdrantIndex, QdrantPayloadSync
+from arag.ingest.report import build_report, load_report_dict, save_report
 from arag.ingest.sparse import SPARSE_VERSION
 from arag.kb.uploads import SUPPORTED
 from arag.settings import Settings
-from arag.storage import LocalStorage
+from arag.storage import LocalStorage, content_prefix
 
 
 async def reindex(
@@ -85,6 +87,56 @@ async def reindex(
             await s.commit()
             print("再投入しました（ワーカーが処理します）")
             return 0
+    finally:
+        await engine.dispose()
+
+
+async def reparse_report(settings: Settings, *, hashes: list[str]) -> int:
+    """保存済みの docling.json と DB のチャンクから解析の記録を作り直す（specs/030 R8）。"""
+    from docling_core.types.doc.document import DoclingDocument
+
+    engine = make_engine(settings.database_url)
+    sm = make_sessionmaker(engine)
+    storage = LocalStorage(settings.storage_dir)
+    done = skipped = 0
+    try:
+        async with sm() as s:
+            q = select(Content).where(Content.status == "ready")
+            if hashes:
+                q = q.where(Content.content_hash.in_(hashes))
+            for c in list(await s.scalars(q)):
+                prefix = content_prefix(c.content_hash)
+                key = f"{prefix}/docling.json"
+                if not await storage.exists(key):
+                    skipped += 1
+                    continue
+                doc = DoclingDocument.model_validate_json(await storage.read(key))
+                chunks = list(
+                    await s.scalars(
+                        select(Chunk).where(Chunk.content_hash == c.content_hash).order_by(Chunk.ordinal)
+                    )
+                )
+                previous = await load_report_dict(storage, prefix)
+                assets: set[str] = set()
+                for p in doc.pictures:
+                    uri = str(p.image.uri) if p.image else ""
+                    if uri.startswith("assets/") and await storage.exists(f"{prefix}/{uri}"):
+                        assets.add(uri.removeprefix("assets/"))
+                report = build_report(
+                    doc,
+                    chunks,
+                    parser=c.parser or "unknown",
+                    docling=previous.get("docling") if previous else None,
+                    asset_names=assets,
+                    page_count=c.page_count,
+                    check_bbox=c.ext.lower() == "pdf",
+                )
+                await save_report(storage, prefix, report)
+                c.parse_warnings = report.warn_count
+                done += 1
+            await s.commit()
+        print(f"作り直しました: {done} 件（docling.json が無く飛ばした: {skipped} 件）")
+        return 0
     finally:
         await engine.dispose()
 
@@ -218,10 +270,14 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--timeout", type=float, default=3600)
     g = sub.add_parser("gc", help="ごみ箱の期限切れ削除と孤立内容の回収を今すぐ実行する")
     g.add_argument("--retention-days", type=int, default=None, help="既定は ARAG_TRASH_RETENTION_DAYS")
+    rp = sub.add_parser("reparse-report", help="保存済みの docling.json から解析の記録を作り直す")
+    rp.add_argument("--content-hash", action="append", default=[], help="対象の内容ハッシュ（複数可）")
     sub.add_parser("sync-payload", help="Qdrant の payload（参照する文書・KB）を DB に合わせ直す")
     args = parser.parse_args(argv)
     if args.cmd == "sync-payload":
         return asyncio.run(sync_payload(Settings()))
+    if args.cmd == "reparse-report":
+        return asyncio.run(reparse_report(Settings(), hashes=args.content_hash))
     if args.cmd == "gc":
         return asyncio.run(gc(Settings(), retention_days=args.retention_days))
     if args.cmd == "reindex":

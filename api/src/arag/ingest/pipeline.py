@@ -27,6 +27,7 @@ from arag.ingest.events import NoopPublisher, Publisher
 from arag.ingest.figures import FigureDescriber, describe_figures
 from arag.ingest.index import IndexPoint, live_refs
 from arag.ingest.parser import DoclingServeParser, ParseError, ParseResult, PlainTextParser, select_parser
+from arag.ingest.report import build_report, load_report_dict, save_report
 from arag.ingest.sparse import SPARSE_VERSION, SparseEncoder
 from arag.logging import get_logger
 from arag.storage import Storage, content_prefix
@@ -124,7 +125,9 @@ async def _load_saved(storage: Storage, prefix: str) -> ParseResult | None:
         if await storage.exists(f"{prefix}/rendered.md")
         else ""
     )
-    return ParseResult(doc=doc, markdown=md, page_count=None, parser="saved", assets=assets)
+    previous = await load_report_dict(storage, prefix)  # docling-serve の応答の記録を引き継ぐ
+    meta = previous.get("docling") if previous else None
+    return ParseResult(doc=doc, markdown=md, page_count=None, parser="saved", assets=assets, meta=meta)
 
 
 async def _parse(run: _Run, content: Content, deps: IngestDeps) -> ParseResult:
@@ -205,6 +208,18 @@ async def run_ingest(job_id: uuid.UUID, deps: IngestDeps) -> str:
         )
         chunks: list[ChunkDraft] = _merge_figures(chunked.chunks, figures)
         run.extra["chunk_count"] = len(chunks)
+        report = build_report(
+            parsed.doc,
+            chunks,
+            parser=parsed.parser,
+            docling=parsed.meta,
+            asset_names=set(parsed.assets),
+            page_count=parsed.page_count or content.page_count,
+            check_bbox=content.ext.lower() == "pdf",
+        )
+        await save_report(deps.storage, content_prefix(content_hash), report)
+        if report.warn_count:
+            log.warning("parse_warnings", content_hash=content_hash, warnings=report.warn_count)
 
         async def on_ctx(done: int, total: int) -> None:
             if done == total or done % 10 == 0:
@@ -298,6 +313,7 @@ async def run_ingest(job_id: uuid.UUID, deps: IngestDeps) -> str:
                     page_count=parsed.page_count or content.page_count,
                     parser=getattr(select_parser(content.ext, deps.plain, deps.docling), "name", None),
                     chunker_version=CHUNKER_VERSION,
+                    parse_warnings=report.warn_count,
                     embed_model=deps.embedder.model,
                     sparse_version=SPARSE_VERSION,
                     indexed_at=text("now()"),

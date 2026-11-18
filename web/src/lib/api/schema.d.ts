@@ -508,6 +508,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{doc_id}/docling": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Docling Json
+         * @description Docling の生の JSON（管理者だけ。specs/030 R4）。
+         */
+        get: operations["docling_json_v1_documents__doc_id__docling_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents/{doc_id}/original": {
         parameters: {
             query?: never;
@@ -534,6 +554,26 @@ export interface paths {
         };
         /** Outline */
         get: operations["outline_v1_documents__doc_id__outline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/{doc_id}/parse-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Parse Report
+         * @description 解析の記録（本文は含まない。specs/030 R3）。
+         */
+        get: operations["parse_report_v1_documents__doc_id__parse_report_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1323,6 +1363,8 @@ export interface components {
         ChunkOut: {
             /** Block Type */
             block_type: string;
+            /** Body */
+            body: string;
             /** Boxes */
             boxes: {
                 [key: string]: unknown;
@@ -1503,6 +1545,8 @@ export interface components {
             mime: string;
             /** Page Count */
             page_count: number | null;
+            /** Parse Warnings */
+            parse_warnings?: number | null;
             /** Size */
             size: number;
             /** Status */
@@ -3952,6 +3996,37 @@ export interface operations {
             };
         };
     };
+    docling_json_v1_documents__doc_id__docling_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     original_v1_documents__doc_id__original_get: {
         parameters: {
             query?: never;
@@ -4003,6 +4078,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutlineSection"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_report_v1_documents__doc_id__parse_report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

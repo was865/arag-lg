@@ -43,6 +43,8 @@ class ParseResult:
     page_count: int | None
     parser: str
     assets: dict[str, bytes] = field(default_factory=dict)
+    meta: dict[str, Any] | None = None
+    """docling-serve の応答の記録（status・errors・窓・所要時間・オプション。specs/030 R1）"""
 
 
 class Parser(Protocol):
@@ -206,9 +208,15 @@ class DoclingServeParser:
         windows = page_windows(total, self.page_window) if total else [None]
         data = await asyncio.to_thread(path.read_bytes)
         docs: list[DoclingDocument] = []
+        statuses: list[str] = []
+        errors: list[Any] = []
+        started = time.monotonic()
         async with self._client() as client:
             for w in windows:
-                docs.append(await self._convert(client, data, filename, w))
+                d, status, errs = await self._convert(client, data, filename, w)
+                docs.append(d)
+                statuses.append(status)
+                errors.extend(errs)
                 if total and w:
                     await on_progress(w[1], total)
         doc = docs[0] if len(docs) == 1 else DoclingDocument.concatenate(docs)
@@ -223,11 +231,18 @@ class DoclingServeParser:
             page_count=total or (len(doc.pages) or None),
             parser=self.name,
             assets=assets,
+            meta={
+                "statuses": statuses,
+                "errors": errors,
+                "windows": len(windows),
+                "elapsed_sec": round(time.monotonic() - started, 1),
+                "options": {"do_ocr": True, "ocr_lang": self.ocr_lang, "page_window": self.page_window},
+            },
         )
 
     async def _convert(
         self, client: httpx.AsyncClient, data: bytes, filename: str, window: tuple[int, int] | None
-    ) -> DoclingDocument:
+    ) -> tuple[DoclingDocument, str, list[Any]]:
         # 同じ名前の項目を繰り返す値はリストで渡す（httpx が multipart で展開する）
         form: dict[str, str | list[str]] = {
             "to_formats": "json",
@@ -264,7 +279,11 @@ class DoclingServeParser:
         content: Any = (result.get("document") or {}).get("json_content")
         if not content:
             raise ParseError("文書の解析結果が空でした", "json_content is empty", retryable=False)
-        return DoclingDocument.model_validate(content)
+        return (
+            DoclingDocument.model_validate(content),
+            str(result["status"]),
+            list(result.get("errors") or []),
+        )
 
 
 def select_parser(ext: str, plain: PlainTextParser, docling: DoclingServeParser | None) -> Parser:

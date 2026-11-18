@@ -354,3 +354,61 @@ async def test_gc_removes_rows_points_and_files(
         assert (
             await s.scalar(text("SELECT action FROM app.audit_logs WHERE action = 'gc.purge'")) == "gc.purge"
         )
+
+
+async def test_parse_report_saved_and_served(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+) -> None:
+    """解析の記録は読める人に、Docling の生 JSON は管理者だけに返す（specs/030 R1・R3・R4）。"""
+    kb = await _personal(client, ALICE)
+    item = (await _upload(client, kb, [("規程.md", MD.encode())])).json()["items"][0]
+    assert (
+        await run_ingest(uuid.UUID(item["job_id"]), make_deps(sessionmaker, storage_root, qdrant_index))
+        == "ready"
+    )
+    doc_id = item["document_id"]
+    h = await _hash_of_job(sessionmaker, item["job_id"])
+    assert (Path(storage_root) / content_prefix(h) / "parse_report.json").exists()
+
+    rep = await client.get(f"/v1/documents/{doc_id}/parse-report", headers=ALICE)
+    assert rep.status_code == 200
+    body = rep.json()
+    assert body["version"] == 1 and body["totals"]["chunks"] > 0 and body["docling"] is None
+    doc = (await client.get(f"/v1/documents/{doc_id}", headers=ALICE)).json()
+    assert doc["parse_warnings"] == sum(1 for w in body["warnings"] if w["severity"] == "warn")
+
+    # Docling の生 JSON は管理者だけ（持ち主でも不可）
+    assert (await client.get(f"/v1/documents/{doc_id}/docling", headers=ALICE)).status_code == 403
+    chunks = (await client.get(f"/v1/documents/{doc_id}/chunks", headers=ALICE)).json()
+    assert all(c["body"].endswith(c["text"]) for c in chunks)
+
+
+async def test_parse_report_missing_is_404(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+) -> None:
+    kb = await _personal(client, ALICE)
+    item = (await _upload(client, kb, [("a.md", MD.encode())])).json()["items"][0]
+    await run_ingest(uuid.UUID(item["job_id"]), make_deps(sessionmaker, storage_root, qdrant_index))
+    h = await _hash_of_job(sessionmaker, item["job_id"])
+    (Path(storage_root) / content_prefix(h) / "parse_report.json").unlink()
+    res = await client.get(f"/v1/documents/{item['document_id']}/parse-report", headers=ALICE)
+    assert res.status_code == 404
+
+
+async def test_docling_json_for_admin(
+    client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    qdrant_index: QdrantIndex,
+    storage_root: str,
+) -> None:
+    org = (await client.post("/v1/kbs", json={"name": "全社"}, headers=ADMIN)).json()["id"]
+    item = (await _upload(client, org, [("a.md", MD.encode())], headers=ADMIN)).json()["items"][0]
+    await run_ingest(uuid.UUID(item["job_id"]), make_deps(sessionmaker, storage_root, qdrant_index))
+    res = await client.get(f"/v1/documents/{item['document_id']}/docling", headers=ADMIN)
+    assert res.status_code == 200 and "texts" in res.json()

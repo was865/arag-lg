@@ -27,6 +27,7 @@ from arag.db.models import (
 from arag.deps import CtxDep
 from arag.errors import ApiError, not_found
 from arag.ingest.gc import collect_orphans, delete_documents
+from arag.ingest.report import load_report_dict
 from arag.kb import permissions as perm
 from arag.kb import service
 from arag.kb.access import Access
@@ -53,6 +54,7 @@ class DocumentOut(BaseModel):
     status: str
     page_count: int | None
     chunk_count: int
+    parse_warnings: int | None = None
     job_id: uuid.UUID | None
     writable: bool
     uploaded_by: str
@@ -143,6 +145,8 @@ class ChunkOut(BaseModel):
     context_source: str
     token_len: int
     boxes: list[dict[str, Any]]
+    body: str
+    """埋め込みに送った本文（文脈 + チャンクの文。specs/030 R10）"""
 
 
 class TrashItem(BaseModel):
@@ -204,6 +208,7 @@ def _doc_out(p: Access, row: Any) -> DocumentOut:
         status=content.status,
         page_count=content.page_count,
         chunk_count=int(chunks or 0),
+        parse_warnings=content.parse_warnings,
         job_id=job_id,
         writable=perm.can_write(p, kb),
         uploaded_by=doc.uploaded_by,
@@ -535,6 +540,30 @@ async def rendered(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> PlainTex
     return PlainTextResponse((await storage.read(key)).decode(), media_type="text/markdown; charset=utf-8")
 
 
+@router.get("/v1/documents/{doc_id}/parse-report")
+async def parse_report(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> dict[str, Any]:
+    """解析の記録（本文は含まない。specs/030 R3）。"""
+    doc, _ = await _readable_doc(ctx, doc_id)
+    storage: Storage = request.app.state.storage
+    report = await load_report_dict(storage, content_prefix(doc.content_hash))
+    if report is None:
+        raise not_found("解析の記録がありません")
+    return report
+
+
+@router.get("/v1/documents/{doc_id}/docling")
+async def docling_json(request: Request, doc_id: uuid.UUID, ctx: CtxDep) -> Response:
+    """Docling の生の JSON（管理者だけ。specs/030 R4）。"""
+    doc, _ = await _readable_doc(ctx, doc_id)
+    if not ctx.access.is_admin:
+        raise ApiError(403, "forbidden", "管理者だけが見られます")
+    storage: Storage = request.app.state.storage
+    key = f"{content_prefix(doc.content_hash)}/docling.json"
+    if not await storage.exists(key):
+        raise not_found("解析結果がまだありません")
+    return Response(await storage.read(key), media_type="application/json")
+
+
 def _section_counts() -> Any:
     return select(func.count(Chunk.id)).where(Chunk.section_id == Section.id).scalar_subquery()
 
@@ -627,6 +656,7 @@ async def chunks(
             context_source=c.context_source,
             token_len=c.token_len,
             boxes=c.boxes,
+            body=f"{c.context}\n\n{c.text}" if c.context else c.text,
         )
         for c in rows
     ]
