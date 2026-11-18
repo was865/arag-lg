@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Segmented } from "@/components/ui/segmented";
+import { GraphView } from "@/components/chat/graph-view";
 import { cn, formatMs } from "@/lib/utils";
 import { FLOW_GRAPH, type FlowNodeId, type FlowRoute, type FlowRun, type FlowStop } from "@/lib/chat/flow";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -228,7 +229,7 @@ export function RunFlow({
         </span>
       </div>
       {graph ? (
-        <GraphView flow={flow} />
+        <GraphView flow={flow} route={route} />
       ) : (
         <ol className={cn("m-0 flex list-none flex-col p-0", row("@[480px]:flex-row @[480px]:pt-2"))}>
           {items.map((it, i) => {
@@ -374,62 +375,5 @@ function SentMark() {
         <path d="M8 12.5V4M4.5 7.5L8 4l3.5 3.5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
-  );
-}
-
-/**
- * グラフ全体（T32）。make graph が書き出した節点をすべて定義の順に並べ、通った回数と時間を添える。
- * 通らなかった節点は淡く出す。条件つきの辺は、選ばれた回数か「通らず」を一覧にする。
- */
-export function GraphView({ flow }: { flow: FlowRun }) {
-  const { t } = useT();
-  const label = new Map(flow.nodes.map((n) => [n.id, n.label]));
-  const conditional = flow.edges.filter((e) => e.key);
-  return (
-    <div className="flex flex-col gap-3">
-      <ol className="m-0 grid list-none grid-cols-4 gap-x-1 gap-y-2.5 p-0 @[480px]:grid-cols-8">
-        {flow.nodes.map((n) => (
-          <li
-            key={n.id}
-            title={n.description}
-            className={cn("flex min-w-0 flex-col items-center gap-1 text-center", !n.passed && "opacity-50")}
-          >
-            {n.passed ? (
-              <span className="grid h-4 w-4 place-items-center rounded-full border-[1.5px] border-accent/55 bg-surface">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent/80" />
-              </span>
-            ) : (
-              <span className="h-4 w-4 rounded-full border-[1.5px] border-dashed border-divider-strong bg-surface" />
-            )}
-            <span className="max-w-full truncate text-caption font-medium text-fg">
-              {n.label}
-              {n.visits > 1 && <span className="nums ml-0.5 font-mono text-[10px] text-accent">×{n.visits}</span>}
-            </span>
-            <span className="nums font-mono text-[10px] text-muted-2">
-              {n.passed ? (n.durationMs > 0 ? formatMs(n.durationMs) : "") : t.chat.flowNotPassed}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div>
-        <div className="eyebrow mb-1 text-muted">{t.chat.flowConditionalEdges}</div>
-        <ul className="m-0 grid list-none grid-cols-1 gap-x-4 p-0 @[480px]:grid-cols-2">
-          {conditional.map((e) => (
-            <li
-              key={`${e.source}-${e.key}`}
-              className={cn("flex min-w-0 items-baseline gap-2 py-0.5 text-caption", !e.passed && "opacity-50")}
-            >
-              <span className="truncate text-fg-2">
-                {label.get(e.source)} → {label.get(e.target)}
-              </span>
-              <span className={cn("shrink-0 font-mono text-[10px]", e.kind === "back" ? "text-accent" : "text-muted")}>{e.label}</span>
-              <span className="nums ml-auto shrink-0 font-mono text-[10px] text-muted-2">
-                {e.passed ? interpolate(t.chat.flowEdgeCount, { n: String(e.count) }) : t.chat.flowNotPassed}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }

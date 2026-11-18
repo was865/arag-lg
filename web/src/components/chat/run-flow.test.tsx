@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FlowRail, GraphView, RunFlow } from "@/components/chat/run-flow";
+import { FlowRail, RunFlow } from "@/components/chat/run-flow";
+import { GraphView } from "@/components/chat/graph-view";
 import { flowOf, routeOf, type FlowStep } from "@/lib/chat/flow";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -104,16 +105,29 @@ describe("RunFlow のグラフの特徴（specs/029 T32）", () => {
   });
 });
 
-describe("GraphView（グラフ全体。specs/029 T32）", () => {
+describe("GraphView（グラフ全体の弧線図。specs/029 T33）", () => {
   const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const view = (name: string) => wrap(<GraphView flow={flowOf(stepsOf(name))} route={routeOf(stepsOf(name))} />);
 
-  it("すべての節点を並べ、通らなかった節点と辺もそうと分かるように出す", () => {
-    const t = text(wrap(<GraphView flow={flowOf(stepsOf("gap"))} />));
+  it("すべての節点を並べ、通った回数と通らなかった節点を示す", () => {
+    const t = text(view("gap"));
     for (const label of ["画像", "理解", "最初の検索", "調査", "見張り", "確認", "確定", "続けて聞く"]) expect(t).toContain(label);
     expect(t).toContain("×2"); // 差し戻しで調査を 2 回通った
-    expect(t).toContain("条件つきの辺");
-    expect(t).toMatch(/確認 → 調査 差し戻し 1 回/);
-    expect(t).toMatch(/理解 → 調査 雑談 通らず/);
+    expect(t).toContain("通らず"); // 画像
+  });
+
+  it("通った辺と通らなかった辺を分け、戻る辺には回数を添える", () => {
+    const html = view("gap");
+    expect(html).toMatch(/data-edge="send_back" data-taken="1"/);
+    expect(html).toMatch(/data-edge="chat" data-taken="0"/);
+    expect(text(html)).toContain("差し戻し ×1");
+  });
+
+  it("たどり直しのトークンと「もう一度たどる」を出す", () => {
+    const html = view("answer");
+    expect(html).toContain("<animateMotion");
+    expect(text(html)).toContain("もう一度たどる");
+    expect(html).toContain("ar-trace");
   });
 });
 

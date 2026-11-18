@@ -230,5 +230,9 @@ describe("routeOf の条件つきの辺（specs/029 T32）", () => {
     const ran = routeOf([...stepsOf("answer"), { ...off, output: { questions: ["次は？"] } }]).stops.at(-1)!;
     expect(ran).toMatchObject({ node: "followups", via: { key: "followups", label: "候補あり" } });
     expect(ran.notRun).toBeFalsy();
+    // グラフ全体でも、作らなかったなら続けて聞くと確定 → 続けて聞くの辺は通っていない
+    const flow = flowOf([...stepsOf("answer"), off]);
+    expect(flow.nodes.find((n) => n.id === "followups")!.passed).toBe(false);
+    expect(flow.edges.find((e) => e.key === "followups")!.passed).toBe(false);
   });
 });

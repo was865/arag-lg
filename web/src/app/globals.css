@@ -354,6 +354,39 @@
     clip-path: inset(0 0 0 0);
   }
 }
+/* グラフ全体のたどり直し（specs/029 T33）: 線を pathLength=1 で始点から描く・節点が灯る・灯った節点から広がる輪 */
+@keyframes ar-trace {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ar-node-on {
+  from {
+    opacity: 0.25;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ar-ripple {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
 @keyframes ar-breathe {
   0%,
   100% {

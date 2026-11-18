@@ -179,7 +179,10 @@ export function flowOf(
     guard: false,
     review: false,
     finalize: finalized,
-    followups: has("followups"),
+    // 作らなかった（利用者の設定でオフ）記録だけなら、続けて聞くは通っていない（確定から END へ）
+    followups: top.some(
+      (s) => nodeOfStep.get(s.id) === "followups" && !(s.output as Record<string, unknown> | null | undefined)?.skipped,
+    ),
   };
   // 調査・見張り・確認は何も出さずに通ることがある。後ろの節点まで進んでいれば通っている
   passed.investigate = has("investigate") || has("guard") || has("review") || finalized;
