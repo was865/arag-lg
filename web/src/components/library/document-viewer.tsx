@@ -6,6 +6,7 @@
 import { m } from "motion/react";
 import { DURATION, EASE } from "@/lib/motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/icons";
 import { OriginalPreview } from "@/components/documents/original-preview";
@@ -30,7 +31,7 @@ export interface DocumentViewerProps {
   onAsk: (doc: DocumentOut) => void;
   /** 管理者なら Docling の生 JSON へのリンクを出す（specs/030 R4） */
   isAdmin?: boolean;
-  /** 指定すると「対照」を、この章のチャンクを選んだ状態で開く（回答の出典から。specs/030 R13） */
+  /** 指定すると「解析の確認」を、この章のチャンクを選んだ状態で開く（回答の出典から。specs/030 R13） */
   initialSectionId?: string | null;
 }
 
@@ -67,7 +68,6 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
     st.label,
     doc.page_count ? `${doc.page_count} ページ` : null,
     ready ? `${doc.chunk_count} チャンク` : null,
-    doc.parse_warnings ? `解析の警告 ${doc.parse_warnings} 件` : null,
     formatBytes(doc.size),
   ].filter(Boolean);
 
@@ -95,7 +95,14 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
           <h2 className="m-0 truncate text-callout font-semibold text-fg" title={doc.filename}>
             {doc.filename}
           </h2>
-          <div className="truncate text-caption text-muted">{facts.join(" · ")}</div>
+          <div className="flex min-w-0 items-center gap-1.5 text-caption text-muted">
+            <span className="truncate">{facts.join(" · ")}</span>
+            {ready && !!doc.parse_warnings && (
+              <button onClick={() => setTab("inspect")} title="解析の確認を開く" className="shrink-0 rounded-full">
+                <Badge tone="danger">解析の警告 {doc.parse_warnings}</Badge>
+              </button>
+            )}
+          </div>
         </div>
         <IconButton asChild label="原本を新しいタブで開く" className="h-8 w-8">
           <a href={originalUrl(doc.id)} target="_blank" rel="noopener">
@@ -132,7 +139,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
         {(
           [
             ["parsed", "整形表示"],
-            ["inspect", "対照"],
+            ["inspect", "解析の確認"],
             ["original", "原本"],
           ] as const
         )

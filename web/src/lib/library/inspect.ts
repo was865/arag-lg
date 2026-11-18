@@ -80,3 +80,38 @@ export const WARNING_LABEL: Record<string, string> = {
 export function warningLabel(code: string): string {
   return WARNING_LABEL[code] ?? code;
 }
+
+export const BLOCK_LABEL: Record<string, string> = {
+  text: "本文",
+  table: "表",
+  figure: "図",
+  code: "コード",
+  formula: "数式",
+  list: "リスト",
+};
+
+export const CONTEXT_SOURCE_LABEL: Record<string, string> = {
+  llm: "モデルが付与",
+  heading: "見出しから作成",
+};
+
+/** 前後の頁（端では null）。 */
+export function adjacentPage(pages: number[], page: number, dir: -1 | 1): number | null {
+  const i = pages.indexOf(page);
+  if (i < 0) return pages[0] ?? null;
+  return pages[i + dir] ?? null;
+}
+
+/** 今の頁より後ろで、warn の警告がある最初の頁（無ければ先頭から探し直す）。 */
+export function nextWarningPage(report: ParseReport | null, page: number): number | null {
+  if (!report) return null;
+  const warned = [...new Set(report.warnings.filter((w) => w.severity === "warn" && w.page != null).map((w) => w.page!))].sort(
+    (a, b) => a - b,
+  );
+  return warned.find((p) => p > page) ?? warned[0] ?? null;
+}
+
+/** 見出しの道筋（"A > B > C"）を画面の区切り（›）に直す。 */
+export function headingCrumb(path: string): string {
+  return path.split(/\s*>\s*/).filter(Boolean).join(" › ");
+}

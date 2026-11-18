@@ -9,7 +9,7 @@
 | `api/src/arag/ingest/pipeline.py` | チャンク化と図の統合の後に `parse_report.json` を保存し、`contents.parse_warnings` を更新 |
 | `api/src/arag/kb/router_documents.py` | `/parse-report`・`/docling`（admin）・`DocumentOut.parse_warnings`・`ChunkOut.body`（埋め込みに送った本文） |
 | `api/src/arag/cli.py` | `reparse-report` |
-| `web/src/components/library/inspect/` | 「対照」の画面 |
+| `web/src/components/library/inspect/` | 「解析の確認」の画面 |
 
 ## 記録の形（`parse_report.json`、version 1）
 

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { boxesOnPage, boxToRect, chunksOnPage, firstPageOf, warningsByPage, type ChunkOut, type ParseReport } from "./inspect";
+import {
+  adjacentPage,
+  boxesOnPage,
+  boxToRect,
+  chunksOnPage,
+  firstPageOf,
+  headingCrumb,
+  nextWarningPage,
+  warningsByPage,
+  type ChunkOut,
+  type ParseReport,
+} from "./inspect";
 
 const chunk = (over: Partial<ChunkOut>): ChunkOut =>
   ({ id: "c", boxes: [], page_start: null, page_end: null, ...over }) as unknown as ChunkOut;
@@ -51,5 +62,30 @@ describe("warningsByPage", () => {
     const m = warningsByPage(report);
     expect(m.get(2)).toHaveLength(2);
     expect(m.get(null)).toHaveLength(1);
+  });
+});
+
+describe("頁の移動", () => {
+  it("前後の頁・端では null", () => {
+    expect(adjacentPage([1, 2, 3], 2, 1)).toBe(3);
+    expect(adjacentPage([1, 2, 3], 1, -1)).toBeNull();
+    expect(adjacentPage([1, 2, 3], 3, 1)).toBeNull();
+  });
+  it("次の警告の頁（warn だけ。末尾の後は先頭へ戻る）", () => {
+    const report = {
+      warnings: [
+        { code: "empty_page", severity: "info", page: 2, message: "" },
+        { code: "garbled_text", severity: "warn", page: 4, message: "" },
+        { code: "table_sparse", severity: "warn", page: 7, message: "" },
+        { code: "no_text", severity: "warn", page: null, message: "" },
+      ],
+    } as unknown as ParseReport;
+    expect(nextWarningPage(report, 1)).toBe(4);
+    expect(nextWarningPage(report, 4)).toBe(7);
+    expect(nextWarningPage(report, 7)).toBe(4);
+    expect(nextWarningPage(null, 1)).toBeNull();
+  });
+  it("見出しの区切り", () => {
+    expect(headingCrumb("総則 > 目的")).toBe("総則 › 目的");
   });
 });

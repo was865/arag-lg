@@ -929,6 +929,11 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                             {d.chunk_count.toLocaleString("ja-JP")} チャンク
                           </span>
                         )}
+                        {d.status === "ready" && !!d.parse_warnings && (
+                          <Badge tone="danger" title="解析の体検で警告が出ました。文書の「解析の確認」で確かめられます">
+                            解析の警告 {d.parse_warnings}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
