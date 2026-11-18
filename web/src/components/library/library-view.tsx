@@ -9,67 +9,31 @@
  * - 文書の削除はごみ箱へ移すだけ（戻せる）なので確認は出さず、トーストで知らせる。
  *   フォルダは中身ごと移るので確認を出す。
  */
-import { fileTileStyle } from "@/components/ui/file-tile";
-import { Spinner } from "@/components/ui/spinner";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ListSkeleton } from "@/components/ui/skeleton";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
-import { Icon, type IconName } from "@/components/icons";
-import { DocumentsUploadQueue, DropOverlay } from "@/components/uploads/uploads";
-import { useToast } from "@/components/feedback/toast-provider";
-import { MoveDialog } from "@/components/library/move-dialog";
-import { useConfirm } from "@/hooks/use-confirm";
-import { refreshKbs, useKbs } from "@/hooks/use-kbs";
-import { useUploadQueue } from "@/hooks/use-upload-queue";
-import {
-  dirKey,
-  isAccepted,
-  readDropped,
-  resolveFolders,
-  splitRelPath,
-  type RelFile,
-} from "@/lib/library/folder-upload";
-import { ApiError } from "@/lib/chat/api";
-import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
-import { getFileMeta } from "@/lib/file-types";
-import { libraryApi, originalUrl, type DocumentOut, type FolderOut } from "@/lib/library/api";
-import { LibraryOverview } from "@/components/library/library-overview";
-import { KbShareButton } from "@/components/access/kb-share-button";
-import { chunk, selectRange, toggleId } from "@/lib/library/selection";
-import { breadcrumb, childFolders } from "@/lib/library/folders";
-import {
-  docStatus,
-  filterStatuses,
-  formatBytes,
-  formatDate,
-  kbLabel,
-  uploadTarget,
-  type StatusFilter,
-  type StatusTone,
-} from "@/lib/library/view";
-import { cn } from "@/lib/utils";
 import { SearchField } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Segmented } from "@/components/ui/segmented";
-
-const PAGE = 100;
-/** ライブラリ内のドラッグ（文書の移動）。OS からのファイルのドロップと区別する。 */
-const DOC_MIME = "application/x-arag-document";
-
-const TONE: Record<StatusTone, string> = {
-  ok: "text-muted",
-  busy: "text-accent",
-  danger: "text-danger",
-  muted: "text-muted-2",
-};
-
-const ROW_GRID =
-  "grid grid-cols-[minmax(0,1fr)_120px_70px_80px_64px_32px] items-center gap-3 max-md:grid-cols-[minmax(0,1fr)_32px] max-md:gap-2";
-
-type Stats = { documents: number; total_bytes: number; by_status: Record<string, number> };
-
-const errorMessage = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
+import { Icon } from "@/components/icons";
+import { DocumentsUploadQueue, DropOverlay } from "@/components/uploads/uploads";
+import { useToast } from "@/components/feedback/toast-provider";
+import { MoveDialog } from "@/components/library/move-dialog";
+import { LibraryOverview } from "@/components/library/library-overview";
+import { BulkBar, DOC_MIME, EmptyLibrary } from "@/components/library/library-parts";
+import { DocumentRow, FolderRow, ListHeader, NewFolderRow, type RenameState } from "@/components/library/library-rows";
+import { errorMessage, useLibraryList } from "@/components/library/use-library-list";
+import { useLibraryUpload } from "@/components/library/use-library-upload";
+import { KbShareButton } from "@/components/access/kb-share-button";
+import { useConfirm } from "@/hooks/use-confirm";
+import { refreshKbs, useKbs } from "@/hooks/use-kbs";
+import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
+import { libraryApi, type DocumentOut, type FolderOut } from "@/lib/library/api";
+import { chunk, selectRange, toggleId } from "@/lib/library/selection";
+import { breadcrumb, childFolders } from "@/lib/library/folders";
+import { docStatus, formatBytes, kbLabel, uploadTarget, type StatusFilter } from "@/lib/library/view";
+import { cn } from "@/lib/utils";
 
 export interface LibraryViewProps {
   /** 表示する KB（null = アクセスできるすべての文書）。 */
@@ -95,11 +59,6 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const canEditFolders = Boolean(kb?.canWrite && kb.status !== "archived");
   const kbNames = useMemo(() => new Map(kbs.map((k) => [k.id, kbLabel(k)])), [kbs]);
 
-  const [docs, setDocs] = useState<DocumentOut[] | null>(null);
-  const [folders, setFolders] = useState<FolderOut[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -107,7 +66,6 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const [creating, setCreating] = useState<string | null>(null);
   const [moving, setMoving] = useState<DocumentOut | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [dropOn, setDropOn] = useState<string | null>(null);
   // 複数選択（specs/009-library-bulk）
   const [selecting, setSelecting] = useState(false);
@@ -118,7 +76,6 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   const fileRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   const [addMenu, setAddMenu] = useState(false);
-  const dragDepth = useRef(0);
 
   // 名前の絞り込みは入力が落ち着いてからサーバーに問い合わせる（全件が対象）
   useEffect(() => {
@@ -128,35 +85,16 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
 
   // フォルダをたどるのは KB を開いていて、絞り込んでいないときだけ
   const browsing = Boolean(kbId) && !search && filter === "all";
-  const listQuery = useMemo(
-    () => ({
-      kbId,
-      folderId: browsing ? folderId : undefined,
-      status: filterStatuses(filter),
-      q: search,
-      limit: PAGE,
-    }),
-    [kbId, folderId, browsing, filter, search],
-  );
+  const { docs, setDocs, folders, setFolders, stats, cursor, loadingMore, loadMore, reload } = useLibraryList({
+    kbId,
+    folderId,
+    browsing,
+    filter,
+    search,
+  });
+  const { queue, dragging, dropZone, startUpload, startFolderUpload } = useLibraryUpload({ target, kbId, folderId, reload });
 
-  const reload = useCallback(async () => {
-    try {
-      const [page, st, fs] = await Promise.all([
-        libraryApi.documents(listQuery),
-        libraryApi.stats(kbId),
-        kbId ? libraryApi.folders(kbId) : Promise.resolve([]),
-      ]);
-      setDocs(page.items);
-      setCursor(page.next_cursor);
-      setStats(st);
-      setFolders(fs);
-    } catch (e) {
-      setDocs((d) => d ?? []);
-      push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
-    }
-  }, [kbId, listQuery, push]);
-
-  // KB を切り替えたら絞り込みを戻し、フォルダを移ったら前の一覧は見せない
+  // KB を切り替えたら絞り込みを戻し、場所や絞り込みを変えたら選択・入力中の名前をやめる
   const [shownKb, setShownKb] = useState<string | null | undefined>(undefined);
   const [shownFolder, setShownFolder] = useState<string | null | undefined>(undefined);
   const selKey = `${kbId}|${folderId}|${filter}|${search}`;
@@ -169,125 +107,15 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
   }
   if (shownKb !== kbId || shownFolder !== folderId) {
     if (shownKb !== kbId) {
-      setStats(null);
-      setFolders([]);
       setQuery("");
       setSearch("");
       setFilter("all");
     }
     setShownKb(kbId);
     setShownFolder(folderId);
-    setDocs(null);
-    setCursor(null);
     setCreating(null);
     setRenaming(null);
   }
-  useEffect(() => {
-    // 取得は非同期で、結果は then の中で反映する
-    let alive = true;
-    Promise.all([
-      libraryApi.documents(listQuery),
-      libraryApi.stats(kbId),
-      kbId ? libraryApi.folders(kbId) : Promise.resolve([]),
-    ])
-      .then(([page, st, fs]) => {
-        if (!alive) return;
-        setDocs(page.items);
-        setCursor(page.next_cursor);
-        setStats(st);
-        setFolders(fs);
-      })
-      .catch((e: unknown) => {
-        if (!alive) return;
-        setDocs([]);
-        push(errorMessage(e, "文書の一覧を取得できませんでした"), "error");
-      });
-    return () => {
-      alive = false;
-    };
-  }, [kbId, listQuery, push]);
-
-  const queue = useUploadQueue({
-    onSettled: () => {
-      void reload();
-      void refreshKbs();
-    },
-  });
-
-  const loadMore = async () => {
-    if (!cursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const page = await libraryApi.documents({ ...listQuery, cursor });
-      setDocs((d) => [...(d ?? []), ...page.items]);
-      setCursor(page.next_cursor);
-    } catch {
-      push("続きを読み込めませんでした", "error");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  const startUpload = (list: FileList | File[] | null) => {
-    const files = [...(list ?? [])];
-    if (!files.length) return;
-    if (!target) {
-      push("このナレッジベースには追加できません（閲覧のみ）", "error");
-      return;
-    }
-    // 開いている KB に送るときだけ、開いているフォルダへ入れる
-    queue.add(target.id, files, target.id === kbId ? folderId : null);
-    // 送信直後の「待機中」を一覧にも出す
-    window.setTimeout(() => void reload(), 1200);
-  };
-
-  /** フォルダを構成ごと送る（同名のフォルダがあれば中に入れ、無ければ作る）。 */
-  const startFolderUpload = async (rel: RelFile[]) => {
-    if (!target) {
-      push("このナレッジベースには追加できません（閲覧のみ）", "error");
-      return;
-    }
-    const groups = new Map<string, { dir: string[]; files: File[] }>();
-    let skipped = 0;
-    for (const r of rel) {
-      const dir = splitRelPath(r.path);
-      if (dir === null || !isAccepted(r.file.name)) {
-        skipped += 1;
-        continue;
-      }
-      const g = groups.get(dirKey(dir)) ?? { dir, files: [] };
-      g.files.push(r.file);
-      groups.set(dirKey(dir), g);
-    }
-    const total = [...groups.values()].reduce((n, g) => n + g.files.length, 0);
-    if (!total) {
-      push("追加できる形式のファイルがありませんでした", "error");
-      return;
-    }
-    const base = target.id === kbId ? folderId : null;
-    try {
-      const existing = await libraryApi.folders(target.id);
-      const map = await resolveFolders(
-        base,
-        [...groups.values()].map((g) => g.dir),
-        existing,
-        async (name, parent) => (await libraryApi.createFolder(target.id, name, parent)).id,
-      );
-      for (const [key, g] of groups) queue.add(target.id, g.files, map.get(key) ?? null);
-    } catch (e) {
-      push(errorMessage(e, "フォルダを作成できませんでした"), "error");
-      void reload();
-      return;
-    }
-    push(
-      skipped
-        ? `${total} 件のファイルをフォルダごと追加しています（対象外の ${skipped} 件は除きました）`
-        : `${total} 件のファイルをフォルダごと追加しています`,
-      "success",
-    );
-    void reload();
-    window.setTimeout(() => void reload(), 1200);
-  };
 
   // ── 文書の操作 ─────────────────────────────────────────────────────
   const removeDoc = async (d: DocumentOut) => {
@@ -454,14 +282,6 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     }
   };
 
-  // 処理中の文書がある間は一覧を時々取り直す（キュー外＝別の人や以前のアップロード分も追う）
-  const hasBusy = docs?.some((d) => docStatus(d.status).tone === "busy") ?? false;
-  useEffect(() => {
-    if (!hasBusy) return;
-    const t = window.setInterval(() => void reload(), 5000);
-    return () => window.clearInterval(t);
-  }, [hasBusy, reload]);
-
   const subfolders = browsing ? childFolders(folders, folderId) : [];
   const crumbs = kbId ? breadcrumb(folders, folderId) : [];
   const here = crumbs.at(-1) ?? null;
@@ -470,34 +290,6 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
     .reduce((n, [, c]) => n + c, 0);
   const errorCount = (stats?.by_status.error ?? 0) + (stats?.by_status.cancelled ?? 0);
   const listEmpty = docs !== null && docs.length === 0 && subfolders.length === 0 && creating === null;
-
-  // 画面全体を OS からのファイルのドロップ先にする
-  const dragProps = {
-    onDragEnter: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes("Files")) return;
-      dragDepth.current += 1;
-      setDragging(true);
-    },
-    onDragOver: (e: React.DragEvent) => {
-      if (e.dataTransfer.types.includes("Files")) e.preventDefault();
-    },
-    onDragLeave: () => {
-      dragDepth.current = Math.max(0, dragDepth.current - 1);
-      if (dragDepth.current === 0) setDragging(false);
-    },
-    onDrop: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes("Files")) return;
-      e.preventDefault();
-      dragDepth.current = 0;
-      setDragging(false);
-      // フォルダが含まれていれば構成ごと送る（エントリはイベント中に取り出す）
-      const files = [...e.dataTransfer.files];
-      void readDropped(e.dataTransfer.items).then(
-        (rel) => (rel ? void startFolderUpload(rel) : startUpload(files)),
-        () => startUpload(files),
-      );
-    },
-  };
 
   // フォルダ行・パンくずを文書の移動先にする
   const dropTarget = (key: string, to: string | null) =>
@@ -521,10 +313,30 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
         }
       : {};
 
+
+  /** その行の名前を変えている最中なら、入力の受け渡し */
+  const renameFor = (kind: "doc" | "folder", id: string): RenameState | null =>
+    renaming?.kind === kind && renaming.id === id
+      ? {
+          value: renaming.value,
+          onChange: (value) => setRenaming({ ...renaming, value }),
+          onCommit: () => void commitRename(),
+          onCancel: () => setRenaming(null),
+        }
+      : null;
+
+  /** 文書の名前の下に出す置き場 */
+  const locationOf = (d: DocumentOut) =>
+    !kbId
+      ? { text: kbNames.get(d.kb_id) ?? "", folder: false }
+      : !browsing && d.folder_id
+        ? { text: breadcrumb(folders, d.folder_id).map((x) => x.name).join(" / "), folder: true }
+        : null;
+
   return (
     <main
       className="relative grid min-h-0 min-w-0 animate-fade-in grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr] overflow-hidden bg-bg motion-reduce:animate-none"
-      {...dragProps}
+      {...dropZone}
     >
       <DropOverlay visible={dragging && Boolean(target)} />
       <header className="sticky top-0 z-[5] flex h-[52px] items-center gap-2 border-b-[0.5px] border-divider bg-bg px-[18px] max-md:px-2.5">
@@ -694,13 +506,9 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
         />
       </div>
 
+
       <div className="min-h-0 overflow-y-auto">
-        <DocumentsUploadQueue
-          files={queue.files}
-          onRemove={queue.remove}
-          onRetry={queue.retry}
-          onClear={queue.clear}
-        />
+        <DocumentsUploadQueue files={queue.files} onRemove={queue.remove} onRetry={queue.retry} onClear={queue.clear} />
 
         {docs === null ? (
           <ListSkeleton />
@@ -717,102 +525,37 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
                 onShowFailed={() => setFilter("error")}
               />
             )}
-            <div
-              className={cn(
-                ROW_GRID,
-                "border-b-[0.5px] border-divider px-2 py-2 eyebrow max-md:hidden",
-              )}
-            >
-              <span>名前</span>
-              <span>状態</span>
-              <span className="text-right">ページ</span>
-              <span className="text-right">サイズ</span>
-              <span className="text-right">追加日</span>
-              <span />
-            </div>
+            <ListHeader />
             {!browsing && kbId && (search || filter !== "all") && (
-              <div className="px-2 pb-1 pt-2 text-caption text-muted">
-                {kbLabel(kb)} 全体から探しています
-              </div>
+              <div className="px-2 pb-1 pt-2 text-caption text-muted">{kbLabel(kb)} 全体から探しています</div>
             )}
 
             {creating !== null && (
-              <div className={cn(ROW_GRID, "rounded-control px-2 py-2")}>
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <FolderIcon />
-                  <input
-                    autoFocus
-                    value={creating}
-                    placeholder="フォルダ名"
-                    onChange={(e) => setCreating(e.target.value)}
-                    onBlur={() => void createFolder()}
-                    onKeyDown={(e) => {
-                      if (e.nativeEvent.isComposing) return;
-                      if (e.key === "Enter") void createFolder();
-                      if (e.key === "Escape") setCreating(null);
-                    }}
-                    className="w-full max-w-[360px] rounded-control border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-body text-fg outline-none"
-                  />
-                </div>
-              </div>
+              <NewFolderRow
+                rename={{
+                  value: creating,
+                  placeholder: "フォルダ名",
+                  onChange: setCreating,
+                  onCommit: () => void createFolder(),
+                  onCancel: () => setCreating(null),
+                }}
+              />
             )}
 
             {subfolders.map((f) => (
-              <div
+              <FolderRow
                 key={f.id}
-                {...dropTarget(`folder:${f.id}`, f.id)}
-                className={cn(
-                  ROW_GRID,
-                  "group/row rounded-control px-2 py-2 hover:bg-surface-2",
-                  dropOn === `folder:${f.id}` && "bg-accent-soft outline outline-1 outline-accent",
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <FolderIcon />
-                  {renaming?.kind === "folder" && renaming.id === f.id ? (
-                    <RenameInput
-                      value={renaming.value}
-                      onChange={(value) => setRenaming({ ...renaming, value })}
-                      onCommit={() => void commitRename()}
-                      onCancel={() => setRenaming(null)}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => onOpenFolder(f.id)}
-                      title={f.name}
-                      className="min-w-0 flex-1 truncate text-left text-body font-medium text-fg hover:text-accent"
-                    >
-                      {f.name}
-                      <span className="ml-2 hidden font-normal text-muted max-md:inline">
-                        {f.document_count} 件
-                      </span>
-                    </button>
-                  )}
-                </div>
-                <span className="text-footnote text-muted max-md:hidden">{f.document_count} 件</span>
-                <span className="max-md:hidden" />
-                <span className="max-md:hidden" />
-                <span className="text-right font-mono text-caption text-muted max-md:hidden">
-                  {formatDate(f.created_at)}
-                </span>
-                {canEditFolders ? (
-                  <RowMenu
-                    open={menuFor === f.id}
-                    onToggle={(o) => setMenuFor(o ? f.id : null)}
-                    items={[
-                      { label: "開く", icon: "folder", onClick: () => onOpenFolder(f.id) },
-                      {
-                        label: "名前を変更",
-                        icon: "pencil",
-                        onClick: () => setRenaming({ kind: "folder", id: f.id, value: f.name }),
-                      },
-                      { label: "ごみ箱へ移動", icon: "trash", danger: true, onClick: () => void removeFolder(f) },
-                    ]}
-                  />
-                ) : (
-                  <span />
-                )}
-              </div>
+                folder={f}
+                rename={renameFor("folder", f.id)}
+                canEdit={canEditFolders}
+                menuOpen={menuFor === f.id}
+                onMenuToggle={(o) => setMenuFor(o ? f.id : null)}
+                dropProps={dropTarget(`folder:${f.id}`, f.id)}
+                dropActive={dropOn === `folder:${f.id}`}
+                onOpen={() => onOpenFolder(f.id)}
+                onStartRename={() => setRenaming({ kind: "folder", id: f.id, value: f.name })}
+                onRemove={() => void removeFolder(f)}
+              />
             ))}
 
             {listEmpty && (
@@ -832,184 +575,28 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
               </div>
             )}
 
-            {docs.map((d) => {
-              const meta = getFileMeta(d.filename);
-              const st = docStatus(d.status);
-              const busy = st.tone === "busy";
-              const movable = d.writable && canEditFolders;
-              const checked = selected.has(d.id);
-              return (
-                <div
-                  key={d.id}
-                  aria-selected={selecting ? checked : undefined}
-                  onClick={(e) => {
-                    if (!selecting) return;
-                    if ((e.target as HTMLElement).closest("[data-row-menu]")) return;
-                    e.preventDefault();
-                    pickRow(d.id, e.shiftKey);
-                  }}
-                  draggable={!selecting && movable && renaming?.id !== d.id}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData(DOC_MIME, d.id);
-                    e.dataTransfer.effectAllowed = "move";
-                  }}
-                  className={cn(
-                    ROW_GRID,
-                    "group/row rounded-control px-2 py-2",
-                    selecting && "cursor-pointer select-none",
-                    checked ? "bg-accent-soft" : "hover:bg-surface-2",
-                  )}
-                >
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={checked}
-                      aria-label={`「${d.filename}」を選ぶ`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        pickRow(d.id, e.shiftKey);
-                      }}
-                      className="group/check relative grid h-8 w-8 shrink-0 place-items-center rounded-control"
-                      style={
-                        selecting
-                          ? undefined
-                          : fileTileStyle(meta.color)
-                      }
-                    >
-                      {selecting ? (
-                        <CheckBox checked={checked} />
-                      ) : (
-                        <>
-                          <span className="group-hover/row:hidden max-md:!block">
-                            <Icon name={meta.iconName} size={15} />
-                          </span>
-                          <span className="hidden group-hover/row:block max-md:!hidden">
-                            <CheckBox checked={false} />
-                          </span>
-                        </>
-                      )}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      {renaming?.kind === "doc" && renaming.id === d.id ? (
-                        <RenameInput
-                          value={renaming.value}
-                          onChange={(value) => setRenaming({ ...renaming, value })}
-                          onCommit={() => void commitRename()}
-                          onCancel={() => setRenaming(null)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => !selecting && onOpenDocument(d)}
-                          title={d.filename}
-                          className="block max-w-full truncate text-left text-body font-medium text-fg hover:text-accent"
-                        >
-                          {d.filename}
-                        </button>
-                      )}
-                      <div className="flex items-center gap-1.5 truncate text-caption text-muted">
-                        {!kbId && <span className="truncate">{kbNames.get(d.kb_id) ?? ""}</span>}
-                        {kbId && !browsing && d.folder_id && (
-                          <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                            <Icon name="folder" size={10} />
-                            {breadcrumb(folders, d.folder_id)
-                              .map((x) => x.name)
-                              .join(" / ")}
-                          </span>
-                        )}
-                        {/* 検索できる文書がほとんどなので、状態はそれ以外のときだけ出す（specs/025 R46） */}
-                        {st.tone !== "ok" && (
-                          <span className={cn("hidden max-md:inline", TONE[st.tone])}>
-                            {(!kbId || (!browsing && d.folder_id)) && "· "}
-                            {st.label}
-                          </span>
-                        )}
-                        <span className="hidden max-md:inline">· {formatDate(d.created_at)}</span>
-                        {d.status === "ready" && d.chunk_count > 0 && (
-                          <span className="max-md:hidden">
-                            {(!kbId || (!browsing && d.folder_id)) && "· "}
-                            {d.chunk_count.toLocaleString("ja-JP")} チャンク
-                          </span>
-                        )}
-                        {d.status === "ready" && !!d.parse_warnings && (
-                          <Badge tone="danger" title="解析の体検で警告が出ました。文書の「解析の確認」で確かめられます">
-                            解析の警告 {d.parse_warnings}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={cn("inline-flex items-center gap-1.5 text-footnote max-md:hidden", TONE[st.tone])}>
-                    {busy && (
-                      <Spinner />
-                    )}
-                    {st.tone === "ok" ? <span className="sr-only">{st.label}</span> : st.label}
-                    {st.tone === "danger" && d.writable && d.job_id && (
-                      <button
-                        onClick={() => void retry(d)}
-                        className="ml-0.5 rounded px-1 text-caption font-semibold text-accent hover:underline"
-                      >
-                        再実行
-                      </button>
-                    )}
-                  </span>
-                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
-                    {d.page_count ?? "—"}
-                  </span>
-                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
-                    {formatBytes(d.size)}
-                  </span>
-                  <span className="text-right font-mono text-caption text-muted max-md:hidden">
-                    {formatDate(d.created_at)}
-                  </span>
-                  <RowMenu
-                    open={menuFor === d.id}
-                    onToggle={(o) => setMenuFor(o ? d.id : null)}
-                    items={[
-                      {
-                        label: "原本を開く",
-                        icon: "external",
-                        onClick: () => window.open(originalUrl(d.id), "_blank", "noopener"),
-                      },
-                      {
-                        label: "ダウンロード",
-                        icon: "download",
-                        onClick: () => {
-                          const a = document.createElement("a");
-                          a.href = originalUrl(d.id);
-                          a.download = d.filename;
-                          a.click();
-                        },
-                      },
-                      ...(d.writable
-                        ? [
-                            {
-                              label: "名前を変更",
-                              icon: "pencil" as const,
-                              onClick: () => setRenaming({ kind: "doc", id: d.id, value: d.filename }),
-                            },
-                            ...(movable
-                              ? [{ label: "移動…", icon: "folder" as const, onClick: () => setMoving(d) }]
-                              : []),
-                            {
-                              label: "ごみ箱へ移動",
-                              icon: "trash" as const,
-                              danger: true,
-                              onClick: () => void removeDoc(d),
-                            },
-                          ]
-                        : []),
-                    ]}
-                  />
-                </div>
-              );
-            })}
+            {docs.map((d) => (
+              <DocumentRow
+                key={d.id}
+                doc={d}
+                location={locationOf(d)}
+                selecting={selecting}
+                checked={selected.has(d.id)}
+                movable={d.writable && canEditFolders}
+                rename={renameFor("doc", d.id)}
+                menuOpen={menuFor === d.id}
+                onMenuToggle={(o) => setMenuFor(o ? d.id : null)}
+                onPick={(shift) => pickRow(d.id, shift)}
+                onOpen={() => onOpenDocument(d)}
+                onRetry={() => void retry(d)}
+                onStartRename={() => setRenaming({ kind: "doc", id: d.id, value: d.filename })}
+                onMove={() => setMoving(d)}
+                onRemove={() => void removeDoc(d)}
+              />
+            ))}
             {cursor && (
               <div className="pt-4 text-center">
-                <Button variant="secondary" size="md" className="px-4"
-                  onClick={() => void loadMore()}
-                  disabled={loadingMore}
-                >
+                <Button variant="secondary" size="md" className="px-4" onClick={() => void loadMore()} disabled={loadingMore}>
                   {loadingMore ? "読み込み中…" : "さらに読み込む"}
                 </Button>
               </div>
@@ -1059,161 +646,5 @@ export function LibraryView({ kbId, folderId, onOpenFolder, onAsk, onOpenDocumen
       )}
       {dialog}
     </main>
-  );
-}
-
-function FolderIcon() {
-  return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent">
-      <Icon name="folder" size={15} />
-    </span>
-  );
-}
-
-function RenameInput({
-  value,
-  onChange,
-  onCommit,
-  onCancel,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onCommit: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <input
-      autoFocus
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onCommit}
-      onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return;
-        if (e.key === "Enter") onCommit();
-        if (e.key === "Escape") onCancel();
-      }}
-      className="w-full rounded-control border-[0.5px] border-accent bg-surface px-1.5 py-0.5 text-body text-fg outline-none"
-    />
-  );
-}
-
-interface MenuItem {
-  label: string;
-  icon: IconName;
-  onClick: () => void;
-  danger?: boolean;
-}
-
-function RowMenu({ open, onToggle, items }: { open: boolean; onToggle: (open: boolean) => void; items: MenuItem[] }) {
-  return (
-    <span data-row-menu className="justify-self-end">
-      <Menu open={open} onOpenChange={onToggle}>
-        <MenuTrigger asChild>
-          <IconButton
-            label="操作メニュー"
-            icon="more"
-            tooltip={false}
-            className={cn(!open && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 max-md:opacity-100")}
-          />
-        </MenuTrigger>
-        {/* ポータルの中のクリックも React では行まで伝わるので、行の選択・遷移に届かないよう止める */}
-        <MenuContent align="end" data-row-menu onClick={(e) => e.stopPropagation()}>
-          {items.map((it) => (
-            <MenuItem key={it.label} icon={it.icon} danger={it.danger} onSelect={it.onClick}>
-              {it.label}
-            </MenuItem>
-          ))}
-        </MenuContent>
-      </Menu>
-    </span>
-  );
-}
-
-function EmptyLibrary({ canUpload, onPick }: { canUpload: boolean; onPick: () => void }) {
-  return (
-    <div className="grid place-items-center px-6 py-16">
-      <button
-        type="button"
-        disabled={!canUpload}
-        onClick={onPick}
-        className="flex w-full max-w-[520px] flex-col items-center gap-3 rounded-[16px] border-2 border-dashed border-divider-strong bg-surface-2 px-8 py-12 text-center enabled:hover:border-accent enabled:hover:bg-accent-soft disabled:cursor-default"
-      >
-        <span className="grid h-12 w-12 place-items-center rounded-sheet bg-accent-soft text-accent">
-          <Icon name="database" size={20} />
-        </span>
-        <span className="text-headline font-semibold text-fg">
-          {canUpload ? "文書を追加して、質問に使いましょう" : "このナレッジベースにはまだ文書がありません"}
-        </span>
-        {canUpload && (
-          <span className="text-footnote leading-[1.6] text-muted">
-            ここにドラッグ＆ドロップするか、クリックして選んでください。
-            <br />
-            PDF・Word・Excel・PowerPoint・テキスト・画像に対応。追加すると自動で解析され、検索できるようになります。
-          </span>
-        )}
-      </button>
-    </div>
-  );
-}
-
-function CheckBox({ checked }: { checked: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "grid h-[18px] w-[18px] place-items-center rounded-control border-[1.5px]",
-        checked ? "border-accent bg-accent text-white" : "border-divider-strong bg-surface text-transparent",
-      )}
-    >
-      <Icon name="check" size={11} />
-    </span>
-  );
-}
-
-function BulkBar({
-  count,
-  total,
-  busy,
-  canMove,
-  canRemove,
-  onSelectAll,
-  onMove,
-  onRemove,
-  onClear,
-}: {
-  count: number;
-  total: number;
-  busy: boolean;
-  canMove: boolean;
-  canRemove: boolean;
-  onSelectAll: () => void;
-  onMove: () => void;
-  onRemove: () => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex justify-center px-3 pb-[max(14px,env(safe-area-inset-bottom))]">
-      <div
-        role="toolbar"
-        aria-label="選択した文書の操作"
-        className="pointer-events-auto flex max-w-full animate-pop-in items-center gap-1 rounded-sheet border-[0.5px] border-divider-strong bg-surface p-1.5 pl-3.5 shadow-e3"
-      >
-        <span className="mr-1 shrink-0 whitespace-nowrap text-footnote font-semibold text-fg">
-          {count} 件を選択
-        </span>
-        <Button variant="ghost" onClick={onSelectAll} disabled={busy || count === total} className="text-fg-2 max-md:hidden">
-          すべて選択
-        </Button>
-        <Button variant="ghost" onClick={onMove} disabled={busy || count === 0 || !canMove}>
-          <Icon name="folder" size={13} />
-          移動
-        </Button>
-        <Button variant="danger-ghost" onClick={onRemove} disabled={busy || !canRemove}>
-          <Icon name="trash" size={13} />
-          ごみ箱へ
-        </Button>
-        <IconButton label="選択を解除" tooltip={false} icon="close" onClick={onClear} className="h-8 w-8" />
-      </div>
-    </div>
   );
 }
