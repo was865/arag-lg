@@ -28,10 +28,8 @@ const TABS: { id: SettingsTab; label: string }[] = [
 
 const ACCENT_NAMES: Record<string, string> = {
   "#D2402B": "朱",
-  "#3FA77E": "緑",
-  "#D97757": "橙",
-  "#3D7EE6": "青",
-  "#8B6FE0": "紫",
+  "#4A76AE": "藍",
+  "#438067": "常磐",
 };
 
 export function SettingsModal({

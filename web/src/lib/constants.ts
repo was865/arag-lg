@@ -15,8 +15,9 @@ export const ONBOARDING_STORAGE_PREFIX = "arag:onboarded";
  *  LAN over plain HTTP の dev で動かす場合は HTTPS（mkcert 等）の用意が必要。 */
 export const AUTH_COOKIE = "__Host-arag_token";
 
-/** 利用者が選べるアクセント（朱 / 橙 / 緑 / 青 / 紫）。既定は朱（specs/025 R40）。 */
-export const ACCENT_PRESETS = ["#D2402B", "#D97757", "#3FA77E", "#3D7EE6", "#8B6FE0"] as const;
+/** 利用者が選べるアクセント（朱 / 藍 / 常磐）。既定は朱（specs/025 R40）。
+ *  紙の地・墨の文字・紅の危険色に馴染むよう、朱と同じ明るさ・深さの和の色だけにする（R48）。 */
+export const ACCENT_PRESETS = ["#D2402B", "#4A76AE", "#438067"] as const;
 
 export const DEFAULT_ACCENT = ACCENT_PRESETS[0];
 

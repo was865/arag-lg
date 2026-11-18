@@ -169,7 +169,7 @@
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --accent-glow: color-mix(in srgb, var(--accent) 25%, transparent);
   /* Secondary decorative glow for the login backdrop (set per-accent at runtime). */
-  --accent-alt-glow: color-mix(in srgb, #3fa77e 30%, transparent);
+  --accent-alt-glow: color-mix(in srgb, #438067 30%, transparent);
 }
 
 @layer base {

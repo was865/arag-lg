@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY } from "@/lib/constants";
 import { LEGACY_DEFAULT_ACCENT, TWEAKS_VERSION } from "@/lib/tweaks-migrate";
-import { ACCENT_TONES } from "@/lib/accent";
+import { ACCENT_TONES, RETIRED_ACCENTS } from "@/lib/accent";
 import { getDictionary } from "@/i18n/dictionary";
 import { LocaleProvider } from "@/i18n/context";
 import { ToastProvider } from "@/components/feedback/toast-provider";
@@ -43,11 +43,14 @@ const themeBootstrap = `
     el.classList.add(dark ? 'theme-dark' : 'theme-light');
     // 版の印が無い保存値の旧既定（橙）は使わず、CSS の既定（朱）に任せる（lib/tweaks-migrate と同じ判定）
     var legacy = !(t.v >= ${TWEAKS_VERSION}) && String(t.accent).toLowerCase() === '${LEGACY_DEFAULT_ACCENT}';
-    if (t.accent && !legacy) {
-      el.style.setProperty('--accent', t.accent);
+    // 選べなくなった色は近い色へ（lib/tweaks-migrate と同じ）
+    var retired = ${JSON.stringify(RETIRED_ACCENTS)};
+    var accent = t.accent ? retired[String(t.accent).toLowerCase()] || t.accent : null;
+    if (accent && !legacy) {
+      el.style.setProperty('--accent', accent);
       // 色ごとの読める色合い（lib/accent の accentVars と同じ）
       var tones = ${JSON.stringify(Object.fromEntries(Object.entries(ACCENT_TONES).map(([k, v]) => [k.toLowerCase(), v])))};
-      var tone = tones[String(t.accent).toLowerCase()];
+      var tone = tones[String(accent).toLowerCase()];
       if (tone) {
         el.style.setProperty('--accent-ink', tone.ink);
         el.style.setProperty('--accent-bright', tone.bright);

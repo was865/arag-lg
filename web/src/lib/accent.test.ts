@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACCENT_PRESETS } from "@/lib/constants";
-import { ACCENT_TONES, accentTone, accentVars } from "@/lib/accent";
+import { ACCENT_TONES, RETIRED_ACCENTS, accentTone, accentVars } from "@/lib/accent";
 
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {
@@ -28,11 +28,14 @@ describe("アクセント色の読める色合い", () => {
     // 一番明るい面（--surface-elev）でも読める
     expect(contrast(bright, "#26282d")).toBeGreaterThanOrEqual(4.5);
   });
+  it("選べなくなった色の移し先は今の色", () => {
+    for (const to of Object.values(RETIRED_ACCENTS)) expect(ACCENT_PRESETS).toContain(to);
+  });
   it("朱は今の見た目のまま", () => {
     expect(ACCENT_TONES["#D2402B"]).toEqual({ ink: "#d2402b", bright: "#e06c58" });
   });
   it("大文字・小文字を区別しない。一覧に無い色は CSS の既定に任せる", () => {
-    expect(accentTone("#3fa77e")).toBe(ACCENT_TONES["#3FA77E"]);
+    expect(accentTone("#4a76ae")).toBe(ACCENT_TONES["#4A76AE"]);
     expect(accentVars("#123456")).toEqual({ "--accent": "#123456", "--accent-ink": null, "--accent-bright": null });
   });
 });

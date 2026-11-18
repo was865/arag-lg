@@ -39,7 +39,8 @@ function applyToRoot(t: Tweaks) {
     if (value) el.style.setProperty(name, value);
     else el.style.removeProperty(name);
   }
-  const alt = t.accent.toLowerCase() === "#3fa77e" ? "#D2402B" : "#3FA77E";
+  // 首ページの背景の 2 色目。常磐のときは朱、ほかは常磐
+  const alt = t.accent.toLowerCase() === "#438067" ? "#D2402B" : "#438067";
   el.style.setProperty("--accent-alt-glow", `color-mix(in srgb, ${alt} 30%, transparent)`);
   // standalone PWA のステータスバー背景（theme-color meta）をテーマに追従させる。
   // meta は layout の themeBootstrap が first paint 前に挿入済み（無ければ作る）。
