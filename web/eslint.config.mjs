@@ -30,6 +30,10 @@ const UI_LOOKS = [
     message: "面は @/components/ui/card の Card、または class の card / card-sunken / card-raised を使ってください。",
   },
   {
+    selector: "Literal[value=/border-b-2/]",
+    message: "区分の切り替えは @/components/ui/tabs の Tabs（URL で分かれるなら tabsListClass・tabsTriggerClass）を使ってください。下線のタブは使わない。",
+  },
+  {
     selector: "TemplateElement[value.raw=/color-mix\\(in srgb, $/]",
     message: "形式の色の札は @/components/ui/file-tile の FileTile / fileTileStyle を使ってください。",
   },

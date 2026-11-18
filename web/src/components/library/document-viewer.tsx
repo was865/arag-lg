@@ -3,6 +3,7 @@
 /** 文書ビューア（specs/007-document-viewer）。ライブラリの上に重ねて、解析結果（章ごとの整形表示・目次）と原本を読む。
  * - 章は 50 件ずつ読み、末尾が見えたら続きを読む（R4）。目次から未読の章へ飛ぶときはそこまで読み足す。
  * - 「この文書に質問」で検索範囲をこの文書に絞ってチャットへ戻る（R9）。 */
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTile } from "@/components/ui/file-tile";
 import { m } from "motion/react";
 import { DURATION, EASE } from "@/lib/motion";
@@ -121,50 +122,52 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
         </Button>
       </header>
 
-      <div className="flex items-center gap-1 border-b-[0.5px] border-divider px-4 max-md:px-2">
-        {ready && (
-          <IconButton
-            label="目次"
-            icon="menu"
-            aria-expanded={outlineOpen}
-            onClick={() => setOutlineOpen((x) => !x)}
-            className={cn("mr-1 hidden", tab === "parsed" && "max-md:inline-flex")}
-          />
-        )}
-        {(
-          [
-            ["parsed", "整形表示"],
-            ["inspect", "解析の確認"],
-            ["original", "原本"],
-          ] as const
-        )
-          .filter(([key]) => key !== "inspect" || ready)
-          .map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            aria-pressed={tab === key}
-            className={cn(
-              "-mb-px border-b-2 px-3 py-2.5 text-footnote font-medium",
-              tab === key ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="contents">
+        <div className="flex items-center gap-1 border-b-[0.5px] border-divider px-4 py-2 max-md:px-2">
+          {ready && (
+            <IconButton
+              label="目次"
+              icon="menu"
+              aria-expanded={outlineOpen}
+              onClick={() => setOutlineOpen((x) => !x)}
+              className={cn("mr-1 hidden", tab === "parsed" && "max-md:inline-flex")}
+            />
+          )}
+          <TabsList aria-label="表示">
+            {(
+              [
+                ["parsed", "整形表示"],
+                ["inspect", "解析の確認"],
+                ["original", "原本"],
+              ] as const
+            )
+              .filter(([key]) => key !== "inspect" || ready)
+              .map(([key, label]) => (
+                <TabsTrigger key={key} value={key}>
+                  {label}
+                </TabsTrigger>
+              ))}
+          </TabsList>
+        </div>
 
-      <div className="min-h-0">
-        {tab === "original" ? (
-          <OriginalPane doc={doc} onShowParsed={ready ? () => setTab("parsed") : undefined} />
-        ) : tab === "inspect" && ready ? (
-          <InspectPane doc={doc} isAdmin={isAdmin} initialSectionId={initialSectionId} />
-        ) : ready ? (
-          <ParsedPane docId={doc.id} outlineOpen={outlineOpen} onCloseOutline={() => setOutlineOpen(false)} />
-        ) : (
-          <NotReady status={doc.status} onShowOriginal={() => setTab("original")} />
-        )}
-      </div>
+        <div className="min-h-0">
+          <TabsContent value="parsed" className="h-full outline-none">
+            {ready ? (
+              <ParsedPane docId={doc.id} outlineOpen={outlineOpen} onCloseOutline={() => setOutlineOpen(false)} />
+            ) : (
+              <NotReady status={doc.status} onShowOriginal={() => setTab("original")} />
+            )}
+          </TabsContent>
+          {ready && (
+            <TabsContent value="inspect" className="h-full outline-none">
+              <InspectPane doc={doc} isAdmin={isAdmin} initialSectionId={initialSectionId} />
+            </TabsContent>
+          )}
+          <TabsContent value="original" className="h-full outline-none">
+            <OriginalPane doc={doc} onShowParsed={ready ? () => setTab("parsed") : undefined} />
+          </TabsContent>
+        </div>
+      </Tabs>
     </m.div>
   );
 }
