@@ -263,12 +263,14 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         if send_back:
             # 差し戻し: 下書きと依頼はこの呼び出しの中だけに添える（会話の状態には入れない）
             overrides["messages"] = [*compact, state["draft"], HumanMessage(send_back["note"])]
+        t0 = time.perf_counter()
         try:
             response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
         except Exception as e:
             if send_back:
                 finish_send_back(emit, send_back, None, error=str(e)[:300])
             raise
+        record_model_call(ctx, emit, t0, response.result[-1] if response.result else None)
         update = self._after_response(ctx, emit, state, response)
         return ExtendedModelResponse(response, Command(update=update)) if update else response
 
@@ -293,6 +295,39 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         if last.tool_calls and state.get("chain"):
             update["chain"] = 0
         return update
+
+
+def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
+    """モデルの応答（ツールを選ぶ・回答を書く）を、測った時間とともに記録する（specs/029 T35）。
+
+    検索などのツールは別のステップで時間を測る。これが無いと、モデルが考えて書く時間（多くは run の大半）が
+    どの段階にも入らず、経路の段階の時間を足しても回答までの時間に合わない。失敗した呼び出しは、モデルの
+    切り替え（switch_model）か run の失敗として記録されるので、ここでは記録しない。
+    """
+    ctx.stats.model_records += 1
+    n = ctx.stats.model_records
+    tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
+    usage = getattr(last, "usage_metadata", None) or {}
+    if tools:
+        summary = f"ツールを選んだ: {'・'.join(LABELS.get(t, (t,))[0] for t in tools)}"
+    elif isinstance(last, AIMessage) and last.text.strip():
+        summary = "回答を書いた"
+    else:
+        summary = "空の応答を返した"
+    record_system(
+        emit,
+        f"system-model-{n}",
+        "model_call",
+        "モデルの応答",
+        summary,
+        duration_ms=elapsed_ms(t0),
+        input={"call": n},
+        output={
+            "chose": tools,
+            "answer_chars": len(last.text) if isinstance(last, AIMessage) else 0,
+            **({"tokens_out": usage.get("output_tokens")} if usage.get("output_tokens") else {}),
+        },
+    )
 
 
 def finish_send_back(

@@ -177,6 +177,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 15,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-review-pass-1",
      "input": {
       "done": [],
@@ -384,6 +429,25 @@
    {
     "text": "しまして",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 8,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
    },
    {
     "step": {
@@ -639,6 +703,63 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 31,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
@@ -657,12 +778,126 @@
     "type": "answer.reset"
    },
    {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
     "text": "変更点はトルク値です[1]",
     "type": "answer.delta"
    },
    {
     "text": "。在庫は 6 個です[2]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 27,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -1138,6 +1373,63 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 31,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
@@ -1154,6 +1446,120 @@
    },
    {
     "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -1479,6 +1885,96 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-empty-1",
      "input": {
       "finish_reason": null,
@@ -1769,12 +2265,102 @@
     "type": "sources"
    },
    {
+    "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
     "text": "答えは 5 ",
     "type": "answer.delta"
    },
    {
     "text": "年です[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 12,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -2113,6 +2699,98 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-empty-1",
      "input": {
       "finish_reason": null,
@@ -2224,6 +2902,51 @@
      },
      "status": "done",
      "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
     },
     "type": "step"
    },
@@ -2600,6 +3323,63 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 31,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
@@ -2616,6 +3396,65 @@
    },
    {
     "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -2797,6 +3636,63 @@
    {
     "text": " SK-300 のとおりです[2]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 35,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -3140,6 +4036,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 19,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "単価は資料に記載されていません[1]。",
@@ -3164,6 +4105,51 @@
    {
     "text": "0 円です[1]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 18,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -3237,6 +4223,51 @@
    {
     "text": "0 円です[1]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 18,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -3590,6 +4621,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 13,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "資料に記載されていません。",
@@ -3614,6 +4690,51 @@
    {
     "text": "されていません。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 16,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -3918,6 +5039,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 17,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "単価は 17,800 円です[1]",
@@ -3942,6 +5108,51 @@
    {
     "text": "00 円です[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 17,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -4340,6 +5551,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 61,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
@@ -4356,6 +5612,53 @@
    },
    {
     "type": "answer.reset"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "table_query"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 表の集計"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -4443,6 +5746,51 @@
    {
     "text": "-1042 です。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 17,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -4810,6 +6158,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 61,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
@@ -4834,6 +6227,51 @@
    {
     "text": "_query を使用して回答します[1]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 41,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -5151,6 +6589,53 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "<call-1>",
      "input": {
       "query": "b"
@@ -5246,12 +6731,102 @@
     "type": "sources"
    },
    {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "空の応答を返した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
     "text": "二回目も資料に記",
     "type": "answer.delta"
    },
    {
     "text": "載されていません。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 17,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -5325,6 +6900,51 @@
    {
     "text": "え[1]。",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-4",
+     "input": {
+      "call": 4,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 10,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -5643,6 +7263,53 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "<call-1>",
      "input": {
       "query": "a"
@@ -5708,6 +7375,53 @@
      },
      "status": "done",
      "summary": "資料 1 件"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
     },
     "type": "step"
    },
@@ -5884,6 +7598,51 @@
    {
     "text": "[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-3",
+     "input": {
+      "call": 3,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 6,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -6218,6 +7977,51 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 21,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "P-1042 と P-1043 です[1]",
@@ -6242,6 +8046,51 @@
    {
     "text": " です[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 12,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {
@@ -6582,6 +8431,53 @@
    },
    {
     "step": {
+     "id": "system-model-1",
+     "input": {
+      "call": 1,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 0,
+      "chose": [
+       "search"
+      ],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "ツールを選んだ: 検索"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "<call-1>",
      "input": {
       "query": "MX-17 手順"
@@ -6683,6 +8579,51 @@
    {
     "text": "る[1]",
     "type": "answer.delta"
+   },
+   {
+    "step": {
+     "id": "system-model-2",
+     "input": {
+      "call": 2,
+      "kind": "model_call"
+     },
+     "label": "モデルの応答",
+     "name": "system",
+     "output": {
+      "answer_chars": 7,
+      "chose": [],
+      "tokens_out": 5
+     },
+     "status": "done",
+     "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
    },
    {
     "step": {

@@ -272,6 +272,8 @@ export interface FlowStop {
   via?: { key: string; label: string };
   /** 通らなかった節点（続けて聞くを作らなかったなど）。経路の最後に淡く置き、「なし」の辺でつなぐ */
   notRun?: boolean;
+  /** 前の段階と並行して動いた時間（durationMs に含めない。足して回答までの時間と合うように。T35） */
+  parallelMs?: number;
 }
 
 export interface FlowRoute {
@@ -334,7 +336,14 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
     ["understand", of("understand").filter((s) => !auto(s))],
     ["primer_search", [...of("understand").filter(auto), ...of("primer_search")]],
   ];
-  for (const [id, own] of prelude) if (own.length) stops.push(stop(id, 1, own));
+  for (const [id, own] of prelude) {
+    if (!own.length) continue;
+    // 質問文での検索は理解と並行に動くので、最初の検索の時間には入れず別に示す（足すと二重になる）
+    const parallel = id === "primer_search" ? own.filter((s) => nodeOf.get(s.id) === "understand") : [];
+    const parallelMs = parallel.reduce((a, s) => a + (s.durationMs || 0), 0);
+    const st = stop(id, 1, own);
+    stops.push(parallelMs > 0 ? { ...st, durationMs: st.durationMs - parallelMs, parallelMs } : st);
+  }
   const understand = [...top].reverse().find((s) => s.name === "understand" && s.status !== "running");
   const chat = (understand?.output as Record<string, unknown> | null | undefined)?.kind === "chat";
 

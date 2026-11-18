@@ -892,3 +892,27 @@ def test_record_system_carries_only_measured_durations() -> None:
     record_system(got.append, "b", "k", "記録だけ", "y")
     assert got[0]["step"]["duration_ms"] >= 1  # 測った処理は 0 にならない
     assert got[1]["step"]["duration_ms"] == 0  # 測っていない処理は 0（画面は時間を出さない）
+
+
+async def test_each_model_call_is_recorded_with_its_time() -> None:
+    """モデルの応答（回答を書く・ツールを選ぶ）の時間も記録する。
+
+    経路の段階の時間が合計と合う（specs/029 T35）。
+    """
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="", tool_calls=[{"name": "search", "args": {"query": "MX-17"}, "id": "a"}]),
+            AIMessage(content="停止する[1]。"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("MX-17 は即時停止を推奨する。")), "MX-17 はどうする？")
+    calls = [
+        e["step"] for e in custom if e["type"] == "step" and e["step"]["input"].get("kind") == "model_call"
+    ]
+    assert len(calls) == 2
+    # 時間は測ったもの（1 以上）。節点の名前は runner が付ける
+    assert all(isinstance(c["duration_ms"], int) and c["duration_ms"] >= 1 for c in calls)
+    assert calls[0]["output"]["chose"] == ["search"]
+    assert calls[1]["output"]["chose"] == []
+    assert calls[0]["id"] != calls[1]["id"]

@@ -13,7 +13,7 @@ import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
 import { answerTimeMs, flowOf, routeOf } from "@/lib/chat/flow";
-import { FlowRail, RunFlow } from "@/components/chat/run-flow";
+import { FlowRail, RunFlow, stopPicked } from "@/components/chat/run-flow";
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
@@ -67,7 +67,7 @@ export function AgentActivity({
   // 「詳細」の流れ（実際にたどった順）。停留所で一覧を絞る（R8）
   const route = routeOf(steps, { running });
   // 節点で絞る（周回があれば、すべての周回のステップ）
-  const picked = only ? new Set(route.stops.filter((x) => x.node === only).flatMap((x) => x.stepIds)) : null;
+  const picked = only ? new Set(route.stops.filter((x) => stopPicked(x, only)).flatMap((x) => x.stepIds)) : null;
   // いましていることを言葉で言う: 実行中のステップの要約 → 考え中 → 書き直し中 → 書いている最中
   const nowLabel =
     current?.summary ??

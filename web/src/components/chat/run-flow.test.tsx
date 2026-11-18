@@ -27,64 +27,92 @@ const wrap = (el: React.ReactNode) =>
     </LocaleProvider>,
   );
 
-describe("RunFlow（グラフの実行経路の図。specs/029 R7・T34）", () => {
+describe("RunFlow（グラフの実行経路。specs/029 R7・T35）", () => {
   const text = (html: string) => html.replace(/<title>[^<]*<\/title>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const view = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) =>
     wrap(<RunFlow route={routeOf(stepsOf(name))} flow={flowOf(stepsOf(name))} {...p} />);
+  const graph = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) => view(name, { defaultView: "graph", ...p });
 
-  it("見出しは「グラフの実行経路」。ひと言の要約はいつもと違う経路だけ", () => {
+  it("見出しは「グラフの実行経路」。ひと言の要約はいつもと違う経路だけ。経路とグラフを切り替えられる", () => {
     expect(text(view("answer"))).toContain("グラフの実行経路");
+    expect(text(view("answer"))).toMatch(/経路.*グラフ/);
     expect(text(view("answer"))).not.toContain("確認をそのまま通過");
     expect(text(view("gap"))).toContain("確認で 1 回差し戻し、書き直して通過");
     expect(text(view("gap", { running: true }))).not.toContain("書き直して通過");
   });
 
-  it("同じ図を横と縦の 2 つの向きで持ち、すべての節点を並べる", () => {
-    const html = view("answer");
-    expect(html).toContain('data-orient="row"');
-    expect(html).toContain('data-orient="column"');
-    for (const id of ["read_image", "understand", "primer_search", "investigate", "guard", "review", "finalize", "followups"])
-      expect(html).toContain(`data-node="${id}"`);
+  describe("経路（既定）: 実際にたどった順", () => {
+    it("差し戻しの後は 2 周目として続けて並べ、差し戻しの分岐に札を書く", () => {
+      const html = view("gap");
+      expect(html).not.toContain("data-orient");
+      const order = [...html.matchAll(/data-stop="([^"]+)"/g)].map((m) => m[1]);
+      expect(order).toEqual(["understand-1", "primer_search-1", "investigate-1", "review-1", "investigate-2", "review-2", "finalize-1"]);
+      expect(text(html)).toContain("調査（2 周目）");
+      expect(html).toMatch(/data-edge="send_back"[^>]*>差し戻し</);
+      // いつもの分岐（資料・通過）は札を書かない
+      expect(html).not.toMatch(/data-edge="docs"/);
+    });
+
+    it("段階ごとに時間を出し、モデルの応答の時間も調査に入る（足すと回答までの時間に近づく）", () => {
+      const steps = stepsOf("answer");
+      const route = routeOf(steps);
+      const inv = route.stops.find((s) => s.node === "investigate")!;
+      expect(inv.steps.some((s) => s.input?.kind === "model_call")).toBe(true);
+      expect(inv.durationMs).toBeGreaterThan(0);
+      // 調査の説明はツールの名前（モデルの応答・システムの処理は数えない）
+      expect(text(view("answer"))).not.toMatch(/モデルの応答/);
+    });
+
+    it("確定の後に「回答を送信」と所要時間を置く（実行中は置かない）", () => {
+      expect(text(view("answer", { durationMs: 3120 }))).toContain("回答を送信 3.12s");
+      expect(view("answer", { durationMs: 3120, running: true })).not.toContain("data-sent");
+    });
+
+    it("段階を押すと、その周回で絞る", () => {
+      const html = view("gap", { selected: "review-1", onSelect: () => {} });
+      expect(html).toMatch(/data-stop="review-1"[\s\S]*?aria-pressed="true"/);
+      expect(text(html)).toContain("確認のステップだけを表示中");
+    });
+
+    it("続けて聞くを作らなかったときは「なし」の辺で淡い停留所につなぐ", () => {
+      const off: FlowStep = {
+        id: "system-followups", name: "system", status: "done", durationMs: 0,
+        input: { kind: "followups" }, output: { skipped: "user_setting" }, node: "followups",
+      };
+      const steps = [...stepsOf("answer"), off];
+      const html = wrap(<RunFlow route={routeOf(steps)} flow={flowOf(steps)} durationMs={1000} />);
+      expect(text(html)).toContain("設定でオフ");
+      expect(html).toMatch(/data-edge="end"[^>]*>なし</);
+    });
   });
 
-  it("通った辺と通らなかった辺を分け、札はいつもと違う分岐だけに書く", () => {
-    const html = view("gap");
-    expect(html).toMatch(/data-edge="send_back" data-taken="1"/);
-    expect(html).toMatch(/data-edge="chat" data-taken="0"/);
-    expect(text(html)).toContain("差し戻し ×1");
-    // いつもの分岐（資料・通過）は札を書かない（ホバーの説明だけ）
-    expect(text(html)).not.toContain("資料");
-    expect(text(view("chat"))).toContain("雑談");
-  });
+  describe("グラフ: 節点と辺の全体", () => {
+    it("同じ図を横と縦の 2 つの向きで持ち、すべての節点を並べる", () => {
+      const html = graph("answer");
+      expect(html).toContain('data-orient="row"');
+      expect(html).toContain('data-orient="column"');
+      for (const id of ["read_image", "understand", "primer_search", "investigate", "guard", "review", "finalize", "followups"])
+        expect(html).toContain(`data-node="${id}"`);
+    });
 
-  it("節点の下に何をしたかを 1 行、何度も通った節点に ×n、ホバーで説明と周回の内訳", () => {
-    const html = view("gap");
-    expect(text(html)).toContain("×2");
-    expect(html).toMatch(/<title>確認 — [^<]*1 周目: 差し戻し/);
-  });
+    it("通った辺と通らなかった辺を分け、札はいつもと違う分岐だけ。周回は ×n とホバーの内訳", () => {
+      const html = graph("gap");
+      expect(html).toMatch(/data-edge="send_back" data-taken="1"/);
+      expect(html).toMatch(/data-edge="chat" data-taken="0"/);
+      expect(text(html)).toContain("差し戻し ×1");
+      expect(text(html)).toContain("×2");
+      expect(html).toMatch(/<title>確認 — [^<]*1 周目: 差し戻し/);
+    });
 
-  it("確定の後に「送信」と所要時間の印を置く（実行中は置かない）。朱はこの印だけ", () => {
-    expect(text(view("answer", { durationMs: 3120 }))).toContain("送信 3.12s");
-    expect(view("answer", { durationMs: 3120, running: true })).not.toContain("data-sent");
-    expect(view("answer", { durationMs: 3120 }).match(/fill-accent/g)).toHaveLength(2); // 横と縦の送信の印
-  });
+    it("経路で選んだ周回は、グラフでもその節点を選んだものとして見せる", () => {
+      const html = graph("gap", { selected: "review-2", onSelect: () => {} });
+      expect(html).toMatch(/data-node="review" role="button" tabindex="0" aria-pressed="true"/);
+      expect(html).not.toMatch(/data-node="read_image" role="button"/);
+    });
 
-  it("節点を押すと、その節点で絞る（押せるのはステップのある節点だけ）", () => {
-    const html = view("gap", { selected: "review", onSelect: () => {} });
-    expect(html).toMatch(/data-node="review" role="button" tabindex="0" aria-pressed="true"/);
-    expect(html).not.toMatch(/data-node="read_image" role="button"/);
-    expect(text(html)).toContain("確認のステップだけを表示中");
-  });
-
-  it("続けて聞くを作らなかったときは、通らなかった節点に「設定でオフ」と書く", () => {
-    const off: FlowStep = {
-      id: "system-followups", name: "system", status: "done", durationMs: 0,
-      input: { kind: "followups" }, output: { skipped: "user_setting" }, node: "followups",
-    };
-    const steps = [...stepsOf("answer"), off];
-    const html = wrap(<RunFlow route={routeOf(steps)} flow={flowOf(steps)} durationMs={1000} />);
-    expect(text(html)).toContain("設定でオフ");
-    expect(html).toMatch(/data-edge="followups" data-taken="0"/);
+    it("朱は送信の点だけ（横と縦の 2 つ）", () => {
+      expect(graph("answer", { durationMs: 3120 }).match(/fill-accent/g)).toHaveLength(2);
+    });
   });
 
   it("節点の名前の無い古い記録は、推定を含むことを示す", () => {

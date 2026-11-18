@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { StaticAnswer } from "@/components/chat/messages";
 import { ToolSteps } from "@/components/chat/tool-steps";
-import { RunFlow } from "@/components/chat/run-flow";
+import { RunFlow, stopPicked } from "@/components/chat/run-flow";
 import { flowOf, routeOf } from "@/lib/chat/flow";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Badge } from "@/components/ui/badge";
@@ -248,7 +248,7 @@ function FeedbackDetailPane({
   const guided = turn.steps.some((x) => x.name === "understand");
   const route = guided ? routeOf(turn.steps) : null;
   const flow = guided ? flowOf(turn.steps) : null;
-  const picked = only && route ? new Set(route.stops.filter((x) => x.node === only).flatMap((x) => x.stepIds)) : null;
+  const picked = only && route ? new Set(route.stops.filter((x) => stopPicked(x, only)).flatMap((x) => x.stepIds)) : null;
 
   const setStatus = async (next: "resolve" | "reopen") => {
     setBusy(true);

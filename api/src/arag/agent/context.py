@@ -20,6 +20,8 @@ Emit = Callable[[dict[str, Any]], None]
 @dataclass
 class RunStats:
     model_calls: int = 0
+    # 記録したモデルの応答の数（ステップの ID を run の中で一意にする。specs/029 T35）
+    model_records: int = 0
     tool_calls: int = 0
     tool_errors: int = 0
     # 下書きを差し戻した回数（種類ごとにターンに 1 回まで。specs/026 ④）

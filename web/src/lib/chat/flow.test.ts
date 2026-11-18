@@ -236,3 +236,19 @@ describe("routeOf の条件つきの辺（specs/029 T32）", () => {
     expect(flow.edges.find((e) => e.key === "followups")!.passed).toBe(false);
   });
 });
+
+describe("routeOf の時間（specs/029 T35）", () => {
+  it("理解と並行に動いた質問文での検索は、最初の検索の時間に入れず parallelMs に分ける", () => {
+    const steps: FlowStep[] = [
+      { id: "u", name: "understand", status: "done", durationMs: 700, input: { history: false }, output: { kind: "docs" }, node: "understand" },
+      { id: "primer-1", name: "retrieve", status: "done", durationMs: 690, input: { by: "system", role: "question" }, output: null, node: "understand" },
+      { id: "primer-2", name: "retrieve", status: "done", durationMs: 300, input: { by: "system" }, output: null, node: "primer_search" },
+      { id: "m", name: "system", status: "done", durationMs: 1500, input: { kind: "model_call" }, output: null, node: "investigate" },
+    ];
+    const r = routeOf(steps);
+    const primer = r.stops.find((s) => s.node === "primer_search")!;
+    expect(primer.durationMs).toBe(300);
+    expect(primer.parallelMs).toBe(690);
+    expect(r.stops.find((s) => s.node === "investigate")!.durationMs).toBe(1500);
+  });
+});

@@ -157,7 +157,12 @@ export const chat = {
   // 系統が導く流れ（specs/026）
   // 回答の流れ（specs/029）。実際にたどった順に並べる。節点の名前は flow-graph.json（グラフの定義）から
   flowTitle: "グラフの実行経路",
-  flowSent: "送信",
+  flowSent: "回答を送信",
+  flowSentShort: "送信",
+  flowParallelShort: "（並行 {ms}）",
+  flowParallel: "ほかに {ms} は、理解と並行に動いた質問文での検索（足すと二重になるので、この時間には入れない）",
+  flowViewRoute: "経路",
+  flowViewGraph: "グラフ",
   flowSentHint: "ここで回答を送った（所要時間はここまで）。この後の節点は利用者を待たせない",
   flowFollowupsOff: "設定でオフ",
   flowNotPassed: "通らず",
@@ -215,6 +220,9 @@ export const chat = {
     documents: "文書",
     answer: "予告だけの回答",
     calls: "呼び出しの回数",
+    call: "何回目の呼び出し",
+    chose: "選んだツール",
+    answer_chars: "書いた文字数",
     max_steps: "上限",
     note: "モデルへの指示",
     tool_choice: "ツールの指定",
