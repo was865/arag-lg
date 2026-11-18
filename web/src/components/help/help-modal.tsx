@@ -71,7 +71,7 @@ export function HelpModal({
             ))}
           </nav>
           {onReplayTour && (
-            <div className="border-t-[0.5px] border-divider pt-2.5 max-md:hidden">
+            <div className="mt-2 border-t-[0.5px] border-divider pt-2 max-md:hidden">
               <ReplayButton onClick={onReplayTour} />
             </div>
           )}
@@ -435,15 +435,16 @@ function Tips() {
 // ── 部品 ─────────────────────────────────────────────────────────────────
 
 function ReplayButton({ onClick }: { onClick: () => void }) {
+  // 左のナビの項目と同じ並び（左に印、同じ余白）にして、1 行に収める
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center justify-between rounded-control border-0 bg-transparent px-2.5 py-[7px] text-left text-footnote text-muted transition-colors hover:bg-divider hover:text-fg-2 max-md:border-[0.5px] max-md:border-divider-strong max-md:py-2.5"
+      className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-control border-0 bg-transparent px-2.5 py-2 text-left text-footnote text-muted transition-colors hover:bg-divider hover:text-fg max-md:border-[0.5px] max-md:border-divider-strong max-md:py-2.5"
     >
-      <span>はじめてのガイドをもう一度見る</span>
-      <svg viewBox="0 0 16 16" width="11" height="11">
-        <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 1.5v3h3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox="0 0 16 16" width="14" height="14" className="shrink-0 opacity-85">
+        <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 1.5v3h3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
+      <span className="truncate">ガイドをもう一度見る</span>
     </button>
   );
 }

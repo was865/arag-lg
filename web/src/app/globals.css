@@ -317,6 +317,17 @@
     opacity: 1;
   }
 }
+/* 初回ガイドの対象に着いたとき、枠から外へ 1 度だけ広がる輪 */
+@keyframes ar-tour-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent);
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--accent) 0%, transparent);
+    opacity: 0;
+  }
+}
 /* 取数レールの不定進捗：総数未知の間だけ、ハイライトを左右にスキャンさせる */
 @keyframes ar-scan {
   0% {
@@ -433,6 +444,7 @@
   --animate-overlay-in: ar-overlay-in 0.16s cubic-bezier(0.3, 0.7, 0.4, 1) both;
   --animate-fade-up: ar-fade-up 0.3s cubic-bezier(0.3, 0.7, 0.4, 1) both;
   --animate-scale-in: ar-scale-in 0.18s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  --animate-tour-ping: ar-tour-ping 1.1s var(--ease-out) 0.38s both;
   --animate-pop-in: ar-pop-in 0.16s cubic-bezier(0.3, 0.7, 0.4, 1) both;
   --animate-scan: ar-scan 1.3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

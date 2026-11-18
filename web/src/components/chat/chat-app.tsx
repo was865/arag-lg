@@ -640,6 +640,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           stats={stats}
           onReplayTour={() => {
             setHelpOpen(false);
+            // ガイドは会話の画面の部品（入力欄・検索の範囲）を指すので、ライブラリ等からは新しいスレッドへ移ってから始める
+            if (page.view !== "chat") selectThread(null);
             guide.replay();
           }}
         />
