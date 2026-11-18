@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FLOW_GRAPH, flowOf, inferNode, nodesOfSteps, routeOf, stepsOfNode, type FlowNodeId, type FlowStep } from "@/lib/chat/flow";
+import { FLOW_GRAPH, answerTimeMs, flowOf, inferNode, nodesOfSteps, routeOf, stepsOfNode, type FlowNodeId, type FlowStep } from "@/lib/chat/flow";
 
 /** api の偽モデルのテストが記録した、分岐ごとのイベントの列（specs/029 T2。節点の名前は除いてある = 古い記録と同じ形） */
 const SNAPSHOTS = JSON.parse(
@@ -188,5 +188,22 @@ describe("routeOf（実際にたどった順の経路）", () => {
     const r = routeOf(steps.slice(0, cut + 1), { running: true });
     const now = r.stops.find((s) => s.current)!;
     expect(now).toMatchObject({ node: "investigate", round: 2 });
+  });
+});
+
+describe("answerTimeMs（見出しの所要時間）", () => {
+  const step = (id: string, ms: number, p: Partial<FlowStep> = {}): FlowStep => ({
+    id, name: "search", status: "done", durationMs: ms, input: {}, ...p,
+  });
+  const fu = step("system-followups", 4000, { name: "system", input: { kind: "followups" }, node: "followups" });
+
+  it("確定した回答は run の所要時間（続けて聞くの時間を含まない）", () => {
+    expect(answerTimeMs([step("a", 500), fu], 1200)).toBe(1200);
+  });
+
+  it("所要時間が無いあいだは親ステップの和。続けて聞くと子ステップは数えない", () => {
+    expect(answerTimeMs([step("a", 500), step("b", 300, { parentId: "a" }), fu], 0)).toBe(500);
+    // 節点の名前の無い古い記録でも、種類から続けて聞くと分かる
+    expect(answerTimeMs([step("a", 500), { ...fu, node: undefined }])).toBe(500);
   });
 });

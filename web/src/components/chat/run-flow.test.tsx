@@ -40,8 +40,17 @@ describe("RunFlow（実際にたどった順の流れ。specs/029 R7〜R9）", (
     expect(html).not.toContain("×2");
   });
 
-  it("そのまま通過した回答は、見出しでそう言う", () => {
-    expect(text(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />))).toContain("確認をそのまま通過");
+  it("いつもの経路（そのまま通過）と実行中は、見出しにひと言を足さない（停留所の印で分かる）", () => {
+    const t = text(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />));
+    expect(t).toContain("回答までの流れ");
+    expect(t).not.toContain("確認をそのまま通過");
+    const live = text(wrap(<RunFlow route={routeOf(stepsOf("gap"), { running: true })} running />));
+    expect(live).not.toContain("書き直して通過");
+  });
+
+  it("停留所の名前に、その段階の説明を添える（ホバーで読める）", () => {
+    const html = wrap(<RunFlow route={routeOf(stepsOf("answer"))} />);
+    expect(html).toContain('title="調べ残し・表の集計・数字を確かめ');
   });
 
   it("下書きへの退避は見張りの停留所で示す", () => {

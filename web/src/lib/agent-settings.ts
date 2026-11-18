@@ -10,6 +10,7 @@ export interface AgentSettings {
   grade_threshold: number;
   require_citations: boolean;
   admit_unknown: boolean;
+  followups: boolean;
 }
 
 /** API（api/src/arag/agent/config.py）の既定値。 */
@@ -23,6 +24,7 @@ export const AGENT_DEFAULTS: AgentSettings = {
   grade_threshold: 0.3,
   require_citations: true,
   admit_unknown: true,
+  followups: true,
 };
 
 type NumKey = { [K in keyof AgentSettings]: AgentSettings[K] extends number ? K : never }[keyof AgentSettings];
@@ -40,6 +42,7 @@ export const AGENT_FIELDS: AgentField[] = [
   { kind: "number", key: "max_retrieve_retries", term: "Query rewrite retries", label: "再検索回数", hint: "関連する資料が足りないとき、言い換えて探し直す回数。", min: 0, max: 2, step: 1 },
   { kind: "bool", key: "require_citations", term: "Citation enforcement", label: "出典を必須にする", hint: "回答の各内容に出典番号を付けさせる。" },
   { kind: "bool", key: "admit_unknown", term: "Abstention", label: "回答できない場合は明示する", hint: "資料に無いことは推測せず「見つからない」と答える。" },
+  { kind: "bool", key: "followups", term: "Follow-up suggestions", label: "続けて聞く質問を出す", hint: "回答の下に、次に聞けそうな質問を 2〜3 個出す。回答の後に作るので、回答は遅れない。" },
   { kind: "number", key: "candidate_k", term: "Rerank candidates", label: "候補数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
   { kind: "number", key: "parallel_tools", term: "Parallel tool calls", label: "並列実行数", hint: "1 回の判断で並行して走らせる検索・読み込みの数。", min: 1, max: 8, step: 1, advanced: true },
   { kind: "number", key: "grade_threshold", term: "Relevance threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
@@ -63,6 +66,7 @@ export function clampAgentCfg(raw: unknown): AgentSettings {
     grade_threshold: Math.round(num(o.grade_threshold, 0, 1, d.grade_threshold, false) * 100) / 100,
     require_citations: bool(o.require_citations, d.require_citations),
     admit_unknown: bool(o.admit_unknown, d.admit_unknown),
+    followups: bool(o.followups, d.followups),
   };
 }
 

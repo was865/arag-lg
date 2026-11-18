@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FollowupRows, Followups, followupsFor } from "@/components/chat/followups";
+import { FollowupRows, Followups, followupsFor, followupsPending } from "@/components/chat/followups";
 import { SystemFields } from "@/components/chat/tool-steps/system-fields";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -28,6 +28,13 @@ describe("Followups（続けて聞く、specs/028 R6）", () => {
     expect(html).toContain("在庫の推移は？");
     expect(html).toContain("animation-delay:50ms");
     expect(html).toContain("motion-reduce:animate-none");
+  });
+
+  it("作っているあいだは見出しと骨組みを出す（読み上げには作成中と伝える）", () => {
+    const html = render(<Followups items={[]} pending onSend={() => {}} />);
+    expect(html).toContain("続けて聞く");
+    expect(html).toContain('aria-busy="true"');
+    expect(html).not.toContain("<button");
   });
 
   it("最大 3 行・候補が無ければ何も出さない", () => {
@@ -65,6 +72,13 @@ describe("followupsFor（出すかどうか）", () => {
     expect(followupsFor(done({ status: "cancelled" }), true, false)).toEqual([]);
     expect(followupsFor(done({ suggestions: undefined }), true, false)).toEqual([]);
   });
+
+  it("作っている最中かは、最後のターン・完了・実行中でないときだけ見る", () => {
+    expect(followupsPending(done({ suggestions: [], followupsPending: true }), true, false)).toBe(true);
+    expect(followupsPending(done({ suggestions: [], followupsPending: true }), false, false)).toBe(false);
+    expect(followupsPending(done({ suggestions: [], followupsPending: true }), true, true)).toBe(false);
+    expect(followupsPending(done({ suggestions: [] }), true, false)).toBe(false);
+  });
 });
 
 describe("followups の記録の表示", () => {
@@ -80,5 +94,9 @@ describe("followups の記録の表示", () => {
     expect(dropped).toContain("落とした候補");
     expect(dropped).toContain("在庫数は？（これまでの質問と同じ）");
     expect(dropped).toContain("渡した前のターンの数");
+    // 利用者の設定で作らなかった（specs/028 R7）
+    const skipped = render(<SystemFields data={{ kind: "followups", skipped: "user_setting" }} t={ja} />);
+    expect(skipped).toContain("作らなかった理由");
+    expect(skipped).toContain("利用者の設定でオフ");
   });
 });

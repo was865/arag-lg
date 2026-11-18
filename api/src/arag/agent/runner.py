@@ -76,8 +76,6 @@ class RunnerDeps:
     # 質問に添えた画像（specs/017）。画像の保存先と、画像を文章にする読み手（未設定なら読めない扱い）
     storage: Storage | None = None
     image_reader: ImageReader | None = None
-    # 続けて聞く質問の候補を作るか（ARAG_FOLLOWUPS、specs/028 R7）
-    followups: bool = True
     # 続けて聞く候補の作成の打ち切り（ARAG_FOLLOWUPS_TIMEOUT_SEC、specs/028 T25）
     followups_timeout_sec: float = TIMEOUT_SEC
     # 引用の刈り込み（ARAG_CITATION_PRUNE、specs/026 T31）
@@ -209,6 +207,8 @@ async def execute_run(
         async def completed(c: Completion) -> None:
             src = _final_sources(c.citations)
             turn.answer = c.answer
+            for st in c.steps:  # 確定の節点のステップ（ストリームより先に保存するため）
+                turn.steps[st["id"]] = st
             turn.stop()
             await asyncio.shield(
                 _persist(
@@ -255,7 +255,7 @@ async def execute_run(
                 deps, sink, turn, resolved, ctx, req, thread_id, message_id, done.completion.answer, done.src
             )
 
-        ctx.hooks = RunHooks(completed=completed, followups=followups if deps.followups else None)
+        ctx.hooks = RunHooks(completed=completed, followups=followups)
         if isinstance(img := req.get("image"), dict):
             ctx.hooks.read_image = _image_reader(deps, img)
             ctx.hooks.image_id = str(img["id"])
@@ -890,7 +890,6 @@ async def main() -> None:
             events_ttl_sec=settings.run_events_ttl_sec,
             storage=LocalStorage(settings.storage_dir),
             image_reader=build_query_image_reader(settings),
-            followups=settings.followups,
             followups_timeout_sec=settings.followups_timeout_sec,
             citation_prune=settings.citation_prune,
         )

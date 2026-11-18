@@ -327,7 +327,17 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
 
     確定したら runner に渡して保存させ、完了（run.completed）を送らせる。続けて聞く候補はこの後に作る。
     """
-    ctx, emit = runtime.context, tag_node(runtime.stream_writer, "finalize")
+    ctx = runtime.context
+    # この節点で記録したステップ。完了（保存）は同じ節点の中で行い、ストリームの処理より先に走るので、
+    # runner に直接渡して保存に含める（渡さないと再読み込みで数字の照合などが消える）
+    recorded: list[dict[str, Any]] = []
+
+    def capture(ev: dict[str, Any]) -> None:
+        if ev.get("type") == "step":
+            recorded.append(ev["step"])
+        runtime.stream_writer(ev)
+
+    emit = tag_node(capture, "finalize")
     msgs = state["messages"]
     last = msgs[-1] if msgs else None
     update: dict[str, Any] = {}
@@ -352,9 +362,22 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
     reason = classify(fin.answer, ctx)
     shown = NO_ANSWER_TEXT[reason] if reason and not fin.answer.strip() else fin.answer
     chat = ctx.primer is not None and ctx.primer.kind == "chat"
-    want = reason is None and not chat and ctx.hooks.followups is not None
+    eligible = reason is None and not chat and ctx.hooks.followups is not None
+    want = eligible and ctx.cfg.followups
+    if eligible and not want:
+        # 利用者が設定で切った。作らなかったことも記録に残す（後端の動きは黙って行わない）
+        record_system(
+            tag_node(capture, "followups"),
+            "system-followups",
+            "followups",
+            "続けて聞く質問の作成",
+            "利用者の設定でオフのため作らなかった",
+            output={"skipped": "user_setting"},
+        )
     if ctx.hooks.completed is not None:
-        await ctx.hooks.completed(Completion(answer=shown, reason=reason, citations=fin, followups=want))
+        await ctx.hooks.completed(
+            Completion(answer=shown, reason=reason, citations=fin, followups=want, steps=recorded)
+        )
     return {**update, "no_answer_reason": reason, "followups": want}
 
 

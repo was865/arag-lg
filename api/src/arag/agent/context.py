@@ -61,6 +61,8 @@ class Completion:
     reason: str | None  # no_answer_reason
     citations: FinalCitations
     followups: bool  # 続けて聞く候補をこの後に作るか
+    # 確定の節点で記録したステップ。ストリームが runner に届く前に保存するので、ここで渡す
+    steps: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

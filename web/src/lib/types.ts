@@ -153,6 +153,8 @@ export interface Turn {
   noAnswerReason?: string | null;
   /** 続けて聞く質問の候補（specs/028）。最後のターンの下にだけ出す。 */
   suggestions?: string[];
+  /** 続けて聞く候補を作っている最中（完了の後、followups が届くまで。specs/028 T24） */
+  followupsPending?: boolean;
   /** 報告の送信が 404 だった（メッセージが保存されていない）。「問題を報告」を以後出さない（specs/028 R12a） */
   unsaved?: boolean;
   /** 失敗したときの説明（日本語）。 */

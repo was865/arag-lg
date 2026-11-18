@@ -13,6 +13,14 @@ describe("回答の設定", () => {
     expect(clampAgentCfg({ top_k: 7.6 }).top_k).toBe(8);
   });
 
+  it("続けて聞くは既定でオン、型違いは既定に戻し、オフにしたときだけ送る（specs/028 R7）", () => {
+    expect(AGENT_DEFAULTS.followups).toBe(true);
+    expect(clampAgentCfg({ followups: "no" }).followups).toBe(true);
+    expect(clampAgentCfg({ followups: false }).followups).toBe(false);
+    expect(agentCfgPayload({ ...AGENT_DEFAULTS, followups: false })).toEqual({ followups: false });
+    expect(AGENT_FIELDS.find((f) => f.key === "followups")).toMatchObject({ kind: "bool" });
+  });
+
   it("候補の数は資料の数より小さくならない", () => {
     expect(clampAgentCfg({ top_k: 12, candidate_k: 5 }).candidate_k).toBe(12);
   });

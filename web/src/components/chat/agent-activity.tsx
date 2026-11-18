@@ -12,13 +12,15 @@ import { getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
-import { flowOf, routeOf } from "@/lib/chat/flow";
+import { answerTimeMs, flowOf, routeOf } from "@/lib/chat/flow";
 import { FlowRail, RunFlow } from "@/components/chat/run-flow";
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
-  steps, sources, variant, running, answering = false, revising = false, expandedMap, onToggleStep,
+  steps, sources, variant, running, answering = false, revising = false, durationMs, expandedMap, onToggleStep,
 }: {
+  /** run の所要時間（完了まで。続けて聞く候補の時間を含まない）。見出しの時間に使う */
+  durationMs?: number;
   /** 確認で差し戻された下書きを書き直している最中か */
   revising?: boolean;
   /** 回答の本文が流れ始めているか（実行中のステップが無いあいだ、考えているのか書いているのかを見分ける） */
@@ -45,9 +47,8 @@ export function AgentActivity({
 
   if (visibleSteps.length === 0) return null;
 
-  // 子サブステップの ms は親 retrieve の duration に内包されるため、集計はトップレベルのみ。
-  const topLevel = visibleSteps.filter((s) => !s.parentId);
-  const totalMs = topLevel.reduce((a, s) => a + (s.durationMs || 0), 0);
+  // 確定した回答は run の所要時間。続けて聞く候補は完了の後に作るので含めない（specs/028 R4c）
+  const totalMs = answerTimeMs(visibleSteps, running ? undefined : durationMs);
   // 現在段階インジケータ: running な leaf（子）を優先し、無ければトップレベルの running。
   const runningSteps = visibleSteps.filter((s) => s.status === "running");
   const current = runningSteps.find((s) => s.parentId) ?? runningSteps[0];

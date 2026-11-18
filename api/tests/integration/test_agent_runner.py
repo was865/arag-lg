@@ -447,13 +447,20 @@ async def test_no_followups_for_no_answer_or_when_disabled(
     evs = await events(redis, run.id)
     assert evs[-1]["type"] == "run.completed" and not evs[-1]["followups_pending"]
     assert evs[-1]["no_answer_reason"] and evs[-1]["suggestions"] == [] and not followup_steps(evs)
-    # ARAG_FOLLOWUPS=false では作らない
+    # 利用者の設定（agent_cfg.followups=false）では作らず、作らなかったことを記録に残す
     model2 = FakeToolModel(messages=script(AIMessage(content="即時停止です[1]。")))
-    deps2 = make_deps(sessionmaker, redis, model2, followups=False)
-    _th, run2 = await start(sessionmaker, "MX-17 はどうする？")
+    deps2 = make_deps(sessionmaker, redis, model2)
+    _th, run2 = await start(sessionmaker, "MX-17 はどうする？", agent_cfg={"followups": False})
     await execute_run(deps2, run2.id)
     evs2 = await events(redis, run2.id)
-    assert evs2[-1]["type"] == "run.completed" and not followup_steps(evs2)
+    assert evs2[-1]["type"] == "run.completed" and not evs2[-1]["followups_pending"]
+    [skipped] = followup_steps(evs2)
+    assert skipped["output"] == {"skipped": "user_setting"}
+    # 確定の節点で記録したステップも、完了の時点で保存する（再読み込みしても消えない）
+    async with sessionmaker() as s:
+        msg = await s.get(Message, run2.message_id)
+    assert msg is not None
+    assert [x for x in msg.steps if x["id"] == "system-followups"] == [skipped]
 
 
 async def test_no_followups_for_chat(sessionmaker: async_sessionmaker[AsyncSession], redis: Redis) -> None:

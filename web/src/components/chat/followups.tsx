@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/i18n/context";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Turn } from "@/lib/types";
 
 const MAX = 3;
@@ -15,15 +16,35 @@ export function followupsFor(
   return (turn.suggestions ?? []).slice(0, MAX);
 }
 
+/** 候補を作っている最中か（最後のターン・完了・実行中でない、のときだけ。specs/028 T24）。 */
+export function followupsPending(turn: Turn, isLast: boolean, running: boolean): boolean {
+  return isLast && !running && turn.status === "done" && Boolean(turn.followupsPending);
+}
+
 /** 回答の下の「続けて聞く」。押すとその文をそのまま質問として送る。 */
 export function Followups({
   items,
+  pending = false,
   onSend,
 }: {
   items: string[];
+  /** 候補を作っている最中（骨組みを出す） */
+  pending?: boolean;
   onSend: (text: string) => void;
 }) {
   const { t } = useT();
+  if (pending && items.length === 0) {
+    return (
+      <div role="status" aria-busy="true" className="flex flex-col gap-1">
+        <div className="text-caption text-muted">{t.chat.followupsTitle}</div>
+        <span className="sr-only">{t.chat.followupsLoading}</span>
+        <div className="flex flex-col gap-2.5 px-2 py-1.5">
+          <Skeleton className="h-3 w-[52%]" />
+          <Skeleton className="h-3 w-[38%]" />
+        </div>
+      </div>
+    );
+  }
   if (items.length === 0) return null;
   return (
     <div className="flex flex-col gap-1">

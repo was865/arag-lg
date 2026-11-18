@@ -21,6 +21,7 @@ export const chat = {
   storyRevising: "確認して書き直しています…",
   staleDraft: "確認前の下書き・書き直しています",
   followupsTitle: "続けて聞く",
+  followupsLoading: "続けて聞く質問を作っています",
   moreActions: "その他",
   saveMarkdown: "Markdown で保存",
   saveHtml: "HTML で書き出す",
@@ -155,13 +156,11 @@ export const chat = {
   reviewRewrote: "回答を書き直した",
   // 系統が導く流れ（specs/026）
   // 回答の流れ（specs/029）。実際にたどった順に並べる。節点の名前は flow-graph.json（グラフの定義）から
-  flowTitle: "流れ",
+  flowTitle: "回答までの流れ",
   flowRound: "{n} 周目",
-  flowSummaryPassed: "確認をそのまま通過",
   flowSummaryChat: "雑談として回答（資料は検索しない）",
   flowSummarySentBack: "確認で {n} 回差し戻し、書き直して通過",
   flowSummaryUsedDraft: "書き直しを取り消し、確認前の下書きを回答に",
-  flowSummaryRunning: "回答を作っています",
   flowCompose: "回答を作成",
   flowRewrite: "書き直し",
   flowSearches: "検索 {n} 回",
@@ -203,6 +202,7 @@ export const chat = {
   systemGroup: "システムの処理",
   systemCount: "{n} 件",
   systemFields: {
+    skipped: "作らなかった理由",
     skipped_queries: "検索しなかったクエリ",
     similarity: "質問文との近さ",
     threshold: "省く近さ",
@@ -267,6 +267,8 @@ export const chat = {
   pruneLabels: { removed: "外した", kept: "残した", values: "値", ignored: "質問の値（判断に使わない）" },
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
+    // 続けて聞くを作らなかった理由（specs/028 R7）
+    skipped: { user_setting: "利用者の設定でオフ" },
     result: {
       pass: "通過",
       retried_ok: "やり直して回答できた",

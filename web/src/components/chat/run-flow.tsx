@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import { cn, formatMs } from "@/lib/utils";
-import type { FlowNodeId, FlowRoute, FlowRun, FlowStop } from "@/lib/chat/flow";
+import { FLOW_GRAPH, type FlowNodeId, type FlowRoute, type FlowRun, type FlowStop } from "@/lib/chat/flow";
 import type { Dictionary } from "@/i18n/dictionary";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
@@ -103,15 +103,21 @@ function detailOf(s: FlowStop, t: Dictionary): string {
   }
 }
 
-/** 経路をひと言で（流れの見出しの右）。 */
-function summaryOf(r: FlowRoute, running: boolean, t: Dictionary): string {
+/**
+ * いつもと違う経路だけをひと言で（流れの見出しの右）。そのまま通過した回答は停留所の印で分かるので何も足さない。
+ * 実行中は途中の経路なので言わない（今の段階は見出しの段階の列が示す）。
+ */
+function summaryOf(r: FlowRoute, running: boolean, t: Dictionary): string | null {
   const c = t.chat;
-  if (running) return c.flowSummaryRunning;
+  if (running) return null;
   if (r.usedDraft) return c.flowSummaryUsedDraft;
   if (r.sentBack > 0) return interpolate(c.flowSummarySentBack, { n: String(r.sentBack) });
   if (r.chat) return c.flowSummaryChat;
-  return c.flowSummaryPassed;
+  return null;
 }
+
+/** 段階の説明（make graph が書き出す節点の説明。停留所の名前のホバーで読む）。 */
+const DESCRIPTION = new Map(FLOW_GRAPH.nodes.map((n) => [n.id, n.description]));
 
 /** 停留所の印。済み・差し戻し・通過・退避・失敗・いまの段階を、形と少しの色で見分ける。 */
 function StopMark({ s }: { s: FlowStop }) {
@@ -173,13 +179,14 @@ export function RunFlow({
   const wide = stops.length <= 8;
   const row = (cls: string) => (wide ? cls : "");
   const picked = stops.find((s) => s.key === selected);
+  const summary = summaryOf(route, running, t);
   const name = (s: FlowStop) => (s.round > 1 ? `${s.label}（${interpolate(t.chat.flowRound, { n: String(s.round) })}）` : s.label);
 
   return (
     <div className="@container border-b-[0.5px] border-divider px-3.5 pb-3 pt-2.5 max-md:px-3">
       <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-caption font-semibold text-muted">{t.chat.flowTitle}</span>
-        <span className="text-caption text-fg-2">{summaryOf(route, running, t)}</span>
+        {summary && <span className="text-caption text-fg-2">{summary}</span>}
         {route.inferred && <span className="ml-auto text-caption text-muted-2">{t.chat.flowInferred}</span>}
       </div>
       <ol className={cn("m-0 flex list-none flex-col p-0", row("@[480px]:flex-row"))}>
@@ -207,7 +214,10 @@ export function RunFlow({
                     row("@[480px]:bottom-auto @[480px]:left-[calc(50%+11px)] @[480px]:right-[calc(-50%+11px)] @[480px]:top-[7.5px] @[480px]:h-0 @[480px]:w-auto @[480px]:border-l-0 @[480px]:border-t"),
                     s.outcome === "sent_back" || s.outcome === "retried"
                       ? "border-dashed border-accent/60"
-                      : "border-accent/35",
+                      : next.node === "followups"
+                        ? // 続けて聞くは回答の完了の後（所要時間に含めない）。流れから少し離して見せる
+                          "border-dashed border-divider-strong"
+                        : "border-accent/35",
                   )}
                 />
               )}
@@ -228,6 +238,7 @@ export function RunFlow({
                 </span>
                 <span className={cn("flex min-w-0 flex-1 items-baseline gap-2", row("@[480px]:w-full @[480px]:flex-col @[480px]:items-center @[480px]:gap-0"))}>
                   <span
+                    title={DESCRIPTION.get(s.node)}
                     className={cn(
                       "shrink-0 text-footnote font-medium transition-colors duration-(--duration-mid)",
                       active || s.current ? "text-accent" : "text-fg",

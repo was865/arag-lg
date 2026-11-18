@@ -41,6 +41,8 @@ class AgentCfg:
     require_citations: bool = True
     admit_unknown: bool = True
     verify: bool = False
+    # 回答のあとに続けて聞く質問の候補を作る（利用者の設定。specs/028 R7）
+    followups: bool = True
 
     @classmethod
     def clamped(cls, raw: Any) -> "AgentCfg":
@@ -60,6 +62,7 @@ class AgentCfg:
             require_citations=_bool(o.get("require_citations"), d.require_citations),
             admit_unknown=_bool(o.get("admit_unknown"), d.admit_unknown),
             verify=_bool(o.get("verify"), d.verify),
+            followups=_bool(o.get("followups"), d.followups),
         )
 
     def as_dict(self) -> dict[str, Any]:

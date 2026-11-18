@@ -6,6 +6,7 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
+from arag.agent.config import AgentCfg
 from arag.agent.context import Completion, RunContext, RunHooks
 from arag.agent.flow import (
     FRESH,
@@ -209,6 +210,34 @@ async def test_finalize_hands_the_answer_to_the_runner_before_followups() -> Non
     assert list(done.citations.cmap) == [1]
     state = (await agent.aget_state({"configurable": {"thread_id": "h"}})).values
     assert state["suggestions"] == ["次の質問は？"] and state["outcome"] == "answered"
+
+
+async def test_followups_off_by_user_setting_is_recorded() -> None:
+    """利用者の設定（agent_cfg.followups=false）では作らず、作らなかったことを記録に残す（specs/028 R7）。"""
+    got: list[Completion] = []
+
+    async def completed(c: Completion) -> None:
+        got.append(c)
+
+    async def followups() -> list[str]:
+        raise AssertionError("呼ばれないはず")
+
+    model = FakeToolModel(messages=script(AIMessage(content="停止する【1】。")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("MX-17 は即時停止を推奨する。"), cfg=AgentCfg(followups=False))
+    c.hooks = RunHooks(completed=completed, followups=followups)
+    evs = await stream(agent, c, "MX-17 は？")
+    [done] = got
+    assert not done.followups
+    [step] = [e["step"] for e in evs if e["type"] == "step" and e["step"]["id"] == "system-followups"]
+    assert step["input"]["kind"] == "followups" and step["node"] == "followups"
+    assert step["output"] == {"skipped": "user_setting"} and step["duration_ms"] == 0
+
+
+def test_followups_setting_is_clamped() -> None:
+    assert AgentCfg.clamped({}).followups is True
+    assert AgentCfg.clamped({"followups": False}).followups is False
+    assert AgentCfg.clamped({"followups": "no"}).followups is True
 
 
 async def test_no_followups_for_chat_or_no_answer() -> None:

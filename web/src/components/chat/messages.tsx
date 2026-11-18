@@ -27,7 +27,7 @@ import { useToast } from "@/components/feedback/toast-provider";
 import { Icon } from "@/components/icons";
 import { DURATION, EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { Followups, followupsFor } from "@/components/chat/followups";
+import { Followups, followupsFor, followupsPending } from "@/components/chat/followups";
 import { dateSeparator, formatTurnTimestamp, sameLocalDay } from "@/lib/datetime";
 
 /** 質問に添えた画像の縮小表示。押すと拡大する（specs/017 R6）。 */
@@ -398,6 +398,7 @@ export function Transcript({
                 running={running}
                 answering={turn.answer.length > 0}
                 revising={Boolean(turn.staleAnswer)}
+                durationMs={turn.durationMs}
                 expandedMap={expandedSteps}
                 onToggleStep={onToggleStep}
               />
@@ -445,7 +446,13 @@ export function Transcript({
                   feedbackDisabled={!turn.messageId}
                 />
               )}
-              {onFollowup && <Followups items={followupsFor(turn, isLast, running)} onSend={onFollowup} />}
+              {onFollowup && (
+                <Followups
+                  items={followupsFor(turn, isLast, running)}
+                  pending={followupsPending(turn, isLast, running)}
+                  onSend={onFollowup}
+                />
+              )}
             </AssistantMessage>
           </div>
         );

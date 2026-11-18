@@ -87,10 +87,12 @@ describe("applyEvent", () => {
     };
     const done = play([completed]);
     // 完了の時点で回答は確定し、入力欄と操作は使える（実行中の扱いにしない）
-    expect(done).toMatchObject({ status: "done", streaming: false, suggestions: [] });
+    expect(done).toMatchObject({ status: "done", streaming: false, suggestions: [], followupsPending: true });
     expect(isTerminal(completed)).toBe(false);
     const fu: RunEvent = { type: "followups", message_id: "m1", suggestions: ["次は？"] };
-    expect(applyEvent(done, fu).suggestions).toEqual(["次は？"]);
+    expect(applyEvent(done, fu)).toMatchObject({ suggestions: ["次は？"], followupsPending: false });
+    // 作らない完了（利用者の設定でオフなど）は待たない
+    expect(play([{ ...completed, followups_pending: false }]).followupsPending).toBe(false);
     expect(isTerminal(fu)).toBe(true);
     expect(isTerminal({ ...completed, followups_pending: false })).toBe(true);
   });

@@ -241,11 +241,12 @@ export function applyEvent(turn: Turn, ev: RunEvent): Turn {
         messageId: ev.message_id,
         noAnswerReason: ev.no_answer_reason ?? null,
         suggestions: ev.suggestions ?? [],
+        followupsPending: Boolean(ev.followups_pending),
         steps: turn.steps.map(settle),
       };
     case "followups":
       // 完了の後に届く続けて聞く候補（specs/028 T24）。次の質問を送った後に届いても、最後のターンでなければ出ない
-      return { ...turn, suggestions: ev.suggestions ?? [] };
+      return { ...turn, suggestions: ev.suggestions ?? [], followupsPending: false };
     case "run.failed":
       return {
         ...turn,

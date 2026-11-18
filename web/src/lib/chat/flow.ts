@@ -91,6 +91,17 @@ function kindOf(step: FlowStep): string {
   return step.name === "system" ? String(step.input?.kind ?? "") : "";
 }
 
+/**
+ * 見出しに出す回答の所要時間。確定した回答は run の所要時間（完了まで。続けて聞く候補の時間を含まない）。
+ * 所要時間がまだ無いあいだは親ステップの和で、続けて聞くのステップは数えない（specs/028 R4a）。
+ */
+export function answerTimeMs(steps: FlowStep[], durationMs?: number): number {
+  if (durationMs && durationMs > 0) return durationMs;
+  return steps
+    .filter((s) => !s.parentId && s.node !== "followups" && kindOf(s) !== "followups")
+    .reduce((a, s) => a + (s.durationMs || 0), 0);
+}
+
 /** 節点の名前の無いステップの節点を、ステップの種類から推定する（古い記録用）。 */
 export function inferNode(step: FlowStep, firstTurn: boolean): FlowNodeId {
   if (step.name === "read_image") return "read_image";

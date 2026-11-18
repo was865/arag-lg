@@ -94,8 +94,6 @@ class Settings(BaseSettings):
     chat_models: list[dict[str, Any]] = []
     # 書き換え・要約用（目録の id。空なら会話モデルと同じ）
     utility_model: str = ""
-    # 回答のあとに続けて聞く質問の候補を作る（specs/028 R7）
-    followups: bool = True
     # 続けて聞く候補の作成の打ち切り（秒。specs/028 T25）
     followups_timeout_sec: float = 5.0
     # 回答の文から、値を書いていない資料の引用番号を外す（specs/026 T31）
