@@ -7,14 +7,14 @@
 import base64
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.items.picture.picture import PictureItem
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from arag.ingest.chunking import ChunkDraft, SectionDraft
+from arag.ingest.chunking import ChunkDraft, SectionDraft, prov_boxes
 from arag.ingest.contextualize import Usage
 from arag.logging import get_logger
 from arag.prompts import load_prompt
@@ -74,6 +74,8 @@ class FigureCandidate:
     asset: str
     page: int | None
     caption: str
+    boxes: list[dict[str, Any]]
+    """図の位置（解析の確認で枠を描く。specs/030）"""
 
 
 def _area_ratio(doc: DoclingDocument, pic: PictureItem) -> float:
@@ -101,6 +103,7 @@ def figure_candidates(
                 asset=asset,
                 page=pic.prov[0].page_no if pic.prov else None,
                 caption=pic.caption_text(doc).strip(),
+                boxes=prov_boxes(pic.prov),
             )
         )
     return out
@@ -159,7 +162,32 @@ async def describe_figures(
                 page_end=fig.page,
                 text=body,
                 token_len=count_tokens(body),
-                boxes=[],
+                boxes=fig.boxes,
             )
         )
     return out
+
+
+def fill_figure_boxes(doc: DoclingDocument, chunks: Sequence[Any]) -> int:
+    """位置を持たない図チャンク（specs/030 より前に入庫したもの）に、同じ頁の図の位置を補う。
+
+    同じ頁に図が 1 つならそれを、複数ならキャプションで始まる本文（「図: {キャプション}」）の図を使う。
+    決められなければ補わない。補った数を返す。chunks は ChunkDraft か Chunk 行。
+    """
+    # 入庫時と同じく、小さな画像（アイコン等）は図チャンクにならないので候補から外す
+    pics = [p for p in doc.pictures if p.prov and _area_ratio(doc, p) >= MIN_AREA_RATIO]
+    filled = 0
+    for ch in chunks:
+        if getattr(ch, "block_type", None) != "figure" or ch.boxes or ch.page_start is None:
+            continue
+        same_page = [p for p in pics if p.prov[0].page_no == ch.page_start]
+        if len(same_page) > 1:
+            same_page = [
+                p
+                for p in same_page
+                if (cap := p.caption_text(doc).strip()) and ch.text.startswith(f"図: {cap}")
+            ]
+        if len(same_page) == 1:
+            ch.boxes = prov_boxes(same_page[0].prov)
+            filled += 1
+    return filled

@@ -144,6 +144,7 @@ export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps
       selectedId={selectedId}
       revealRow={reveal.target === "row" ? reveal.n : 0}
       onPick={(c) => pick(c, "list")}
+      withBoxes={pdf}
     />
   );
   const nav = paged && !loading && (
@@ -380,6 +381,7 @@ function ChunkList({
   selectedId,
   revealRow,
   onPick,
+  withBoxes,
 }: {
   chunks: ChunkOut[];
   page: number | null;
@@ -387,6 +389,8 @@ function ChunkList({
   /** 0 以外に変わったら選んだ行を見える位置まで送る */
   revealRow: number;
   onPick: (c: ChunkOut) => void;
+  /** 原本に枠を重ねる形式（PDF）か。位置の無いチャンクにその旨を出す */
+  withBoxes: boolean;
 }) {
   const ref = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -407,7 +411,13 @@ function ChunkList({
       ) : (
         <ul ref={ref} className="m-0 flex list-none flex-col gap-2 p-0">
           {chunks.map((c) => (
-            <ChunkRow key={c.id} chunk={c} selected={c.id === selectedId} onPick={() => onPick(c)} />
+            <ChunkRow
+              key={c.id}
+              chunk={c}
+              selected={c.id === selectedId}
+              onPick={() => onPick(c)}
+              noBox={withBoxes && c.boxes.length === 0}
+            />
           ))}
         </ul>
       )}
@@ -423,7 +433,18 @@ function chunkLink(id: string) {
 /** チャンクの番号（文書の中の順。枠と行で同じ） */
 const chunkNo = (c: ChunkOut) => c.ordinal + 1;
 
-function ChunkRow({ chunk: c, selected, onPick }: { chunk: ChunkOut; selected: boolean; onPick: () => void }) {
+function ChunkRow({
+  chunk: c,
+  selected,
+  onPick,
+  noBox,
+}: {
+  chunk: ChunkOut;
+  selected: boolean;
+  onPick: () => void;
+  /** 原本の上の位置を持たない（枠を描けない） */
+  noBox: boolean;
+}) {
   const pages =
     c.page_start == null ? null : c.page_end && c.page_end !== c.page_start ? `p.${c.page_start}–${c.page_end}` : `p.${c.page_start}`;
   return (
@@ -440,6 +461,11 @@ function ChunkRow({ chunk: c, selected, onPick }: { chunk: ChunkOut; selected: b
           <span className="min-w-0 flex-1 truncate text-mini text-muted" title={headingCrumb(c.heading_path)}>
             {headingCrumb(c.heading_path) || "（見出しなし）"}
           </span>
+          {noBox && (
+            <span className="shrink-0 text-mini text-muted-2" title="Docling がこのチャンクの位置を記録していないため、原本に枠を描けません">
+              位置なし
+            </span>
+          )}
           {pages && <span className="nums shrink-0 font-mono text-mini text-muted-2">{pages}</span>}
         </span>
         {!selected && <span className="mt-1.5 line-clamp-3 text-caption leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">{c.text}</span>}

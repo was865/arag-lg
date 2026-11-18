@@ -6,6 +6,7 @@ ORM に依存しない純関数。トークナイザは引数で受け取る（�
 import re
 import unicodedata
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from itertools import groupby, pairwise
 from typing import Any, Literal
@@ -21,6 +22,7 @@ from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
 from docling_core.transforms.serializer.base import BaseDocSerializer
 from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
 from docling_core.types.doc.common.content_layer import ContentLayer
+from docling_core.types.doc.common.reference import ProvenanceItem
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.items.table.table import TableItem
 from docling_core.types.doc.items.table.table_data import TableCell
@@ -88,18 +90,20 @@ def _block_type(labels: list[str]) -> BlockType:
     return "text"
 
 
+def prov_boxes(prov: Iterable[ProvenanceItem]) -> list[dict[str, Any]]:
+    """Docling の位置（prov）を、チャンクの枠（頁・座標・原点）にする。"""
+    return [
+        {
+            "page": p.page_no,
+            "bbox": [p.bbox.l, p.bbox.t, p.bbox.r, p.bbox.b],
+            "origin": p.bbox.coord_origin.value,
+        }
+        for p in prov
+    ]
+
+
 def _boxes(chunk: DocChunk) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for item in chunk.meta.doc_items:
-        for p in item.prov:
-            out.append(
-                {
-                    "page": p.page_no,
-                    "bbox": [p.bbox.l, p.bbox.t, p.bbox.r, p.bbox.b],
-                    "origin": p.bbox.coord_origin.value,
-                }
-            )
-    return out
+    return [b for item in chunk.meta.doc_items for b in prov_boxes(item.prov)]
 
 
 @dataclass(slots=True)

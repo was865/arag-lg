@@ -91,7 +91,7 @@ cd .. && make eval-api-down
 - 文書を開き「解析の確認」タブ: 左に原件の頁（PDF）とチャンクの枠、右にその頁のチャンクと、**Docling の抽出文・文脈・埋め込みに送った本文**。回答の出典パネルの「解析を確かめる」から、引用された章を選んだ状態で開ける。
 - 警告のある頁には札が付く（空の頁・図だけの頁・文字化け・崩れた表・図の欠け・枠の頁外など）。ライブラリの詳細には警告の件数が出る。
 - 記録は `contents/<hash>/parse_report.json`（docling-serve の status・errors・所要時間、頁ごとの数、警告）。Docling の生 JSON は管理者だけ `GET /v1/documents/{id}/docling`（画面の「Docling の JSON」）。
-- 記録の無い古い文書は `docker compose exec worker python -m arag.cli reparse-report [--content-hash H]` で、保存済みの `docling.json` から作り直す（Docling は呼ばない）。
+- 記録の無い古い文書は `docker compose exec worker python -m arag.cli reparse-report [--content-hash H]` で、保存済みの `docling.json` から作り直す（Docling は呼ばない）。位置を持たない図チャンクには、このとき図の位置も補う。
 - 枠を重ねるのは PDF だけ。docx・xlsx・pptx はチャンクの一覧と 3 つの本文を見る。
 - 切り分けの目安: 抽出文が原件と違う → Docling（OCR・表・読み順）。抽出文は正しいが枠や切れ目がおかしい → チャンク化。文脈が的外れ → 文脈付与。
 

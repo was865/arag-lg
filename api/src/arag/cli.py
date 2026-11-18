@@ -24,6 +24,7 @@ from arag.db.models import Chunk, Content, IngestJob
 from arag.devapi import DEV_API_URL, check_dev_api
 from arag.ingest import queue
 from arag.ingest.chunking import CHUNKER_VERSION
+from arag.ingest.figures import fill_figure_boxes
 from arag.ingest.gc import run_gc
 from arag.ingest.index import QdrantIndex, QdrantPayloadSync
 from arag.ingest.report import build_report, load_report_dict, save_report
@@ -92,13 +93,16 @@ async def reindex(
 
 
 async def reparse_report(settings: Settings, *, hashes: list[str]) -> int:
-    """保存済みの docling.json と DB のチャンクから解析の記録を作り直す（specs/030 R8）。"""
+    """保存済みの docling.json と DB のチャンクから解析の記録を作り直す（specs/030 R8）。
+
+    あわせて、位置を持たない図チャンク（図の枠を記録する前に入庫したもの）に図の位置を補う。
+    """
     from docling_core.types.doc.document import DoclingDocument
 
     engine = make_engine(settings.database_url)
     sm = make_sessionmaker(engine)
     storage = LocalStorage(settings.storage_dir)
-    done = skipped = 0
+    done = skipped = figures = 0
     try:
         async with sm() as s:
             q = select(Content).where(Content.status == "ready")
@@ -116,6 +120,7 @@ async def reparse_report(settings: Settings, *, hashes: list[str]) -> int:
                         select(Chunk).where(Chunk.content_hash == c.content_hash).order_by(Chunk.ordinal)
                     )
                 )
+                figures += fill_figure_boxes(doc, chunks)
                 previous = await load_report_dict(storage, prefix)
                 assets: set[str] = set()
                 for p in doc.pictures:
@@ -135,7 +140,9 @@ async def reparse_report(settings: Settings, *, hashes: list[str]) -> int:
                 c.parse_warnings = report.warn_count
                 done += 1
             await s.commit()
-        print(f"作り直しました: {done} 件（docling.json が無く飛ばした: {skipped} 件）")
+        print(
+            f"作り直しました: {done} 件（docling.json が無い: {skipped} 件・図の位置を補った: {figures} 件）"
+        )
         return 0
     finally:
         await engine.dispose()
@@ -270,7 +277,9 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--timeout", type=float, default=3600)
     g = sub.add_parser("gc", help="ごみ箱の期限切れ削除と孤立内容の回収を今すぐ実行する")
     g.add_argument("--retention-days", type=int, default=None, help="既定は ARAG_TRASH_RETENTION_DAYS")
-    rp = sub.add_parser("reparse-report", help="保存済みの docling.json から解析の記録を作り直す")
+    rp = sub.add_parser(
+        "reparse-report", help="保存済みの docling.json から解析の記録を作り直す（図チャンクの位置も補う）"
+    )
     rp.add_argument("--content-hash", action="append", default=[], help="対象の内容ハッシュ（複数可）")
     sub.add_parser("sync-payload", help="Qdrant の payload（参照する文書・KB）を DB に合わせ直す")
     args = parser.parse_args(argv)

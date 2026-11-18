@@ -5,9 +5,9 @@ import base64
 from docling_core.types.doc.base import BoundingBox, Size
 from docling_core.types.doc.document import DoclingDocument, ImageRef, ProvenanceItem
 
-from arag.ingest.chunking import chunk_document
+from arag.ingest.chunking import ChunkDraft, chunk_document
 from arag.ingest.contextualize import HeadingContextualizer, LlmContextualizer, Usage
-from arag.ingest.figures import describe_figures, figure_candidates
+from arag.ingest.figures import describe_figures, figure_candidates, fill_figure_boxes
 from arag.ingest.parser import extract_images
 
 from .docling_fixtures import CharTokenizer, regulation_doc
@@ -139,6 +139,25 @@ async def test_figure_chunk_added_to_section() -> None:
     assert f.block_type == "figure"
     assert f.text.startswith("図: フロー図")
     assert sections[f.section_ordinal].page_start <= 2 <= sections[f.section_ordinal].page_end  # type: ignore[operator]
+
+
+async def test_figure_chunk_has_picture_box() -> None:
+    """図チャンクは図の位置を持つ（解析の確認で枠を描くため。specs/030）。"""
+    doc, assets = _doc_with_pictures()
+    sections, chunks = _chunked()
+    figs = await describe_figures(doc, assets, sections, chunks, _Describer())
+    assert figs[0].boxes == [{"page": 2, "bbox": [0.0, 400.0, 300.0, 100.0], "origin": "TOPLEFT"}]
+
+
+def test_fill_figure_boxes_for_saved_chunks() -> None:
+    """入庫済みの図チャンク（位置なし）に、docling.json の図の位置を補う。"""
+    doc, _ = _doc_with_pictures()
+    fig = ChunkDraft(0, 0, "figure", "", 2, 2, "図: フロー図", 3, [])
+    text = ChunkDraft(1, 0, "text", "", 2, 2, "本文", 1, [])
+    other_page = ChunkDraft(2, 0, "figure", "", 5, 5, "図: 別の図", 3, [])
+    assert fill_figure_boxes(doc, [fig, text, other_page]) == 1
+    assert fig.boxes and fig.boxes[0]["page"] == 2
+    assert text.boxes == [] and other_page.boxes == []
 
 
 async def test_figure_failure_is_skipped() -> None:
