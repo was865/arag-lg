@@ -7,7 +7,7 @@ import { AdminHeader } from "@/components/admin/admin-header";
 import { StaticAnswer } from "@/components/chat/messages";
 import { ToolSteps } from "@/components/chat/tool-steps";
 import { RunFlow } from "@/components/chat/run-flow";
-import { routeOf } from "@/lib/chat/flow";
+import { flowOf, routeOf } from "@/lib/chat/flow";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -244,10 +244,11 @@ function FeedbackDetailPane({
   const turn = useMemo(() => (d ? turnFromMessage(d.message, d.thread_id) : null), [d]);
   if (!d || !turn) return <ListSkeleton />;
   const reporter = names[d.user_id] ?? null;
-  // 回答の流れ（specs/029 R9）。停留所で過程を絞る
-  const route = turn.steps.some((x) => x.name === "understand") ? routeOf(turn.steps) : null;
-  const pickedStop = only && route ? route.stops.find((x) => x.key === only) : undefined;
-  const picked = pickedStop ? new Set(pickedStop.stepIds) : null;
+  // 回答の流れ（specs/029 R9・T34）。節点で過程を絞る
+  const guided = turn.steps.some((x) => x.name === "understand");
+  const route = guided ? routeOf(turn.steps) : null;
+  const flow = guided ? flowOf(turn.steps) : null;
+  const picked = only && route ? new Set(route.stops.filter((x) => x.node === only).flatMap((x) => x.stepIds)) : null;
 
   const setStatus = async (next: "resolve" | "reopen") => {
     setBusy(true);
@@ -330,7 +331,9 @@ function FeedbackDetailPane({
       <section className="flex flex-col gap-1.5">
         <h2 className="m-0 text-caption font-semibold text-muted">{a.process}</h2>
         <div className="overflow-hidden rounded-card border-[0.5px] border-divider">
-          {route && <RunFlow route={route} selected={only} onSelect={setOnly} />}
+          {route && flow && (
+            <RunFlow route={route} flow={flow} durationMs={turn.durationMs} selected={only} onSelect={setOnly} />
+          )}
           <ToolSteps
             steps={picked ? turn.steps.filter((x) => picked.has(x.id)) : turn.steps}
             variant="card"

@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FlowRail, RunFlow } from "@/components/chat/run-flow";
-import { GraphView } from "@/components/chat/graph-view";
 import { flowOf, routeOf, type FlowStep } from "@/lib/chat/flow";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -28,106 +27,68 @@ const wrap = (el: React.ReactNode) =>
     </LocaleProvider>,
   );
 
-describe("RunFlow（実際にたどった順の流れ。specs/029 R7〜R9）", () => {
-  const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+describe("RunFlow（グラフの実行経路の図。specs/029 R7・T34）", () => {
+  const text = (html: string) => html.replace(/<title>[^<]*<\/title>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const view = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) =>
+    wrap(<RunFlow route={routeOf(stepsOf(name))} flow={flowOf(stepsOf(name))} {...p} />);
 
-  it("差し戻しは 2 周目として続けて並べ、理由と見出しのひと言を出す（×2 にまとめない）", () => {
-    const html = wrap(<RunFlow route={routeOf(stepsOf("gap"))} onSelect={() => {}} />);
-    const t = text(html);
-    expect(t).toContain("確認で 1 回差し戻し、書き直して通過");
-    expect(t).toMatch(/確認 差し戻し\s+調べ残し/);
-    expect(t).toContain("調査（2 周目）");
-    expect(t).toContain("確認（2 周目） 通過");
-    expect(html).not.toContain("×2");
+  it("見出しは「グラフの実行経路」。ひと言の要約はいつもと違う経路だけ", () => {
+    expect(text(view("answer"))).toContain("グラフの実行経路");
+    expect(text(view("answer"))).not.toContain("確認をそのまま通過");
+    expect(text(view("gap"))).toContain("確認で 1 回差し戻し、書き直して通過");
+    expect(text(view("gap", { running: true }))).not.toContain("書き直して通過");
   });
 
-  it("いつもの経路（そのまま通過）と実行中は、見出しにひと言を足さない（停留所の印で分かる）", () => {
-    const t = text(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />));
-    expect(t).toContain("グラフの実行経路");
-    expect(t).not.toContain("確認をそのまま通過");
-    const live = text(wrap(<RunFlow route={routeOf(stepsOf("gap"), { running: true })} running />));
-    expect(live).not.toContain("書き直して通過");
+  it("同じ図を横と縦の 2 つの向きで持ち、すべての節点を並べる", () => {
+    const html = view("answer");
+    expect(html).toContain('data-orient="row"');
+    expect(html).toContain('data-orient="column"');
+    for (const id of ["read_image", "understand", "primer_search", "investigate", "guard", "review", "finalize", "followups"])
+      expect(html).toContain(`data-node="${id}"`);
   });
 
-  it("停留所の名前に、その段階の説明を添える（ホバーで読める）", () => {
-    const html = wrap(<RunFlow route={routeOf(stepsOf("answer"))} />);
-    expect(html).toContain('title="調べ残し・表の集計・数字を確かめ');
-  });
-
-  it("下書きへの退避は見張りの停留所で示す", () => {
-    const t = text(wrap(<RunFlow route={routeOf(stepsOf("rewrite_reply_uses_draft"))} />));
-    expect(t).toContain("書き直しを取り消し → 下書きへ");
-    expect(t).toContain("書き直しを取り消し、確認前の下書きを回答に");
-  });
-
-  it("節点の名前の無い古い記録は、推定を含むことを示す", () => {
-    expect(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />)).toContain("古い記録のため一部は推定です");
-  });
-
-  it("絞っている停留所に印を付け、周回つきの名前と解除を出す", () => {
-    const route = routeOf(stepsOf("gap"));
-    const html = wrap(<RunFlow route={route} selected="investigate-2" onSelect={() => {}} />);
-    expect(html).toContain('aria-pressed="true"');
-    expect(text(html)).toContain("調査（2 周目）のステップだけを表示中");
-    expect(html).toContain("解除");
-  });
-
-  it("長い経路（9 つ以上）は縦に並べる（横一列の指定を付けない）", () => {
-    const route = routeOf(stepsOf("gap_then_numbers"));
-    expect(route.stops.length).toBeGreaterThan(8);
-    expect(wrap(<RunFlow route={route} />)).not.toContain("@[480px]:flex-row");
-    expect(wrap(<RunFlow route={routeOf(stepsOf("answer"))} />)).toContain("@[480px]:flex-row");
-  });
-});
-
-describe("RunFlow のグラフの特徴（specs/029 T32）", () => {
-  const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-
-  it("確定の後に「回答を送信」と run の所要時間を置く（実行中は置かない）", () => {
-    const route = routeOf(stepsOf("answer"));
-    expect(text(wrap(<RunFlow route={route} durationMs={3120} />))).toContain("回答を送信 3.12s");
-    expect(text(wrap(<RunFlow route={route} durationMs={3120} running />))).not.toContain("回答を送信");
-  });
-
-  it("条件つきの辺は、いつもと違う分岐（差し戻し・雑談など）だけ札を書く", () => {
-    const html = wrap(<RunFlow route={routeOf(stepsOf("gap"))} durationMs={1000} />);
-    expect(html).toContain('data-edge="send_back"');
-    // いつもの分岐（資料・通過）は札を書かない（停留所の印で分かる）
-    expect(html).not.toContain('data-edge="docs"');
-    expect(html).not.toContain('data-edge="pass"');
-    expect(wrap(<RunFlow route={routeOf(stepsOf("chat"))} />)).toContain('data-edge="chat"');
-  });
-
-  it("経路とグラフ全体を切り替えられる", () => {
-    const html = wrap(<RunFlow route={routeOf(stepsOf("answer"))} flow={flowOf(stepsOf("answer"))} />);
-    expect(text(html)).toContain("経路");
-    expect(text(html)).toContain("グラフ全体");
-  });
-});
-
-describe("GraphView（グラフ全体の弧線図。specs/029 T33）", () => {
-  const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  const view = (name: string) => wrap(<GraphView flow={flowOf(stepsOf(name))} route={routeOf(stepsOf(name))} />);
-
-  it("すべての節点を並べ、通った回数と通らなかった節点を示す", () => {
-    const t = text(view("gap"));
-    for (const label of ["画像", "理解", "最初の検索", "調査", "見張り", "確認", "確定", "続けて聞く"]) expect(t).toContain(label);
-    expect(t).toContain("×2"); // 差し戻しで調査を 2 回通った
-    expect(t).toContain("通らず"); // 画像
-  });
-
-  it("通った辺と通らなかった辺を分け、戻る辺には回数を添える", () => {
+  it("通った辺と通らなかった辺を分け、札はいつもと違う分岐だけに書く", () => {
     const html = view("gap");
     expect(html).toMatch(/data-edge="send_back" data-taken="1"/);
     expect(html).toMatch(/data-edge="chat" data-taken="0"/);
     expect(text(html)).toContain("差し戻し ×1");
+    // いつもの分岐（資料・通過）は札を書かない（ホバーの説明だけ）
+    expect(text(html)).not.toContain("資料");
+    expect(text(view("chat"))).toContain("雑談");
   });
 
-  it("たどり直しのトークンと「もう一度たどる」を出す", () => {
-    const html = view("answer");
-    expect(html).toContain("<animateMotion");
-    expect(text(html)).toContain("もう一度たどる");
-    expect(html).toContain("ar-trace");
+  it("節点の下に何をしたかを 1 行、何度も通った節点に ×n、ホバーで説明と周回の内訳", () => {
+    const html = view("gap");
+    expect(text(html)).toContain("×2");
+    expect(html).toMatch(/<title>確認 — [^<]*1 周目: 差し戻し/);
+  });
+
+  it("確定の後に「送信」と所要時間の印を置く（実行中は置かない）。朱はこの印だけ", () => {
+    expect(text(view("answer", { durationMs: 3120 }))).toContain("送信 3.12s");
+    expect(view("answer", { durationMs: 3120, running: true })).not.toContain("data-sent");
+    expect(view("answer", { durationMs: 3120 }).match(/fill-accent/g)).toHaveLength(2); // 横と縦の送信の印
+  });
+
+  it("節点を押すと、その節点で絞る（押せるのはステップのある節点だけ）", () => {
+    const html = view("gap", { selected: "review", onSelect: () => {} });
+    expect(html).toMatch(/data-node="review" role="button" tabindex="0" aria-pressed="true"/);
+    expect(html).not.toMatch(/data-node="read_image" role="button"/);
+    expect(text(html)).toContain("確認のステップだけを表示中");
+  });
+
+  it("続けて聞くを作らなかったときは、通らなかった節点に「設定でオフ」と書く", () => {
+    const off: FlowStep = {
+      id: "system-followups", name: "system", status: "done", durationMs: 0,
+      input: { kind: "followups" }, output: { skipped: "user_setting" }, node: "followups",
+    };
+    const steps = [...stepsOf("answer"), off];
+    const html = wrap(<RunFlow route={routeOf(steps)} flow={flowOf(steps)} durationMs={1000} />);
+    expect(text(html)).toContain("設定でオフ");
+    expect(html).toMatch(/data-edge="followups" data-taken="0"/);
+  });
+
+  it("節点の名前の無い古い記録は、推定を含むことを示す", () => {
+    expect(view("answer")).toContain("古い記録のため一部は推定です");
   });
 });
 

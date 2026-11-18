@@ -66,8 +66,8 @@ export function AgentActivity({
   const flow = flowOf(steps, { running, idle: reviewed ? "review" : "investigate" });
   // 「詳細」の流れ（実際にたどった順）。停留所で一覧を絞る（R8）
   const route = routeOf(steps, { running });
-  const pickedStop = only ? route.stops.find((x) => x.key === only) : undefined;
-  const picked = pickedStop ? new Set(pickedStop.stepIds) : null;
+  // 節点で絞る（周回があれば、すべての周回のステップ）
+  const picked = only ? new Set(route.stops.filter((x) => x.node === only).flatMap((x) => x.stepIds)) : null;
   // いましていることを言葉で言う: 実行中のステップの要約 → 考え中 → 書き直し中 → 書いている最中
   const nowLabel =
     current?.summary ??
