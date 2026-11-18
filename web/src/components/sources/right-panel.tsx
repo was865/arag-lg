@@ -12,7 +12,7 @@ import { IconButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Segmented } from "@/components/ui/segmented";
 
-export type RightPanelAction = "open-source" | "download" | "share";
+export type RightPanelAction = "open-source" | "download" | "share" | "inspect";
 
 interface Props {
   sources: Source[];
@@ -22,7 +22,8 @@ interface Props {
   highlightSectionId: string | null;
   onSetActive: (id: string) => void;
   onClose: () => void;
-  onAction: (kind: RightPanelAction, source: Source) => void;
+  /** inspect のときは、引用された章（あれば）を第 3 引数で渡す */
+  onAction: (kind: RightPanelAction, source: Source, sectionId?: string | null) => void;
   resizable?: boolean;
   panelWidth?: number;
   onResizeWidth?: (px: number) => void;
@@ -232,6 +233,9 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
             <path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {t.sources.download}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => onAction("inspect", active, highlightSectionId)}>
+          {t.sources.inspect}
         </Button>
 {canShare && (
         <Button variant="secondary" size="sm" onClick={() => onAction("share", active)}>

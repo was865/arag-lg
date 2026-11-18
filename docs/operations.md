@@ -84,6 +84,17 @@ cd .. && make eval-api-down
 - 「詳細」でエージェントの段階（検索・読む・計算・見直し）と、末尾の「システムの処理」（ツールの必須化・回数の上限・履歴の省略・回答の整形・要約）を見る。
 - 数字は元の文書で確かめる（例 `eval/assets/harukaze_mix/docs/`。xlsx は openpyxl、pptx は python-pptx）。出典番号が付いていても、その資料に数字が無いことがある。
 
+## 4.1 解析（Docling）を確かめる
+
+回答の誤りが「Docling の抽出」「チャンク化」「文脈付与」のどれかを切り分ける（`specs/030-parse-inspection`）。
+
+- 文書を開き「対照」タブ: 左に原件の頁（PDF）とチャンクの枠、右にその頁のチャンクと、**Docling の抽出文・文脈・埋め込みに送った本文**。回答の出典パネルの「解析を確かめる」から、引用された章を選んだ状態で開ける。
+- 警告のある頁には札が付く（空の頁・図だけの頁・文字化け・崩れた表・図の欠け・枠の頁外など）。ライブラリの詳細には警告の件数が出る。
+- 記録は `contents/<hash>/parse_report.json`（docling-serve の status・errors・所要時間、頁ごとの数、警告）。Docling の生 JSON は管理者だけ `GET /v1/documents/{id}/docling`（画面の「Docling の JSON」）。
+- 記録の無い古い文書は `docker compose exec worker python -m arag.cli reparse-report [--content-hash H]` で、保存済みの `docling.json` から作り直す（Docling は呼ばない）。
+- 枠を重ねるのは PDF だけ。docx・xlsx・pptx はチャンクの一覧と 3 つの本文を見る。
+- 切り分けの目安: 抽出文が原件と違う → Docling（OCR・表・読み順）。抽出文は正しいが枠や切れ目がおかしい → チャンク化。文脈が的外れ → 文脈付与。
+
 ## 5. よくある詰まり
 
 | 症状 | 原因と対処 |

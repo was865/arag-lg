@@ -58,6 +58,7 @@
 | clsx / tailwind-merge（旧版 UI から移植） | npm | 2.1.1 / 3.7.0 | MIT | 2026-11-09 | https://www.npmjs.com/package/tailwind-merge |
 | react-markdown / remark-gfm / remark-math / rehype-katex | npm | 10.1.0 / 4.0.1 / 6.0.0 / 7.0.1 | MIT | 2026-11-09 | https://github.com/remarkjs/react-markdown |
 | katex / mermaid（回答中の数式・図） | npm | 0.16.47 / 11.17.2 | MIT | 2026-11-09 | https://github.com/mermaid-js/mermaid |
+| pdfjs-dist（解析の対照で原件の頁を描く。specs/030） | npm | 6.5.438 | Apache-2.0 | 2026-11-18 | https://github.com/mozilla/pdf.js |
 | @fontsource/inter / @fontsource/noto-sans-jp（フォント同梱） | npm | 5.3.0 / 5.3.1 | OFL-1.1 | 2026-11-09 | https://fontsource.org/fonts/noto-sans-jp |
 | @tailwindcss/typography（開発のみ） | npm | — | MIT | 2026-11-09 | https://www.npmjs.com/package/@tailwindcss/typography |
 | PostgreSQL | コンテナ | 17 系 | PostgreSQL | 2026-11-08 | https://www.postgresql.org/about/licence/ |

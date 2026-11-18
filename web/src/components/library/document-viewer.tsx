@@ -30,14 +30,14 @@ export interface DocumentViewerProps {
   onAsk: (doc: DocumentOut) => void;
   /** 管理者なら Docling の生 JSON へのリンクを出す（specs/030 R4） */
   isAdmin?: boolean;
-  /** 指定すると「対照」を、このチャンクを選んだ状態で開く（回答の出典から。specs/030 R13） */
-  initialChunkId?: string | null;
+  /** 指定すると「対照」を、この章のチャンクを選んだ状態で開く（回答の出典から。specs/030 R13） */
+  initialSectionId?: string | null;
 }
 
-export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin = false, initialChunkId = null }: DocumentViewerProps) {
+export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin = false, initialSectionId = null }: DocumentViewerProps) {
   const [doc, setDoc] = useState(initial);
   const ready = doc.status === "ready";
-  const [tab, setTab] = useState<Tab>(ready ? (initialChunkId ? "inspect" : "parsed") : "original");
+  const [tab, setTab] = useState<Tab>(ready ? (initialSectionId ? "inspect" : "parsed") : "original");
   const [outlineOpen, setOutlineOpen] = useState(false);
   const meta = getFileMeta(doc.filename);
   const st = docStatus(doc.status);
@@ -156,7 +156,7 @@ export function DocumentViewer({ doc: initial, kbName, onClose, onAsk, isAdmin =
         {tab === "original" ? (
           <OriginalPane doc={doc} onShowParsed={ready ? () => setTab("parsed") : undefined} />
         ) : tab === "inspect" && ready ? (
-          <InspectPane doc={doc} isAdmin={isAdmin} initialChunkId={initialChunkId} />
+          <InspectPane doc={doc} isAdmin={isAdmin} initialSectionId={initialSectionId} />
         ) : ready ? (
           <ParsedPane docId={doc.id} outlineOpen={outlineOpen} onCloseOutline={() => setOutlineOpen(false)} />
         ) : (

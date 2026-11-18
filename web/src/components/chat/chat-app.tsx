@@ -17,7 +17,7 @@ import { TrashView } from "@/components/library/trash-view";
 import { DocumentViewer } from "@/components/library/document-viewer";
 import { ShareDialog } from "@/components/chat/share-dialog";
 import { Icon } from "@/components/icons";
-import type { DocumentOut } from "@/lib/library/api";
+import { libraryApi, type DocumentOut } from "@/lib/library/api";
 import { kbLabel } from "@/lib/library/view";
 import { parseRoute, routePath, type Route } from "@/lib/routes";
 import { UnverifiedBanner } from "@/components/auth/unverified-banner";
@@ -136,6 +136,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
   };
   /** ライブラリの上に重ねる文書ビューア。開くときに同じ URL の履歴を 1 つ積み、戻るボタンで閉じる。 */
   const [viewerDoc, setViewerDoc] = useState<DocumentOut | null>(null);
+  /** 回答の出典から「対照」を開くとき、選んでおく章（specs/030 R13） */
+  const [viewerSectionId, setViewerSectionId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [composerFocus, setComposerFocus] = useState(0);
   // ⌘K の候補。開いた時点の一覧を持つ（null = 閉じている）
@@ -334,7 +336,8 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     setComposerFocus((n) => n + 1);
   };
 
-  const openDocument = (d: DocumentOut) => {
+  const openDocument = (d: DocumentOut, sectionId: string | null = null) => {
+    setViewerSectionId(sectionId);
     setViewerDoc(d);
     window.history.pushState({ viewer: d.id }, "", window.location.pathname);
   };
@@ -552,8 +555,13 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     }
   };
 
-  const onPanelAction = (kind: RightPanelAction, src: Source) => {
-    if (kind === "open-source") {
+  const onPanelAction = (kind: RightPanelAction, src: Source, sectionId?: string | null) => {
+    if (kind === "inspect") {
+      libraryApi.document(src.id).then(
+        (d) => openDocument(d, sectionId ?? null),
+        () => push(t.feedback.documentOpenFailed, "error"),
+      );
+    } else if (kind === "open-source") {
       const w = window.open(originalUrl(src.id), "_blank", "noopener");
       if (!w) push(t.feedback.popupBlocked, "error");
     } else if (kind === "download") {
@@ -934,6 +942,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
           onClose={closeDocument}
           onAsk={askInDocument}
           isAdmin={sessionUser?.role === "owner" || sessionUser?.role === "admin"}
+          initialSectionId={viewerSectionId}
         />
       )}
       </AnimatePresence>

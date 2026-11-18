@@ -25,6 +25,7 @@ export const feedback = {
   // workspace.tsx — source / export
   sourceDownloaded: "「{filename}」をダウンロードしました",
   popupBlocked: "ポップアップがブロックされています",
+  documentOpenFailed: "文書を開けませんでした",
 
   // workspace.tsx — feedback
   feedbackSent: "フィードバックを送信しました",

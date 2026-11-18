@@ -23,6 +23,7 @@ export const sources = {
 
   // Footer actions
   download: "ダウンロード",
+  inspect: "解析を確かめる",
   share: "共有",
   relevance: "関連度",
 

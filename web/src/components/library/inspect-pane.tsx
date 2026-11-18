@@ -22,15 +22,15 @@ import { cn } from "@/lib/utils";
 export interface InspectPaneProps {
   doc: DocumentOut;
   isAdmin: boolean;
-  /** 開いたときに選んでおくチャンク（回答の出典から来たとき。R13） */
-  initialChunkId?: string | null;
+  /** 開いたときに選んでおく章（回答の出典から来たとき。その章の最初のチャンクを選ぶ。R13） */
+  initialSectionId?: string | null;
 }
 
-export function InspectPane({ doc, isAdmin, initialChunkId }: InspectPaneProps) {
+export function InspectPane({ doc, isAdmin, initialSectionId }: InspectPaneProps) {
   const [report, setReport] = useState<ParseReport | null | undefined>(undefined);
   const [chunks, setChunks] = useState<ChunkOut[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(initialChunkId ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pdf = isPdf(doc.filename);
 
@@ -41,17 +41,17 @@ export function InspectPane({ doc, isAdmin, initialChunkId }: InspectPaneProps) 
         if (!alive) return;
         setReport(r);
         setChunks(c);
-        const first = c.find((x) => x.id === initialChunkId) ?? c[0];
+        const first = (initialSectionId ? c.find((x) => x.section_id === initialSectionId) : undefined) ?? c[0];
         const p = first ? firstPageOf(first) : null;
         if (p) setPage(p);
-        if (!initialChunkId && first) setSelectedId(first.id);
+        if (first) setSelectedId(first.id);
       },
       (e: unknown) => alive && setError(e instanceof Error ? e.message : "読み込めませんでした"),
     );
     return () => {
       alive = false;
     };
-  }, [doc.id, initialChunkId]);
+  }, [doc.id, initialSectionId]);
 
   const pages = useMemo(() => {
     if (report && report.pages.length) return report.pages.map((p) => p.page);
@@ -62,7 +62,9 @@ export function InspectPane({ doc, isAdmin, initialChunkId }: InspectPaneProps) 
 
   const byPage = useMemo(() => (report ? warningsByPage(report) : new Map()), [report]);
   const selected = chunks?.find((c) => c.id === selectedId) ?? null;
-  const onPage = useMemo(() => (chunks ? chunksOnPage(chunks, page) : []), [chunks, page]);
+  // 頁の無い形式（docx など）は、頁で絞らず全チャンクを出す
+  const paged = pages.length > 0;
+  const onPage = useMemo(() => (chunks ? (paged ? chunksOnPage(chunks, page) : chunks) : []), [chunks, page, paged]);
   const sizeOf = (n: number) => report?.pages.find((p) => p.page === n)?.size ?? null;
 
   const pick = (c: ChunkOut) => {
@@ -77,7 +79,7 @@ export function InspectPane({ doc, isAdmin, initialChunkId }: InspectPaneProps) 
   return (
     <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(320px,420px)] max-md:grid-cols-1 max-md:grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="flex min-h-0 min-w-0 flex-col border-r-[0.5px] border-divider max-md:border-r-0 max-md:border-b-[0.5px]">
-        <PageStrip pages={pages} page={page} onPage={setPage} byPage={byPage} />
+        {paged && <PageStrip pages={pages} page={page} onPage={setPage} byPage={byPage} />}
         <div className="min-h-0 flex-1 overflow-auto bg-surface-2 p-3">
           {pdf ? (
             <PdfPage
@@ -99,7 +101,7 @@ export function InspectPane({ doc, isAdmin, initialChunkId }: InspectPaneProps) 
       <div className="flex min-h-0 min-w-0 flex-col overflow-y-auto">
         <ReportSummary report={report} page={page} byPage={byPage} docId={doc.id} isAdmin={isAdmin} />
         <div className="border-b-[0.5px] border-divider px-3 py-2 text-caption font-medium text-muted">
-          {page} ページのチャンク（{onPage.length} 件）
+          {paged ? `${page} ページのチャンク` : "チャンク"}（{onPage.length} 件）
         </div>
         <ul className="m-0 list-none p-0">
           {onPage.map((c) => (
@@ -195,6 +197,7 @@ function ReportSummary({
   const t = report.totals;
   const docling = report.docling as { statuses?: string[]; elapsed_sec?: number; windows?: number } | null;
   const here = [...(byPage.get(page) ?? []), ...(byPage.get(null) ?? [])];
+  const paged = report.pages.length > 0;
   return (
     <div className="border-b-[0.5px] border-divider px-3 py-3 text-footnote">
       <div className="text-muted">
@@ -214,7 +217,7 @@ function ReportSummary({
           ))}
         </ul>
       ) : (
-        <div className="mt-1 text-muted">この頁に警告はありません。</div>
+        <div className="mt-1 text-muted">{paged ? "この頁に警告はありません。" : "警告はありません。"}</div>
       )}
       <div className="mt-2 flex gap-3 text-caption">
         <a className="text-accent underline" href={`/api/v1/documents/${encodeURIComponent(docId)}/rendered`} target="_blank" rel="noopener">

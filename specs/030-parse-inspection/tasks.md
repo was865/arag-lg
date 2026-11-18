@@ -12,5 +12,5 @@
 - [x] T7 座標変換・頁割り当ての純関数とテスト
 - [x] T8 「対照」の画面（PDF）
 - [x] T9 チャンクの 4 つの本文・頁の警告
-- [ ] T10 出典の札から開く
-- [ ] T11 `pdfjs-dist` のライセンス追記、`make lint test`、compose で実際に確かめる
+- [x] T10 出典の札から開く
+- [x] T11 `pdfjs-dist` のライセンス追記、`make lint test`、compose で実際に確かめる
