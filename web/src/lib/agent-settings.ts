@@ -11,6 +11,7 @@ export interface AgentSettings {
   require_citations: boolean;
   admit_unknown: boolean;
   followups: boolean;
+  use_systems: boolean;
 }
 
 /** API（api/src/arag/agent/config.py）の既定値。 */
@@ -25,6 +26,7 @@ export const AGENT_DEFAULTS: AgentSettings = {
   require_citations: true,
   admit_unknown: true,
   followups: true,
+  use_systems: true,
 };
 
 type NumKey = { [K in keyof AgentSettings]: AgentSettings[K] extends number ? K : never }[keyof AgentSettings];
@@ -43,6 +45,7 @@ export const AGENT_FIELDS: AgentField[] = [
   { kind: "bool", key: "require_citations", term: "Citation enforcement", label: "出典を必須にする", hint: "回答の各内容に出典番号を付けさせる。" },
   { kind: "bool", key: "admit_unknown", term: "Abstention", label: "回答できない場合は明示する", hint: "資料に無いことは推測せず「見つからない」と答える。" },
   { kind: "bool", key: "followups", term: "Follow-up suggestions", label: "続けて聞く質問を出す", hint: "回答の下に、次に聞けそうな質問を 2〜3 個出す。回答の後に作るので、回答は遅れない。" },
+  { kind: "bool", key: "use_systems", term: "Enterprise systems (MCP)", label: "社内システムも調べる", hint: "管理者が登録した社内システム（在庫・保全・名簿など）から、今の値を読み取って答える。オフにすると社内の文書だけで答える。" },
   { kind: "number", key: "candidate_k", term: "Rerank candidates", label: "候補数", hint: "並べ替えの前に集める候補の数（回答に使う資料の数以上）。", min: 1, max: 50, step: 1, advanced: true },
   { kind: "number", key: "parallel_tools", term: "Parallel tool calls", label: "並列実行数", hint: "1 回の判断で並行して走らせる検索・読み込みの数。", min: 1, max: 8, step: 1, advanced: true },
   { kind: "number", key: "grade_threshold", term: "Relevance threshold", label: "関連とみなすしきい値", hint: "並べ替えの点数がこれ以上の資料を関連とみなす（0〜1）。", min: 0, max: 1, step: 0.05, advanced: true },
@@ -67,6 +70,7 @@ export function clampAgentCfg(raw: unknown): AgentSettings {
     require_citations: bool(o.require_citations, d.require_citations),
     admit_unknown: bool(o.admit_unknown, d.admit_unknown),
     followups: bool(o.followups, d.followups),
+    use_systems: bool(o.use_systems, d.use_systems),
   };
 }
 

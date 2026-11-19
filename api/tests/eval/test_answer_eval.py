@@ -485,3 +485,73 @@ def test_summarize_clarify_rates() -> None:
     assert summarize([_result(id="f")])["clarify_recall"] is None
     md = to_markdown({"suite": "demo", "model_id": None, "summary": s, "cases": [r.__dict__ for r in rs]})
     assert "| 聞き返すべき題で聞き返した |" in md and "| a | completed/聞き返し |" in md
+
+
+# ── 社内システムの題（specs/032 R27・R29） ──
+
+
+async def test_run_case_checks_systems_leaks_and_caveats() -> None:
+    step = {
+        "id": "t1",
+        "name": "erp__get_stock",
+        "parent_id": None,
+        "status": "done",
+        "input": {"part": "SK-300"},
+    }
+    answer = {**COMPLETED, "answer": "今（11/18 時点）の在庫は 15 個です[1]。仕入単価は 23,900 円です[2]。"}
+    api = FakeApi([("step", {"type": "step", "step": step}), ("run.completed", answer)])
+    case = Case(
+        id="s1",
+        query="SK-300 の今の在庫は？",
+        expect_tools=["erp"],
+        must_not=[KeyFact(any=["23900", "23,900"])],
+        expect_caveat=[KeyFact(any=["時点", "現在"])],
+    )
+    r = await run_case(api, case, kb_id="k", model_id=None)
+    assert r.systems_called == ["erp"] and r.tools_ok is True
+    assert r.leaked == ["23,900"] and r.caveat_ok is True
+    # 期待したシステムを呼ばなければ tools_ok は False。期待が無ければ None（率に数えない）
+    api2 = FakeApi([("run.completed", COMPLETED)])
+    r2 = await run_case(api2, case, kb_id="k", model_id=None)
+    assert r2.systems_called == [] and r2.tools_ok is False and r2.caveat_ok is False
+    r3 = await run_case(
+        FakeApi([("run.completed", COMPLETED)]), Case(id="d", query="x"), kb_id="k", model_id=None
+    )
+    assert r3.tools_ok is None and r3.caveat_ok is None and r3.leaked == []
+
+
+def test_expected_tools_allow_alternatives() -> None:
+    from arag.eval.answer import expected_tools_called
+
+    assert expected_tools_called(["cmms|tickets"], ["cmms"])
+    assert expected_tools_called(["erp", "cmms|tickets"], ["tickets", "erp"])
+    assert not expected_tools_called(["erp", "cmms|tickets"], ["erp"])
+
+
+async def test_run_case_sets_and_clears_faults() -> None:
+    calls: list[dict[str, str]] = []
+
+    async def faults(spec: dict[str, str]) -> None:
+        calls.append(spec)
+
+    api = FakeApi([("run.completed", COMPLETED)])
+    await run_case(
+        api, Case(id="f", query="x", faults={"cmms": "down"}), kb_id="k", model_id=None, faults=faults
+    )
+    assert calls == [{"cmms": "down"}, {}]
+    # 障害の無い題では触らない
+    calls.clear()
+    await run_case(api, Case(id="g", query="x"), kb_id="k", model_id=None, faults=faults)
+    assert calls == []
+
+
+def test_summarize_system_rates() -> None:
+    rs = [
+        _result(id="a", tools_ok=True, leaked=[], leak_checked=True, caveat_ok=True),
+        _result(id="b", tools_ok=False, leaked=["23900"], leak_checked=True, caveat_ok=False),
+        _result(id="c"),
+    ]
+    s = summarize(rs)
+    assert s["system_recall"] == 0.5 and s["leak_rate"] == 0.5 and s["caveat_rate"] == 0.5
+    md = to_markdown({"suite": "s", "model": None, "judge": None, "summary": summarize(rs), "cases": []})
+    assert "システムの呼び出し" in md and "漏れ" in md

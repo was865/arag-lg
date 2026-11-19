@@ -32,6 +32,17 @@ class Case(BaseModel):
     # 聞き返すべき題か（specs/031 T12）。True: 聞き返せば正解（事実網羅 1.0）。False: 聞き返さずに答えるべき。
     # None: 聞き返しを見ない（聞き返しの率にだけ数える）
     expect_clarify: bool | None = None
+    # 社内システムの題（specs/032 R27・R29）
+    # as_user: 尋ねる利用者（題集の users.yaml の鍵）。省略は評価の管理者
+    as_user: str | None = None
+    # 題の間だけ模擬のシステムに起こす障害（例 {"cmms": "down"}）。終わったら戻す
+    faults: dict[str, str] = Field(default_factory=dict)
+    # 呼ぶべき社内システム（サーバ名）。全部呼べば当たり。「cmms|tickets」はどちらかを呼べばよい
+    expect_tools: list[str] = Field(default_factory=list)
+    # 答えに出てはいけない値（権限の無い人への仕入単価など）。出たら漏れ
+    must_not: list[KeyFact] = Field(default_factory=list)
+    # 答えに書くべき注意（時点・権限・止まっていること）。すべて満たせば当たり
+    expect_caveat: list[KeyFact] = Field(default_factory=list)
 
 
 class Thresholds(BaseModel):
@@ -45,6 +56,7 @@ class GoldenSuite(BaseModel):
     owner_user_id: str | None = None  # 旧版互換（新版は KB「評価: <suite>」で分ける）
     files_dir: str | None = None
     kb_suite: str | None = None  # 別の題集の KB をそのまま使う（訳した題集など）
+    users: str | None = None  # 題の as_user を引く利用者の定義（リポジトリからの相対パス。specs/032）
     documents: list[str]
     thresholds: Thresholds = Thresholds()
     cases: list[Case]

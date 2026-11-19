@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from arag.agent.citations import CitationRegistry, FinalCitations
 from arag.agent.config import AgentCfg
 from arag.auth.principal import Principal
+from arag.mcp.client import Caller
+from arag.mcp.registry import ToolSpec
 from arag.search.schemas import SearchRequest, SearchResult
+from arag.secrets import SecretBox
 
 SearchFn = Callable[[AsyncSession, Principal, SearchRequest], Awaitable[SearchResult]]
 Emit = Callable[[dict[str, Any]], None]
@@ -24,11 +27,15 @@ class RunStats:
     model_records: int = 0
     tool_calls: int = 0
     tool_errors: int = 0
+    # 社内システム（MCP）を呼んだ回数（specs/032 R17）
+    mcp_calls: int = 0
     # 下書きを差し戻した回数（種類ごとにターンに 1 回まで。specs/026 ④）
     gap_reviews: int = 0
     omitted_reviews: int = 0
     reason_reviews: int = 0
     table_reviews: int = 0
+    current_reviews: int = 0
+    system_gap_reviews: int = 0
     number_reviews: int = 0
     # システムが最初に行った検索の回数（specs/026 ②）
     primer_searches: int = 0
@@ -48,6 +55,8 @@ class RunStats:
             + self.omitted_reviews
             + self.reason_reviews
             + self.table_reviews
+            + self.current_reviews
+            + self.system_gap_reviews
             + self.number_reviews
         )
 
@@ -95,6 +104,41 @@ class RunHooks:
 
 
 @dataclass
+class McpRun:
+    """1 回の run の社内システムの状態（RunContext.mcp）。"""
+
+    caller: Caller
+    identity_key: str
+    box: SecretBox | None
+    timeout_sec: float
+    max_calls: int
+    max_rows: int
+    max_chars: int
+    # このターンで使えるツール（エージェントのツール名 → 仕様）
+    usable: dict[str, ToolSpec] = field(default_factory=dict)
+    # 外したサーバ（名前 → (種類, 表示名, 理由)）。最初のモデル呼び出しで記録する
+    removed: dict[str, tuple[str, str, str]] = field(default_factory=dict)
+    calls: int = 0
+    recorded: bool = False
+
+    @property
+    def systems(self) -> list[str]:
+        """使える社内システムの表示名（プロンプトに出す）。"""
+        return list(dict.fromkeys(t.server.label for t in self.usable.values()))
+
+    @property
+    def catalog(self) -> str:
+        """使える社内システムと説明の箇条書き（プロンプト・差し戻しに出す）。"""
+        seen = {t.server.label: t.server.description for t in self.usable.values()}
+        return "\n".join(f"- {k}: {v}" if v else f"- {k}" for k, v in seen.items())
+
+    @property
+    def down(self) -> list[str]:
+        """応答しない社内システムの表示名（確かめられなかったと答えさせる。R17）。"""
+        return [label for kind, label, _ in self.removed.values() if kind == "mcp_unavailable"]
+
+
+@dataclass
 class RunContext:
     principal: Principal
     sessionmaker: async_sessionmaker[AsyncSession]
@@ -127,3 +171,5 @@ class RunContext:
     tool_seen: set[str] = field(default_factory=set)
     # 値を書いていない資料の番号を文から外す（ARAG_CITATION_PRUNE、specs/026 T31）
     citation_prune: bool = True
+    # 社内システム（MCP）の状態（使えるツール・外したサーバ・呼んだ回数。specs/032）。無ければ文書だけ
+    mcp: McpRun | None = None

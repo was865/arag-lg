@@ -1,0 +1,310 @@
+"""社内システム（MCP）のツールをエージェントが使う流れ（偽モデル。specs/032 R12〜R25）。"""
+
+import uuid
+from typing import Any
+
+from langchain_core.messages import AIMessage, SystemMessage
+from langgraph.checkpoint.memory import InMemorySaver
+
+from arag.agent.config import AgentCfg
+from arag.agent.context import McpRun
+from arag.agent.graph import build_agent
+from arag.agent.mcp_tools import build_tool
+from arag.mcp.client import Caller
+from arag.mcp.registry import ServerSpec, ToolSpec
+
+from .agent_fakes import FakeSearch, FakeToolModel, script, tool_call
+from .mcp_fake import KEY, running
+from .test_agent_graph import ctx, run
+
+SCHEMA = {"type": "object", "properties": {"part": {"type": "string"}}, "required": ["part"]}
+
+
+def spec(url: str, timeout: float | None = None) -> ToolSpec:
+    srv = ServerSpec(
+        uuid.uuid4(), "erp", "ERP（資材・購買）", url, "identity", None, timeout, "部品・在庫・発注"
+    )
+    return ToolSpec(srv, "get_stock", "部品の現在の在庫", SCHEMA)
+
+
+def mcp_run(t: ToolSpec, *, usable: bool = True, max_calls: int = 6, max_rows: int = 50) -> McpRun:
+    m = McpRun(
+        caller=Caller("u", ("製造課",)),
+        identity_key=KEY,
+        box=None,
+        timeout_sec=5,
+        max_calls=max_calls,
+        max_rows=max_rows,
+        max_chars=8000,
+    )
+    if usable:
+        m.usable = {t.agent_name: t}
+    else:
+        m.removed = {"erp": ("mcp_filtered", t.server.label, "この利用者の部門は使える範囲に入っていない")}
+    return m
+
+
+def systems(custom: list[Any]) -> dict[str, dict[str, Any]]:
+    return {
+        e["step"]["input"]["kind"]: e["step"]
+        for e in custom
+        if e["type"] == "step" and e["step"]["name"] == "system"
+    }
+
+
+def steps_of(custom: list[Any], name: str) -> list[dict[str, Any]]:
+    return [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == name]
+
+
+async def test_calls_system_and_cites_it_with_time() -> None:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="今は 15 個です[2]。"))
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の在庫 6"), mcp=mcp_run(t))
+        state, custom = await run(agent, c, "SK-300 の在庫は今いくつ？")
+    # 社内システムの結果は資料タグで届き、番号で引用できる
+    cited = c.registry.get(2)
+    assert cited is not None and cited.kind == "system" and cited.block_type == "record"
+    assert cited.record and cited.record["rows"] == [["P-1042", 15, 10]] and cited.record["fetched_at"]
+    assert cited.record["args"] == {"part": "P-1042"}
+    tool_msg = state["messages"][-2]
+    assert '種類="社内システム"' in tool_msg.text and "| P-1042 | 15 | 10 |" in tool_msg.text
+    # 身元は利用者のもの（R13）
+    assert c.mcp is not None and c.mcp.calls == 1
+    # 記録: 社内システムのステップ（表示名・行数）
+    step = steps_of(custom, t.agent_name)[-1]
+    assert step["label"] == "社内システム: ERP（資材・購買）"
+    assert step["summary"] == "ERP（資材・購買）・1 行"
+    assert step["output"]["columns"] == ["部品番号", "現在庫", "発注点"]
+    # プロンプト: 使えるシステムがあるターンだけ社内システムの節を足す
+    sys = model.calls[0][0]
+    assert isinstance(sys, SystemMessage) and "社内の文書と社内システムの結果だけを根拠に" in sys.text
+    assert "ERP（資材・購買）" in sys.text
+    # 出典パネル: 社内システムの印と表
+    _, sources = c.registry.sources()
+    src = next(s for s in sources if s.get("kind") == "system")
+    assert src["title"] == "ERP（資材・購買）" and src["sections"][0]["record"]["total"] == 1
+
+
+async def test_filtered_server_is_removed_and_recorded() -> None:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="文書では 6 個です[1]。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("在庫 6"), mcp=mcp_run(t, usable=False))
+        _, custom = await run(agent, c, "SK-300 の在庫は？")
+    assert t.agent_name not in model.tool_names[0] and "search" in model.tool_names[0]
+    rec = systems(custom)["mcp_filtered"]
+    assert rec["input"]["server"] == "erp" and "使える範囲" in rec["summary"]
+    # 使えるシステムが無ければプロンプトは今までどおり
+    assert "社内の文書だけを根拠に" in model.calls[0][0].text
+
+
+async def test_no_mcp_state_hides_system_tools() -> None:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="6 個です[1]。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        await run(agent, ctx(FakeSearch("在庫 6")), "SK-300 の在庫は？")
+    assert t.agent_name not in model.tool_names[0] and model.tool_counts == [9]
+
+
+async def test_forbidden_is_not_filled_in() -> None:
+    with running() as (url, state):
+        state["deny"] = True
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(tool_call(t.agent_name, part="P-2011"), AIMessage(content="権限がありません。"))
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        state_, custom = await run(agent, c, "仕入単価は？")
+    assert "見る権限が無い" in state_["messages"][-2].text
+    assert systems(custom)["mcp_denied"]["output"]["message"] == "見る権限がありません"
+    assert not any(x.kind == "system" for x in c.registry.items())
+
+
+async def test_hidden_columns_are_recorded() -> None:
+    with running() as (url, state):
+        state["hide"] = True
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="P-2011"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        _, custom = await run(agent, c, "仕入単価は？")
+    assert systems(custom)["mcp_denied"]["output"]["restricted"] == ["仕入単価（円）"]
+
+
+async def test_down_server_is_reported_not_guessed() -> None:
+    with running() as (url, state):
+        state["down"] = True
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        state_, custom = await run(agent, c, "在庫は？")
+    assert "確かめられませんでした" in state_["messages"][-2].text
+    assert "mcp_unavailable" in systems(custom)
+
+
+async def test_timeout_and_call_limit() -> None:
+    with running() as (url, state):
+        state["slow"] = 2
+        t = spec(url, timeout=0.5)
+        model = FakeToolModel(
+            messages=script(
+                tool_call(t.agent_name, part="A"),
+                tool_call(t.agent_name, part="B"),
+                AIMessage(content="x"),
+            )
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t, max_calls=1))
+        _, custom = await run(agent, c, "在庫は？")
+    kinds = systems(custom)
+    assert "mcp_timeout" in kinds and kinds["mcp_limit"]["input"]["max_calls"] == 1
+
+
+async def test_rows_are_truncated() -> None:
+    with running() as (url, state):
+        state["rows"] = 5
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="A"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t, max_rows=2))
+        state_, custom = await run(agent, c, "在庫は？")
+    assert "（全 5 行、うち 2 行を表示）" in state_["messages"][-2].text
+    assert systems(custom)["mcp_truncated"]["output"] == {"total": 5, "kept": 2}
+
+
+def test_use_systems_setting_is_clamped() -> None:
+    assert AgentCfg.clamped({"use_systems": False}).use_systems is False
+    assert AgentCfg.clamped({"use_systems": "no"}).use_systems is True
+
+
+async def test_current_question_is_sent_back_until_system_is_checked() -> None:
+    """今の値を問う質問: 注意を添え、文書だけで答えた下書きは 1 度差し戻す（R15）。"""
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(
+                AIMessage(content="台帳では 6 個で、発注点 10 を下回っています[1]。"),
+                tool_call(t.agent_name, part="SK-300"),
+                AIMessage(content="今は 15 個で発注点 10 を満たしています[2]。台帳（9/30）は 6 個[1]。"),
+            )
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の在庫 6"), mcp=mcp_run(t))
+        state, custom = await run(agent, c, "SK-300 は今、発注点を満たしていますか？")
+    # 検索結果の外に注意を添え、記録に残す
+    note = systems(custom)["current_note"]
+    assert note["input"]["systems"] == ["ERP（資材・購買）"]
+    assert any("社内システムで確かめてから" in m.text for m in model.calls[0])
+    # 文書だけの下書きを差し戻し、記録に「今の値の確認」
+    review = steps_of(custom, "review")[0]
+    assert review["input"]["kind"] == "current" and review["label"] == "今の値の確認"
+    assert any("この下書きは文書（ある時点の記録）だけ" in m.text for m in model.calls[1])
+    assert c.stats.current_reviews == 1 and c.mcp is not None and c.mcp.calls == 1
+    assert "今は 15 個" in state["messages"][-1].text
+
+
+async def test_current_review_names_systems_that_do_not_answer() -> None:
+    """今の値を持つシステムが応答しないとき、注意と差し戻しに名前を書き、関係の無いシステムを呼ばせない（R17）。"""
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(
+                AIMessage(content="台帳では 6 個です[1]。"),
+                AIMessage(content="台帳（9/30）は 6 個[1]。今の在庫は確かめられませんでした。"),
+            )
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        m = mcp_run(t)
+        m.removed = {"cmms": ("mcp_unavailable", "保全システム", "接続を確かめられない")}
+        c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の在庫 6"), mcp=m)
+        await run(agent, c, "SK-300 の今の在庫は？")
+    note = "保全システムは今応答しません"
+    assert any(note in x.text for x in model.calls[0])
+    assert any(note in x.text and "関係の無いシステムは呼ばず" in x.text for x in model.calls[1])
+
+
+async def test_past_question_is_not_sent_back() -> None:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="9 月末は 6 個です[1]。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の在庫 6"), mcp=mcp_run(t))
+        _, custom = await run(agent, c, "9 月末の SK-300 の在庫は？")
+    assert "current_note" not in systems(custom)
+    assert not steps_of(custom, "review") and c.stats.current_reviews == 0
+
+
+def test_asks_current() -> None:
+    from arag.agent.mcp_tools import asks_current
+
+    asked = ["今の在庫は？", "現在の状態", "WO-1107 は終わった？", "まだ未入荷？", "Is it still open?"]
+    # 社内システムにしか無い記録（仕入単価・作業指示・最近の記録）も確かめさせる
+    asked += ["MS-30 の発注の仕入単価は？", "未着手の作業指示は？", "PM-04 の最近の保全作業", "recent work"]
+    # 「いつ終わりましたか」・英語の「has it been resolved」も進み具合の質問
+    asked += ["再設定はいつ終わりましたか？", "Has the noise on PM-04 been resolved?"]
+    for q in asked:
+        assert asks_current(q), q
+    not_asked = ["今回の会議の決定事項", "今後の予定", "今年度の計画", "9 月末の在庫"]
+    # 「〜ています」の「います」は「いま」ではない（hm01 で誤って注意を添えていた）
+    not_asked += ["記録を何年間保存することになっていますか？", "どのくらいの頻度で行いますか？"]
+    for q in not_asked:
+        assert not asks_current(q), q
+
+
+def test_prompt_names_systems_that_do_not_answer() -> None:
+    """応答しない社内システムをプロンプトに書き、確かめられなかったと答えさせる（R17）。"""
+    from arag.agent.middleware import system_prompt
+
+    t = spec("http://x")
+    m = mcp_run(t)
+    m.removed = {"cmms": ("mcp_unavailable", "保全システム", "接続を確かめられない")}
+    p = system_prompt(ctx(FakeSearch(), mcp=m))
+    assert "使えるもの: ERP（資材・購買）" in p
+    # システムごとに、管理者が書いた説明を添える（どのシステムに何があるかをモデルが選べるように）
+    assert "- ERP（資材・購買）: 部品・在庫・発注" in p
+    assert "応答しない社内システム: 保全システム" in p
+    # 使えるシステムが 1 つも無くても、応答しないことは伝える
+    m.usable = {}
+    p = system_prompt(ctx(FakeSearch(), mcp=m))
+    assert "応答しない社内システム: 保全システム" in p
+    # 使える範囲の外・利用者の設定で外したものは書かない
+    m.removed = {"cmms": ("mcp_filtered", "保全システム", "範囲の外")}
+    assert "応答しない" not in system_prompt(ctx(FakeSearch(), mcp=m))
+
+
+async def test_unfound_answer_is_sent_back_to_systems() -> None:
+    """文書に無いと答えた下書きは、社内システムを確かめていなければ 1 度差し戻す（文書の検索が弱くても）。"""
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(
+                AIMessage(content="資料からは 10 月の記録は見つかりませんでした。"),
+                tool_call(t.agent_name, part="AL-01"),
+                AIMessage(content="AL-01 の記録を確かめました[1]。"),
+            )
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch(), mcp=mcp_run(t))
+        _, custom = await run(agent, c, "組立ライン1号で 10 月に行った保全作業は？")
+    review = steps_of(custom, "review")[0]
+    assert review["input"]["kind"] == "system_gap" and review["label"] == "社内システムの確認"
+    assert any("ERP（資材・購買）: 部品・在庫・発注" in m.text for m in model.calls[1])
+    assert c.stats.system_gap_reviews == 1 and c.mcp is not None and c.mcp.calls == 1
+
+
+async def test_unfound_answer_without_systems_is_not_sent_back_to_systems() -> None:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="資料からは見つかりませんでした。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch(), mcp=mcp_run(t, usable=False))
+        await run(agent, c, "組立ライン1号で 10 月に行った保全作業は？")
+    assert c.stats.system_gap_reviews == 0

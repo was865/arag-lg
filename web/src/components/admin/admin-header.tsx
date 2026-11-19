@@ -1,6 +1,6 @@
 "use client";
 
-/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・部門・ナレッジベース・監査ログ・フィードバック・利用状況・モデル）。 */
+/** 管理画面の共通ヘッダ（チャットへ戻る・メンバー・部門・ナレッジベース・監査ログ・フィードバック・利用状況・モデル・社内システム）。 */
 import { tabsListClass, tabsTriggerClass } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -14,6 +14,7 @@ const TABS = [
   { key: "feedback", href: "/admin/feedback", label: "フィードバック" },
   { key: "analytics", href: "/admin/analytics", label: "利用状況" },
   { key: "models", href: "/admin/models", label: "モデル" },
+  { key: "systems", href: "/admin/systems", label: "社内システム" },
 ] as const;
 
 /** 未対応の「良くない」の報告の件数（ナビに小さく出す。specs/028 R13）。取れなければ出さない。 */

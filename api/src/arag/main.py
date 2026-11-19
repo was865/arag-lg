@@ -19,6 +19,7 @@ from arag.ingest.pipeline import Index
 from arag.kb import router_access, router_documents, router_folders, router_kbs, router_uploads
 from arag.kb.sync import PayloadSync
 from arag.logging import configure_logging, get_logger
+from arag.mcp import router as mcp_router
 from arag.middleware import RequestIdMiddleware
 from arag.search import router as router_search
 from arag.search.service import SearchDeps, build_search_deps
@@ -83,5 +84,6 @@ def create_app(
     app.include_router(feedback_admin_router.router)
     app.include_router(analytics_router.router)
     app.include_router(llm_admin_router.router)
+    app.include_router(mcp_router.router)
     install_event_schemas(app)
     return app

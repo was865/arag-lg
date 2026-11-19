@@ -22,6 +22,26 @@ import { Seal } from "@/components/ui/seal";
 import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/feedback/toast-provider";
 import { DURATION } from "@/lib/motion";
+import { SystemRecordView } from "@/components/chat/tool-steps/system-record";
+import { SYSTEM_META } from "@/lib/file-types";
+import { useT } from "@/i18n/context";
+import type { SystemRecord } from "@/lib/types";
+
+const SAMPLE_RECORD: SystemRecord = {
+  system: "ERP（資材・購買）",
+  tool: "list_purchase_orders",
+  args: { part: "SK-300" },
+  fetchedAt: "2026-11-18T09:30+09:00",
+  basis: "ERP の現在の値（2026-11-18 09:30 取得）",
+  columns: ["発注番号", "部品番号", "数量", "納期", "状態"],
+  rows: [
+    ["PO-2026-0412", "P-1042", 10, "2026-10-20", "入荷済み"],
+    ["PO-2026-0433", "P-1043", 4, "2026-11-28", "発注済み"],
+  ],
+  total: 3,
+  restricted: ["仕入単価（円）"],
+  note: "仕入単価は資材係・購買課の人だけに表示します。",
+};
 
 const TYPE = [
   ["font-display text-hero font-bold", "挨拶 32", "こんにちは、検証さん。"],
@@ -101,6 +121,7 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
   const [on, setOn] = useState(true);
   const [q, setQ] = useState("MX-17");
   const toast = useToast();
+  const { t } = useT();
   const [n, setN] = useState(0);
   return (
     <section className={cn(theme, "flex flex-col gap-8 bg-bg-2 px-6 py-6 text-fg")}>
@@ -372,7 +393,15 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
           {["手順書.pdf", "台帳.xlsx", "報告.docx", "説明.pptx", "メモ.md", "不明.bin"].map((f) => (
             <FileTile key={f} filename={f} />
           ))}
+          <FileTile icon={SYSTEM_META.iconName} color={SYSTEM_META.color} />
+          <span className="text-caption text-muted">社内システム（ファイル名でなく SYSTEM_META）</span>
         </div>
+      </Block>
+
+      <Block title="社内システムの結果（出典パネル・「詳細」で同じ部品。specs/032）">
+        <Card className="p-3">
+          <SystemRecordView record={SAMPLE_RECORD} t={t} />
+        </Card>
       </Block>
 
       <Block title="グループ化した一覧">

@@ -79,6 +79,38 @@ cd .. && make eval-api-down
 - 題集は `eval/suites/`、構成の違いは `eval/variants.yaml`。指標と閾値は `specs/004-retrieval`・`specs/005-agent`。
 - 埋め込みのモデルや次元を変えたら `ARAG_QDRANT_COLLECTION` を別名にして再索引する（次元が違うと入庫が止まる）。
 
+## 3.1 模擬の社内システム（MCP。`specs/032`）
+
+評価資料の会社（ハルカゼ精工）の ERP・保全システム・社員名簿・課題の管理を模擬で動かし、MCP サーバとしてエージェントにつなぐ。
+データは `mock/systems/src/mock_systems/seed.py`（9/30 の値は harukaze_mix の台帳と一致、その後 11/18 までの動き）。
+
+```bash
+# .env に ARAG_MCP_IDENTITY_KEY（32 文字以上の乱数）を書いてから
+make up-mock          # mock-systems（:8201〜8204）を起動し、4 つのサーバを登録（使える範囲は全員）
+make down             # 止める（mock も含む）
+```
+
+- 登録・ツールの選択・使える範囲・接続の確認は管理画面の「社内システム」（`/admin/systems`）。変更は次の質問から効く。
+- 利用者ごとに切るのは「社内システムも調べる」（設定）。オフなら記録に「社内システムを使わない設定」が残る。
+- 権限は模擬の側で決まる: 仕入単価は資材係・購買課だけ、作業指示は保全課・製造課だけ、個人の携帯番号はだれにも出さない。
+- 障害の注入（評価・確認用）: 起動時の `MOCK_FAULTS="cmms=down,erp=slow:15,tickets=deny"` か、動かしたまま
+
+```bash
+curl -s -X POST localhost:8201/_faults -H 'content-type: application/json' -d '{"cmms":"down"}'   # 止める
+curl -s -X POST localhost:8201/_faults -H 'content-type: application/json' -d '{}'                # 戻す
+```
+
+- 社内システムの評価（harukaze_systems。KB は harukaze_mix を使う）:
+
+```bash
+cd api
+uv run python -m arag.cli eval-users --suite harukaze_systems   # 評価用の利用者（部門・所属・KB の閲覧）
+uv run python -m arag.eval answer --suite harukaze_systems --out ../eval/.reports/hs-gemma4-12b-032
+```
+
+題ごとの利用者（`as_user`）と障害（`faults`）は題集に書く。結果には期待したシステムを呼んだ率・権限の無い値の漏れ・
+注意（時点・権限・停止）を書いた率が出る。
+
 ## 4. 回答を確かめる
 
 - 「詳細」でエージェントの段階（検索・読む・計算・見直し）と、末尾の「システムの処理」（ツールの必須化・回数の上限・履歴の省略・回答の整形・要約）を見る。

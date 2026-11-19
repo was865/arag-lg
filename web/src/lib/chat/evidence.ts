@@ -13,6 +13,8 @@ export interface Evidence {
   excerpt: string;
   /** 関連度（0〜1）。取れていなければ undefined */
   score?: number;
+  /** 社内システムの結果（specs/032） */
+  system?: boolean;
 }
 
 const EXCERPT_MAX = 160;
@@ -41,6 +43,7 @@ export function evidenceList(citationMap: CitationMap, sources: Source[]): Evide
       page: section?.page,
       excerpt: body.length > EXCERPT_MAX ? `${body.slice(0, EXCERPT_MAX)}…` : body,
       score: source.score,
+      ...(source.type === "system" ? { system: true } : {}),
     });
   }
   return [...byKey.values()];

@@ -5,7 +5,7 @@
  */
 import type { components } from "@/lib/api/schema";
 import type { TurnFeedback } from "@/lib/feedback-types";
-import type { CitationMap, Source, ToolCall, ToolName, Turn, TurnImage } from "@/lib/types";
+import type { CitationMap, Source, SystemRecord, ToolCall, ToolName, Turn, TurnImage } from "@/lib/types";
 
 type S = components["schemas"];
 export type RunEvent = S["RunEvent"];
@@ -18,6 +18,8 @@ const DOC_TOOLS = new Set(["list_documents", "get_outline", "read_section", "rea
 
 /** サーバのステップ名を旧版の表示種別に写す。 */
 function viewName(step: ApiStep): ToolName {
+  // 社内システム（MCP）のツールは「<サーバ名>__<ツール名>」（specs/032）
+  if (step.name.includes("__")) return "system_query";
   if (step.name === "search" || step.name === "keyword_search") return "retrieve";
   if (DOC_TOOLS.has(step.name)) return "fetch_document";
   if (step.name === "retrieve") return step.input?.mode === "keyword" ? "bm25_search" : "vector_search";
@@ -57,7 +59,7 @@ export function toToolCall(step: ApiStep): ToolCall {
 export function toSource(s: ApiSource): Source {
   return {
     id: s.id,
-    type: "doc",
+    type: s.kind === "system" ? "system" : "doc",
     title: s.title,
     path: s.title,
     author: "",
@@ -69,7 +71,25 @@ export function toSource(s: ApiSource): Source {
       body: sec.body,
       blockType: sec.block_type,
       page: sec.page ?? undefined,
+      ...(sec.record ? { record: toRecord(sec.record) } : {}),
     })),
+  };
+}
+
+function toRecord(r: S["RecordView"]): SystemRecord {
+  return {
+    system: r.system,
+    server: r.server,
+    tool: r.tool,
+    title: r.title,
+    args: r.args,
+    fetchedAt: r.fetched_at,
+    basis: r.basis,
+    columns: r.columns,
+    rows: r.rows,
+    total: r.total,
+    restricted: r.restricted,
+    note: r.note ?? null,
   };
 }
 

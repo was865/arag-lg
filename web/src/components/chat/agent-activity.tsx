@@ -8,7 +8,7 @@ import { Icon } from "@/components/icons";
 import { searchStory } from "@/lib/chat/evidence";
 import { CitedTitlesContext } from "@/components/chat/search-detail";
 import { ActivityGlyph, activityOf, type Activity } from "@/components/chat/activity-glyph";
-import { getFileMeta } from "@/lib/file-types";
+import { SYSTEM_META, getFileMeta } from "@/lib/file-types";
 import { interpolate } from "@/i18n/interpolate";
 import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
@@ -80,6 +80,7 @@ export function AgentActivity({
           : t.chat.storyThinking);
 
   const story = searchStory(visibleSteps, sources ?? []);
+  const systemTitles = new Set((sources ?? []).filter((s) => s.type === "system").map((s) => s.title));
   const SHOWN = 4;
   const check = (
     <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
@@ -145,7 +146,7 @@ export function AgentActivity({
       {story.files.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {story.files.slice(0, SHOWN).map((f, i) => {
-            const meta = getFileMeta(f.title);
+            const meta = systemTitles.has(f.title) ? SYSTEM_META : getFileMeta(f.title);
             return (
               <span
                 key={f.title}

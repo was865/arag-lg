@@ -77,3 +77,30 @@ def test_acceptable_documents_must_be_subset(tmp_path):
     )
     with pytest.raises(ValueError, match="acceptable_documents"):
         load_suite(path)
+
+
+def test_case_system_fields_and_users(tmp_path) -> None:
+    from arag.eval.dataset import Case
+    from arag.eval.users import load_users
+
+    c = Case.model_validate(
+        {
+            "id": "s",
+            "query": "q",
+            "as_user": "seizo",
+            "faults": {"cmms": "down"},
+            "expect_tools": ["erp"],
+            "must_not": [{"any": ["23900"]}],
+            "expect_caveat": [{"any": ["時点"]}],
+        }
+    )
+    assert c.as_user == "seizo" and c.faults == {"cmms": "down"} and c.expect_tools == ["erp"]
+    p = tmp_path / "users.yaml"
+    p.write_text(
+        "users:\n  seizo: {id: eval-seizo, name: 製造課の人, departments: [製造課]}\n"
+        "  none: {id: eval-none, name: 部門なし}\n",
+        encoding="utf-8",
+    )
+    us = load_users(p)
+    assert us["seizo"].id == "eval-seizo" and us["seizo"].departments == ["製造課"]
+    assert us["none"].departments == []

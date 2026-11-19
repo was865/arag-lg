@@ -13,6 +13,7 @@ Claude 専用の補足は `CLAUDE.md`、運用の手順は `docs/operations.md`�
 | `specs/` | 仕様（SDD）。一覧は `specs/README.md`、全体像（機能・画面・API・データモデル・採否・ライセンス台帳）は `000-overview/` |
 | `docs/architecture.html` | 今の構成図。回答の流れは `docs/agent-graph.md`（`make graph` がコードから書き出す。手で直さない）。`docs/operations.md` は運用手順。`docs/handoff.md` は着手時（2026-11-08）の計画で、歴史的な資料 |
 | `eval/` | 評価の題と資料（`suites/`・`assets/`）、比較する構成（`variants.yaml`） |
+| `mock/systems/` | 評価用の模擬の社内システム（ERP・保全・名簿・課題）を MCP サーバとして出す（`specs/032`、uv の別プロジェクト。`make up-mock`） |
 | `compose.yaml` / `compose.gpu.yaml` | 開発機（Mac）の全体 / GPU 機（Windows + RTX 4090）の推論 |
 
 旧プロジェクト `/Users/ansen/Documents/Projects/playground/a-rag` は参照専用（変更禁止）。
@@ -42,6 +43,7 @@ make up-infra       # postgres・qdrant・redis だけ
 make up / make down # 全体を compose で（開発構成。ソースを載せ、保存で反映）
 make up-prod        # 本番と同じ構成（build した image）で確かめる
 make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、127.0.0.1:8101）。終わったら make eval-api-down
+make up-mock        # 模擬の社内システム（MCP）を起動して登録（specs/032）
 ```
 
 - CI（`.github/workflows/ci.yml`）は上の lint・test・`web` の build・gen-check・licenses・compose 起動スモークを回す。push 前に `make lint test` を通す。
@@ -49,7 +51,7 @@ make eval-api       # 評価・CLI 用の api（開発用ヘッダで認証、12
 
 ## 動かして確かめる（docker compose）
 
-- compose のサービス: `api`（:8100、HTTP を受けるだけ）・`runner`（エージェントの実行）・`worker`（入庫）・`web`（:3100）・postgres・qdrant・redis・mailpit（:8025、確認メール）。
+- compose のサービス: `api`（:8100、HTTP を受けるだけ）・`runner`（エージェントの実行）・`worker`（入庫）・`web`（:3100）・postgres・qdrant・redis・mailpit（:8025、確認メール）。評価用に `mock-systems`（`--profile mock`、:8201〜8204、模擬の社内システム）。
 - **ふだんは開発構成**（`compose.override.yaml`。素の `docker compose` が自動で読む）。ソースを容器に載せ、保存すると反映する: `web` は `next dev`、`api` は `--reload`、`runner`（エージェントの実行）・`worker`（入庫）は watchfiles で再起動（実行中の回答・入庫は切れる）。作り直し（`--build`）は依存を変えたときだけ。依存を変えたら `make up`（node_modules を作り直す）。
 - **本番の構成で確かめる**ときは `make up-prod`（`docker compose -f compose.yaml`。上書きを読まない）。build の失敗・表示の差・速さは開発構成では分からない。画面の大きな変更は push 前に一度ここで見る。CI の compose スモークもこの構成。戻すときは `make up`。
 - 実際の質問は **3100**（compose の `web`）で確かめる。プロキシ（`web/src/lib/api/proxy.ts`）が送信元を 3100 に限るので、ホストで別に開いた開発サーバ（3200 など）からは質問を送れない。

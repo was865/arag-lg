@@ -7,6 +7,7 @@
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from arag.agent.flow import build_graph, build_investigate
@@ -21,7 +22,9 @@ def build_agent(
     fallback_label: str = "代替モデル",
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     summarize_at_tokens: int = 12_000,
+    extra_tools: list[BaseTool] | None = None,
 ) -> Any:
+    """extra_tools は社内システム（MCP）のツール（specs/032）。利用者ごとの絞り込みは middleware が行う。"""
     investigate = build_investigate(
         model,
         utility=utility,
@@ -29,5 +32,6 @@ def build_agent(
         model_label=model_label,
         fallback_label=fallback_label,
         summarize_at_tokens=summarize_at_tokens,
+        extra_tools=extra_tools,
     )
     return build_graph(investigate, checkpointer=checkpointer)

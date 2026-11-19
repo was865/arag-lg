@@ -4,7 +4,23 @@ import type { IconName } from "@/components/icons";
 import type { TurnFeedback } from "@/lib/feedback-types";
 
 // ── Sources / citations ─────────────────────────────────────────────────────
-export type SourceType = "meeting" | "wiki" | "slack" | "doc";
+export type SourceType = "meeting" | "wiki" | "slack" | "doc" | "system";
+
+/** 社内システム（MCP）の結果（specs/032 R20）。出典パネルと「詳細」に表で出す。 */
+export interface SystemRecord {
+  system: string;
+  server?: string;
+  tool?: string;
+  title?: string;
+  args?: Record<string, unknown>;
+  fetchedAt: string;
+  basis?: string;
+  columns: string[];
+  rows: unknown[][];
+  total: number;
+  restricted?: string[];
+  note?: string | null;
+}
 
 export interface SourceSection {
   id: string;
@@ -13,6 +29,8 @@ export interface SourceSection {
   highlight?: boolean;
   blockType?: string;
   page?: number;
+  /** 社内システムの結果（type が "system" の出典だけ） */
+  record?: SystemRecord;
 }
 
 export interface Source {
@@ -53,6 +71,7 @@ export type ToolName =
   | "system"
   | "understand"
   | "table_query"
+  | "system_query"
   | "fetch_document"
   | "calculate"
   | "ask_user"

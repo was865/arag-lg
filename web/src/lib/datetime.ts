@@ -39,3 +39,16 @@ export function dateSeparator(
   if (sameLocalDay(d, yesterday)) return labels.yesterday;
   return ymd(d, now);
 }
+
+/** 社内システムの取得時刻「2026-11-18 20:19」（specs/032）。システムが返した時刻をそのまま見せ、時差で直さない。 */
+export function formatFetchedAt(iso: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(iso);
+  return m ? `${m[1]} ${m[2]}` : iso;
+}
+
+/** 時刻（UTC の ISO）を端末の時刻「2026-11-19 20:14」で。不正値は空文字。 */
+export function formatLocalMinute(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}

@@ -15,6 +15,7 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
+from arag.agent.mcp_tools import asks_current, current_note
 from arag.agent.ops import (
     TOC_SECTION_ID,
     find_named_documents,
@@ -556,6 +557,19 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
             "文書の構成を問う質問なので、章の見出しを資料のとおりに書くよう添えた"
             + ("（「最後の章」は番号の付いた章と付録の両方を答える）" if EDGE_CHAPTER_NOTE in note else ""),
             input={"asked": question[:300]},
+            output={"note": note},
+        )
+    if u["kind"] == "docs" and ctx.mcp is not None and ctx.mcp.usable and asks_current(question):
+        # 今の値を問う質問: 台帳はある時点の値なので、社内システムで確かめるよう添える（specs/032 R15）
+        note = current_note(ctx.mcp.down)
+        ctx.primer.note = f"{ctx.primer.note}\n{note}".strip()
+        record_system(
+            emit,
+            "system-current-note",
+            "current_note",
+            "今の値の質問への注意",
+            "今の値・進み具合か社内システムにある記録を問う質問なので、社内システムで確かめるよう添えた",
+            input={"asked": question[:300], "systems": ctx.mcp.systems, "down": ctx.mcp.down},
             output={"note": note},
         )
     attached = ctx.document_ids is not None or ctx.hooks.read_image is not None

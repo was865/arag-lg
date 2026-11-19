@@ -559,6 +559,7 @@ def build_investigate(
     model_label: str = "会話モデル",
     fallback_label: str = "代替モデル",
     summarize_at_tokens: int = 12_000,
+    extra_tools: list[Any] | None = None,
 ) -> Any:
     """調査の部分グラフ（create_agent。checkpointer は外側のものを使う）。"""
     middleware: list[Any] = [
@@ -571,7 +572,11 @@ def build_investigate(
     fallbacks = [] if fallback is None else [(fallback_label, fallback)]
     middleware += [ModelSwitchMiddleware(model_label, fallbacks), StepMiddleware()]
     return create_agent(
-        model, tools=TOOLS, middleware=middleware, context_schema=RunContext, name="investigate"
+        model,
+        tools=[*TOOLS, *(extra_tools or [])],
+        middleware=middleware,
+        context_schema=RunContext,
+        name="investigate",
     )
 
 

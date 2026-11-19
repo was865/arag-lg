@@ -21,6 +21,13 @@ describe("回答の設定", () => {
     expect(AGENT_FIELDS.find((f) => f.key === "followups")).toMatchObject({ kind: "bool" });
   });
 
+  it("社内システムは既定でオン、オフにしたときだけ送る（specs/032 R11）", () => {
+    expect(AGENT_DEFAULTS.use_systems).toBe(true);
+    expect(clampAgentCfg({ use_systems: 1 }).use_systems).toBe(true);
+    expect(agentCfgPayload({ ...AGENT_DEFAULTS, use_systems: false })).toEqual({ use_systems: false });
+    expect(AGENT_FIELDS.find((f) => f.key === "use_systems")).toMatchObject({ kind: "bool", label: "社内システムも調べる" });
+  });
+
   it("候補の数は資料の数より小さくならない", () => {
     expect(clampAgentCfg({ top_k: 12, candidate_k: 5 }).candidate_k).toBe(12);
   });

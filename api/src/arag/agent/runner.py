@@ -31,6 +31,7 @@ from arag.agent.flow import NO_ANSWER_TEXT
 from arag.agent.flow import classify as _classify  # noqa: F401
 from arag.agent.followups import HISTORY_TURNS, TIMEOUT_SEC, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
+from arag.agent.mcp_tools import HealthCache, build_tool, prepare
 from arag.agent.model_switch import ModelChainError
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, record_system, tag_node
@@ -40,6 +41,8 @@ from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
 from arag.logging import get_logger
+from arag.mcp.registry import ToolSpec, catalog_key, load_tools
+from arag.secrets import SecretBox
 from arag.storage import Storage
 
 log = get_logger("arag.agent.runner")
@@ -73,6 +76,8 @@ class RunnerDeps:
     events_ttl_sec: int = 3600
     cancel_poll_sec: float = 0.5
     agent_cache: dict[str, Any] = field(default_factory=dict)
+    # 社内システム（MCP。specs/032）。None なら文書だけで答える（テストなど）
+    mcp: "McpDeps | None" = None
     # 質問に添えた画像（specs/017）。画像の保存先と、画像を文章にする読み手（未設定なら読めない扱い）
     storage: Storage | None = None
     image_reader: ImageReader | None = None
@@ -81,17 +86,33 @@ class RunnerDeps:
     # 引用の刈り込み（ARAG_CITATION_PRUNE、specs/026 T31）
     citation_prune: bool = True
 
-    def agent_for(self, m: ResolvedModels) -> Any:
-        if m.id not in self.agent_cache:
-            self.agent_cache[m.id] = build_agent(
+    def agent_for(self, m: ResolvedModels, tools: list[ToolSpec] | None = None) -> Any:
+        # 社内システムのツールの目録が変わったら作り直す（登録の変更を次の実行から効かせる）
+        key = f"{m.id}:{catalog_key(tools)}" if tools else m.id
+        if key not in self.agent_cache:
+            self.agent_cache[key] = build_agent(
                 m.model,
                 utility=m.utility,
                 fallback=m.fallback,
                 model_label=m.label or m.id,
                 fallback_label=m.fallback_label or "代替モデル",
                 checkpointer=self.checkpointer,
+                extra_tools=[build_tool(t) for t in tools or []],
             )
-        return self.agent_cache[m.id]
+        return self.agent_cache[key]
+
+
+@dataclass
+class McpDeps:
+    """社内システム（MCP）の設定（specs/032）。"""
+
+    identity_key: str
+    box: SecretBox | None
+    timeout_sec: float = 10.0
+    max_calls: int = 6
+    max_rows: int = 50
+    max_chars: int = 8000
+    health: HealthCache = field(default_factory=HealthCache)
 
 
 class _Turn:
@@ -195,7 +216,29 @@ async def execute_run(
         resolved = models
         # 書き換え（CRAG）は utility が無ければ会話モデルで行う
         ctx.utility_model = models.utility or models.model
-        agent = deps.agent_for(models)
+        mcp_tools: list[ToolSpec] = []
+        if deps.mcp is not None:
+            try:
+                async with deps.sessionmaker() as s:
+                    mcp_tools = await load_tools(s)
+                    ctx.mcp = await prepare(
+                        s,
+                        mcp_tools,
+                        user_id=principal.user_id,
+                        use_systems=cfg.use_systems,
+                        identity_key=deps.mcp.identity_key,
+                        box=deps.mcp.box,
+                        health=deps.mcp.health,
+                        timeout_sec=deps.mcp.timeout_sec,
+                        max_calls=deps.mcp.max_calls,
+                        max_rows=deps.mcp.max_rows,
+                        max_chars=deps.mcp.max_chars,
+                    )
+            except Exception:
+                # 社内システムの準備に失敗しても、文書だけで答える
+                log.exception("mcp_prepare_failed", run_id=str(run_id))
+                mcp_tools, ctx.mcp = [], None
+        agent = deps.agent_for(models, mcp_tools)
         base = {"configurable": {"thread_id": str(thread_id)}}
         if req.get("branch"):
             if req.get("branch_checkpoint_id"):
@@ -894,6 +937,14 @@ async def main() -> None:
             image_reader=build_query_image_reader(settings),
             followups_timeout_sec=settings.followups_timeout_sec,
             citation_prune=settings.citation_prune,
+            mcp=McpDeps(
+                identity_key=settings.mcp_identity_key.get_secret_value(),
+                box=SecretBox.from_setting(settings.secret_key.get_secret_value()),
+                timeout_sec=settings.mcp_timeout_sec,
+                max_calls=settings.mcp_max_calls,
+                max_rows=settings.mcp_max_rows,
+                max_chars=settings.mcp_max_chars,
+            ),
         )
         runner = Runner(
             deps,

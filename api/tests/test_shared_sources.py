@@ -29,3 +29,29 @@ def test_same_document_cited_twice_is_distinguishable() -> None:
         {"n": 2, "title": "規程.pdf", "heading": None, "page": 9, "restricted": False},
         {"n": 3, "title": "台帳.md", "heading": None, "page": None, "restricted": False},
     ]
+
+
+def test_system_sources_show_name_and_time_but_never_rows() -> None:
+    # 社内システムの出典（specs/032 R22）: 文書の権限では伏せず、名前と見出し（取得の時点）だけ
+    sources = [
+        *SOURCES,
+        {
+            "id": "sys-erp",
+            "title": "ERP（資材・購買）",
+            "kind": "system",
+            "sections": [
+                {
+                    "id": "r1",
+                    "n": 5,
+                    "heading": "在庫（get_stock part=SK-300）・ERP の現在の値（2026-11-18 10:32 取得）",
+                    "body": "| 15 |",
+                    "record": {"rows": [["P-1042", 15]]},
+                }
+            ],
+        },
+    ]
+    cmap = {"1": {"source_id": "d1", "section_id": "s1"}, "5": {"source_id": "sys-erp", "section_id": "r1"}}
+    out = [x.model_dump() for x in shared_sources(cmap, sources, readable=set())]
+    assert out[0]["restricted"] is True
+    assert out[1]["title"] == "ERP（資材・購買）" and "2026-11-18 10:32 取得" in out[1]["heading"]
+    assert "15" not in str(out[1]["heading"]).replace("2026-11-18", "") and "P-1042" not in str(out)

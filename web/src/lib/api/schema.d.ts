@@ -268,6 +268,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mcp-servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Servers */
+        get: operations["list_servers_v1_admin_mcp_servers_get"];
+        put?: never;
+        /** Create Server */
+        post: operations["create_server_v1_admin_mcp_servers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mcp-servers/{server_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Server */
+        delete: operations["delete_server_v1_admin_mcp_servers__server_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Server */
+        patch: operations["update_server_v1_admin_mcp_servers__server_id__patch"];
+        trace?: never;
+    };
+    "/v1/admin/mcp-servers/{server_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Tools */
+        post: operations["refresh_tools_v1_admin_mcp_servers__server_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mcp-servers/{server_id}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Shares */
+        put: operations["set_shares_v1_admin_mcp_servers__server_id__shares_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mcp-servers/{server_id}/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Tools */
+        put: operations["set_tools_v1_admin_mcp_servers__server_id__tools_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{user_id}/access": {
         parameters: {
             query?: never;
@@ -1959,6 +2046,145 @@ export interface components {
             /** Providers */
             providers: string[];
         };
+        /** McpAdminOut */
+        McpAdminOut: {
+            /**
+             * Encryption Ready
+             * @description トークンの暗号化鍵（ARAG_SECRET_KEY）があるか
+             */
+            encryption_ready: boolean;
+            /**
+             * Identity Ready
+             * @description 身元の署名鍵（ARAG_MCP_IDENTITY_KEY）があるか
+             */
+            identity_ready: boolean;
+            /** Servers */
+            servers: components["schemas"]["McpServerOut"][];
+        };
+        /** McpServerIn */
+        McpServerIn: {
+            /**
+             * Auth Kind
+             * @default identity
+             * @enum {string}
+             */
+            auth_kind: "none" | "identity" | "bearer";
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Label */
+            label: string;
+            /**
+             * Name
+             * @description 英小文字・数字・_（32 文字まで）。ツール名の頭に付く
+             */
+            name: string;
+            /** Timeout Sec */
+            timeout_sec?: number | null;
+            /** Token */
+            token?: string | null;
+            /** Url */
+            url: string;
+        };
+        /** McpServerOut */
+        McpServerOut: {
+            /** Auth Kind */
+            auth_kind: string;
+            /** Check Error */
+            check_error: string | null;
+            /** Checked At */
+            checked_at: string | null;
+            /** Description */
+            description: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Has Token */
+            has_token: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Shares */
+            shares: components["schemas"]["McpShareRow"][];
+            /** Timeout Sec */
+            timeout_sec: number | null;
+            /** Tools */
+            tools: components["schemas"]["McpToolOut"][];
+            /** Url */
+            url: string;
+        };
+        /** McpServerPatch */
+        McpServerPatch: {
+            /** Auth Kind */
+            auth_kind?: ("none" | "identity" | "bearer") | null;
+            /** Description */
+            description?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Label */
+            label?: string | null;
+            /** Timeout Sec */
+            timeout_sec?: number | null;
+            /** Token */
+            token?: string | null;
+            /** Url */
+            url?: string | null;
+        };
+        /** McpShareRow */
+        McpShareRow: {
+            /**
+             * Name
+             * @description 部門の名前（表示用）
+             */
+            name?: string | null;
+            /**
+             * Subject Id
+             * @default
+             */
+            subject_id: string;
+            /**
+             * Subject Type
+             * @enum {string}
+             */
+            subject_type: "everyone" | "department";
+        };
+        /** McpSharesIn */
+        McpSharesIn: {
+            /** Shares */
+            shares: components["schemas"]["McpShareRow"][];
+        };
+        /** McpToolOut */
+        McpToolOut: {
+            /** Description */
+            description: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Input Schema */
+            input_schema: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: string;
+            /** Read Only */
+            read_only: boolean;
+        };
+        /** McpToolsIn */
+        McpToolsIn: {
+            /** Enabled */
+            enabled: string[];
+        };
         /** MessageOut */
         MessageOut: {
             /** Answer */
@@ -2232,6 +2458,52 @@ export interface components {
             count: number;
             /** Reason */
             reason: string;
+        };
+        /**
+         * RecordView
+         * @description 社内システムの結果（specs/032 R20）。行は出典パネルに出す分だけ。
+         */
+        RecordView: {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /**
+             * Basis
+             * @default
+             */
+            basis: string;
+            /** Columns */
+            columns: string[];
+            /** Fetched At */
+            fetched_at: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Restricted
+             * @default []
+             */
+            restricted: string[];
+            /** Rows */
+            rows: unknown[][];
+            /** Server */
+            server: string;
+            /** System */
+            system: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** Tool */
+            tool: string;
+            /** Total */
+            total: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
         };
         /** RunCancelled */
         RunCancelled: {
@@ -2603,11 +2875,14 @@ export interface components {
             n: number;
             /** Page */
             page?: number | null;
+            record?: components["schemas"]["RecordView"] | null;
         };
         /** SourceView */
         SourceView: {
             /** Id */
             id: string;
+            /** Kind */
+            kind?: "system" | null;
             /** Score */
             score?: number | null;
             /** Sections */
@@ -3462,6 +3737,224 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_servers_v1_admin_mcp_servers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpAdminOut"];
+                };
+            };
+        };
+    };
+    create_server_v1_admin_mcp_servers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpServerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_server_v1_admin_mcp_servers__server_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_server_v1_admin_mcp_servers__server_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpServerPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_tools_v1_admin_mcp_servers__server_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_shares_v1_admin_mcp_servers__server_id__shares_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpSharesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tools_v1_admin_mcp_servers__server_id__tools_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpToolsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
                 };
             };
             /** @description Validation Error */

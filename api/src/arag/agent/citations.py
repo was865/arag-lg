@@ -28,6 +28,17 @@ class Cited:
     text: str
     context: str = ""
     score: float | None = None
+    # 社内システム（MCP）の結果なら "system"（specs/032 R20）。record は画面に出す構造（表・時刻・条件）
+    kind: str = "document"
+    record: dict[str, Any] | None = None
+
+
+# 社内システムの出典の ID（文書 ID の代わり。サーバ名・呼び出しから決まる）
+SYSTEM_NS = uuid.UUID("6a7b0c32-1f3e-4f0d-9a5e-3e2c1d0b9f21")
+
+
+def system_source_id(server: str) -> uuid.UUID:
+    return uuid.uuid5(SYSTEM_NS, f"mcp:{server}")
 
 
 class CitationRegistry:
@@ -101,6 +112,28 @@ class CitationRegistry:
             ),
         )
 
+    def add_record(
+        self, *, server: str, label: str, key: str, heading: str, text: str, record: dict[str, Any]
+    ) -> int:
+        """社内システムの結果（同じツール・同じ引数は同じ番号。specs/032 design §5）。"""
+        item = uuid.uuid5(SYSTEM_NS, f"rec:{server}:{key}")
+        return self._add(
+            f"rec:{server}:{key}",
+            lambda n: Cited(
+                n=n,
+                item_id=item,
+                document_id=system_source_id(server),
+                document_name=label,
+                section_id=item,
+                heading_path=heading,
+                page=None,
+                block_type="record",
+                text=text,
+                kind="system",
+                record=record,
+            ),
+        )
+
     def sources(self) -> tuple[dict[int, dict[str, str]], list[dict[str, Any]]]:
         """登録済みの全資料（回答の生成中に右パネルを先に用意するため。番号は登録順）。"""
         return group_sources(self._items)
@@ -117,18 +150,26 @@ def group_sources(items: dict[int, Cited]) -> tuple[dict[int, dict[str, str]], l
         cmap[n] = {"source_id": str(c.document_id), "section_id": str(c.item_id)}
         src = docs.setdefault(
             c.document_id,
-            {"id": str(c.document_id), "title": c.document_name, "sections": [], "score": None},
-        )
-        src["sections"].append(
             {
-                "id": str(c.item_id),
-                "n": n,
-                "heading": c.heading_path,
-                "body": excerpt(c.text),
-                "block_type": c.block_type,
-                "page": c.page,
-            }
+                "id": str(c.document_id),
+                "title": c.document_name,
+                "sections": [],
+                "score": None,
+                # 社内システムの出典だけ印を付ける（文書は今までどおり。specs/032）
+                **({"kind": "system"} if c.kind == "system" else {}),
+            },
         )
+        sec: dict[str, Any] = {
+            "id": str(c.item_id),
+            "n": n,
+            "heading": c.heading_path,
+            "body": excerpt(c.text),
+            "block_type": c.block_type,
+            "page": c.page,
+        }
+        if c.record is not None:
+            sec["record"] = c.record
+        src["sections"].append(sec)
         if c.score is not None and (src["score"] is None or c.score > src["score"]):
             src["score"] = c.score
     return cmap, list(docs.values())

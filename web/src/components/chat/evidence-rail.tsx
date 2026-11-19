@@ -10,7 +10,7 @@ import { cardClass } from "@/components/ui/card";
 import { Seal } from "@/components/ui/seal";
 import { overflowData, useOverflow } from "@/components/ui/use-overflow";
 import type { Evidence } from "@/lib/chat/evidence";
-import { getFileMeta } from "@/lib/file-types";
+import { SYSTEM_META, getFileMeta } from "@/lib/file-types";
 import { useT } from "@/i18n/context";
 import { interpolate } from "@/i18n/interpolate";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,7 @@ export function EvidenceRail({ items, onOpen }: { items: Evidence[]; onOpen: (n:
         className="scroll-fade-x -mx-1 -my-1 flex min-w-0 snap-x snap-proximity flex-row gap-2 overflow-x-auto px-1 py-1 [scrollbar-width:none] @[760px]:scroll-fade-y @[760px]:-mx-1.5 @[760px]:min-h-0 @[760px]:snap-none @[760px]:flex-col @[760px]:overflow-x-visible @[760px]:overflow-y-auto @[760px]:px-1.5 @[760px]:pb-2 [&::-webkit-scrollbar]:hidden"
       >
         {items.map((e) => {
-          const meta = getFileMeta(e.title);
+          const meta = e.system ? SYSTEM_META : getFileMeta(e.title);
           const each = (on: boolean) => (ev: { currentTarget: Element }) => e.numbers.forEach((n) => linkEvidence(ev.currentTarget, n, on));
           return (
             <button

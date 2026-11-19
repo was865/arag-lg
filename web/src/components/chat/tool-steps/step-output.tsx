@@ -7,6 +7,7 @@ import { ExpandOutput, GradeOutput, HitsOutput, RerankOutput, RetrievedOutput } 
 import { ReviewOutput, ReviseOutput, UnderstandOutput, VerifyOutput } from "./output-checks";
 import { SystemFields } from "./system-fields";
 import { TableResult } from "./table-result";
+import { SystemRecordView, recordFromOutput } from "./system-record";
 import type { RerankHit } from "@/lib/types";
 
 const SEARCH_HITS = new Set(["vector_search", "bm25_search", "retrieve", "candidates"]);
@@ -46,6 +47,11 @@ export function ToolOutputBlock({ step, t }: { step: ToolCall; t: Dictionary }) 
   const result = text(output.result);
   if ((step.name === "retrieve" || step.name === "fetch_document") && result !== null) return <RetrievedOutput result={result} />;
   if (step.name === "table_query" && result !== null) return <TableResult output={output} t={t} />;
+  if (step.name === "system_query") {
+    const rec = recordFromOutput(output);
+    if (rec) return <SystemRecordView record={rec} t={t} />;
+    if (result !== null) return <div className={cn(boxCls, "whitespace-pre-wrap break-words")}>{result}</div>;
+  }
   if (step.name === "review" && typeof output.note === "string") return <ReviewOutput output={output} t={t} />;
   // work_calendar は整形済みの事実テキスト（{result:"..."}）。そのまま可読表示する。
   if (step.name === "work_calendar" && result !== null) return <div className={cn(boxCls, "whitespace-pre-wrap break-words")}>{result}</div>;

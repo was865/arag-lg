@@ -5,6 +5,7 @@ python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin
 python -m arag.cli gc [--retention-days N]
 python -m arag.cli sync-payload
 python -m arag.cli reparse-report [--content-hash H ...]
+python -m arag.cli mcp-register --mock [--base-url http://mock-systems]
 """
 
 import argparse
@@ -12,6 +13,7 @@ import asyncio
 import json
 import sys
 import time
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -259,6 +261,50 @@ async def sync_payload(settings: Settings) -> int:
         await engine.dispose()
 
 
+async def mcp_register(settings: Settings, base_url: str) -> int:
+    """模擬の社内システム（specs/032）を MCP サーバとして登録し、ツールを取る。"""
+    from arag.mcp.service import register_mock
+
+    engine = make_engine(settings.database_url)
+    try:
+        async with make_sessionmaker(engine)() as s:
+            servers = await register_mock(s, settings, base_url)
+            for srv in servers:
+                state = f"エラー: {srv.check_error}" if srv.check_error else "ツールを取得"
+                print(f"{srv.name}\t{srv.url}\t{state}")
+            return 1 if any(srv.check_error for srv in servers) else 0
+    finally:
+        await engine.dispose()
+
+
+async def eval_users(settings: Settings, suite_name: str) -> int:
+    """題集の評価用の利用者（部門・所属・評価の KB の閲覧）を作る（specs/032 R27）。"""
+    from arag.eval.__main__ import find_kb, golden_path, kb_name, repo_root
+    from arag.eval.dataset import load_suite
+    from arag.eval.users import ensure_users, load_users
+
+    root = repo_root()
+    suite = load_suite(golden_path(root, suite_name))
+    if not suite.users:
+        print(f"{suite_name} に users がありません", file=sys.stderr)
+        return 2
+    kb = await find_kb(settings, suite.kb_suite or suite_name)
+    if kb is None:
+        print(
+            f"KB「{kb_name(suite.kb_suite or suite_name)}」がありません。先に ingest してください",
+            file=sys.stderr,
+        )
+        return 2
+    engine = make_engine(settings.database_url)
+    try:
+        async with make_sessionmaker(engine)() as s:
+            made = await ensure_users(s, load_users(root / suite.users), uuid.UUID(kb))
+        print("\n".join(made) if made else "作るものはありません（作成済み）")
+        return 0
+    finally:
+        await engine.dispose()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="arag.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -282,7 +328,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     rp.add_argument("--content-hash", action="append", default=[], help="対象の内容ハッシュ（複数可）")
     sub.add_parser("sync-payload", help="Qdrant の payload（参照する文書・KB）を DB に合わせ直す")
+    m = sub.add_parser("mcp-register", help="模擬の社内システム（specs/032）を MCP サーバとして登録する")
+    m.add_argument("--mock", action="store_true", required=True, help="模擬の 4 システム（今はこれだけ）")
+    m.add_argument("--base-url", default="http://mock-systems", help="ポートを除いた模擬のサーバの URL")
+    eu = sub.add_parser("eval-users", help="題集の評価用の利用者（部門・所属・KB の閲覧）を作る（specs/032）")
+    eu.add_argument("--suite", required=True)
     args = parser.parse_args(argv)
+    if args.cmd == "eval-users":
+        return asyncio.run(eval_users(Settings(), args.suite))
+    if args.cmd == "mcp-register":
+        return asyncio.run(mcp_register(Settings(), args.base_url))
     if args.cmd == "sync-payload":
         return asyncio.run(sync_payload(Settings()))
     if args.cmd == "reparse-report":

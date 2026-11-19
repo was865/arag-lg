@@ -17,6 +17,15 @@ export function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if (step.name === "understand" && typeof step.input.question === "string") {
     return <div className={cn(boxCls, "whitespace-pre-wrap break-words")}>{step.input.question}</div>;
   }
+  if (step.name === "system_query") {
+    // 社内システムへの引数（specs/032 R23）
+    const args = Object.entries(step.input).filter(([, v]) => v !== "" && v != null);
+    return args.length ? (
+      <KeyValueGrid rows={args.map(([k, v]) => ({ k, v: String(v) }))} />
+    ) : (
+      <div className={cn(boxCls, "text-muted")}>{t.chat.systemNoArgs}</div>
+    );
+  }
   if (step.name === "table_query") {
     const code = (v: unknown) => <code className="font-mono text-caption text-fg">{String(v)}</code>;
     const rows = [

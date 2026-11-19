@@ -21,6 +21,24 @@ class CitationRef(BaseModel):
     section_id: str
 
 
+class RecordView(BaseModel):
+    """社内システムの結果（specs/032 R20）。行は出典パネルに出す分だけ。"""
+
+    system: str
+    server: str
+    tool: str
+    args: dict[str, Any]
+    fetched_at: str
+    basis: str = ""
+    title: str = ""
+    columns: list[str]
+    rows: list[list[Any]]
+    total: int
+    truncated: bool = False
+    restricted: list[str] = []
+    note: str | None = None
+
+
 class SourceSection(BaseModel):
     id: str
     n: int
@@ -28,6 +46,7 @@ class SourceSection(BaseModel):
     body: str
     block_type: str
     page: int | None = None
+    record: RecordView | None = None
 
 
 class SourceView(BaseModel):
@@ -35,6 +54,8 @@ class SourceView(BaseModel):
     title: str
     sections: list[SourceSection]
     score: float | None = None
+    # 社内システムの出典なら "system"（specs/032）。文書は無し
+    kind: Literal["system"] | None = None
 
 
 class RunStarted(BaseModel):

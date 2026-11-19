@@ -446,3 +446,55 @@ class LlmModel(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+class McpServer(Base):
+    """社内システムの MCP サーバ（specs/032 R8〜R11）。
+
+    auth_kind: none / identity（利用者の身元）/ bearer（固定のトークン）。
+    """
+
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    auth_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="identity")
+    secret_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    timeout_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    checked_at: Mapped[datetime | None] = _ts_nullable()
+    check_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class McpTool(Base):
+    """MCP サーバのツール（取得したときの説明と入力の型）。enabled は管理者の選択（R9）。"""
+
+    __tablename__ = "mcp_tools"
+
+    server_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("mcp_servers.id", ondelete="CASCADE"), primary_key=True
+    )
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fetched_at: Mapped[datetime] = _now()
+
+
+class McpServerShare(Base):
+    """MCP サーバを使える範囲（R10）。subject_type: everyone（subject_id は空文字）/ department。"""
+
+    __tablename__ = "mcp_server_shares"
+
+    server_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("mcp_servers.id", ondelete="CASCADE"), primary_key=True
+    )
+    subject_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    subject_id: Mapped[str] = mapped_column(String(64), primary_key=True, default="")

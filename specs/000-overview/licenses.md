@@ -23,6 +23,9 @@
 | pydantic-settings | Python | 2.16.2 | MIT | 2026-11-08 | https://pypi.org/project/pydantic-settings/ |
 | structlog | Python | 26.1.0 | MIT OR Apache-2.0 | 2026-11-08 | https://pypi.org/project/structlog/ |
 | httpx | Python | 0.28.1 | BSD-3-Clause | 2026-11-08 | https://pypi.org/project/httpx/ |
+| mcp（Model Context Protocol の SDK。specs/032） | Python | 1.30.0 | MIT | 2026-11-19 | https://pypi.org/project/mcp/ |
+| httpx-sse / jsonschema / python-multipart（mcp の依存） | Python | 0.4.3 / 4.26.0 / 0.0.33 | MIT / MIT / Apache-2.0 | 2026-11-19 | https://pypi.org/project/httpx-sse/ |
+| 模擬の社内システム（`mock/systems`。評価用、本番に入れない）: mcp・PyJWT・uvicorn | Python | 1.30.0 / 2.15.1 / 0.54.0 | MIT / MIT / BSD-3-Clause | 2026-11-19 | https://pypi.org/project/mcp/ |
 | certifi（推移的依存） | Python | 2026.10.23 | MPL-2.0（ファイル単位の弱いコピーレフト。改変しないため影響なし） | 2026-11-08 | https://pypi.org/project/certifi/ |
 | ruff / mypy / pytest / pytest-asyncio（開発のみ） | Python | 0.17.4 / 2.4.1 / 9.2.0 / 1.4.1 | MIT / MIT / MIT / Apache-2.0 | 2026-11-08 | https://pypi.org/project/ruff/ |
 | server-only | npm | 0.0.1 | MIT | 2026-11-08 | https://www.npmjs.com/package/server-only |

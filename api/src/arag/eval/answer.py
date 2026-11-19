@@ -28,6 +28,8 @@ SEARCH_TOOLS = {"search", "keyword_search"}
 NON_TOOL_STEPS = {"system", "reasoning", "review", "switch_model", "understand", "read_image"}
 
 Judge = Callable[[str, str, list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]]
+# 模擬の社内システムの障害を設定する（{} で戻す。specs/032 R7）
+Faults = Callable[[dict[str, str]], Awaitable[None]]
 
 
 class RunApi(Protocol):
@@ -72,6 +74,13 @@ class CaseResult:
     # 聞き返しで終えたか（モデルの ask_user かシステムの聞き返し）と、題の期待（specs/031 T12）
     clarified: bool = False
     expect_clarify: bool | None = None
+    # 社内システム（specs/032 R29）: 尋ねた利用者・呼んだシステム・期待どおり呼んだか・漏れた値・注意の有無
+    as_user: str | None = None
+    systems_called: list[str] = field(default_factory=list)
+    tools_ok: bool | None = None
+    leak_checked: bool = False
+    leaked: list[str] = field(default_factory=list)
+    caveat_ok: bool | None = None
 
 
 # ── 純関数 ──────────────────────────────────────────────────────────────
@@ -120,6 +129,15 @@ def citation_precision(cited: set[str], relevant: list[str], acceptable: list[st
         # 根拠の無い題で何も引用しないのは正しい振る舞い
         return 1.0 if not relevant else 0.0
     return len(cited & (set(relevant) | set(acceptable or []))) / len(cited)
+
+
+def systems_called(steps: list[dict[str, Any]]) -> list[str]:
+    """モデルが呼んだ社内システム（ツール名「<サーバ>__<ツール>」のサーバ。呼んだ順・重複なし）。"""
+    out: list[str] = []
+    for s in steps:
+        if not s.get("parent_id") and "__" in s["name"] and (srv := s["name"].split("__", 1)[0]) not in out:
+            out.append(srv)
+    return out
 
 
 class Trajectory(TypedDict):
@@ -260,6 +278,11 @@ def _block(rs: list[CaseResult]) -> dict[str, Any]:
         "clarify_rate": _mean([float(r.clarified) for r in rs]),
         "clarify_recall": _mean([float(r.clarified) for r in rs if r.expect_clarify is True]),
         "over_clarify_rate": _mean([float(r.clarified) for r in rs if r.expect_clarify is False]),
+        # 社内システム（specs/032 R29）: 期待したシステムを呼んだ率・値が漏れた率・注意を書いた率
+        "system_recall": _mean([float(r.tools_ok) for r in rs if r.tools_ok is not None]),
+        "leak_rate": _mean([float(bool(r.leaked)) for r in rs if r.leak_checked]),
+        "caveat_rate": _mean([float(r.caveat_ok) for r in rs if r.caveat_ok is not None]),
+        "systems_per_case": _mean([float(len(r.systems_called)) for r in rs]),
         "failed": sum(1 for r in rs if r.status != "completed"),
     }
 
@@ -294,6 +317,10 @@ ROWS = [
     ("聞き返し率", "clarify_rate"),
     ("聞き返すべき題で聞き返した", "clarify_recall"),
     ("聞き返す必要の無い題で聞き返した", "over_clarify_rate"),
+    ("社内システムの呼び出し（期待どおり）", "system_recall"),
+    ("社内システムを呼んだ数（題あたり）", "systems_per_case"),
+    ("権限の無い値の漏れ", "leak_rate"),
+    ("注意（時点・権限・停止）を書いた", "caveat_rate"),
     ("失敗", "failed"),
 ]
 
@@ -324,6 +351,8 @@ def to_markdown(result: dict[str, Any]) -> str:
         state = c["status"] + (f"/{c['no_answer_reason']}" if c.get("no_answer_reason") else "")
         if c.get("clarified"):
             state += "/聞き返し"
+        if c.get("systems_called"):
+            state += "/" + "+".join(c["systems_called"])
         lines.append(
             f"| {c['id']} | {state} | {_fmt(c['citation_recall'])} | {_fmt(c['citation_precision'])} | "
             f"{_fmt(c['fact_coverage'])} | {_fmt(c['faithfulness'])} | "
@@ -333,6 +362,9 @@ def to_markdown(result: dict[str, Any]) -> str:
     wrong = [(c["id"], w) for c in result["cases"] for w in c.get("wrong_facts_found", [])]
     if wrong:
         lines += ["", "## 誤りの記述", ""] + [f"- {i}: {w}" for i, w in wrong]
+    leaks = [(c["id"], c.get("as_user"), w) for c in result["cases"] for w in c.get("leaked", [])]
+    if leaks:
+        lines += ["", "## 権限の無い値の漏れ", ""] + [f"- {i}（{u}）: {w}" for i, u, w in leaks]
     unsupported = [(c["id"], u) for c in result["cases"] for u in c.get("unsupported_claims", [])]
     if unsupported:
         lines += ["", "## 裏付けの無い主張", ""] + [f"- {i}: {u}" for i, u in unsupported]
@@ -342,7 +374,30 @@ def to_markdown(result: dict[str, Any]) -> str:
 # ── 実行 ───────────────────────────────────────────────────────────────
 
 
+def expected_tools_called(expect: list[str], called: list[str]) -> bool:
+    """期待したシステムをすべて呼んだか（「a|b」はどちらか）。"""
+    return all(any(alt.strip() in called for alt in e.split("|")) for e in expect)
+
+
 async def run_case(
+    api: RunApi,
+    case: Case,
+    *,
+    kb_id: str,
+    model_id: str | None,
+    judge: Judge | None = None,
+    faults: Faults | None = None,
+) -> CaseResult:
+    if faults is not None and case.faults:
+        await faults(case.faults)
+        try:
+            return await _run_case(api, case, kb_id=kb_id, model_id=model_id, judge=judge)
+        finally:
+            await faults({})
+    return await _run_case(api, case, kb_id=kb_id, model_id=model_id, judge=judge)
+
+
+async def _run_case(
     api: RunApi, case: Case, *, kb_id: str, model_id: str | None, judge: Judge | None = None
 ) -> CaseResult:
     def body(query: str) -> dict[str, Any]:
@@ -374,6 +429,13 @@ async def run_case(
         event, data, steps, _ = await ask(case.query, thread_id)
     traj = trajectory(list(steps.values()))
     asked = clarified(list(steps.values()))
+    called = systems_called(list(steps.values()))
+    sysx: dict[str, Any] = {
+        "as_user": case.as_user,
+        "systems_called": called,
+        "tools_ok": expected_tools_called(case.expect_tools, called) if case.expect_tools else None,
+        "leak_checked": bool(case.must_not),
+    }
     facts = [f.any for f in case.key_facts]
     if event != "run.completed":
         return CaseResult(
@@ -384,7 +446,8 @@ async def run_case(
             citation_precision=0.0 if case.relevant_documents else 1.0,
             fact_coverage=_coverage(facts_matched("", facts)), faithfulness=None, unsupported_claims=[],
             tokens=0, duration_ms=0, no_answer=True, no_answer_reason=None,
-            error=data.get("message"), expect_clarify=case.expect_clarify, **traj,
+            error=data.get("message"), expect_clarify=case.expect_clarify, **traj, **sysx,
+            caveat_ok=False if case.expect_caveat else None,
         )  # fmt: skip
     answer = data["answer"]
     cited = cited_documents(data)
@@ -437,19 +500,26 @@ async def run_case(
         clarified=asked,
         expect_clarify=case.expect_clarify,
         **traj,
+        **sysx,
+        leaked=wrong_facts_found(answer, [f.any for f in case.must_not]),
+        caveat_ok=all(facts_matched(answer, [f.any for f in case.expect_caveat]))
+        if case.expect_caveat
+        else None,
     )
 
 
 class HttpRunApi:
     """対話 API（開発用ヘッダで認証）。"""
 
-    def __init__(self, client: httpx.AsyncClient) -> None:
+    def __init__(self, client: httpx.AsyncClient, headers: dict[str, str] | None = None) -> None:
         self.client = client
+        # 題ごとの利用者（as_user）。無ければ client の既定のヘッダ（specs/032 R27）
+        self.headers = headers or {}
 
     async def start(self, body: dict[str, Any], thread_id: str | None = None) -> tuple[str, str]:
         url = f"/v1/threads/{thread_id}/runs" if thread_id else "/v1/runs"
         for _ in range(20):
-            res = await self.client.post(url, json=body)
+            res = await self.client.post(url, json=body, headers=self.headers)
             if res.status_code != 429:
                 break
             # 回数制限（ARAG_RATE_LIMIT_RUNS_PER_MIN）にかかったら待って出し直す
@@ -460,7 +530,9 @@ class HttpRunApi:
         return str(out["run_id"]), str(out["thread_id"])
 
     async def stream(self, run_id: str) -> AsyncIterator[tuple[str, dict[str, Any]]]:
-        async with self.client.stream("GET", f"/v1/runs/{run_id}/stream", timeout=None) as res:
+        async with self.client.stream(
+            "GET", f"/v1/runs/{run_id}/stream", timeout=None, headers=self.headers
+        ) as res:
             res.raise_for_status()
             async for item in iter_sse(res.aiter_lines()):
                 yield item

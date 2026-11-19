@@ -102,6 +102,14 @@ class Settings(BaseSettings):
     secret_key: SecretStr = SecretStr("")
     # Web の中継と共有する合言葉。合うときだけ利用者の IP（X-ARag-Client-IP）を監査ログに使う
     forward_secret: SecretStr = SecretStr("")
+    # 社内システム（MCP）に渡す利用者の身元（JWT）の署名鍵（specs/032 R13）。
+    # 空なら identity 方式のサーバは使えない
+    mcp_identity_key: SecretStr = SecretStr("")
+    # 社内システムのツール 1 回の待ち時間（秒）・1 ターンで呼べる回数・結果の切り詰め（R17・R19）
+    mcp_timeout_sec: float = 10.0
+    mcp_max_calls: int = 6
+    mcp_max_rows: int = 50
+    mcp_max_chars: int = 8000
     run_concurrency: int = 8
     run_heartbeat_sec: float = 10.0
     run_stale_sec: float = 60.0

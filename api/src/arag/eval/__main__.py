@@ -18,6 +18,7 @@ import httpx
 from qdrant_client import AsyncQdrantClient
 from sqlalchemy import select
 
+from arag.agent.mcp_tools import HEALTH_TTL_SEC
 from arag.auth.principal import Principal
 from arag.cli import ingest_dir
 from arag.db.engine import make_engine, make_sessionmaker
@@ -33,6 +34,9 @@ from arag.settings import Settings
 
 EVAL_USER = "eval-admin"
 PRINCIPAL = Principal(user_id=EVAL_USER, role="admin")
+
+# 障害を戻した後に待つ秒数（runner の死活の記憶より少し長く）
+SETTLE_SEC = HEALTH_TTL_SEC + 2
 
 
 def repo_root() -> Path:
@@ -240,6 +244,7 @@ async def cmd_answer(args: argparse.Namespace, settings: Settings) -> int:
     from arag.agent.config import ModelCatalog
     from arag.eval.answer import HttpRunApi, make_judge, result_json, run_case
     from arag.eval.answer import to_markdown as answer_markdown
+    from arag.eval.users import load_users, user_headers
 
     root = repo_root()
     # 評価者の API キー（DEEPSEEK_API_KEY など）は .env にある
@@ -263,12 +268,29 @@ async def cmd_answer(args: argparse.Namespace, settings: Settings) -> int:
             return 2
         judge = make_judge(spec.build())
     headers = {"X-Dev-User-Id": EVAL_USER, "X-Dev-Role": "admin"}
+    # 題ごとの利用者（as_user）と、模擬の社内システムの障害（specs/032 R27・R7）
+    users = load_users(root / suite.users) if suite.users else {}
+    if missing := sorted({c.as_user for c in cases if c.as_user and c.as_user not in users}):
+        print(f"利用者 {', '.join(missing)} が {suite.users} にありません", file=sys.stderr)
+        return 2
     results = []
-    async with httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c:
+    async with (
+        httpx.AsyncClient(base_url=args.api, headers=headers, timeout=60) as c,
+        httpx.AsyncClient(base_url=args.mock_url, timeout=10) as mock,
+    ):
         await check_dev_api(c)
-        api = HttpRunApi(c)
+
+        async def faults(spec: dict[str, str]) -> None:
+            res = await mock.post("/_faults", json=spec)
+            res.raise_for_status()
+            if not spec:
+                # runner は死活の結果を 30 秒持つので、障害を戻した後は次の題に持ち越さないよう待つ
+                print(f"障害を戻した。死活の記憶が切れるまで {SETTLE_SEC:.0f} 秒待つ", file=sys.stderr)
+                await asyncio.sleep(SETTLE_SEC)
+
         for i, case in enumerate(cases, 1):
-            r = await run_case(api, case, kb_id=kb, model_id=args.model, judge=judge)
+            api = HttpRunApi(c, user_headers(users[case.as_user]) if case.as_user else None)
+            r = await run_case(api, case, kb_id=kb, model_id=args.model, judge=judge, faults=faults)
             results.append(r)
             faith = "—" if r.faithfulness is None else f"{r.faithfulness:.2f}"
             print(
@@ -314,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--model", help="ARAG_CHAT_MODELS の id（省略で既定）")
     a.add_argument("--judge", help="忠実度の評価者（ARAG_CHAT_MODELS の id）。省略で忠実度は出さない")
     a.add_argument("--only", nargs="+", help="題 id で絞る")
+    a.add_argument(
+        "--mock-url", default="http://127.0.0.1:8201", help="模擬の社内システム（障害の注入の口。specs/032）"
+    )
     a.add_argument("--limit", type=int, default=0)
     a.add_argument("--out")
     args = p.parse_args(argv)

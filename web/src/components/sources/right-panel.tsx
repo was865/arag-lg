@@ -11,6 +11,7 @@ import type { CitationMap, Source, SourceType } from "@/lib/types";
 import { IconButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Segmented } from "@/components/ui/segmented";
+import { SystemRecordView } from "@/components/chat/tool-steps/system-record";
 
 export type RightPanelAction = "open-source" | "download" | "share" | "inspect";
 
@@ -41,6 +42,13 @@ function SourceIcon({ type }: { type: SourceType }) {
     ),
     wiki: <path d="M3 2.5h8a2 2 0 012 2v9.5a1 1 0 01-1.5.8L8 13l-3.5 1.8a1 1 0 01-1.5-.8V4a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />,
     slack: <path d="M3 9.5a2 2 0 110-4h7a2 2 0 110 4M9.5 3a2 2 0 110 4M6.5 13a2 2 0 110-4M6.5 13V6.5M9.5 7v6.5a2 2 0 102-2" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />,
+    // 社内システム（specs/032）: データベースの円筒
+    system: (
+      <>
+        <ellipse cx="8" cy="4" rx="5" ry="1.8" stroke="currentColor" strokeWidth="1.4" fill="none" />
+        <path d="M3 4v8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8V4M3 8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8" stroke="currentColor" strokeWidth="1.4" fill="none" />
+      </>
+    ),
     doc: (
       <>
         <path d="M4 2h6l3 3v9H4V2z" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
@@ -75,7 +83,9 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
   const pdfPage = Math.max(1, (hlSec?.page ?? active?.sections[0]?.page ?? 1) | 0);
   // 原本タブは全形式で常設。ラベルはファイル種別で変わる（原本/スプレッドシート/原本PDF変換）。
   const originalLabel = originalTabLabel(active?.title || active?.path || "", t);
-  const effectiveMode: ViewMode = viewMode;
+  // 社内システムの結果には原本も解析も無い（specs/032 R20）。表だけを出し、文書の操作は出さない
+  const isSystem = active?.type === "system";
+  const effectiveMode: ViewMode = isSystem ? "html" : viewMode;
 
   const citationNum = (id: string) => {
     const entry = Object.entries(citationMap).find(([, c]) => c.sourceId === id);
@@ -119,11 +129,13 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
             <Badge className="font-mono font-normal">{sources.length}</Badge>
           </div>
           <div className="flex gap-0.5">
-            <IconButton label={t.sources.openInNewTab} onClick={() => onAction("open-source", active)}>
-              <svg viewBox="0 0 16 16" width="12" height="12">
-                <path d="M6 3H3v10h10v-3M9 3h4v4M13 3l-6 6" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </IconButton>
+            {!isSystem && (
+              <IconButton label={t.sources.openInNewTab} onClick={() => onAction("open-source", active)}>
+                <svg viewBox="0 0 16 16" width="12" height="12">
+                  <path d="M6 3H3v10h10v-3M9 3h4v4M13 3l-6 6" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </IconButton>
+            )}
             <IconButton label={t.sources.closePanelTitle} onClick={onClose}>
               <svg viewBox="0 0 16 16" width="12" height="12">
                 <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
@@ -162,11 +174,15 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
 
       {/* Meta */}
       <div className="flex min-w-0 flex-col gap-1 border-b-[0.5px] border-divider bg-surface-2 px-4 py-2.5 max-md:px-3.5">
-        <div className="flex items-baseline gap-2 text-caption">
-          <span className="eyebrow min-w-[32px] font-mono">{t.sources.metaPath}</span>
-          <code className="break-all font-mono text-caption text-fg-2">{active.path}</code>
-        </div>
-        {active && (
+        {isSystem ? (
+          <div className="text-caption text-fg-2">{t.chat.systemSourceNote}</div>
+        ) : (
+          <div className="flex items-baseline gap-2 text-caption">
+            <span className="eyebrow min-w-[32px] font-mono">{t.sources.metaPath}</span>
+            <code className="break-all font-mono text-caption text-fg-2">{active.path}</code>
+          </div>
+        )}
+        {active && !isSystem && (
           <Segmented
             label={t.sources.viewModeLabel}
             value={effectiveMode}
@@ -214,7 +230,9 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
                 </div>
               )}
               <h3 className="mb-1.5 min-w-0 text-footnote font-bold tracking-[-0.005em] text-fg [overflow-wrap:anywhere]">{sec.heading}</h3>
-              {effectiveMode === "text" ? (
+              {sec.record ? (
+                <SystemRecordView record={sec.record} t={t} />
+              ) : effectiveMode === "text" ? (
                 <PlainSectionBody body={sec.body} />
               ) : (
                 <RenderedSectionBody body={sec.body} blockType={sec.blockType} />
@@ -226,7 +244,8 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
         )}
       </div>
 
-      {/* Foot */}
+      {/* Foot（社内システムの結果は、ダウンロード・解析の確認・共有の対象でない） */}
+      {!isSystem && (
       <div className="flex min-w-0 items-center gap-1.5 border-t-[0.5px] border-divider px-3.5 py-2.5 max-md:flex-wrap max-md:gap-y-2">
         <Button variant="secondary" size="sm" onClick={() => onAction("download", active)}>
           <svg viewBox="0 0 16 16" width="11" height="11">
@@ -255,6 +274,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
           </span>
         )}
       </div>
+      )}
     </div>
   );
 }

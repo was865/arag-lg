@@ -1,0 +1,8 @@
+# 評価用の利用者（specs/032 R27）。作るのは uv run python -m arag.cli eval-users --suite harukaze_systems
+# 模擬の社内システムの権限: 仕入単価は資材係・購買課だけ、作業指示は保全課・製造課だけ（mock/systems の queries.py）
+users:
+  hozen: {id: eval-hozen, name: 保全課の人, departments: [保全課]}
+  seizo: {id: eval-seizo, name: 製造課の人, departments: [製造課]}
+  kobai: {id: eval-kobai, name: 購買課の人, departments: [購買課]}
+  hinsho: {id: eval-hinsho, name: 品質保証部の人, departments: [品質保証部]}
+  none: {id: eval-none, name: 部門の無い人}

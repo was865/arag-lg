@@ -143,6 +143,13 @@ export const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
     </>
   ),
   // 表の集計（条件で行を選び、合計を計算する）: 格子
+  // 社内システム（MCP。specs/032）: データベースの円筒
+  system_query: (
+    <>
+      <ellipse cx="8" cy="4" rx="5" ry="1.8" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <path d="M3 4v8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8V4M3 8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8" stroke="currentColor" strokeWidth="1.3" fill="none" />
+    </>
+  ),
   table_query: (
     <>
       <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatTurnTimestamp, sameLocalDay, dateSeparator } from "@/lib/datetime";
+import { formatFetchedAt, formatLocalMinute, formatTurnTimestamp, sameLocalDay, dateSeparator } from "@/lib/datetime";
 
 const iso = (y: number, m: number, d: number, h = 0, min = 0) =>
   new Date(y, m - 1, d, h, min).toISOString();
@@ -42,4 +42,17 @@ test("dateSeparator は別年なら年を含める", () => {
 
 test("dateSeparator は不正値で空文字を返す", () => {
   expect(dateSeparator("nope", new Date(), LABELS)).toBe("");
+});
+
+test("formatFetchedAt: システムの時刻を日付と分まで、時差で直さずに出す", () => {
+  {
+    expect(formatFetchedAt("2026-11-18T20:19+09:00")).toBe("2026-11-18 20:19");
+    expect(formatFetchedAt("2026-11-18T09:05:33")).toBe("2026-11-18 09:05");
+    expect(formatFetchedAt("不明")).toBe("不明");
+  }
+});
+
+test("formatLocalMinute: 端末の時刻で分まで", () => {
+  expect(formatLocalMinute(new Date(2026, 10, 19, 20, 14, 30).toISOString())).toBe("2026-11-19 20:14");
+  expect(formatLocalMinute("x")).toBe("");
 });

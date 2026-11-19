@@ -36,6 +36,11 @@ export function systemFieldValue(
     values: "=",
   },
 ): string {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    // 社内システムの引数など（{"part": "SK-300"}）
+    const kv = Object.entries(v as Record<string, unknown>).filter(([, x]) => x !== "" && x != null);
+    return kv.length ? kv.map(([k, x]) => `${k}=${String(x)}`).join("・") : "—";
+  }
   if (!Array.isArray(v)) return String(v);
   if (!v.length) return "—";
   return v

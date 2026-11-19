@@ -35,8 +35,8 @@ export function TableText({ text }: { text: string }) {
   );
 }
 
-/** 表（1 行目が見出し）。数の列は右寄せ。 */
-export function DataTable({ rows }: { rows: string[][] }) {
+/** 表（1 行目が見出し）。数の列は右寄せ。nowrap はセルを折り返さず横に滑らせる（社内システムの短い値の表）。 */
+export function DataTable({ rows, nowrap = false }: { rows: string[][]; nowrap?: boolean }) {
   return (
     <div className="overflow-x-auto rounded-control border-[0.5px] border-divider bg-code-bg">
       <table className="w-full border-collapse text-caption">
@@ -53,7 +53,7 @@ export function DataTable({ rows }: { rows: string[][] }) {
           {rows.slice(1).map((r, k) => (
             <tr key={k} className="border-t-[0.5px] border-divider first:border-t-0">
               {r.map((c, j) => (
-                <td key={j} className={cn("px-2.5 py-1.5 text-fg-2", /^-?[\d,.]+$/.test(c) && "text-right font-mono tabular-nums")}>
+                <td key={j} className={cn("px-2.5 py-1.5 text-fg-2", nowrap && "whitespace-nowrap", /^-?[\d,.]+$/.test(c) && "text-right font-mono tabular-nums")}>
                   {c}
                 </td>
               ))}

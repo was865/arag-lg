@@ -599,6 +599,8 @@ def shared_sources(
     readable を渡すと、そこに無い文書は文書名・見出し・ページを伏せる（specs/024 R16）。
     """
     titles = {str(x.get("id")): str(x.get("title", "")) for x in sources}
+    # 社内システムの出典は文書の権限で伏せない。行は共有ページに出さず、名前と取得の時点だけ（specs/032 R22）
+    systems = {str(x.get("id")) for x in sources if x.get("kind") == "system"}
     sections: dict[str, dict[str, Any]] = {
         str(sec.get("id")): sec for x in sources for sec in (x.get("sections") or []) if isinstance(sec, dict)
     }
@@ -609,7 +611,7 @@ def shared_sources(
         title = titles.get(str(ref.get("source_id")))
         if title is None:
             continue
-        if readable is not None and str(ref.get("source_id")) not in readable:
+        if readable is not None and str(ref.get("source_id")) not in readable | systems:
             out.append(SharedSource(n=int(key), title=RESTRICTED_TITLE, restricted=True))
             continue
         sec = sections.get(str(ref.get("section_id")), {})

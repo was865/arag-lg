@@ -3,6 +3,7 @@
 
 setup: ## 依存をロックどおりに導入
 	cd api && uv sync --locked
+	cd mock/systems && uv sync --locked
 	cd web && pnpm install --frozen-lockfile
 
 dev-api: ## API を自動リロードで起動（インフラは `make up-infra`）
@@ -20,8 +21,12 @@ up: ## 全サービスを開発構成で起動（compose.override.yaml。ソー�
 up-prod: ## 全サービスを本番と同じ構成で起動（build した image で動かす。push 前の確認など）
 	docker compose -f compose.yaml up -d --build --wait
 
+up-mock: ## 模擬の社内システム（specs/032）を起動し、MCP サーバとして登録する
+	docker compose --profile mock up -d --build --wait mock-systems
+	docker compose exec api python -m arag.cli mcp-register --mock
+
 down:
-	docker compose --profile eval down
+	docker compose --profile eval --profile mock down
 
 eval-api: ## 評価・CLI 用の api（開発用ヘッダで認証、127.0.0.1:8101）を起動
 	docker compose -f compose.yaml --profile eval up -d --build --wait api-eval
@@ -31,11 +36,13 @@ eval-api-down: ## 評価・CLI 用の api を止める
 
 test: ## 単体テスト
 	cd api && uv run pytest -q
+	cd mock/systems && uv run pytest -q
 	uv run --project api pytest -q -p no:cacheprovider --rootdir scripts scripts
 	cd web && pnpm test
 
 lint: ## 静的検査
 	cd api && uv run ruff check . && uv run ruff format --check . && uv run mypy
+	cd mock/systems && uv run ruff check . && uv run ruff format --check . && uv run mypy
 	cd web && pnpm lint && pnpm typecheck
 
 gen: ## OpenAPI 文書と TS 型を再生成

@@ -27,6 +27,7 @@ from langgraph.types import Command
 from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
+from arag.agent.mcp_tools import SYSTEM_GAP_NOTE, asks_current, current_note, record_removed
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE, OMITTED_MARKS
 from arag.agent.primer import with_primer
@@ -36,6 +37,7 @@ from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import ASK_USER, LABELS
+from arag.mcp.registry import is_mcp_tool
 from arag.prompts import load_prompt
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -159,7 +161,23 @@ def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
         else "資料で答えきれない部分は、一般的な知識で補ってよいが、資料に基づかない部分だと明記する。"
     )
     today = (now or datetime.now(TZ)).strftime("%Y年%m月%d日（%a）")
-    return load_prompt("agent_system").format(today=today, citation_rule=citation, unknown_rule=unknown)
+    systems = ctx.mcp.systems if ctx.mcp is not None else []
+    down = ctx.mcp.down if ctx.mcp is not None else []
+    prompt = load_prompt("agent_system").format(
+        today=today,
+        citation_rule=citation,
+        unknown_rule=unknown,
+        grounds="社内の文書と社内システムの結果" if systems else "社内の文書",
+    )
+    if systems or down:
+        # 社内システムを登録していて、使えるか応答しないものがあるターンだけ（specs/032 R15〜R18）
+        catalog = ctx.mcp.catalog if ctx.mcp is not None else ""
+        prompt += "\n\n" + load_prompt("agent_systems").format(
+            systems="・".join(systems) or "なし", catalog=catalog or "（なし）"
+        )
+    if down:
+        prompt += "\n" + load_prompt("agent_systems_down").format(down="・".join(down))
+    return prompt
 
 
 def asked_last_turn(prior: list[AnyMessage]) -> bool:
@@ -286,6 +304,20 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
                     input={"reason": why},
                     output={"removed_tool": ASK_USER},
                 )
+        if ctx.mcp is not None:
+            # 社内システムのツールは、このターンで使えるものだけを渡す（specs/032 R10・R14・R17）
+            base = overrides.get("tools", request.tools)
+            overrides["tools"] = [
+                t
+                for t in base
+                if not is_mcp_tool(getattr(t, "name", "")) or getattr(t, "name", "") in ctx.mcp.usable
+            ]
+            if calls == 1 and not again:
+                record_removed(ctx, emit)
+        elif any(is_mcp_tool(getattr(t, "name", "")) for t in request.tools):
+            overrides["tools"] = [
+                t for t in overrides.get("tools", request.tools) if not is_mcp_tool(getattr(t, "name", ""))
+            ]
         if calls >= ctx.cfg.max_steps:
             prompt += FINAL_NOTE
             overrides["tools"] = []
@@ -440,6 +472,10 @@ def open_send_back(ctx: RunContext, emit: Any, review: Review, answer: str, sear
         ctx.stats.reason_reviews += 1
     elif review.kind == "table":
         ctx.stats.table_reviews += 1
+    elif review.kind == "current":
+        ctx.stats.current_reviews += 1
+    elif review.kind == "system_gap":
+        ctx.stats.system_gap_reviews += 1
     else:
         ctx.stats.number_reviews += 1
     send_back: dict[str, Any] = {
@@ -580,6 +616,8 @@ REVIEW_NAMES = {
     "omitted": "省略の読み残し",
     "gap": "調べ残しの見直し",
     "table": "表の集計の確認",
+    "current": "今の値の確認",
+    "system_gap": "社内システムの確認",
     "numbers": "数字の確認",
     "reason": "理由の裏付けの確認",
 }
@@ -640,6 +678,10 @@ def ungrounded_chapters(answer: str, materials: list[str]) -> list[str]:
     return out
 
 
+def _asked(turn: list[AnyMessage]) -> str:
+    return next((m.text for m in turn if isinstance(m, HumanMessage)), "")
+
+
 def pick_review(
     ctx: RunContext,
     turn: list[AnyMessage],
@@ -660,6 +702,24 @@ def pick_review(
     if "omitted" not in done and (m := OMITTED_GAP.search(answer)) and _omitted_results(ctx, turn):
         # 章立ての中略・読み切れなかった文書を読まずに「分からない」と答えない（specs/031 R5）
         return Review("omitted", m.group(0), OMITTED_NOTE, "省略の読み残し")
+    current = ctx.mcp is not None and asks_current(ctx.user_question or _asked(turn) or ctx.question)
+    checked = any(
+        isinstance(m, ToolMessage) and is_mcp_tool(m.name or "") and m.status != "error" for m in turn
+    )
+    if "current" not in done and current and ctx.mcp is not None and ctx.mcp.usable and not checked:
+        # 今の値を問われたのに、ある時点の文書だけで答えた（specs/032 R15）
+        note = current_note(ctx.mcp.down, review=True)
+        return Review("current", "今の値を社内システムで確かめていない", note, "今の値の確認")
+    if (
+        "system_gap" not in done
+        and ctx.mcp is not None
+        and ctx.mcp.usable
+        and not checked
+        and (m := GAP.search(answer))
+    ):
+        # 文書に無いと答えた（最初の検索が弱くても）: 社内システムに記録があるかもしれない（specs/032 R15）
+        note = SYSTEM_GAP_NOTE.format(catalog=ctx.mcp.catalog)
+        return Review("system_gap", m.group(0), note, "社内システムの確認")
     if "gap" not in done and not weak and searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
         # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
         if m := GAP.search(answer):
@@ -668,6 +728,8 @@ def pick_review(
         "table" not in done
         and ctx.primer is not None
         and ctx.primer.table
+        # 今の値を社内システムで確かめた回答では、文書の表は時点の比較に添えるだけなので計算させない
+        and not (current and checked)
         and not any(isinstance(m, ToolMessage) and m.name == "table_query" for m in turn)
         and any(_TABLE_ROW.search(t) for t in _materials(ctx, turn))
     ):
@@ -826,6 +888,9 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         ctx = cast(RunContext, request.runtime.context)
         emit = request.runtime.stream_writer
         label, running = LABELS.get(name, (name, "実行しています"))
+        spec = ctx.mcp.usable.get(name) if ctx.mcp is not None else None
+        if spec is not None:  # 社内システム（specs/032 R23）
+            label, running = f"社内システム: {spec.server.label}", f"{spec.server.label} に問い合わせ中"
         clock = StepClock(
             emit,
             Step(id=cid, name=name, label=label, status="running", input=dict(call["args"]), summary=running),
@@ -860,6 +925,10 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
             summary = f"{rows.group(1)} 行中 {rows.group(2)} 行" if rows else text[:120]
             # 画面で行・件数・集計を見せるための構造（モデルに渡す文は変えない。specs/028 T8）
             output.update(ctx.table_outputs.pop(cid, {}))
+        if is_mcp_tool(name):
+            rec = ctx.table_outputs.pop(cid, None)
+            output.update(rec or {})
+            summary = f"{rec['system']}・{rec['total']} 行" if rec else text[:120]
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):

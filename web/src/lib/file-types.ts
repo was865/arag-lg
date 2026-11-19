@@ -23,6 +23,9 @@ const FILE_TYPES: Record<string, FileMeta> = {
   jpeg: { iconName: "fileImage", color: "#3D7EE6", label: "JPEG" },
 };
 
+/** 社内システム（MCP）の出典の札（specs/032 R20）。ファイルの形式ではないので拡張子で決めない */
+export const SYSTEM_META: FileMeta = { iconName: "database", color: "#0E7C86", label: "社内システム" };
+
 export function getFileMeta(name: string): FileMeta {
   const ext = (name.split(".").pop() || "").toLowerCase();
   return (

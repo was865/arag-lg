@@ -39,6 +39,20 @@ jobs:
       - name: scripts のテスト
         run: uv run pytest -q -p no:cacheprovider --rootdir ../scripts ../scripts
 
+  # 評価用の模擬の社内システム（specs/032）。資料の xlsx と突き合わせるテストがある
+  mock-systems:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: mock/systems } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+
   web:
     runs-on: ubuntu-24.04
     defaults: { run: { working-directory: web } }

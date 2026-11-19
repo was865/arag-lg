@@ -89,6 +89,8 @@ services:
       ARAG_SECRET_KEY: ${ARAG_SECRET_KEY:-}
       # Web の中継と共有する合言葉（監査ログに利用者の IP を残す）
       ARAG_FORWARD_SECRET: ${ARAG_FORWARD_SECRET:-}
+      # 社内システム（MCP）に渡す利用者の身元の署名鍵（specs/032。模擬のサーバと共有する）
+      ARAG_MCP_IDENTITY_KEY: ${ARAG_MCP_IDENTITY_KEY:-}
       ARAG_RUN_CONCURRENCY: ${ARAG_RUN_CONCURRENCY:-8}
       ARAG_RATE_LIMIT_RUNS_PER_MIN: ${ARAG_RATE_LIMIT_RUNS_PER_MIN:-20}
       ARAG_MONTHLY_TOKEN_LIMIT: ${ARAG_MONTHLY_TOKEN_LIMIT:-0}
@@ -146,6 +148,23 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       api: { condition: service_healthy }
+
+  # 評価用の模擬の社内システム（specs/032）: ERP :8201・保全 :8202・名簿 :8203・課題 :8204（MCP、/mcp）。
+  # make up-mock で起動し、登録も入れる。障害の注入は MOCK_FAULTS か POST /_faults（docs/operations.md）
+  mock-systems:
+    profiles: [mock]
+    build: ./mock/systems
+    environment:
+      # 未設定なら起動時に説明を出して止まる（ここで必須にすると、起動しない構成でも compose 全体の検証が落ちる）
+      ARAG_MCP_IDENTITY_KEY: ${ARAG_MCP_IDENTITY_KEY:-}
+      MOCK_TODAY: ${MOCK_TODAY:-2026-11-18}
+      MOCK_FAULTS: ${MOCK_FAULTS:-}
+      MOCK_ADMIN: "1"
+    ports:
+      - "127.0.0.1:8201:8201"
+      - "127.0.0.1:8202:8202"
+      - "127.0.0.1:8203:8203"
+      - "127.0.0.1:8204:8204"
 
   # 開発用のメール受信箱（確認・再設定メールをここで見る）。UI: http://localhost:8025
   mailpit:

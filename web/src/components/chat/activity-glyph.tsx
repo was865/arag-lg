@@ -42,6 +42,7 @@ export function activityOf(name: ToolName | undefined): Activity {
     case "summarize":
       return "read";
     case "table_query":
+    case "system_query":
     case "sql_query":
       return "table";
     case "calculate":

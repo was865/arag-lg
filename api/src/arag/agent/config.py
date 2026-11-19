@@ -43,6 +43,8 @@ class AgentCfg:
     verify: bool = False
     # 回答のあとに続けて聞く質問の候補を作る（利用者の設定。specs/028 R7）
     followups: bool = True
+    # 社内システム（MCP）も調べる（利用者の設定。specs/032 R14）
+    use_systems: bool = True
 
     @classmethod
     def clamped(cls, raw: Any) -> "AgentCfg":
@@ -63,6 +65,7 @@ class AgentCfg:
             admit_unknown=_bool(o.get("admit_unknown"), d.admit_unknown),
             verify=_bool(o.get("verify"), d.verify),
             followups=_bool(o.get("followups"), d.followups),
+            use_systems=_bool(o.get("use_systems"), d.use_systems),
         )
 
     def as_dict(self) -> dict[str, Any]:
