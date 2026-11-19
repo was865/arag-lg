@@ -63,6 +63,8 @@ class Primer:
     text: str = ""
     # どの検索も 0 件か関連度の低い資料だけだった（資料に無い質問らしい。specs/026 T17）
     weak: bool = False
+    # 質問の種類ごとの注意（検索結果の外、締めの行の後ろに添える指示。specs/031 T16）
+    note: str = ""
 
 
 @dataclass

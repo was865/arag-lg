@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1283,3 +1284,92 @@ def test_clarify_options_fill_up_to_two_when_the_question_names_no_document() ->
         c.registry.add_hit(fake_hit(name).model_copy(update={"document_name": name, "score": score}))
     got = clarify_options(c, "その文書の改訂日はいつですか？", [])
     assert [g.split(" ")[0] for g in got] == ["w01.docx", "d01.pdf"]
+
+
+# ── 文書の構成を問う質問（specs/031 T15〜T17） ──
+
+TOC_ID = "49bc9475-3832-4e76-8400-a2792a4a25ff"
+TOC_BODY = "| 第1章 | 設計の基本 |\n| 第2章 | 本番運用 |\n| 第5章 | チームの生産性 |\n| 付録 | 用語集 |"
+
+
+def test_structure_question_detection() -> None:
+    from arag.agent.primer import structure_question
+
+    for q in [
+        "目次を教えて",
+        "最後の章の内容は？",
+        "付録は最終章じゃない気がする",
+        "この資料の構成は？",
+        "第3章には何が書いてある？",
+    ]:
+        assert structure_question(q), q
+    for q in ["HP-300 の締付トルクは？", "担当者は誰？", "具体的な内容を教えて"]:
+        assert not structure_question(q), q
+
+
+async def test_structure_question_attaches_toc_of_the_prior_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """続けての「目次を教えて」も、前のターンで引用した 1 つの文書の章立てと目次の節を添える（T15・T16）。"""
+    import arag.agent.primer as primer
+
+    async def outline(_ctx: Any, _doc: Any, **_kw: Any) -> str:
+        return f"（この文書には目次の節「目 次」（p.4、ID: {TOC_ID}）があります）\n- 1. 目 次"
+
+    async def section(_ctx: Any, sid: str) -> str:
+        assert sid == TOC_ID
+        return f'<資料 n="9" 文書="規程.pdf" 見出し="目 次">\n{TOC_BODY}\n</資料>'
+
+    monkeypatch.setattr(primer, "op_get_outline", outline)
+    monkeypatch.setattr(primer, "op_read_section", section)
+    model = FakeToolModel(messages=script(AIMessage(content="一回目[1]"), AIMessage(content="目次です[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    search = FakeSearch("本文")
+    await run(agent, ctx(search), "PM-04 の停止時間は？", thread="st")
+    _, custom = await run(agent, ctx(search), "目次を教えて", thread="st")
+    seen = "\n".join(str(m.text) for m in model.calls[1])
+    assert "第5章 | チームの生産性" in seen
+    # 章の見出しを資料のとおりに書く注意は、検索結果の外に添える。「最後の章」の注意は、それを問うときだけ
+    assert "資料に無い見出しを作らない" in seen.split("</検索結果>")[-1]
+    assert "番号の付いた最後" not in seen.split("</検索結果>")[-1]  # システムプロンプトの例にはある
+    assert any(e["type"] == "step" and e["step"]["input"].get("kind") == "structure_note" for e in custom)
+    step = [
+        e["step"] for e in custom if e["type"] == "step" and e["step"]["input"].get("role") == "structure"
+    ][-1]
+    assert step["input"]["scope_documents"] == ["規程.pdf"] and step["status"] == "done"
+    # 構成を問わない質問では添えない
+    model2 = FakeToolModel(messages=script(AIMessage(content="一回目[1]"), AIMessage(content="二回目[1]")))
+    agent2 = build_agent(model2, checkpointer=InMemorySaver())
+    await run(agent2, ctx(search), "PM-04 の停止時間は？", thread="st2")
+    _, custom2 = await run(agent2, ctx(search), "担当者は誰？", thread="st2")
+    assert not any(e["type"] == "step" and e["step"]["input"].get("role") == "structure" for e in custom2)
+
+
+def test_ungrounded_chapter_titles() -> None:
+    from arag.agent.middleware import ungrounded_chapters
+
+    materials = [TOC_BODY]
+    answer = (
+        "**目次**\n* **第 1 章 > 設計の 基本** [1]\n* **第2章**：Claude のモデルと機能\n"
+        "* 第5章: チームの生産性 [1]\n* 第3章（詳細は資料にありません）"
+    )
+    assert ungrounded_chapters(answer, materials) == ["第2章 Claude のモデルと機能"]
+    assert ungrounded_chapters("第1章と第2章の違いは…", materials) == []
+
+
+def test_review_sends_back_made_up_chapter_titles() -> None:
+    from arag.agent.context import Primer
+    from arag.agent.middleware import pick_review
+
+    c = ctx(FakeSearch())
+    c.primer = Primer(kind="docs", table=False, queries=("目次",), text=TOC_BODY, weak=False)
+    turn: list[Any] = [HumanMessage(content="目次を教えて")]
+    found = pick_review(c, turn, "第1章：設計の基本\n第2章：Claudeのモデルと機能 [1]", 1, True)
+    assert found is not None and found.kind == "structure" and "Claudeのモデルと機能" in found.note
+    assert pick_review(c, turn, "第1章：設計の基本\n第2章：本番運用 [1]", 1, True) is None
+
+
+def test_structure_note_only_for_structure_questions() -> None:
+    from arag.agent.primer import structure_note
+
+    assert "番号の付いた最後" in structure_note("この資料の最後の章の内容を教えて")
+    assert "番号の付いた最後" not in structure_note("目次を教えて") and structure_note("目次を教えて")
+    assert structure_note("HP-300 の締付トルクは？") == ""

@@ -60,7 +60,9 @@ def merge_results(texts: list[str]) -> str:
 def with_primer(question: str, primer: Primer | None) -> str:
     if primer is None or not primer.text:
         return question
-    return f"{question}\n\n{PRIMER_OPEN}\n{PRIMER_HEAD}\n\n{primer.text}\n{PRIMER_CLOSE}\n{PRIMER_LANGUAGE}"
+    tail = f"\n{primer.note}" if primer.note else ""
+    body = f"{PRIMER_OPEN}\n{PRIMER_HEAD}\n\n{primer.text}\n{PRIMER_CLOSE}"
+    return f"{question}\n\n{body}\n{PRIMER_LANGUAGE}{tail}"
 
 
 # なぜこの検索をするのか（質問文での検索と、整理したクエリでの検索は、狙いが違う）
@@ -69,6 +71,10 @@ log = get_logger("arag.agent.primer")
 ROLES = {
     "question": ("質問文で検索", "質問の言葉そのままで探す（整理を待たずに始める）"),
     "named": ("指定の文書を読む", "質問に書かれた文書名の文書を、検索せずに読む"),
+    "structure": (
+        "文書の構成を読む",
+        "構成（目次・最後の章など）を問う質問なので、前のターンの文書の章立てと目次の節を添える",
+    ),
     "understood": (
         "整理したクエリで検索",
         "補助モデルが言い換え・分けたクエリで探す（言葉の違いによる取りこぼしを減らす）",
@@ -185,6 +191,71 @@ async def _outline_for(ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, st
     )
     out = f"<章立て>\n{text}\n</章立て>"
     return f"{out}\n\n{toc}" if toc else out
+
+
+# 構成を問う質問への注意（specs/031 T16）。検索結果（資料）の中でなく、その外に指示として添える
+STRUCTURE_NOTE = (
+    "章の見出しは、資料の目次の節・章立てに書かれたとおりに書き、資料に無い見出しを作らない。"
+    "足りなければ get_outline や read_section で確かめる。"
+)
+# 「最後の章」「最初の章」は 2 通りに取れ、両方を短く答えられる（R6）
+EDGE_CHAPTER_NOTE = (
+    "「最後の章」「最初の章」は 2 通りに取れる。番号の付いた最後（最初）の章（第N章）と、文書の末尾（先頭）に"
+    "ある付録・補遺・入門などを分けて、両方を答える。"
+)
+_EDGE_CHAPTER = re.compile(
+    r"(最後|最初|最終|末尾|はじめ|初め)の?章|最終章|\b(last|first|final)\s+chapter", re.I
+)
+
+
+def structure_note(question: str) -> str:
+    """構成を問う質問に添える注意。構成を問わなければ空（T16）。"""
+    if not structure_question(question):
+        return ""
+    return STRUCTURE_NOTE + (EDGE_CHAPTER_NOTE if _EDGE_CHAPTER.search(question) else "")
+
+
+# 文書の構成を問う質問（目次・最後の章・付録・第N章など。specs/031 T15）
+_STRUCTURE = re.compile(
+    r"目\s*次|最後の章|最初の章|最終章|章立て|構成|付録|補遺|第\s*\d+\s*章|何章|章の(?:一覧|内容|数)|"
+    r"table of contents|\bchapters?\b|\bappendix\b",
+    re.IGNORECASE,
+)
+
+
+def structure_question(question: str) -> bool:
+    """文書の構成（目次・章）を問う質問か。検索では目次の節が上がりにくいので章立てを添える（T15）。"""
+    return bool(_STRUCTURE.search(question))
+
+
+async def _read_structure(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str]) -> str:
+    """構成を問う続けての質問に、前のターンの文書の章立てと目次の節を添える（specs/031 T15）。"""
+    sid = f"primer-{index}"
+    label, purpose = ROLES["structure"]
+    clock = StepClock(
+        emit,
+        Step(
+            id=sid,
+            name="search",
+            label=label,
+            status="running",
+            input={
+                "query": doc[1],
+                "by": "system",
+                "role": "structure",
+                "purpose": f"{purpose}: 「{doc[1]}」",
+                "scope_documents": [doc[1]],
+            },
+            summary="章立てを読んでいます",
+        ),
+    )
+    ctx.stats.primer_searches += 1
+    text = await _outline_for(ctx, emit, sid, doc)
+    if not text:
+        clock.done("章立てを取得できなかった", {"result": ""})
+        return ""
+    clock.done(f"「{doc[1]}」の章立てと目次を添えた", {"result": text[:2000]})
+    return text
 
 
 async def _search(
@@ -442,6 +513,18 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
         texts = [
             await _read_named(ctx, emit, base + i, d, u["question"]) for i, d in enumerate(named)
         ] + texts
+    question = u.get("question", "")
+    history = state["messages"][: _last_question(state["messages"]) or 0]
+    if not named and u["kind"] == "docs" and structure_question(question):
+        # 構成を問う続けての質問（「目次を教えて」）: 検索では目次の節が上がりにくい。前のターンで
+        # 引用した文書が 1 つなら、その章立てと目次の節を添える（specs/031 T15）
+        ids, names = (
+            (u["scope"]["ids"], u["scope"]["names"]) if u["scope"]["ids"] else last_cited_scope(history)
+        )
+        if len(ids) == 1:
+            base = u["start"] + len(u["extra"]) * 2 + 1
+            if text := await _read_structure(ctx, emit, base, (ids[0], names[0])):
+                texts = [text, *texts]
     ctx.primer_texts = texts
     ctx.primer = Primer(
         kind=u["kind"],
@@ -449,9 +532,19 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
         queries=tuple(u["queries"]),
         text=merge_results(texts),
         weak=bool(texts) and all(weak_result(t) for t in texts),
+        note=(note := structure_note(question)) if u["kind"] == "docs" else "",
     )
-    question = u.get("question", "")
-    history = state["messages"][: _last_question(state["messages"]) or 0]
+    if ctx.primer.note:
+        record_system(
+            emit,
+            "system-structure-note",
+            "structure_note",
+            "構成の質問への注意",
+            "文書の構成を問う質問なので、章の見出しを資料のとおりに書くよう添えた"
+            + ("（「最後の章」は番号の付いた章と付録の両方を答える）" if EDGE_CHAPTER_NOTE in note else ""),
+            input={"asked": question[:300]},
+            output={"note": note},
+        )
     attached = ctx.document_ids is not None or ctx.hooks.read_image is not None
     if u["kind"] == "docs" and not named and not attached and (term := reference_unknown(question, history)):
         # 検索の結果は指す先の手がかりにならないので、選択肢は出さず対象を添えて聞き直してもらう

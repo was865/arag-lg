@@ -3,6 +3,7 @@
 import json
 import re
 import time
+import unicodedata
 from collections.abc import Awaitable, Callable, Collection
 from dataclasses import dataclass
 from datetime import datetime
@@ -614,6 +615,31 @@ def record_review_pass(emit: Any, n: int, skip: str | None, done: Collection[str
     )
 
 
+# 回答に書いた「第N章: 見出し」（区切りの後に見出しが続くもの。「第1章と第2章」は見出しではない）
+_CHAPTER = re.compile(r"第\s*(\d+)\s*章\s*\**\s*(?:[>＞:：\-—・|]\s*|\s+)\**\s*([^\n\[［（(]+)")
+STRUCTURE_NOTE = (
+    "この下書きの章の見出し（{titles}）は、資料に見当たりません。章の構成は、get_outline か、文書の中の"
+    "目次の節を read_section で読んで確かめ、資料に書かれたとおりの見出しだけを書いてください。"
+    + KEEP_CITATIONS
+)
+
+
+def _flat(s: str) -> str:
+    return re.sub(r"[\s*|_`]+", "", unicodedata.normalize("NFKC", s)).lower()
+
+
+def ungrounded_chapters(answer: str, materials: list[str]) -> list[str]:
+    """回答の「第N章: 見出し」のうち、見出しが資料に無いもの（specs/031 T17）。"""
+    pool = _flat("\n".join(materials))
+    out: list[str] = []
+    for m in _CHAPTER.finditer(answer):
+        title = m.group(2).strip().strip("*").strip()
+        key = _flat(title)[:10]
+        if len(key) >= 3 and key not in pool:
+            out.append(f"第{m.group(1)}章 {title}")
+    return out
+
+
 def pick_review(
     ctx: RunContext,
     turn: list[AnyMessage],
@@ -647,6 +673,15 @@ def pick_review(
     ):
         # 表の行を目で比べると誤る（在庫 4・発注点 4 を「下回る」と答えるなど）
         return Review("table", "表の集計を計算していない", TABLE_NOTE, "表の集計の確認")
+    if "structure" not in done and (made := ungrounded_chapters(answer, _materials(ctx, turn))):
+        # 資料に無い章の見出しを作った（目次を見ずに、検索で拾った見出しから章立てを組み立てた。T17）
+        shown = "・".join(made[:5])
+        return Review(
+            "structure",
+            f"資料に無い章の見出し {shown}",
+            STRUCTURE_NOTE.format(titles=shown),
+            "章の見出しの確認",
+        )
     if "numbers" not in done and checks_numbers(ctx):
         if missing := _ungrounded(ctx, turn, answer):
             shown = "・".join(missing[:8])

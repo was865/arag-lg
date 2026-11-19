@@ -71,6 +71,7 @@ uv run python -m arag.cli sync-payload           # Qdrant の payload を DB に
 uv run python -m arag.eval run --suite agentic_rag_demo --variant default dbsf   # 検索の評価
 uv run python -m arag.eval answer --suite agentic_rag_demo_ext                  # 回答の評価
 uv run python -m arag.eval answer --suite harukaze_clarify                      # 聞き返しの評価（harukaze_mix の KB を使う）
+uv run python -m arag.eval answer --suite handbook_structure                    # 長い文書の構成（目次・最後の章）を続けて尋ねる評価
 cd .. && make eval-api-down
 ```
 

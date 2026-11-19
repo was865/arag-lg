@@ -230,6 +230,7 @@ export const chat = {
     answer_chars: "書いた文字数",
     max_steps: "上限",
     note: "モデルへの指示",
+    asked: "質問",
     tool_choice: "ツールの指定",
     tools: "使えるツール",
     before: "整形の前",
@@ -300,6 +301,7 @@ export const chat = {
     },
     pending_review: {
       omitted: "省略の読み残し",
+      structure: "章の見出しの確認",
       reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
@@ -307,6 +309,7 @@ export const chat = {
     },
     review: {
       omitted: "省略の読み残し",
+      structure: "章の見出しの確認",
       reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
@@ -315,6 +318,7 @@ export const chat = {
     // 確認の通過（specs/029）
     done: {
       omitted: "省略の読み残し",
+      structure: "章の見出しの確認",
       reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",

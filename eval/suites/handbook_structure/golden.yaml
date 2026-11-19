@@ -1,0 +1,65 @@
+# 長い文書の構成（目次・最後の章）を続けて尋ねる題集（specs/031 T18）。資料は eval/assets/handbook_structure/build.py で作る。
+# 2026-11-19 作成。実際の失敗（学習ハンドブックの「最後の章」「目次」で、2 ターン目から目次を見ずに章立てを作った）を真似る。
+# 正しい構成は文書の中の目次の表にだけある: 入門 → 第1〜5章 → 補遺 → 模擬試験 → 付録。
+suite: handbook_structure
+files_dir: eval/assets/handbook_structure/docs
+documents:
+- 社内研修ハンドブック_品質保証コース.docx
+thresholds: {}
+cases:
+- id: hs01-last-chapter
+  # 「最後の章」は 2 通りに取れる。番号の付いた最後の章（第5章）と、末尾の付録の両方を答える
+  query: |-
+    社内研修ハンドブック_品質保証コース.docx
+    この資料の最後の章の内容を教えて
+  tags: [ja, named]
+  relevant_documents: [社内研修ハンドブック_品質保証コース.docx]
+  key_facts:
+  - any: [監査の準備と運用]
+  - any: [速習シートと用語集, 速習シート]
+- id: hs02-toc-followup
+  turns:
+  - |-
+    社内研修ハンドブック_品質保証コース.docx
+    この資料の最後の章の内容を教えて
+  query: 目次を教えて
+  tags: [ja, multiturn]
+  relevant_documents: [社内研修ハンドブック_品質保証コース.docx]
+  key_facts:
+  - any: [品質保証の基礎と用語]
+  - any: [検査計画とサンプリング]
+  - any: [不良の分析と是正処置]
+  - any: [供給者の品質管理]
+  - any: [監査の準備と運用]
+  - any: [規格改訂の要点]
+  - any: [速習シートと用語集]
+- id: hs03-not-appendix
+  turns:
+  - |-
+    社内研修ハンドブック_品質保証コース.docx
+    この資料の最後の章の内容を教えて
+  query: 付録は最終章じゃない気がする
+  tags: [ja, multiturn]
+  relevant_documents: [社内研修ハンドブック_品質保証コース.docx]
+  key_facts:
+  - any: [監査の準備と運用]
+- id: hs04-chapter-title
+  turns:
+  - |-
+    社内研修ハンドブック_品質保証コース.docx
+    この資料の最後の章の内容を教えて
+  query: 第3章のタイトルは何ですか？
+  tags: [ja, multiturn]
+  relevant_documents: [社内研修ハンドブック_品質保証コース.docx]
+  key_facts:
+  - any: [不良の分析と是正処置]
+- id: hs05-chapter-content
+  turns:
+  - |-
+    社内研修ハンドブック_品質保証コース.docx
+    この資料の最後の章の内容を教えて
+  query: 第4章ではどんなことを学びますか？
+  tags: [ja, multiturn]
+  relevant_documents: [社内研修ハンドブック_品質保証コース.docx]
+  key_facts:
+  - any: [供給者]
