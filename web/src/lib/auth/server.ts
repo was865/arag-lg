@@ -9,12 +9,18 @@ import { admin, jwt } from "better-auth/plugins";
 import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { Pool } from "pg";
 import { inviteMail, isInviteUrl, resetPasswordMail, sendMail, verificationMail } from "@/lib/auth/mail";
+import { siteOrigins } from "@/lib/auth/origins";
 
 export const AUTH_SCHEMA = "auth";
 export const API_AUDIENCE = "arag-api";
 
 export function authBaseUrl(): string {
   return (process.env.BETTER_AUTH_URL ?? "http://localhost:3100").replace(/\/$/, "");
+}
+
+/** ログイン・状態を変える要求で受け付ける Origin（BETTER_AUTH_URL + ARAG_EXTRA_ORIGINS）。 */
+export function allowedOrigins(): string[] {
+  return siteOrigins(authBaseUrl(), process.env.ARAG_EXTRA_ORIGINS);
 }
 
 let pool: Pool | undefined;
@@ -33,7 +39,7 @@ export function authOptions() {
     appName: "ARag",
     baseURL,
     secret: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: [baseURL],
+    trustedOrigins: allowedOrigins(),
     database: authPool(),
     emailAndPassword: {
       enabled: true,

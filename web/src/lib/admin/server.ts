@@ -3,7 +3,7 @@ import { log } from "@/lib/log";
 
 /** 管理 API の共通部品（specs/010-admin-members）。 */
 import { serverApiHeaders } from "@/lib/api/proxy-env";
-import { authBaseUrl, getAuth } from "@/lib/auth/server";
+import { allowedOrigins, getAuth } from "@/lib/auth/server";
 
 export type AdminSession = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>["api"]["getSession"]>>>;
 
@@ -14,7 +14,7 @@ export const apiError = (status: number, code: string, message: string) =>
 export async function requireAdmin(request: Request): Promise<AdminSession | Response> {
   if (request.method !== "GET") {
     const origin = request.headers.get("origin");
-    if (origin && origin !== authBaseUrl()) return apiError(403, "forbidden_origin", "許可されていない送信元です");
+    if (origin && !allowedOrigins().includes(origin)) return apiError(403, "forbidden_origin", "許可されていない送信元です");
   }
   const session = await getAuth().api.getSession({ headers: request.headers });
   if (!session) return apiError(401, "unauthenticated", "ログインが必要です");

@@ -1,7 +1,7 @@
 import "server-only";
 
 /** 中継の設定（環境変数から）。既定は Better Auth のセッション → JWT（specs/006-auth R13・R17）。 */
-import { authBaseUrl, getAuth } from "@/lib/auth/server";
+import { allowedOrigins, getAuth } from "@/lib/auth/server";
 import { TokenCache } from "@/lib/auth/token-cache";
 import { forwardHeaders, type ProxyOptions } from "@/lib/api/proxy";
 
@@ -31,7 +31,7 @@ export function proxyOptionsFromEnv(): ProxyOptions {
   // 監査ログに利用者の IP を残すための、API と共有する合言葉
   const forwardSecret = process.env.ARAG_FORWARD_SECRET || undefined;
   if (devUserId) return { baseUrl, devUserId, devRole: process.env.ARAG_DEV_ROLE ?? "admin", forwardSecret };
-  return { baseUrl, authorize, allowedOrigins: [authBaseUrl()], forwardSecret };
+  return { baseUrl, authorize, allowedOrigins: allowedOrigins(), forwardSecret };
 }
 
 /** サーバで API を呼ぶときの見出し（共有ページなど、ログインは任意）。

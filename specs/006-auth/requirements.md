@@ -32,6 +32,7 @@
 - R15. Python（`ARAG_AUTH_MODE=jwt`）は Bearer の JWT を Better Auth の JWKS で検証する（EdDSA、`iss`・`aud`・`exp` を確認）。JWKS はキャッシュし、未知の `kid` のときだけ取り直す（取り直しは 30 秒に 1 回まで）。検証できなければ 401 `unauthenticated`。
 - R16. JWT から `sub`（利用者 ID）・`role`・`email`・`email_verified` を使う。未知のロールは `member` とみなす。
 - R17. 開発・評価用の利用者ヘッダ（`X-Dev-User-Id`）は `ARAG_AUTH_MODE=dev` のときだけ受け付ける。Web は `ARAG_DEV_USER_ID` を明示したときだけ付ける（既定では付けない）。
+- R20. `ARAG_EXTRA_ORIGINS`（カンマ区切りの URL）を設定したとき、システムは `BETTER_AUTH_URL` に加えてそれらの Origin からのログイン・状態を変える要求も自サイトとして受け付ける（Tailscale などの別の入口。JWT の `iss` とメールのリンクは `BETTER_AUTH_URL` のまま）。
 
 ## 5. 非機能
 

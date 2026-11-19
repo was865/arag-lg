@@ -138,6 +138,8 @@ services:
       ARAG_FORWARD_SECRET: ${ARAG_FORWARD_SECRET:-}
       # Better Auth（specs/006-auth）。BETTER_AUTH_URL はブラウザから見た URL
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3100}
+      # ほかの入口（例 Tailscale の https://<機名>.<tailnet>.ts.net）。カンマ区切り。ログインと送信を許す
+      ARAG_EXTRA_ORIGINS: ${ARAG_EXTRA_ORIGINS:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?.env に BETTER_AUTH_SECRET を設定してください}
       ARAG_AUTH_DATABASE_URL: postgresql://arag:arag@postgres:5432/arag
       ARAG_SMTP_URL: ${ARAG_SMTP_URL:-smtp://mailpit:1025}

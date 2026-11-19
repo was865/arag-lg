@@ -28,6 +28,7 @@
 
 - [x] D1 compose（mailpit・環境変数）・licenses.md — R10, R18
 - [x] D2 ブラウザで登録 → メール確認 → 質問 → ライブラリ → ログアウト
+- [x] D3 別の入口（`ARAG_EXTRA_ORIGINS`）の Origin を Better Auth・中継・管理 API で受け付ける — R14, R20
 
 ## 実装メモ
 
@@ -35,3 +36,4 @@
 - JWKS の取得中に同時に来た要求が 401 になる競合を見つけて直した（取得を共有する。`test_concurrent_requests_share_one_fetch`）。
 - 評価（`python -m arag.eval`）と `arag.cli ingest-dir` は開発用ヘッダで API を直接叩く。本番の api（JWT）は変えず、`make eval-api` で評価用の api-eval（compose profile `eval`、`ARAG_AUTH_MODE=dev`、127.0.0.1:8101 のみ）を立てて使う。終わったら `make eval-api-down`。繋がらない・401 のときは起動方法を示して止まる（2026-11-09）。
 - 認証前に dev 利用者（`dev`）で作った個人 KB・スレッドは、新しい利用者からは見えない（利用者 ID が違う）。組織 KB は owner / admin から見える。
+- 2026-11-20 Tailscale から使うため `ARAG_EXTRA_ORIGINS` を足した（`web/src/lib/auth/origins.ts`）。next dev の `allowedDevOrigins` にも同じホスト名を入れる。確認: その Origin でログイン 200・スレッド作成 200、知らない Origin は 403。

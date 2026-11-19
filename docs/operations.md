@@ -21,6 +21,12 @@ make up-prod           # 本番と同じ構成（build した image。compose.ov
 - 開発構成（`make up`）ではソースを容器に載せているので、保存すれば反映する（`web` は next dev、`api` は --reload、`runner`・`worker` は watchfiles で再起動）。作り直しは依存（`pyproject.toml`・`package.json`）を変えたときだけ `make up`。
 - 本番の構成（`make up-prod`）では image で動くので、変えたら作り直す: `docker compose -f compose.yaml up -d --build --no-deps runner web`。開発構成に戻すときは `make up`。
 
+### 外から使う（Tailscale）
+
+- `.env` に `ARAG_EXTRA_ORIGINS=https://<機名>.<tailnet>.ts.net,http://<Tailscale の IP>:3100` を書き、`docker compose up -d web` で作り直す。localhost:3100 もそのまま使える。
+- HTTPS の名前で開くには Mac で `tailscale serve --bg 3100`（初回は tailnet の管理画面で Serve と HTTPS 証明書を有効にする。`tailscale serve` が出す URL を開く）。外すときは `tailscale serve reset`。
+- 確認メール・再設定メールのリンクは `BETTER_AUTH_URL`（localhost）のまま。外ではリンクの頭を入口の URL に読み替える。
+
 ## 2. GPU 機（Windows + RTX 4090、Docker Desktop + WSL2）
 
 起動（GPU 機の作業ツリーで）:
@@ -133,6 +139,7 @@ uv run python -m arag.eval answer --suite harukaze_systems --out ../eval/.report
 |---|---|
 | 変えたはずのエージェントの動きが変わらない | 本番の構成（`make up-prod`）で動いている。`make up` で開発構成に戻すか、`docker compose -f compose.yaml up -d --build --no-deps runner`。開発構成なら `docker compose logs runner` に `change detected` が出ているか見る |
 | 開発サーバから質問が送れない | 送信元を 3100 に限っている。3100 で確かめる |
+| Tailscale の URL でログイン・質問が 403 | その入口が `ARAG_EXTRA_ORIGINS` に無い。足して `docker compose up -d web` |
 | 回答がすぐ失敗する・モデルが切り替わる | GPU 機の vLLM が落ちている、または外部 API の残高切れ（402）。「詳細」のモデル切り替えのステップに理由が出る |
 | 入庫が進まない | `worker` のログ、api の `/readyz`、docling-serve（5001）の `/health` を見る |
 | `make gen-check` が CI で落ちる | API を変えて `make gen` をしていない |
