@@ -9,6 +9,7 @@ import asyncio
 import json
 import re
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -45,8 +46,8 @@ HEALTH_TTL_SEC = 30.0
 # 社内システムにしか無い記録（発注の仕入単価・作業指示・最近の記録）を問う質問。
 # 「いま」は「〜ています」の中にも現れるので、語の頭で、後ろが「す・せ・し」でないものだけ
 CURRENT = re.compile(
-    r"今(?![回後度年月週日])|現在|最新|(?<![ぁ-ゖ])いま(?![すせし])|まだ|終わっ|終わりま|終了し|完了し|済ん|進み|"
-    r"未入荷|未完了|残って|最近|直近|仕入単価|仕入価格|購入単価|発注残|入荷予定|作業指示|"
+    r"今(?![回後度年月週日])|(?<![日末])現在|最新|(?<![ぁ-ゖ])いま(?![すせし])|まだ|終わっ|終わりま|終了し|完了し|済ん|進み|"
+    r"未入荷|未完了|残って|最近|直近|以降|(?:の|た)(?:あと|後)で|仕入単価|仕入価格|購入単価|発注残|入荷予定|作業指示|"
     r"\bcurrent(?:ly)?\b|\bnow\b|\blatest\b|\bstill\b|\brecent(?:ly)?\b|"
     r"\bbeen (?:resolved|fixed|completed|closed|done|finished)\b",
     re.IGNORECASE,
@@ -76,8 +77,26 @@ DOWN_NOTE = (
 )
 
 
+# 時点を言わずに、社内システムが今の値を持つもの（在庫・発注点・単価・リードタイム・入出庫・
+# 納期遅れ・発注の可否）を問う質問。文書の時点を名指ししたとき（「10月末の台帳で」「9月30日現在」
+# 「11月16日の報告で」）は文書の値を問うている（specs/034 の評価）
+RECORD = re.compile(
+    r"在庫|どこにいくつ|発注点|標準単価|単価はいくら|リードタイム|何日かかり|届くまで|入出庫|"
+    r"納期を過ぎ|納期が過ぎ|し終えて(い)?ない|発注でき|内線|"
+    r"\bin stock\b|\breorder\b|\blead time\b|\boverdue\b",
+    re.IGNORECASE,
+)
+DOC_POINT = re.compile(
+    r"\d+\s*月\s*(\d+\s*日)?\s*(末|現在|時点|の)|(台帳|報告|議事録|手引き|資料|評価|月報|規程|文書)(で|では|に|には|によると)|"
+    r"\bas of\b|\bin the (ledger|report|minutes)\b",
+    re.IGNORECASE,
+)
+
+
 def asks_current(question: str) -> bool:
-    return bool(CURRENT.search(question))
+    if CURRENT.search(question):
+        return True
+    return bool(RECORD.search(question)) and not DOC_POINT.search(question)
 
 
 # 質問の内容語（漢字・カタカナの 2 字以上の並び、英数字の語）
@@ -121,6 +140,8 @@ class HealthCache:
     """サーバの死活（runner の中で 30 秒だけ持つ）。サーバ名 → (時刻, 理由。None なら応答あり)。"""
 
     seen: dict[str, tuple[float, str | None]] = field(default_factory=dict)
+    # 確かめた結果を外にも知らせる（runner は redis に書き、api が入力欄の状態に使う。specs/033 R19）
+    sink: Callable[[str, str | None, int], Awaitable[None]] | None = None
 
     def get(self, name: str) -> tuple[bool, str | None]:
         hit = self.seen.get(name)
@@ -188,16 +209,32 @@ async def prepare(
         if not cached:
             srv = servers[name]
             ep = srv.endpoint(box)
+            t0 = time.perf_counter()
             try:
                 await ping(ep, auth_headers(ep, run.caller, identity_key), PING_SEC)
                 reason = None
             except McpError as e:
                 reason = f"{type(e).__name__}: {e}"
             health.put(name, reason)
+            if health.sink is not None:
+                await health.sink(name, reason, max(1, round((time.perf_counter() - t0) * 1000)))
         if reason is not None:
             run.removed[name] = ("mcp_unavailable", servers[name].label, f"接続を確かめられない（{reason}）")
 
     await asyncio.gather(*(check(n) for n in servers if n not in run.removed))
+
+    async def observed(name: str, reason: str | None, ms: int) -> None:
+        # 呼び出しで分かった死活。変わったときだけ書く（応答ありが続くたびに redis へ書かない）
+        cached, before = health.get(name)
+        if cached and before == reason:
+            return
+        if not cached and reason is None:
+            return
+        health.put(name, reason)
+        if health.sink is not None:
+            await health.sink(name, reason, max(1, ms))
+
+    run.on_health = observed
     run.usable = {t.agent_name: t for t in specs if t.server.name not in run.removed}
     return run
 
@@ -289,6 +326,8 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
     try:
         res = await call_tool(ep, auth_headers(ep, m.caller, m.identity_key), spec.name, args, limit)
     except McpError as e:
+        if m.on_health is not None and not isinstance(e, McpAuthError):
+            await m.on_health(server, f"{type(e).__name__}: {e}", round((time.perf_counter() - t0) * 1000))
         kind = (
             "mcp_timeout"
             if isinstance(e, McpTimeout)
@@ -313,6 +352,12 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
             "推測で値を埋めず、確かめられなかったことを回答に書き、文書で答えられる部分を答えてください。"
         )
     data = res.data
+    if m.on_health is not None:
+        down = data is not None and data.get("error") == "unavailable"
+        reason = str(data.get("message") or "応答しない") if down and data is not None else None
+        await m.on_health(server, reason, round((time.perf_counter() - t0) * 1000))
+    if data is not None and data.get("error") in ("unavailable", "too_many"):
+        return _server_error(emit, call_id, label, server, spec.name, args, data)
     if data is not None and data.get("error") == "forbidden":
         msg = str(data.get("message") or "見る権限がありません")
         record_system(
@@ -358,6 +403,8 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
     restricted = [str(x) for x in (data.get("restricted") or [])]
     note = data.get("note")
     issue = data.get("issue")
+    next_cursor = data.get("next_cursor")
+    trace = data.get("trace") if isinstance(data.get("trace"), dict) else None
     lines = []
     if isinstance(issue, dict):
         lines.append("　".join(f"{k}: {v}" for k, v in issue.items()))
@@ -388,6 +435,8 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
             "restricted": restricted,
             "note": note if isinstance(note, str) else None,
             **({"issue": issue} if isinstance(issue, dict) else {}),
+            **({"next_cursor": str(next_cursor)} if next_cursor else {}),
+            **({"trace": trace} if trace else {}),
         },
     )
     # 画面の「詳細」に出す構造（モデルに渡す文は変えない）
@@ -399,6 +448,7 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
         "fetched_at": fetched,
         "basis": basis,
         "n": n,
+        **({"trace": trace} if trace else {}),
     }
     if cut:
         record_system(
@@ -421,6 +471,42 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
             output={"restricted": restricted, "note": note},
         )
     return _wrap(n, label, heading, basis, text)
+
+
+def _server_error(
+    emit: Any, call_id: str, label: str, server: str, tool: str, args: dict[str, Any], data: dict[str, Any]
+) -> str:
+    """サーバが返した失敗（ERP が応答しない・多すぎる。specs/033 R5・R12）を記録し、モデルへの文にする。"""
+    msg = str(data.get("message") or "")
+    trace = data.get("trace") if isinstance(data.get("trace"), dict) else None
+    if data.get("error") == "too_many":
+        hint = str(data.get("hint") or "条件で絞ってください")
+        record_system(
+            emit,
+            f"system-mcp_too_many-{call_id}",
+            "mcp_too_many",
+            "社内システムの結果が多すぎる",
+            f"「{label}」の {tool} は {data.get('total')} 件で上限を超えたので、結果を返さなかった（{hint}）",
+            input={"server": server, "tool": tool, "args": args},
+            output={"total": data.get("total"), "limit": data.get("limit"), "hint": hint, "trace": trace},
+        )
+        return (
+            f"社内システム「{label}」の答え: {msg}。{hint}。"
+            "条件を足して呼び直すか、件数だけを答え、一部の行から全体を推測しないでください。"
+        )
+    record_system(
+        emit,
+        f"system-mcp_unavailable-{call_id}",
+        "mcp_unavailable",
+        "社内システムが応答しない",
+        f"「{label}」の {tool} が失敗した（{msg}）",
+        input={"server": server, "tool": tool, "args": args},
+        output={"error": msg, "trace": trace},
+    )
+    return (
+        f"社内システム「{label}」を確かめられませんでした（{msg}）。"
+        "推測で値を埋めず、確かめられなかったことを回答に書き、文書で答えられる部分を答えてください。"
+    )
 
 
 def _wrap(n: int, label: str, heading: str, basis: str, body: str) -> str:

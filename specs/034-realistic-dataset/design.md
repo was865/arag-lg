@@ -69,3 +69,14 @@ sim/（uv の別プロジェクト。mock/systems と並ぶ）
 
 - 模擬器は Python（評価の側の道具。製品の依存にしない）。乱数は `random.Random(seed)` だけを使う。
 - 生成した文書は KB に入れて使う（ingest の経路を通る。解析の点検 030 で見える）。
+
+## 8. 実装で決めたこと（2026-11-20）
+
+- 規模: 部品 424（固定 8・製品 4 を含む）・仕入先 30・顧客 40・社員 60・設備 24、発注 1,475・受注 606・入出庫 約 1 万 2 千（4/1〜11/18）。
+- 文書（`eval/assets/harukaze_plant/docs`）: 生成 g01〜g06（`sim/src/harukaze_sim/docs/generate.py`）と手で書く h01・h02（`docs/manual.py`）。
+  文書の数字は `facts.py` の問い合わせで数え、答えの計算（`answers.py`）と同じ関数を使う。
+- 仕入先の評価の基準: 納期遵守率 85% 以上 A・70% 以上 B（模擬の遅れの率に合わせた。文書に基準を書く）。
+- 食い違いは 5 か所（`eval/assets/harukaze_plant/conflicts.yaml`）: 内線・発注点・リードタイム・廃止の部品・標準単価。
+- 題集 harukaze_plant は 35 題。cases は `answers.py` の出力そのもので、`sim/tests/test_answers.py` が一致を確かめる。
+- Odoo への入れ方の差（R7）: 入荷の移動は在庫の単位なので、入荷の数は在庫の単位で入れる。発注の数を減らしたときに Odoo が作る返品の伝票は取り消す。
+  入れ終えたら模擬器の在庫（倉庫ごと）と Odoo の在庫を突き合わせる（違いが 0 であること）。

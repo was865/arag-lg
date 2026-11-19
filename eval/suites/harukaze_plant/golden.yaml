@@ -1,0 +1,412 @@
+# 大きい世界（specs/034）の題集。社内システムの ERP は ERP の MCP サーバ（specs/033）、名簿は模擬（mock-systems）。
+# 状態: 確定（2026-11-20）。利用者の指示で、1 問ずつ answers.py の根拠（# 根拠）と元の表を突き合わせて確定した。
+# 答えは手で書かない: cases は `uv run python -m harukaze_sim answers eval/assets/harukaze_plant/world.db` の出力そのもの
+#   （sim/tests/test_answers.py が一致を確かめる）。文書は sim の docs で world.db から作った（eval/assets/harukaze_plant/docs）。
+# 準備: ERP_TODAY=2026-11-18 で erp-mcp を起こす（mock: ERP_BACKEND=mock、Odoo: make erp-reset）→ make up-erp、
+#   make up-mock（名簿）→ uv run python -m arag.cli eval-users --suite harukaze_plant。手順は docs/operations.md。
+# 結果（2026-11-20、gemma4-12b）: mock 事実網羅 0.90・Odoo 0.90、誤りの記述 0（eval/.reports/hp-gemma4-12b-034-{mock2,odoo}）。
+# tags: docs / system / cross / time / many（多い結果）/ similar（似た名前）/ partial（分けた入荷）/ unit（単位）/
+#       price（単価の変化）/ warehouse（倉庫の使い分け）/ conflict（文書とシステムの食い違い、conflicts.yaml）/ perm / en
+suite: harukaze_plant
+files_dir: eval/assets/harukaze_plant/docs
+users: eval/assets/harukaze_systems/users.yaml
+documents:
+- g01-部品台帳_第二工場_2026-10末.xlsx
+- g02-月次報告_2026-10.pptx
+- g03-在庫の報告_2026-11.xlsx
+- g04-品質会議議事録_2026-10.docx
+- g05-品質会議議事録_2026-11.docx
+- g06-仕入先の評価_2026上期.pdf
+- h01-資材管理の手引き_第二工場.docx
+- h02-倉庫の使い分けの決まり.docx
+thresholds: {}
+cases:
+# 根拠: stock_moves 製造入庫 FG-300 2026-10: 57
+- id: hp01-docs-production
+  query: "10月の HP-300 の生産台数は何台でしたか？"
+  tags: ["ja", "docs"]
+  as_user: seizo
+  relevant_documents: ["g02-月次報告_2026-10.pptx"]
+  key_facts:
+  - any: ["57"]
+# 根拠: S-07: 15/23 = 65.2% → C
+- id: hp02-docs-supplier-grade
+  query: "上期の仕入先の評価で、Aster Seals の納期遵守率と評価はどうでしたか？"
+  tags: ["ja", "docs"]
+  as_user: kobai
+  relevant_documents: ["g06-仕入先の評価_2026上期.pdf"]
+  key_facts:
+  - any: ["65.2"]
+  - any: ["C"]
+# 根拠: h02 の 2.: WH2 と WH1 の合計。DEAD と SMPL は含めない（含めないことに触れる）
+- id: hp03-docs-warehouses
+  query: "発注点と比べる在庫には、どの倉庫の在庫を含めますか？"
+  tags: ["ja", "docs"]
+  as_user: seizo
+  relevant_documents: ["h02-倉庫の使い分けの決まり.docx"]
+  key_facts:
+  - any: ["WH2", "第二工場 資材倉庫"]
+  - any: ["WH1", "第一工場 資材倉庫"]
+  - any: ["DEAD", "呆滞品"]
+# 根拠: PO-2026-2243 P-5051 S-07 納期 2026-11-05
+- id: hp04-docs-minutes-late
+  query: "11月の品質会議で、納期遅れとして挙がったシール部品の発注は？"
+  tags: ["ja", "docs"]
+  as_user: hinsho
+  relevant_documents: ["g05-品質会議議事録_2026-11.docx"]
+  key_facts:
+  - any: ["PO-2026-2243"]
+# 根拠: 出庫 IS- 2026-10: P-5132 六角ボルト M16×50 SCM435 429
+- id: hp05-docs-top-issued
+  query: "10月にラインへの払出しがいちばん多かった部品は何ですか？"
+  tags: ["ja", "docs"]
+  as_user: seizo
+  relevant_documents: ["g02-月次報告_2026-10.pptx"]
+  key_facts:
+  - any: ["P-5132", "六角ボルト M16×50 SCM435"]
+# 根拠: 使える倉庫の在庫 < 発注点（廃止を除く）: 49 件。先頭 P-1043
+- id: hp06-below-count
+  query: "今、在庫が発注点を下回っている部品は何件ありますか？"
+  tags: ["ja", "system", "time", "many"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["49"]
+  - any: ["P-1043", "メカニカルシール MS-30"]
+  expect_caveat:
+  - any: ["時点", "現在", "今", "11月18日", "11/18", "2026-11-18"]
+# 根拠: PO-2026-0436 P-2011 納期 2026-11-17 入荷 0/6
+# 根拠: PO-2026-2241 P-5012 納期 2026-11-16 入荷 8/20
+# 根拠: PO-2026-2243 P-5051 納期 2026-11-05 入荷 0/8
+# 根拠: PO-2026-2277 P-5374 納期 2026-11-10 入荷 8/12
+# 根拠: PO-2026-2310 P-5235 納期 2026-11-16 入荷 6/12
+# 根拠: PO-2026-2346 P-5167 納期 2026-11-09 入荷 2/4
+# 根拠: PO-2026-2392 P-5219 納期 2026-11-12 入荷 6/8
+# 根拠: PO-2026-2396 P-5329 納期 2026-11-12 入荷 6/8
+# 根拠: PO-2026-2399 P-5358 納期 2026-11-16 入荷 0/4
+# 根拠: PO-2026-2402 P-5037 納期 2026-11-13 入荷 10/20
+# 根拠: PO-2026-2404 P-5192 納期 2026-11-11 入荷 0/8
+# 根拠: PO-2026-2407 P-5290 納期 2026-11-13 入荷 0/8
+# 根拠: PO-2026-2414 P-5122 納期 2026-11-16 入荷 2/4
+# 根拠: PO-2026-2422 P-5176 納期 2026-11-16 入荷 2/4
+- id: hp07-overdue-all
+  query: "納期を過ぎても入荷し終えていない発注を全部挙げてください。"
+  tags: ["ja", "system", "many"]
+  as_user: kobai
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["14"]
+  - any: ["PO-2026-0436"]
+  - any: ["PO-2026-2243"]
+# 根拠: PO-2026-2241 P-5012 8/20 納期 2026-11-16 状態 一部入荷
+- id: hp08-partial
+  query: "PO-2026-2241 は今どうなっていますか？"
+  tags: ["ja", "system", "partial"]
+  as_user: kobai
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["一部入荷", "一部"]
+  - any: ["8"]
+  - any: ["20"]
+  - any: ["12"]
+# 根拠: P-5052 使える在庫 129 個・発注の単位 袋（50個）
+- id: hp09-unit
+  query: "Oリング P20 の今の在庫と、発注するときの単位を教えてください。"
+  tags: ["ja", "system", "unit"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["129"]
+  - any: ["袋（50個）", "袋"]
+# 根拠: P-5028 廃止 2026-08-25、後継 P-5029 軸受 6308-2RS 在庫 30（6308ZZ P-2010 は 22）
+- id: hp10-similar-retired
+  query: "軸受 6308ZZ-C3 の在庫はありますか？"
+  tags: ["ja", "system", "similar"]
+  as_user: hozen
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["廃止"]
+  - any: ["P-5029", "6308-2RS"]
+  - any: ["30"]
+  wrong_facts:
+  - any: ["6308ZZ-C3 の在庫は 22"]
+# 根拠: P-5033 使える在庫 26（6309ZZ P-2011 は 7）
+- id: hp11-similar-ntn
+  query: "軸受 6309ZZ（NTN 指定）の今の在庫はいくつですか？"
+  tags: ["ja", "system", "similar"]
+  as_user: hozen
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["26"]
+  - any: ["P-5033"]
+  wrong_facts:
+  - any: ["在庫は 7 個"]
+# 根拠: P-5002 WH2+WH1 22、DEAD 14（数えない）
+- id: hp12-dead-stock
+  query: "軸受 6204ZZ-C3 は今いくつ使えますか？"
+  tags: ["ja", "system", "warehouse"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["22"]
+  wrong_facts:
+  - any: ["36 個使え", "36個使え"]
+# 根拠: PO-2026-1164 2026-05-07 21290
+# 根拠: PO-2026-1412 2026-06-12 21290
+# 根拠: PO-2026-1568 2026-07-03 21250
+# 根拠: PO-2026-1619 2026-07-10 21250
+# 根拠: PO-2026-1819 2026-08-11 21250
+# 根拠: PO-2026-2240 2026-10-15 22720
+# 根拠: PO-2026-2409 2026-11-09 22720
+- id: hp13-po-cost-change
+  query: "軸受 6204ZZ-C3 の発注の仕入単価は、上期と比べて変わりましたか？"
+  tags: ["ja", "system", "price"]
+  as_user: kobai
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["21,250", "21250"]
+  - any: ["22,720", "22720"]
+# 根拠: 製造課（erp-genba）は仕入単価が隠れる（restricted）
+- id: hp14-perm-cost-hidden
+  query: "軸受 6204ZZ-C3 の発注の仕入単価を教えてください。"
+  tags: ["ja", "system", "perm"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["権限", "見られません", "見る権限", "表示されません", "確認できません"]
+  wrong_facts:
+  - any: ["22,720", "22720"]
+# 根拠: 部門の無い人（erp-viewer）は購買を見られない（forbidden）
+- id: hp15-perm-forbidden
+  query: "納期を過ぎた発注はありますか？"
+  tags: ["ja", "system", "perm"]
+  as_user: none
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["権限", "見られません", "見る権限", "確認できません"]
+  wrong_facts:
+  - any: ["PO-2026-0436"]
+# 根拠: ordered_on 2026-10: 取消を除き 191 件（取消 0 件）
+- id: hp16-po-month-total
+  query: "10月に出した発注は全部で何件ですか？"
+  tags: ["ja", "system", "many"]
+  as_user: kobai
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["191"]
+# 根拠: SO-2026-0482 C-006 2026-11-02
+# 根拠: SO-2026-0525 C-037 2026-11-02
+# 根拠: SO-2026-0527 C-030 2026-11-03
+# 根拠: SO-2026-0528 C-003 2026-11-03
+# 根拠: SO-2026-0500 C-006 2026-11-05
+# 根拠: SO-2026-0480 C-005 2026-11-09
+# 根拠: SO-2026-0511 C-006 2026-11-09
+# 根拠: SO-2026-0529 C-006 2026-11-10
+# 根拠: SO-2026-0514 C-006 2026-11-11
+# 根拠: SO-2026-0521 C-006 2026-11-11
+- id: hp17-so-overdue
+  query: "納期を過ぎても出荷し終えていない受注はいくつありますか？"
+  tags: ["ja", "system"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["10"]
+  - any: ["SO-2026-0482"]
+# 根拠: C-005: SO-2026-0480 FG-320 0/1 2026-11-09, SO-2026-0519 FG-320 0/3 2026-11-23, SO-2026-0588 FG-300 0/1 2026-12-07
+- id: hp18-customer-open
+  query: "静岡環境開発からの受注で、まだ出荷していないものを教えてください。"
+  tags: ["ja", "system"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["3 件", "3件"]
+  - any: ["SO-2026-0480"]
+  - any: ["SO-2026-0588"]
+# 根拠: 2026-09-03 出庫 -4 IS-2026-0903
+# 根拠: 2026-09-09 出庫 -7 IS-2026-0909
+# 根拠: 2026-09-11 出庫 -8 IS-2026-0911
+# 根拠: 2026-09-14 出庫 -7 IS-2026-0914
+# 根拠: 2026-09-17 出庫 -6 IS-2026-0917
+# 根拠: 2026-09-24 入庫 100 PO-2026-2077
+# 根拠: 2026-09-29 出庫 -1 SO-2026-0483
+# 根拠: 2026-10-26 出庫 -6 IS-2026-1026
+- id: hp19-moves
+  query: "Oリング P20 の 9 月以降の入出庫を教えてください。"
+  tags: ["ja", "system"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["9月3日", "9/3", "2026-09-03"]
+  - any: ["9月9日", "9/9", "2026-09-09"]
+  - any: ["9月11日", "9/11", "2026-09-11"]
+  - any: ["9月14日", "9/14", "2026-09-14"]
+  - any: ["9月17日", "9/17", "2026-09-17"]
+  - any: ["9月24日", "9/24", "2026-09-24"]
+  - any: ["9月29日", "9/29", "2026-09-29"]
+  - any: ["10月26日", "10/26", "2026-10-26"]
+# 根拠: PO-2026-2414 2/4 箱（100個）
+# 根拠: 残り 2 箱 = 200 個
+- id: hp20-bolt-box
+  query: "六角ボルト M12×40 SUS304 の発注で、まだ入荷していない数はいくつですか？"
+  tags: ["ja", "system", "unit", "partial"]
+  as_user: kobai
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["200 個", "200個", "2 箱"]
+# 根拠: P-5010 10/31 WH2 47 → 今 45
+- id: hp21-ledger-vs-now
+  query: "10月末の部品台帳と今とで、軸受 6208ZZ の在庫はいくつ違いますか？"
+  tags: ["ja", "cross", "time"]
+  as_user: seizo
+  relevant_documents: ["g01-部品台帳_第二工場_2026-10末.xlsx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["47"]
+  - any: ["45"]
+  - any: ["2 個", "2個"]
+  expect_caveat:
+  - any: ["10月31日", "10/31", "10月末", "2026-10-31"]
+# 根拠: P-5002 11/15 終わり 6 < 8 → 今 22
+- id: hp22-report-vs-now
+  query: "11月16日の在庫の報告に載っていた軸受 6204ZZ-C3 は、今も発注点を下回っていますか？"
+  tags: ["ja", "cross", "time"]
+  as_user: seizo
+  relevant_documents: ["g03-在庫の報告_2026-11.xlsx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["22"]
+  - any: ["8"]
+  - any: ["満たして", "上回って", "下回っていません", "解消"]
+# 根拠: PO-2026-2243 P-5051 入荷 0/8 納期 2026-11-05
+- id: hp23-minutes-follow
+  query: "11月の品質会議で納期遅れとして挙がった Aster Seals の発注は、今どうなっていますか？"
+  tags: ["ja", "cross", "time"]
+  as_user: kobai
+  relevant_documents: ["g05-品質会議議事録_2026-11.docx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["PO-2026-2243"]
+  - any: ["未入荷", "入荷していない", "まだ", "入っていない"]
+# 根拠: 名簿 佐伯 美穂 2210、手引き 2201（conflicts c1）
+- id: hp24-conflict-extension
+  query: "資材管理の手引きにある発注の問い合わせ先の内線番号は、今も正しいですか？"
+  tags: ["ja", "cross", "conflict"]
+  as_user: seizo
+  relevant_documents: ["h01-資材管理の手引き_第二工場.docx"]
+  expect_tools: ["directory"]
+  key_facts:
+  - any: ["佐伯"]
+  - any: ["2210"]
+  - any: ["2201"]
+# 根拠: ERP P-2011 発注点 12、在庫 7（手引きは 10、conflicts c2）
+- id: hp25-conflict-reorder
+  query: "軸受 6309ZZ の発注点はいくつですか？今の在庫はそれを下回っていますか？"
+  tags: ["ja", "cross", "conflict"]
+  as_user: seizo
+  relevant_documents: ["h01-資材管理の手引き_第二工場.docx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["12"]
+  - any: ["7"]
+  - any: ["下回って"]
+  wrong_facts:
+  - any: ["発注点は 10 "]
+# 根拠: ERP S-07 リードタイム 21 日（手引きは 14 日、conflicts c3）
+- id: hp26-conflict-leadtime
+  query: "Aster Seals に発注すると、届くまで何日かかりますか？"
+  tags: ["ja", "cross", "conflict"]
+  as_user: kobai
+  relevant_documents: ["h01-資材管理の手引き_第二工場.docx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["21"]
+  wrong_facts:
+  - any: ["14日です", "14 日です"]
+# 根拠: P-5009 廃止 2026-10-04 → P-5010 軸受 6208ZZ 在庫 45（conflicts c4）
+- id: hp27-conflict-retired
+  query: "試験装置の軸受の交換に使う 6206ZZ（NTN 指定）は、今も発注できますか？"
+  tags: ["ja", "cross", "conflict"]
+  as_user: hozen
+  relevant_documents: ["h01-資材管理の手引き_第二工場.docx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["廃止"]
+  - any: ["P-5010", "6208ZZ"]
+  - any: ["45"]
+# 根拠: ERP P-5002 標準単価 22400（上期 21571、手引きの値、conflicts c5）
+- id: hp28-conflict-price
+  query: "軸受 6204ZZ-C3 の標準単価はいくらですか？"
+  tags: ["ja", "cross", "conflict", "price"]
+  as_user: kobai
+  relevant_documents: ["h01-資材管理の手引き_第二工場.docx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["22,400", "22400"]
+  wrong_facts:
+  - any: ["標準単価は 21,571", "標準単価は21,571"]
+# 根拠: C: ['S-07', 'S-20', 'S-21', 'S-23', 'S-28', 'S-29', 'S-32', 'S-35']; 今の遅れの仕入先のうち C: ['S-07', 'S-28', 'S-32']
+- id: hp29-grade-c-overdue
+  query: "上期の評価が C だった仕入先で、今も納期を過ぎた発注が残っているのはどこですか？"
+  tags: ["ja", "cross"]
+  as_user: kobai
+  relevant_documents: ["g06-仕入先の評価_2026上期.pdf"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["S-07", "Aster Seals Ltd."]
+  - any: ["S-28", "有限会社磐田化成"]
+  - any: ["S-32", "有限会社掛川産業"]
+# 根拠: 10/31 17 件 → 今 14 件
+- id: hp30-report-overdue-change
+  query: "10月の月次報告にある『納期を過ぎて入荷し終えていない発注』の件数と、今の件数を比べてください。"
+  tags: ["ja", "cross", "time"]
+  as_user: kobai
+  relevant_documents: ["g02-月次報告_2026-10.pptx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["17"]
+  - any: ["14"]
+# 根拠: P-5324 廃止・全倉庫の在庫 0（10/20 DEAD へ移動、11/06 廃棄）
+- id: hp31-scrapped-sensor
+  query: "近接センサ PX-120 はどこにいくつありますか？"
+  tags: ["ja", "system", "warehouse"]
+  as_user: hozen
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["0", "ありません", "無い", "ない"]
+  - any: ["廃止", "廃棄"]
+# 根拠: 10/31 時点の廃止: ['P-4002', 'P-5009', 'P-5028', 'P-5039', 'P-5065', 'P-5207', 'P-5255', 'P-5284', 'P-5295', 'P-5309', 'P-5324']
+- id: hp32-ledger-retired-count
+  query: "10月末の部品台帳で、状態が廃止になっている部品はいくつありますか？"
+  tags: ["ja", "docs"]
+  as_user: seizo
+  relevant_documents: ["g01-部品台帳_第二工場_2026-10末.xlsx"]
+  key_facts:
+  - any: ["11"]
+# 根拠: P-1043 在庫 3、発注点 4
+- id: hp33-en-stock
+  query: "How many mechanical seals MS-30 do we have in stock right now?"
+  tags: ["en", "system"]
+  as_user: seizo
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["3"]
+  - any: ["reorder", "below", "発注点"]
+# 根拠: 報告 50 件・今 49 件・新しく ['P-5016', 'P-5042', 'P-5058', 'P-5074', 'P-5086', 'P-5104', 'P-5120', 'P-5158', 'P-5170', 'P-5177', 'P-5181', 'P-5190', 'P-5214', 'P-5215', 'P-5264', 'P-5291', 'P-5300', 'P-5312', 'P-5344', 'P-5349', 'P-5354', 'P-5357']
+- id: hp34-week-new
+  query: "11月16日の在庫の報告のあとで、新しく発注点を下回った部品はいくつありますか？"
+  tags: ["ja", "cross", "time", "many"]
+  as_user: seizo
+  relevant_documents: ["g03-在庫の報告_2026-11.xlsx"]
+  expect_tools: ["erp"]
+  key_facts:
+  - any: ["22"]
+  - any: ["P-5016"]
+# 根拠: work_records 2026-10: 34 件・1645 分
+- id: hp35-maintenance-oct
+  query: "10月の保全の作業は何件で、設備の停止時間は合計何分でしたか？"
+  tags: ["ja", "docs"]
+  as_user: hozen
+  relevant_documents: ["g02-月次報告_2026-10.pptx", "g05-品質会議議事録_2026-11.docx"]
+  key_facts:
+  - any: ["34"]
+  - any: ["1,645", "1645"]

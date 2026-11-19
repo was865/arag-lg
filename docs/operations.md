@@ -117,6 +117,46 @@ uv run python -m arag.eval answer --suite harukaze_systems --out ../eval/.report
 題ごとの利用者（`as_user`）と障害（`faults`）は題集に書く。結果には期待したシステムを呼んだ率・権限の無い値の漏れ・
 注意（時点・権限・停止）を書いた率が出る。
 
+## 3.2 本物の ERP（Odoo）と大きい世界（`specs/033`・`specs/034`）
+
+ERP を Odoo 18（外部のシステムとして compose の profile `erp` で動かす）にし、その前に ERP の MCP サーバ
+（`mcp/erp/`、compose の `erp-mcp` :8211）を置く。データは模擬器（`sim/`）が 2026-04-01〜11-18 の業務の流れとして入れたもの
+（部品 424・発注 1,475・入出庫 約 1 万 2 千）。名簿・保全・課題は模擬（`make up-mock`）のまま。
+
+```bash
+# .env に ERP_ODOO_SECRET（32 文字以上の乱数。Odoo の技術利用者のパスワードの元）を書いてから
+make sim-odoo         # 初回だけ: Odoo を空から作り、模擬器の世界を入れてスナップショット（.data/erp/harukaze-034.dump、10 分前後）
+make erp-reset        # スナップショットに戻す（評価の前に毎回）
+make up-erp           # Odoo と erp-mcp を起こし、ARag の「erp」を erp-mcp に替える（ツール名 erp__* は同じ）
+make up-mock          # 名簿・保全・課題（と模擬の ERP の登録）。ERP を模擬に戻すときもこれ
+```
+
+- 「今日」: erp-mcp の `ERP_TODAY`。空（compose の既定）なら実際の日付で、画面で見るとき（取得の時刻と「◯秒前」が本当になる）。
+  評価は世界の日付で `ERP_TODAY=2026-11-18 make up-erp`（納期を過ぎたかの判定がこの日で決まる）。
+- 模擬の ERP（SQLite）を erp-mcp で出す: `ERP_BACKEND=mock ERP_TODAY=2026-11-18 make up-erp`（`eval/assets/harukaze_plant/world.db` を読む）。
+  Odoo と同じ答えになることは `mcp/erp` の契約のテスト（`ERP_ODOO_TEST=1 uv run pytest tests/test_contract.py`）が確かめる。
+- 権限: 部門 → ERP の利用者は `mcp/erp/config/users.yaml`（購買課・資材係は erp-kobai、現場は erp-genba で仕入単価を伏せる、
+  部門の無い人は erp-viewer で発注を見られない＝Odoo が拒否）。監査の行ログは erp-mcp の `/data/audit.jsonl`（volume `erp-audit`）。
+- 世界・文書・答えを作り直す（決定的。種 `SIM_SEED`）:
+
+```bash
+cd sim
+uv run python -m harukaze_sim sqlite ../eval/assets/harukaze_plant/world.db
+uv run python -m harukaze_sim docs ../eval/assets/harukaze_plant/world.db ../eval/assets/harukaze_plant/docs
+uv run python -m harukaze_sim answers ../eval/assets/harukaze_plant/world.db   # 題集の cases（根拠付き）
+```
+
+- 大きい世界の評価（harukaze_plant、35 題。KB は harukaze_plant の文書 8 つ）:
+
+```bash
+cd api
+uv run python -m arag.eval ingest --suite harukaze_plant
+uv run python -m arag.cli eval-users --suite harukaze_plant
+uv run python -m arag.eval answer --suite harukaze_plant --out ../eval/.reports/hp-gemma4-12b-034-odoo
+```
+
+- 止まったとき: erp-mcp は Odoo が 3 回続けて失敗すると 30 秒だけ呼ばない（`unavailable`）。`docker compose --profile erp logs odoo erp-mcp`。
+
 ## 4. 回答を確かめる
 
 - 「詳細」でエージェントの段階（検索・読む・計算・見直し）と、末尾の「システムの処理」（ツールの必須化・回数の上限・履歴の省略・回答の整形・要約）を見る。

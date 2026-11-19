@@ -14,6 +14,7 @@ import { useT } from "@/i18n/context";
 import { useTweaks } from "@/hooks/use-tweaks";
 import { answerTimeMs, flowOf, routeOf } from "@/lib/chat/flow";
 import { FlowRail, RunFlow, stopPicked } from "@/components/chat/run-flow";
+import { Elapsed } from "@/components/chat/tool-steps/elapsed";
 
 /** ターンのツール活動。検索の過程を 1 行と文書名で見せ、段階の明細は「詳細」で開く（実行中は開いておく）。 */
 export function AgentActivity({
@@ -106,12 +107,14 @@ export function AgentActivity({
             <span className="inline-flex items-center gap-1.5">
               <ActivityGlyph activity={activity} />
               <span className="text-shimmer font-medium">{nowLabel}</span>
+              {current?.name === "system_query" && <Elapsed key={current.id} className="tabular-nums text-muted" />}
             </span>
           </span>
         ) : running ? (
           <span className="inline-flex items-center gap-2">
             <ActivityGlyph activity={activity} />
             <span className="text-shimmer font-medium">{nowLabel}</span>
+            {current?.name === "system_query" && <Elapsed key={current.id} className="tabular-nums text-muted" />}
           </span>
         ) : story.searched > 0 ? (
           <>

@@ -11,7 +11,7 @@ import type { CitationMap, Source, SourceType } from "@/lib/types";
 import { IconButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Segmented } from "@/components/ui/segmented";
-import { SystemRecordView } from "@/components/chat/tool-steps/system-record";
+import { SystemRecordLive } from "@/components/chat/tool-steps/system-record-live";
 
 export type RightPanelAction = "open-source" | "download" | "share" | "inspect";
 
@@ -30,6 +30,8 @@ interface Props {
   onResizeWidth?: (px: number) => void;
   /** 共有ボタンを出すか（共有は P4 以降）。 */
   canShare?: boolean;
+  /** 回答のメッセージ id（社内システムの記録を「最新にする」に使う。保存前は無い） */
+  messageId?: string;
 }
 
 function SourceIcon({ type }: { type: SourceType }) {
@@ -65,7 +67,7 @@ function SourceIcon({ type }: { type: SourceType }) {
 
 type ViewMode = "html" | "text" | "original";
 
-export function RightPanel({ sources, citationMap, contextQuery, activeSourceId, highlightSectionId, onSetActive, onClose, onAction, resizable, panelWidth = 420, onResizeWidth, canShare = false }: Props) {
+export function RightPanel({ sources, citationMap, contextQuery, activeSourceId, highlightSectionId, onSetActive, onClose, onAction, resizable, panelWidth = 420, onResizeWidth, canShare = false, messageId }: Props) {
   const { t } = useT();
   const bodyRef = useRef<HTMLDivElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
@@ -231,7 +233,7 @@ export function RightPanel({ sources, citationMap, contextQuery, activeSourceId,
               )}
               <h3 className="mb-1.5 min-w-0 text-footnote font-bold tracking-[-0.005em] text-fg [overflow-wrap:anywhere]">{sec.heading}</h3>
               {sec.record ? (
-                <SystemRecordView record={sec.record} t={t} />
+                <SystemRecordLive record={sec.record} messageId={messageId} sectionId={sec.id} t={t} />
               ) : effectiveMode === "text" ? (
                 <PlainSectionBody body={sec.body} />
               ) : (

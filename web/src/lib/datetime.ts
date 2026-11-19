@@ -52,3 +52,25 @@ export function formatLocalMinute(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+
+/** 経過「12 秒前」「3 分前」「2 時間前」「4 日前」（specs/033 R16）。未来・不正値は空文字。5 秒未満は「たった今」。 */
+export function ago(iso: string, now: Date): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const s = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (s < -60) return "";
+  if (s < 5) return "たった今";
+  if (s < 60) return `${s} 秒前`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} 分前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} 時間前`;
+  return `${Math.floor(h / 24)} 日前`;
+}
+
+/** 次に表示が変わるまでの ms（秒の間は 1 秒ごと、分の間は 1 分ごと）。経過の表示の更新に使う。 */
+export function agoTick(iso: string, now: Date): number {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 60_000;
+  return now.getTime() - d.getTime() < 60_000 ? 1_000 : 60_000;
+}

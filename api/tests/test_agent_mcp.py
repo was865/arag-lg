@@ -1,5 +1,6 @@
 """社内システム（MCP）のツールをエージェントが使う流れ（偽モデル。specs/032 R12〜R25）。"""
 
+import re
 import uuid
 from typing import Any
 
@@ -85,7 +86,10 @@ async def test_calls_system_and_cites_it_with_time() -> None:
     # 記録: 社内システムのステップ（表示名・行数）
     step = steps_of(custom, t.agent_name)[-1]
     assert step["label"] == "社内システム: ERP（資材・購買）"
-    assert step["summary"] == "ERP（資材・購買）・1 行"
+    # 終わったら件数と所要時間（specs/033 R18）。問い合わせ中はツールと引数
+    assert re.fullmatch(r"ERP（資材・購買）・1 行・\d+\.\d 秒", step["summary"])
+    started = next(s for s in steps_of(custom, t.agent_name) if s["status"] == "running")
+    assert started["summary"] == "ERP（資材・購買） に問い合わせ中: get_stock part=P-1042"
     assert step["output"]["columns"] == ["部品番号", "現在庫", "発注点"]
     # プロンプト: 使えるシステムがあるターンだけ社内システムの節を足す
     sys = model.calls[0][0]
@@ -262,9 +266,20 @@ def test_asks_current() -> None:
     asked += ["MS-30 の発注の仕入単価は？", "未着手の作業指示は？", "PM-04 の最近の保全作業", "recent work"]
     # 「いつ終わりましたか」・英語の「has it been resolved」も進み具合の質問
     asked += ["再設定はいつ終わりましたか？", "Has the noise on PM-04 been resolved?"]
+    # 時点を言わない在庫・発注点・単価・リードタイム・入出庫・納期遅れは、社内システムの今の値を問う
+    asked += ["軸受 6309ZZ の発注点はいくつですか？", "近接センサ PX-120 はどこにいくつありますか？",
+              "Aster Seals に発注すると、届くまで何日かかりますか？",
+              "軸受 6204ZZ-C3 の標準単価はいくらですか？",
+              "納期を過ぎた発注はありますか？", "納期を過ぎても入荷し終えていない発注を全部挙げてください。",
+              "Oリング P20 の 9 月以降の入出庫を教えてください。", "6206ZZ は今も発注できますか？",
+              "11月16日の在庫の報告のあとで、新しく発注点を下回った部品はいくつありますか？"]  # fmt: skip
     for q in asked:
         assert asks_current(q), q
     not_asked = ["今回の会議の決定事項", "今後の予定", "今年度の計画", "9 月末の在庫"]
+    # 文書の時点を名指しした質問は文書で答える（台帳・報告・議事録の値）
+    not_asked += ["10月末の部品台帳で、状態が廃止になっている部品はいくつありますか？",
+                  "11月16日の在庫の報告で発注点を下回っていた部品は？", "9月30日現在の在庫は？",
+                  "SK-300 の 10 月の在庫の動きは？"]  # fmt: skip
     # 「〜ています」の「います」は「いま」ではない（hm01 で誤って注意を添えていた）
     not_asked += ["記録を何年間保存することになっていますか？", "どのくらいの頻度で行いますか？"]
     for q in not_asked:
@@ -341,3 +356,78 @@ def test_question_touches_systems() -> None:
     assert touches_systems("SK-300 の在庫は？", m)
     assert touches_systems("What is the current stock?", m) is False
     assert not touches_systems("クリーンルーム空調機 CR-02 の製造元はどこですか？", m)
+
+
+# ── ERP の MCP サーバの返事（specs/033 R5・R12）──
+
+
+async def test_too_many_is_recorded_and_not_guessed() -> None:
+    with running() as (url, state):
+        state["too_many"] = True
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="軸受"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        state_, custom = await run(agent, c, "軸受の入出庫を全部")
+    text = state_["messages"][-2].text
+    assert "上限" in text and "期間で絞って" in text and "推測しない" in text
+    out = systems(custom)["mcp_too_many"]["output"]
+    assert out["total"] == 2400 and out["hint"] == "期間で絞ってください" and out["trace"] == {"id": "t1"}
+    assert not any(x.kind == "system" for x in c.registry.items())
+
+
+async def test_erp_unavailable_answer_from_server_is_reported() -> None:
+    with running() as (url, state):
+        state["erp_down"] = True
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        state_, custom = await run(agent, c, "在庫は？")
+    assert "確かめられませんでした" in state_["messages"][-2].text
+    assert "8 秒以内" in systems(custom)["mcp_unavailable"]["output"]["error"]
+
+
+async def test_failed_call_marks_server_down_until_it_answers_again() -> None:
+    """呼び出しで ERP が止まっていると分かったら、死活の記録（入力欄の札・次の質問）にすぐ反映する。
+
+    3100 の試走: MCP サーバ（erp-mcp）は生きていて ping は通るが、その先の Odoo が止まっていると、
+    札が「応答あり」のままだった。
+    """
+    seen: list[tuple[str, str | None]] = []
+
+    async def on_health(name: str, reason: str | None, ms: int) -> None:
+        seen.append((name, reason))
+
+    with running() as (url, state):
+        state["erp_down"] = True
+        t = spec(url)
+        script_ = script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="x"))
+        agent = build_agent(
+            FakeToolModel(messages=script_), checkpointer=InMemorySaver(), extra_tools=[build_tool(t)]
+        )
+        m = mcp_run(t)
+        m.on_health = on_health
+        await run(agent, ctx(FakeSearch("x"), mcp=m), "在庫は？")
+        assert seen and seen[-1][0] == "erp" and "8 秒以内" in (seen[-1][1] or "")
+        state["erp_down"] = False
+        script_ = script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="x"))
+        agent = build_agent(
+            FakeToolModel(messages=script_), checkpointer=InMemorySaver(), extra_tools=[build_tool(t)]
+        )
+        m = mcp_run(t)
+        m.on_health = on_health
+        await run(agent, ctx(FakeSearch("x"), mcp=m), "在庫は？")
+    assert seen[-1] == ("erp", None)
+
+
+async def test_next_cursor_and_trace_are_kept_in_the_record() -> None:
+    with running() as (url, state):
+        state["more"] = True
+        t = spec(url)
+        model = FakeToolModel(messages=script(tool_call(t.agent_name, part="P-1042"), AIMessage(content="x")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch("x"), mcp=mcp_run(t))
+        await run(agent, c, "在庫は？")
+    rec = next(x for x in c.registry.items() if x.kind == "system").record
+    assert rec is not None and rec["next_cursor"] == "50" and rec["trace"]["id"] == "t2"

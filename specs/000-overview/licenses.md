@@ -78,6 +78,10 @@
 | Qwen/Qwen2.5-VL-7B-Instruct-AWQ（図の説明、自前構成の既定。specs/016） | モデル重み | — | Apache-2.0 | 2026-11-09 | https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct-AWQ |
 | Qwen/Qwen3-VL-8B-Instruct-FP8（図の説明の代替） | モデル重み | — | Apache-2.0 | 2026-11-09 | https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-FP8 |
 | vllm/vllm-openai（GPU 機、profile llm） | コンテナ | v0.32.0 | Apache-2.0 | 2026-11-09 | https://github.com/vllm-project/vllm |
+| Odoo 18 Community（評価・デモ用の外部の ERP。製品に含めず JSON-RPC で呼ぶだけ。specs/033 R26・decisions.md §17） | コンテナ | 18.0 | LGPL-3.0 | 2026-11-20 | https://github.com/odoo/odoo |
+| PostgreSQL（Odoo 専用、profile erp） | コンテナ | 16 系 | PostgreSQL | 2026-11-20 | https://www.postgresql.org/about/licence/ |
+| mcp / pyjwt / uvicorn / httpx / pyyaml（ERP の MCP サーバ `mcp/erp/`） | Python | 1.30.0 / 2.10 系 / 0.31 系 / 0.28 系 / 6.0 系 | MIT / MIT / BSD-3-Clause / BSD-3-Clause / MIT | 2026-11-20 | https://pypi.org/project/mcp/ |
+| 模擬器（`sim/`。評価用の文書と業務データを作る道具、本番に入れない。specs/034）: openpyxl・python-docx・python-pptx・reportlab | Python | 3.1.5 / 1.2.0 / 1.0.2 / 5.1.0 | MIT / MIT / MIT / BSD-3-Clause | 2026-11-20 | https://pypi.org/project/reportlab/ |
 | docling-layout-heron | モデル重み | — | Apache-2.0 | 2026-11-08 | https://huggingface.co/docling-project/docling-layout-heron |
 | docling-models（TableFormer 等） | モデル重み | — | CDLA-Permissive-2.0 / Apache-2.0 | 2026-11-08 | https://huggingface.co/docling-project/docling-models |
 

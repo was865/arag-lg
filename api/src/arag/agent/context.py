@@ -120,6 +120,9 @@ class McpRun:
     removed: dict[str, tuple[str, str, str]] = field(default_factory=dict)
     calls: int = 0
     recorded: bool = False
+    # 呼び出しで分かった死活を知らせる（サーバ名・理由（None なら応答あり）・ミリ秒）。
+    # MCP サーバは生きていてもその先（Odoo）が止まっていることがあるので、ping だけに頼らない（specs/033 R19）
+    on_health: Callable[[str, str | None, int], Awaitable[None]] | None = None
 
     @property
     def systems(self) -> list[str]:

@@ -1,0 +1,52 @@
+[project]
+name = "harukaze-sim"
+version = "0.1.0"
+description = "評価用の模擬の業務データを日ごとに作る模擬器（specs/034）。製品に含めない"
+requires-python = ">=3.13"
+dependencies = [
+    "mock-systems",
+    "openpyxl>=3.1.5",
+    "python-docx>=1.2",
+    "python-pptx>=1.0.2",
+    "reportlab>=4.4",
+]
+
+[tool.uv.sources]
+mock-systems = { path = "../mock/systems" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "ruff>=0.14",
+    "mypy>=1.18",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/harukaze_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# 行の長さは formatter に任せる（日本語の全角は幅 2 で数えられ、文言を割ると読みにくい）
+ignore = ["RUF001", "RUF002", "RUF003", "E501"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+ignore_missing_imports = true
+
+# python-pptx・python-docx の型は一部だけなので、Any として扱う（文書の生成は評価の道具）
+[[tool.mypy.overrides]]
+module = ["pptx", "pptx.*", "docx", "docx.*"]
+follow_imports = "skip"
+follow_untyped_imports = true

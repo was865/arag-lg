@@ -3,6 +3,7 @@ import type { Dictionary } from "@/i18n/dictionary";
 import { interpolate } from "@/i18n/interpolate";
 import { formatFetchedAt } from "@/lib/datetime";
 import type { SystemRecord } from "@/lib/types";
+import { Ago } from "./ago";
 import { KeyValueGrid } from "./shared";
 import { DataTable } from "./table-result";
 
@@ -16,6 +17,10 @@ export function recordFromOutput(o: Record<string, unknown>): SystemRecord | nul
     columns: o.columns.map(String),
     rows: o.rows as unknown[][],
     total: typeof o.total === "number" ? o.total : o.rows.length,
+    tool: typeof o.tool === "string" ? o.tool : undefined,
+    args: o.args && typeof o.args === "object" ? (o.args as Record<string, unknown>) : undefined,
+    restricted: Array.isArray(o.restricted) ? o.restricted.map(String) : undefined,
+    note: typeof o.note === "string" ? o.note : undefined,
   };
 }
 
@@ -23,7 +28,15 @@ export function SystemRecordView({ record, t, meta = true }: { record: SystemRec
   const rows: { k: string; v: React.ReactNode }[] = [];
   if (meta) {
     const fetched = formatFetchedAt(record.fetchedAt);
-    rows.push({ k: t.chat.systemFetchedAt, v: fetched });
+    rows.push({
+      k: t.chat.systemFetchedAt,
+      v: (
+        <span>
+          {fetched}
+          <Ago iso={record.fetchedAt} className="ml-1.5 text-muted" />
+        </span>
+      ),
+    });
     // 「ERP の現在の値（… 取得）」のように取得の時刻を言い直すだけの時点は重ねて出さない
     if (record.basis && !(fetched && record.basis.includes(fetched))) rows.push({ k: t.chat.systemBasis, v: record.basis });
     if (record.tool) rows.push({ k: t.chat.systemTool, v: record.tool });

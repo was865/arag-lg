@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ModelPicker } from "@/components/chat/model-picker";
 import { ScopePicker } from "@/components/chat/scope-picker";
+import { SystemsChip } from "@/components/chat/systems-chip";
 import { Popover, PopoverContent, PopoverTrigger, PopoverOption } from "@/components/ui/popover";
 import { AttachmentTray } from "@/components/uploads/uploads";
 import { ACCEPTED_FILE_TYPES } from "@/lib/constants";
@@ -392,6 +393,7 @@ export function Composer({
             </>
           )}
           <div className="min-w-0 flex-1" />
+          <SystemsChip running={running} />
           {hasInlineModelPicker ? (
             <ModelPicker
               open={modelOpen}

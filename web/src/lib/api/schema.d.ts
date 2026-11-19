@@ -338,6 +338,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mcp-servers/{server_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mcp Stats
+         * @description システムごとの直近の呼び出しの数・失敗の率・所要時間（R21。ARag 側の記録から集計）。
+         */
+        get: operations["mcp_stats_v1_admin_mcp_servers__server_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/mcp-servers/{server_id}/tools": {
         parameters: {
             query?: never;
@@ -1049,6 +1069,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/messages/{message_id}/records/{section_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Record
+         * @description 出典の社内システムの記録（章）を、同じ利用者・同じツール・同じ引数で呼び直す（R17）。回答の文は変えない。
+         *
+         *     章の id で指す（画面の引用番号は出た順に振り直しているため）。
+         */
+        post: operations["refresh_record_v1_messages__message_id__records__section_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models": {
         parameters: {
             query?: never;
@@ -1143,6 +1185,26 @@ export interface paths {
         };
         /** Get Shared Thread */
         get: operations["get_shared_thread_v1_shared__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/systems/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Systems Status
+         * @description この利用者が使える社内システムと、それぞれの接続の状態（R19）。30 秒より古ければここで確かめ直す。
+         */
+        get: operations["systems_status_v1_systems_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2165,6 +2227,27 @@ export interface components {
             /** Shares */
             shares: components["schemas"]["McpShareRow"][];
         };
+        /** McpStatsOut */
+        McpStatsOut: {
+            /** Calls */
+            calls: number;
+            /** Failure Rate */
+            failure_rate: number;
+            /** Failures */
+            failures: number;
+            /** Hours */
+            hours: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+            /** P95 Ms */
+            p95_ms: number | null;
+            /** Recent */
+            recent: {
+                [key: string]: unknown;
+            }[];
+            /** Server */
+            server: string;
+        };
         /** McpToolOut */
         McpToolOut: {
             /** Description */
@@ -2504,6 +2587,29 @@ export interface components {
              * @default false
              */
             truncated: boolean;
+        };
+        /** RefreshOut */
+        RefreshOut: {
+            /** Changes */
+            changes: {
+                [key: string]: unknown;
+            }[];
+            /** Error */
+            error?: string | null;
+            /** N */
+            n: number;
+            /** Previous */
+            previous: {
+                [key: string]: unknown;
+            };
+            /** Record */
+            record: {
+                [key: string]: unknown;
+            } | null;
+            /** Step */
+            step: {
+                [key: string]: unknown;
+            };
         };
         /** RunCancelled */
         RunCancelled: {
@@ -2960,6 +3066,29 @@ export interface components {
              * @enum {string}
              */
             type: "step";
+        };
+        /** SystemStatus */
+        SystemStatus: {
+            /** Checked At */
+            checked_at: string;
+            /** Label */
+            label: string;
+            /** Ms */
+            ms: number;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "slow" | "down";
+        };
+        /** SystemsStatusOut */
+        SystemsStatusOut: {
+            /** Systems */
+            systems: components["schemas"]["SystemStatus"][];
         };
         /** TagCount */
         TagCount: {
@@ -3920,6 +4049,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_stats_v1_admin_mcp_servers__server_id__stats_get: {
+        parameters: {
+            query?: {
+                hours?: number;
+            };
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpStatsOut"];
                 };
             };
             /** @description Validation Error */
@@ -5498,6 +5660,38 @@ export interface operations {
             };
         };
     };
+    refresh_record_v1_messages__message_id__records__section_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_models_v1_models_get: {
         parameters: {
             query?: never;
@@ -5676,6 +5870,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    systems_status_v1_systems_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemsStatusOut"];
                 };
             };
         };

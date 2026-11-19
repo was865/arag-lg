@@ -41,6 +41,7 @@ from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
 from arag.logging import get_logger
+from arag.mcp.live import put_health
 from arag.mcp.registry import ToolSpec, catalog_key, load_tools
 from arag.secrets import SecretBox
 from arag.storage import Storage
@@ -944,6 +945,8 @@ async def main() -> None:
                 max_calls=settings.mcp_max_calls,
                 max_rows=settings.mcp_max_rows,
                 max_chars=settings.mcp_max_chars,
+                # 死活の確認の結果を api と共有する（入力欄の接続の状態。specs/033 R19）
+                health=HealthCache(sink=lambda name, reason, ms: put_health(redis, name, reason, ms)),
             ),
         )
         runner = Runner(

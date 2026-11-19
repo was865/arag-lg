@@ -1,0 +1,15 @@
+# 部門 → ERP の利用者（specs/033 R9・design §4）。上から順に、身元の部門のどれかが当たった最初の行を使う。
+# 当たらなければ default（最も狭い利用者。既定は拒否）。見せる記録は ERP の権限が決め、ここは伏せる列だけを足す。
+users:
+  - login: erp-kobai
+    depts: [購買課, 資材係, 購買部]
+  - login: erp-genba
+    depts: [製造課, 保全課, 品質保証部, サービス課, 生産管理課, 営業課]
+    # Odoo の標準の権限は仕入単価の列だけを隠せないので、ここで伏せる（読めない記録は Odoo が拒否する）
+    hide: [unit_cost]
+    hide_note: 仕入単価は資材係・購買課の人だけが見られます。この利用者には見る権限がありません。
+default: erp-viewer
+# 見せない業務（ERP の権限より狭くする）。Odoo の在庫の利用者は発注を読める（purchase_stock が読む権限を足す）ので、
+# 部門の無い人（erp-viewer）に発注を見せないのはここで決める（モックの rights と同じ。specs/033 design §11）
+deny:
+  erp-viewer: [purchase]

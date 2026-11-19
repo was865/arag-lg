@@ -23,6 +23,10 @@ import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/feedback/toast-provider";
 import { DURATION } from "@/lib/motion";
 import { SystemRecordView } from "@/components/chat/tool-steps/system-record";
+import { ChangeList } from "@/components/chat/tool-steps/system-record-live";
+import { TimeCompare } from "@/components/chat/time-compare";
+import { changeViews } from "@/lib/chat/system-changes";
+import type { Source } from "@/lib/types";
 import { SYSTEM_META } from "@/lib/file-types";
 import { useT } from "@/i18n/context";
 import type { SystemRecord } from "@/lib/types";
@@ -401,6 +405,37 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
       <Block title="社内システムの結果（出典パネル・「詳細」で同じ部品。specs/032）">
         <Card className="p-3">
           <SystemRecordView record={SAMPLE_RECORD} t={t} />
+        </Card>
+      </Block>
+
+      <Block title="「最新にする」の差（出典パネル。specs/033 R17）">
+        <Card className="space-y-2 p-3">
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm">{t.chat.systemRefresh}</Button>
+            <span className="text-caption text-muted">2026-11-18 10:41 に取り直しました。3 か所が変わりました</span>
+          </div>
+          <ChangeList
+            t={t}
+            changes={changeViews([
+              { key: "P-1042", column: "現在庫", before: 15, after: 14 },
+              { key: "P-1043", column: "現在庫", before: 3, after: 5 },
+              { key: "PO-2026-2451", column: null, change: "added" },
+            ])}
+          />
+        </Card>
+      </Block>
+
+      <Block title="時点の比較（回答の下。specs/033 R20）">
+        <Card className="p-3">
+          <TimeCompare
+            answer="軸受 6208ZZ の在庫は、台帳では 47 個[1]、今は 45 個[2]です。"
+            citationMap={{ 1: { sourceId: "d", sectionId: "d1" }, 2: { sourceId: "s", sectionId: "s1" } }}
+            sources={[
+              { id: "d", type: "doc", title: "部品台帳（2026年10月31日現在）", sections: [{ id: "d1", heading: "部品", body: "" }] } as unknown as Source,
+              { id: "s", type: "system", title: "ERP（Odoo）", sections: [{ id: "s1", heading: "在庫", body: "", record: SAMPLE_RECORD }] } as unknown as Source,
+            ]}
+            onCite={() => {}}
+          />
         </Card>
       </Block>
 

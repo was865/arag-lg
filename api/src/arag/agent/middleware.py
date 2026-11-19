@@ -110,7 +110,8 @@ SEND_BACK_TAIL = (
 )
 # 下書きが「資料に無い」「確認が必要」などと調べ残しを認めているか（日本語・英語）
 GAP = re.compile(
-    r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|不明|"
+    r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|見当たりません|見当たらな|不明|"
+    r"確認(することは|することが|が|は)?でき(ません|ない|なかった)|"
     r"分かりません|わかりません|確認(する|が)必要|情報(が)?不足|計算(することは|は)?でき(ません|ない)|"
     r"特定(することは|することが|は)?でき(ません|ない)|答え(することは|することが|ることは|ることが)?でき(ません|ない)|"
     r"not (mentioned|found|available|specified)|no information|could not find|unknown",
@@ -421,8 +422,7 @@ def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
     usage = getattr(last, "usage_metadata", None) or {}
     if tools:
         picked = [
-            tool_title(c["name"], ctx)
-            + (f"「{w}」" if (w := tool_target(c["name"], c["args"])) else "")
+            tool_title(c["name"], ctx) + (f"「{w}」" if (w := tool_target(c["name"], c["args"])) else "")
             for c in calls
         ]
         summary = f"ツールを選んだ: {'・'.join(picked)}"
@@ -911,7 +911,10 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         label, running = LABELS.get(name, (name, "実行しています"))
         spec = ctx.mcp.usable.get(name) if ctx.mcp is not None else None
         if spec is not None:  # 社内システム（specs/032 R23）
-            label, running = f"社内システム: {spec.server.label}", f"{spec.server.label} に問い合わせ中"
+            # 何をどの条件で聞いているかを出す（specs/033 R18。経過の秒は画面が数える）
+            asked = " ".join(f"{k}={v}" for k, v in call["args"].items() if v not in (None, "", [], {}))
+            label = f"社内システム: {spec.server.label}"
+            running = f"{spec.server.label} に問い合わせ中: {spec.name} {asked}".strip()
         clock = StepClock(
             emit,
             Step(id=cid, name=name, label=label, status="running", input=dict(call["args"]), summary=running),
@@ -949,7 +952,8 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         if is_mcp_tool(name):
             rec = ctx.table_outputs.pop(cid, None)
             output.update(rec or {})
-            summary = f"{rec['system']}・{rec['total']} 行" if rec else text[:120]
+            secs = (time.perf_counter() - clock.t0) or 0.0
+            summary = f"{rec['system']}・{rec['total']} 行・{secs:.1f} 秒" if rec else text[:120]
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):

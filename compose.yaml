@@ -168,6 +168,54 @@ services:
       - "127.0.0.1:8203:8203"
       - "127.0.0.1:8204:8204"
 
+  # 本物の ERP として使う Odoo（評価・デモ用の外部のシステム。製品に含めない。specs/033、decisions.md §17）
+  odoo-db:
+    profiles: [erp]
+    image: postgres:16
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    volumes: [odoo-dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      retries: 20
+
+  odoo:
+    profiles: [erp]
+    image: odoo:18
+    depends_on:
+      odoo-db: { condition: service_healthy }
+    environment:
+      HOST: odoo-db
+      USER: odoo
+      PASSWORD: odoo
+    # 1 つの DB（harukaze）だけを使い、DB の一覧・作成の画面は出さない
+    command: ["odoo", "--database=harukaze", "--db-filter=^harukaze$$", "--no-database-list"]
+    ports: ["127.0.0.1:8069:8069"]
+    volumes: [odoo-data:/var/lib/odoo]
+
+  # ERP の MCP サーバ（specs/033）。Odoo か模擬（032 の SQLite）を読む
+  erp-mcp:
+    profiles: [erp]
+    build: ./mcp/erp
+    depends_on: [odoo]
+    environment:
+      ARAG_MCP_IDENTITY_KEY: ${ARAG_MCP_IDENTITY_KEY:-}
+      ERP_BACKEND: ${ERP_BACKEND:-odoo}
+      ERP_ODOO_URL: http://odoo:8069
+      ERP_ODOO_DB: harukaze
+      ERP_ODOO_SECRET: ${ERP_ODOO_SECRET:-}
+      # 「今日」。空なら実際の日付（画面で見るとき）。評価は模擬の世界の日付 2026-11-18 を渡す（docs/operations.md）
+      ERP_TODAY: ${ERP_TODAY:-}
+      # ERP_BACKEND=mock のときの模擬の世界（specs/034 の world.db）
+      ERP_MOCK_DB: /world/world.db
+    ports: ["127.0.0.1:8211:8211"]
+    volumes:
+      - erp-audit:/data
+      - ./eval/assets/harukaze_plant/world.db:/world/world.db:ro
+
   # 開発用のメール受信箱（確認・再設定メールをここで見る）。UI: http://localhost:8025
   mailpit:
     image: axllent/mailpit:v1.33.1
@@ -196,6 +244,9 @@ services:
 
 volumes:
   pgdata:
+  odoo-dbdata:
+  odoo-data:
+  erp-audit:
   qdrant:
   tei-cache:
   storage:

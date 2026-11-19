@@ -483,6 +483,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               sources={citeTurn?.sources ?? []}
               contextQuery={citeTurn?.query}
               citationMap={citeTurn?.citationMap ?? {}}
+              messageId={citeTurn?.status === "done" ? citeTurn.messageId : undefined}
               activeSourceId={activeSourceId}
               highlightSectionId={highlightSectionId}
               onSetActive={(id) => {

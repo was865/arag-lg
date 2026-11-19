@@ -38,5 +38,6 @@ requirements は EARS（「〜のとき、システムは〜する」）、tasks
 | [030](030-parse-inspection/) | 解析の点検（Docling の記録・自動の体検・原件との対照） |
 | [031](031-read-through-and-clarify/) | 省略を読み切る・理由の裏付け・聞き返し |
 | [032](032-enterprise-systems-mcp/) | 社内システムの模擬（ERP・保全・名簿・課題）と MCP での接続 |
-| [033](033-erp-mcp-odoo/) | 本物の ERP（Odoo）につなぐ ERP の MCP サーバと、今の値の実感の画面 — 承認済み・実装中 |
-| [034](034-realistic-dataset/) | 実際の規模の模擬の業務データ（模擬器・文書の生成・スナップショット）— 承認済み・実装中 |
+| [033](033-erp-mcp-odoo/) | 本物の ERP（Odoo）につなぐ ERP の MCP サーバと、今の値の実感の画面 |
+| [034](034-realistic-dataset/) | 実際の規模の模擬の業務データ（模擬器・文書の生成・スナップショット） |
+| [035](035-erp-write-back/) | ERP への書き戻し（提案 → 確認 → 1 項目だけ書く）— 草案 |

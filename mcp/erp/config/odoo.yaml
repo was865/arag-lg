@@ -1,0 +1,41 @@
+# Odoo のアダプタの項目の対応（specs/033 R7・design §2）。ERP を替えるときはアダプタとこのファイルを替える。
+url: ${ERP_ODOO_URL}
+db: ${ERP_ODOO_DB}
+page_size: 200
+models:
+  part: product.product
+  quant: stock.quant
+  move_line: stock.move.line
+  po_line: purchase.order.line
+  so_line: sale.order.line
+  orderpoint: stock.warehouse.orderpoint
+  supplierinfo: product.supplierinfo
+  partner: res.partner
+fields:
+  # 部品（product.product）
+  part_no: default_code
+  name: name
+  name_en: x_name_en
+  models: x_models
+  successor: x_successor
+  retired_on: x_retired_on
+  std_price: standard_price
+  category: categ_id
+  uom: uom_id
+  purchase_uom: uom_po_id
+  # 仕入先（res.partner）
+  supplier_code: ref
+  supplier_location: city
+  supplier_contact: x_contact
+# 使える倉庫（stock.warehouse の code）。呆滞・見本は数えない（金蝶の実測の教訓）
+usable_warehouses: [WH2, WH1]
+# 入出庫の種類: 運送の種類（stock.picking.type の sequence_code）→ 種類。棚卸は is_inventory
+kinds:
+  IN: 入庫
+  OUT: 出庫
+  ISS: 出庫
+  MCON: 製造出庫
+  MPRD: 製造入庫
+  MNT: 保全出庫
+  SCR: 廃棄
+  INT: 移動

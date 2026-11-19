@@ -1,19 +1,38 @@
 /** システムの処理（name="system"）の入力・出力の表示。 */
 import type { Dictionary } from "@/i18n/dictionary";
+import { changeViews } from "@/lib/chat/system-changes";
 import { KeyValueGrid, sectionLabelCls } from "./shared";
+import { recordFromOutput, SystemRecordView } from "./system-record";
+import { ChangeList } from "./system-record-live";
 
 /** システムの処理の入力・出力。短い値は表に、長い文章（整形の前後・要約など）は読める箱に出す。 */
 export function SystemFields({ data, t }: { data: Record<string, unknown>; t: Dictionary }) {
   const rows: { k: string; v: React.ReactNode }[] = [];
   const texts: [string, string][] = [];
+  // 「最新にする」（mcp_refresh、specs/033 R17）: 取り直した表と変わった値
+  const rec = data.record && typeof data.record === "object" ? recordFromOutput(data.record as Record<string, unknown>) : null;
+  const changes = Array.isArray(data.changes) ? changeViews(data.changes) : null;
   for (const [k, v] of Object.entries(data)) {
     if (k === "kind" || v === null || v === undefined) continue;
+    if ((k === "record" && rec) || (k === "changes" && changes)) continue;
     if (typeof v === "string" && (v.length > 60 || v.includes("\n"))) texts.push([k, v]);
     else rows.push({ k: systemFieldLabel(k, t), v: systemValueLabel(k, v, t) });
   }
   return (
     <div className="space-y-2">
       {rows.length > 0 && <KeyValueGrid rows={rows} />}
+      {changes && changes.length > 0 && (
+        <div>
+          <div className={sectionLabelCls}>{systemFieldLabel("changes", t)}</div>
+          <ChangeList changes={changes} t={t} />
+        </div>
+      )}
+      {rec && (
+        <div>
+          <div className={sectionLabelCls}>{systemFieldLabel("record", t)}</div>
+          <SystemRecordView record={rec} t={t} />
+        </div>
+      )}
       {texts.map(([k, v]) => (
         <div key={k}>
           <div className={sectionLabelCls}>{systemFieldLabel(k, t)}</div>

@@ -61,7 +61,20 @@ def make_server(state: dict[str, Any]) -> FastMCP:
         claims = ctx.request_context.request.state.claims  # type: ignore[union-attr]
         if state.get("deny"):
             return {"system": "ERP", "error": "forbidden", "message": "見る権限がありません"}
-        rows = [[part, 15, 10]] * int(state.get("rows", 1))
+        if state.get("too_many"):
+            msg = "2400 件あり、上限（2000 件）を超えています"
+            return {
+                "system": "ERP",
+                "error": "too_many",
+                "message": msg,
+                "total": 2400,
+                "limit": 2000,
+                "hint": "期間で絞ってください",
+                "trace": {"id": "t1"},
+            }
+        if state.get("erp_down"):
+            return {"system": "ERP", "error": "unavailable", "message": "ERP が 8 秒以内に応答しません"}
+        rows = [[part, int(state.get("stock", 15)), 10]] * int(state.get("rows", 1))
         return {
             "system": "ERP",
             "title": "在庫",
@@ -71,6 +84,7 @@ def make_server(state: dict[str, Any]) -> FastMCP:
             "rows": rows,
             "total": len(rows),
             "caller": {"sub": claims["sub"], "depts": claims.get("depts", [])},
+            **({"next_cursor": "50", "trace": {"id": "t2", "ms": 12}} if state.get("more") else {}),
             **(
                 {"restricted": ["仕入単価（円）"], "note": "仕入単価を見る権限がありません"}
                 if state.get("hide")

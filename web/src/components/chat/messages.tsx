@@ -5,6 +5,7 @@ import { AnimatePresence, m } from "motion/react";
 import { createPortal } from "react-dom";
 import { Button, ICON, IconButton } from "@/components/ui/button";
 import { AnswerMarkdown } from "@/components/chat/answer-markdown";
+import { TimeCompare } from "@/components/chat/time-compare";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { EvidenceRail } from "@/components/chat/evidence-rail";
 import { evidenceList } from "@/lib/chat/evidence";
@@ -460,6 +461,9 @@ export function Transcript({
               {turn.status === "cancelled" && <CancelledNotice onRetry={() => onRegenerate(idx)} report={report(turn, idx)} />}
               {turn.status === "done" && turn.noAnswerReason === "no_relevant_sources" && turn.answer.trim() && (
                 <UncitedNotice />
+              )}
+              {turn.status === "done" && (
+                <TimeCompare answer={turn.answer} citationMap={turn.citationMap} sources={turn.sources} onCite={(n) => onCite(n, idx)} />
               )}
               {turn.status === "done" && <UnverifiedNumbersNotice numbers={unverifiedNumbers(turn.steps)} />}
               {turn.status === "error" && <ErrorNotice message={turn.error} onRetry={() => onRegenerate(idx)} report={report(turn, idx)} />}

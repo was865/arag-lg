@@ -2311,6 +2311,72 @@
         "title": "McpSharesIn",
         "type": "object"
       },
+      "McpStatsOut": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "failure_rate": {
+            "title": "Failure Rate",
+            "type": "number"
+          },
+          "failures": {
+            "title": "Failures",
+            "type": "integer"
+          },
+          "hours": {
+            "title": "Hours",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          },
+          "recent": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "server": {
+            "title": "Server",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server",
+          "hours",
+          "calls",
+          "failures",
+          "failure_rate",
+          "p50_ms",
+          "p95_ms",
+          "recent"
+        ],
+        "title": "McpStatsOut",
+        "type": "object"
+      },
       "McpToolOut": {
         "properties": {
           "description": {
@@ -3232,6 +3298,64 @@
           "total"
         ],
         "title": "RecordView",
+        "type": "object"
+      },
+      "RefreshOut": {
+        "properties": {
+          "changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "previous": {
+            "additionalProperties": true,
+            "title": "Previous",
+            "type": "object"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record"
+          },
+          "step": {
+            "additionalProperties": true,
+            "title": "Step",
+            "type": "object"
+          }
+        },
+        "required": [
+          "n",
+          "record",
+          "previous",
+          "changes",
+          "step"
+        ],
+        "title": "RefreshOut",
         "type": "object"
       },
       "RunCancelled": {
@@ -4439,6 +4563,71 @@
           "step"
         ],
         "title": "StepEvent",
+        "type": "object"
+      },
+      "SystemStatus": {
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "ms": {
+            "title": "Ms",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "slow",
+              "down"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "state",
+          "ms",
+          "checked_at"
+        ],
+        "title": "SystemStatus",
+        "type": "object"
+      },
+      "SystemsStatusOut": {
+        "properties": {
+          "systems": {
+            "items": {
+              "$ref": "#/components/schemas/SystemStatus"
+            },
+            "title": "Systems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "systems"
+        ],
+        "title": "SystemsStatusOut",
         "type": "object"
       },
       "TagCount": {
@@ -6101,6 +6290,60 @@
         "summary": "Set Shares",
         "tags": [
           "mcp-admin"
+        ]
+      }
+    },
+    "/v1/admin/mcp-servers/{server_id}/stats": {
+      "get": {
+        "description": "システムごとの直近の呼び出しの数・失敗の率・所要時間（R21。ARag 側の記録から集計）。",
+        "operationId": "mcp_stats_v1_admin_mcp_servers__server_id__stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpStatsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Stats",
+        "tags": [
+          "mcp-live"
         ]
       }
     },
@@ -8470,6 +8713,59 @@
         ]
       }
     },
+    "/v1/messages/{message_id}/records/{section_id}/refresh": {
+      "post": {
+        "description": "出典の社内システムの記録（章）を、同じ利用者・同じツール・同じ引数で呼び直す（R17）。回答の文は変えない。\n\n章の id で指す（画面の引用番号は出た順に振り直しているため）。",
+        "operationId": "refresh_record_v1_messages__message_id__records__section_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "section_id",
+            "required": true,
+            "schema": {
+              "title": "Section Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Record",
+        "tags": [
+          "mcp-live"
+        ]
+      }
+    },
     "/v1/models": {
       "get": {
         "operationId": "list_models_v1_models_get",
@@ -8715,6 +9011,28 @@
         "summary": "Get Shared Thread",
         "tags": [
           "chat"
+        ]
+      }
+    },
+    "/v1/systems/status": {
+      "get": {
+        "description": "この利用者が使える社内システムと、それぞれの接続の状態（R19）。30 秒より古ければここで確かめ直す。",
+        "operationId": "systems_status_v1_systems_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemsStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Systems Status",
+        "tags": [
+          "mcp-live"
         ]
       }
     },

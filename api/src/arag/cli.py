@@ -5,7 +5,7 @@ python -m arag.cli ingest-dir DIR --kb KB_ID [--api URL] [--user ID --role admin
 python -m arag.cli gc [--retention-days N]
 python -m arag.cli sync-payload
 python -m arag.cli reparse-report [--content-hash H ...]
-python -m arag.cli mcp-register --mock [--base-url http://mock-systems]
+python -m arag.cli mcp-register --mock [--base-url http://mock-systems] | --erp [--erp-url http://erp-mcp:8211/mcp]
 """
 
 import argparse
@@ -261,14 +261,18 @@ async def sync_payload(settings: Settings) -> int:
         await engine.dispose()
 
 
-async def mcp_register(settings: Settings, base_url: str) -> int:
-    """模擬の社内システム（specs/032）を MCP サーバとして登録し、ツールを取る。"""
-    from arag.mcp.service import register_mock
+async def mcp_register(settings: Settings, base_url: str, *, erp_url: str | None = None) -> int:
+    """模擬の社内システム（specs/032）か、ERP の MCP サーバ（specs/033）を登録し、ツールを取る。"""
+    from arag.mcp.service import register_erp, register_mock
 
     engine = make_engine(settings.database_url)
     try:
         async with make_sessionmaker(engine)() as s:
-            servers = await register_mock(s, settings, base_url)
+            servers = (
+                [await register_erp(s, settings, erp_url)]
+                if erp_url
+                else await register_mock(s, settings, base_url)
+            )
             for srv in servers:
                 state = f"エラー: {srv.check_error}" if srv.check_error else "ツールを取得"
                 print(f"{srv.name}\t{srv.url}\t{state}")
@@ -328,16 +332,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     rp.add_argument("--content-hash", action="append", default=[], help="対象の内容ハッシュ（複数可）")
     sub.add_parser("sync-payload", help="Qdrant の payload（参照する文書・KB）を DB に合わせ直す")
-    m = sub.add_parser("mcp-register", help="模擬の社内システム（specs/032）を MCP サーバとして登録する")
-    m.add_argument("--mock", action="store_true", required=True, help="模擬の 4 システム（今はこれだけ）")
+    m = sub.add_parser("mcp-register", help="社内システム（MCP サーバ）を登録する（specs/032・033）")
+    g2 = m.add_mutually_exclusive_group(required=True)
+    g2.add_argument("--mock", action="store_true", help="模擬の 4 システム（ERP も模擬に戻す）")
+    g2.add_argument("--erp", action="store_true", help="ERP を ERP の MCP サーバ（Odoo）に替える")
     m.add_argument("--base-url", default="http://mock-systems", help="ポートを除いた模擬のサーバの URL")
+    m.add_argument("--erp-url", default="http://erp-mcp:8211/mcp", help="ERP の MCP サーバの URL")
     eu = sub.add_parser("eval-users", help="題集の評価用の利用者（部門・所属・KB の閲覧）を作る（specs/032）")
     eu.add_argument("--suite", required=True)
     args = parser.parse_args(argv)
     if args.cmd == "eval-users":
         return asyncio.run(eval_users(Settings(), args.suite))
     if args.cmd == "mcp-register":
-        return asyncio.run(mcp_register(Settings(), args.base_url))
+        return asyncio.run(
+            mcp_register(Settings(), args.base_url, erp_url=args.erp_url if args.erp else None)
+        )
     if args.cmd == "sync-payload":
         return asyncio.run(sync_payload(Settings()))
     if args.cmd == "reparse-report":

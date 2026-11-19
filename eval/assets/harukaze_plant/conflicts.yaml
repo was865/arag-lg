@@ -1,0 +1,28 @@
+# 文書とシステム（ERP・社員名簿）の食い違い（specs/034 R9）。
+# 手で書いた文書（h01・h02、sim/src/harukaze_sim/docs/manual.py）は 2026年4月の版のままで、一部が古い。
+# 正しいのはシステムの今の値。回答は、食い違いに気づいて今の値を答え、文書が古いことを添えるのが望ましい。
+- id: c1
+  doc: h01-資材管理の手引き_第二工場.docx
+  says: 購買課 佐伯 美穂の内線は 2201
+  system: 社員名簿の佐伯 美穂（E-1056）の内線は 2210
+  correct: system
+- id: c2
+  doc: h01-資材管理の手引き_第二工場.docx
+  says: 軸受 6309ZZ（P-2011）の発注点は 10
+  system: ERP の P-2011 の発注点は 12
+  correct: system
+- id: c3
+  doc: h01-資材管理の手引き_第二工場.docx
+  says: Aster Seals Ltd.（S-07）のリードタイムは 14 日
+  system: ERP の S-07 のリードタイムは 21 日
+  correct: system
+- id: c4
+  doc: h01-資材管理の手引き_第二工場.docx
+  says: 試験装置の軸受の交換には 6206ZZ（NTN 指定、P-5009）を使う
+  system: ERP では P-5009 は 2026-10-04 に廃止、後継は P-5010（軸受 6208ZZ）
+  correct: system
+- id: c5
+  doc: h01-資材管理の手引き_第二工場.docx
+  says: 軸受 6204ZZ-C3（P-5002）の標準単価は 21,571 円
+  system: ERP の P-5002 の標準単価は 22,400 円（2026-10-01 に下期の値へ改めた。21,571 円は上期の値）
+  correct: system

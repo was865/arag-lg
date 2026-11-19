@@ -1,11 +1,15 @@
-"""MCP サーバへの接続（Streamable HTTP）。要求ごとに接続し、利用者の身元をヘッダで渡す（specs/032 §4）。
+"""MCP サーバへの接続（Streamable HTTP）。利用者の身元をヘッダで渡す（specs/032 §4）。
 
-身元が利用者ごとに違うので、セッションは使い回さない。失敗は 3 種類に分けて返す:
+身元が利用者ごとに違うので MCP のセッションは使い回さないが、HTTP の接続（keep-alive）はサーバをまたいで
+1 つの接続の池で使い回す（specs/033 R15）。要求ごとの httpx の client は身元のヘッダだけを持ち、池は閉じない。
+身元の JWT には鍵の版（kid、ARAG_MCP_IDENTITY_KID、既定 k1）を付ける（033 R8。サーバは版で鍵を選ぶ）。
+失敗は 3 種類に分けて返す:
 止まっている（McpUnavailable）・時間切れ（McpTimeout）・身元を受け付けない（McpAuthError）。
 """
 
 import asyncio
 import json
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -80,7 +84,34 @@ def identity_token(key: str, caller: Caller, audience: str, *, ttl_sec: int = ID
         },
         key,
         algorithm="HS256",
+        headers={"kid": os.environ.get("ARAG_MCP_IDENTITY_KID", "k1")},
     )
+
+
+class _SharedTransport(httpx.AsyncBaseTransport):
+    """接続の池を共有する transport。client を閉じても池は閉じない（R15）。"""
+
+    def __init__(self) -> None:
+        self.pool: httpx.AsyncHTTPTransport | None = None
+        self.loop: asyncio.AbstractEventLoop | None = None
+
+    def _pool(self) -> httpx.AsyncHTTPTransport:
+        loop = asyncio.get_running_loop()
+        if self.pool is None or self.loop is not loop:  # イベントループごと（テストはループを作り直す）
+            self.pool = httpx.AsyncHTTPTransport(
+                limits=httpx.Limits(max_keepalive_connections=16, keepalive_expiry=30)
+            )
+            self.loop = loop
+        return self.pool
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return await self._pool().handle_async_request(request)
+
+    async def aclose(self) -> None:
+        return None
+
+
+SHARED = _SharedTransport()
 
 
 def auth_headers(ep: Endpoint, caller: Caller, identity_key: str) -> dict[str, str]:
@@ -119,7 +150,9 @@ def _classify(e: BaseException) -> McpError:
 async def _with_session(ep: Endpoint, headers: dict[str, str], limit_sec: float, work: Any) -> Any:
     async def run() -> Any:
         async with (
-            httpx.AsyncClient(headers=headers, timeout=limit_sec, follow_redirects=True) as http,
+            httpx.AsyncClient(
+                headers=headers, timeout=limit_sec, follow_redirects=True, transport=SHARED
+            ) as http,
             streamable_http_client(ep.url, http_client=http) as (read, write, _),
             ClientSession(read, write) as session,
         ):

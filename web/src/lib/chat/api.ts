@@ -10,6 +10,9 @@ export type ModelOut = S["ModelOut"];
 export type RunCreated = S["RunCreated"];
 export type ActiveRunOut = S["ActiveRunOut"];
 export type ThreadSearchHit = S["ThreadSearchHit"];
+export type RefreshOut = S["RefreshOut"];
+export type SystemStatus = S["SystemStatus"];
+export type McpStatsOut = S["McpStatsOut"];
 
 /** API のエラー（`{error: {code, message}}`）。message は日本語。 */
 export class ApiError extends Error {
@@ -90,6 +93,28 @@ export const chatApi = {
     const { data, error, response } = await client.PUT("/v1/messages/{message_id}/feedback", {
       params: { path: { message_id: messageId } },
       body: { reason_tags: [], ...body },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  /** 出典の社内システムの記録を呼び直す（specs/033 R17）。 */
+  async refreshRecord(messageId: string, sectionId: string) {
+    const { data, error, response } = await client.POST("/v1/messages/{message_id}/records/{section_id}/refresh", {
+      params: { path: { message_id: messageId, section_id: sectionId } },
+    });
+    if (!data) fail(response.status, error);
+    return data;
+  },
+  /** 使える社内システムと接続の状態（specs/033 R19）。 */
+  async systemsStatus() {
+    const { data, error, response } = await client.GET("/v1/systems/status");
+    if (!data) fail(response.status, error);
+    return data.systems;
+  },
+  /** 社内システムの直近の呼び出しの数字（管理者、specs/033 R21）。 */
+  async mcpStats(serverId: string) {
+    const { data, error, response } = await client.GET("/v1/admin/mcp-servers/{server_id}/stats", {
+      params: { path: { server_id: serverId } },
     });
     if (!data) fail(response.status, error);
     return data;

@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 type Overview = components["schemas"]["McpAdminOut"];
 type Server = components["schemas"]["McpServerOut"];
 type ShareRow = components["schemas"]["McpShareRow"];
+type Stats = components["schemas"]["McpStatsOut"];
 type AuthKind = "none" | "identity" | "bearer";
 
 const client = createClient<paths>({ baseUrl: "/api" });
@@ -56,6 +57,7 @@ export function SystemsView() {
   const [editing, setEditing] = useState<Server | "new" | null>(null);
   const [tools, setTools] = useState<Server | null>(null);
   const [shares, setShares] = useState<Server | null>(null);
+  const [stats, setStats] = useState<Server | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const refresh = () => setReload((n) => n + 1);
@@ -203,6 +205,9 @@ export function SystemsView() {
                           <button onClick={() => void check(s)} disabled={checking === s.id} className={ghostBtn}>
                             {checking === s.id ? "確認しています…" : "接続を確認"}
                           </button>
+                          <button onClick={() => setStats(s)} className={ghostBtn}>
+                            呼び出し
+                          </button>
                           <button onClick={() => setTools(s)} className={ghostBtn}>
                             ツール
                           </button>
@@ -266,8 +271,91 @@ export function SystemsView() {
           }}
         />
       )}
+      {stats && <StatsDialog server={stats} onClose={() => setStats(null)} />}
       {dialog}
     </div>
+  );
+}
+
+/** 直近の呼び出しの数字（specs/033 R21）。ARag の記録（ステップ）から集計したもの。 */
+function StatsDialog({ server, onClose }: { server: Server; onClose: () => void }) {
+  const [hours, setHours] = useState(1);
+  const [data, setData] = useState<Stats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void client
+      .GET("/v1/admin/mcp-servers/{server_id}/stats", { params: { path: { server_id: server.id }, query: { hours } } })
+      .then(({ data: d, error: e }) => {
+        if (!alive) return;
+        if (d) {
+          setData(d);
+          setError(null);
+        } else setError(errMessage(e, "数字を読めませんでした"));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [server.id, hours]);
+  const ms = (v: number | null | undefined) => (v == null ? "—" : `${v.toLocaleString()} ms`);
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title={`「${server.label}」の呼び出し`} size="md" className="max-h-[90dvh]">
+        <DialogBody className="flex flex-col gap-3 pb-4">
+          <div className="flex items-center gap-2 text-caption text-muted">
+            {[1, 24, 24 * 7].map((h) => (
+              <button
+                key={h}
+                onClick={() => setHours(h)}
+                className={cn(ghostBtn, hours === h && "bg-divider text-fg")}
+                aria-pressed={hours === h}
+              >
+                {h === 1 ? "直近 1 時間" : h === 24 ? "直近 24 時間" : "直近 7 日"}
+              </button>
+            ))}
+          </div>
+          {error && <p className="m-0 text-footnote text-danger">{error}</p>}
+          {!data && !error && <ListSkeleton rows={3} />}
+          {data && (
+            <>
+              <dl className="m-0 grid grid-cols-4 gap-2 max-md:grid-cols-2">
+                {[
+                  ["呼び出し", `${data.calls} 回`],
+                  ["失敗", `${data.failures} 回（${(data.failure_rate * 100).toFixed(1)}%）`],
+                  ["所要時間 p50", ms(data.p50_ms)],
+                  ["所要時間 p95", ms(data.p95_ms)],
+                ].map(([k, v]) => (
+                  <div key={k} className="card-sunken px-3 py-2">
+                    <dt className="text-caption text-muted">{k}</dt>
+                    <dd className="m-0 text-body font-semibold tabular-nums text-fg">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="m-0 text-caption text-muted">
+                ARag の回答の記録（社内システムのステップと「最新にする」）から数えています。失敗は時間切れ・接続できない・権限の拒否・上限超え。
+              </p>
+              {data.recent.length === 0 ? (
+                <p className="m-0 text-footnote text-muted">この期間の呼び出しはありません。</p>
+              ) : (
+                <ul className="m-0 list-none p-0">
+                  {data.recent.map((c, i) => (
+                    <li key={i} className="flex items-baseline gap-2 border-t-[0.5px] border-divider py-1.5 text-caption">
+                      <span className="shrink-0 font-mono text-muted">{formatLocalMinute(String(c.at))}</span>
+                      <span className="shrink-0 font-mono text-fg">{String(c.tool)}</span>
+                      {c.refresh ? <span className="shrink-0 text-muted">最新にする</span> : null}
+                      <span className={cn("shrink-0 tabular-nums", c.ok ? "text-muted" : "text-danger")}>
+                        {c.ok ? ms(Number(c.ms)) : "失敗"}
+                      </span>
+                      <span className="min-w-0 truncate text-fg-2">{String(c.summary ?? "")}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }
 

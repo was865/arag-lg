@@ -1,0 +1,9 @@
+# 模擬のアダプタ（034 の大きい世界の SQLite）の設定（specs/033 R6・R7）
+db: ${ERP_MOCK_DB}
+# 使える倉庫（在庫に数える）。呆滞・見本は数えない
+usable_warehouses: [WH2, WH1]
+# 模擬で ERP の権限を真似る: 利用者ごとに読める業務（Odoo では Odoo の権限の組が決める）
+rights:
+  erp-kobai: [parts, stock, moves, purchase, sales, suppliers]
+  erp-genba: [parts, stock, moves, purchase, sales, suppliers]
+  erp-viewer: [parts, stock, moves, sales, suppliers]
