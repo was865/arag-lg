@@ -499,12 +499,32 @@ def document_unspecified(ctx: RunContext, question: str, history: list[AnyMessag
 # 選択肢に入れる文書の、最も関連の高い文書に対するスコアの比（低いものは偶然に近い一致）
 CLARIFY_SCORE_RATIO = 0.5
 
+# 「この資料の〜」で、どの文書にも当てはまる語（要点・まとめなど）。これだけなら内容の語は無い
+_GENERIC_TERMS = {
+    "資料", "文書", "要点", "要約", "概要", "内容", "結論", "目次", "説明", "一覧", "全体", "以下", "箇条",
+    "ポイント", "サマリ", "サマリー", "簡単", "詳細", "詳しく",
+    "summary", "summarize", "summarise", "points", "overview", "document", "file", "pdf", "this", "that",
+    "what", "about", "the", "key", "main", "give", "please", "explain", "list", "tell",
+    "is", "of", "in", "me",
+}
+# 漢字・カタカナの 2 文字以上の連なり、英字で始まる語（型番 HP-300 も含む）
+_TERM = re.compile(r"[一-龥々ァ-ヶー]{2,}|[A-Za-z][A-Za-z0-9-]+")
+
+
+def has_content_terms(question: str) -> bool:
+    """質問に、文書を絞る内容の語（締付トルク・HP-300 など）があるか。要点・まとめだけなら無い。"""
+    body = _THIS_DOC.sub(" ", question)
+    return any(t.lower() not in _GENERIC_TERMS for t in _TERM.findall(body))
+
 
 def clarify_options(ctx: RunContext, question: str, recent: list[str] | None = None) -> list[str]:
     """「この資料」の候補ごとに、その文書名を添えた質問を選択肢にする。
 
     候補は、利用者が最近登録した文書（2 つまで）、続けて最初の検索で見つかった文書のうち関連の高いもの
     （文書ごとの最高スコアが、いちばん高い文書の半分以上）を高い順に。
+
+    質問に内容の語（締付トルクなど）があるときは、検索の順が当てになるので、最近の文書は検索でも関連の
+    高いものだけを先に置く（関係の無い文書を候補にしない。specs/031 T13）。
     """
     best: dict[str, float] = {}
     for c in ctx.registry.items():
@@ -514,6 +534,9 @@ def clarify_options(ctx: RunContext, question: str, recent: list[str] | None = N
     found = [n for n, sc in sorted(best.items(), key=lambda x: -x[1]) if sc >= top * CLARIFY_SCORE_RATIO]
     # 「この資料」は、利用者が登録したばかりの文書を指すことが多い。内容の語が無い質問では検索の順は
     # 当てにならないので、最近の文書を先に置く
-    names = list(dict.fromkeys([*(recent or [])[:2], *found]))
+    first = (recent or [])[:2]
+    if has_content_terms(question):
+        first = [n for n in first if n in found]
+    names = list(dict.fromkeys([*first, *found]))
     body = _THIS_DOC.sub("この資料", question).strip()
     return [f"{n} {body}" for n in names[:CLARIFY_OPTIONS_MAX]]

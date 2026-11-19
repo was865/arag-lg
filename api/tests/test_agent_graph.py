@@ -1189,3 +1189,19 @@ def test_clarify_options_put_recent_documents_first_and_drop_weak_hits() -> None
     got = clarify_options(c, "この資料の要点は？", ["mine.pdf"])
     # 最近の文書が先。b.md（0.3 < 0.9 の半分）は外す
     assert got == ["mine.pdf この資料の要点は？", "a.pdf この資料の要点は？", "c.docx この資料の要点は？"]
+
+
+def test_clarify_options_skip_unrelated_recent_documents_when_the_question_has_content() -> None:
+    """内容の語（締付トルクなど）がある質問では、検索で関連の無い最近の文書を候補に入れない（031 T13）。"""
+    from arag.agent.primer import clarify_options, has_content_terms
+
+    from .agent_fakes import fake_hit
+
+    c = ctx(FakeSearch())
+    for name, score in [("w03.docx", 0.9), ("w02.docx", 0.8), ("notes.pdf", 0.2)]:
+        c.registry.add_hit(fake_hit(name).model_copy(update={"document_name": name, "score": score}))
+    got = clarify_options(c, "この資料の締付トルクはいくつですか？", ["handbook.pdf", "w02.docx"])
+    assert [g.split(" ")[0] for g in got] == ["w02.docx", "w03.docx"]
+    assert has_content_terms("この資料の締付トルクはいくつですか？")
+    assert not has_content_terms("この資料の要点を3つにまとめて")
+    assert not has_content_terms("Summarize this document")

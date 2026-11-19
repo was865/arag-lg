@@ -32,6 +32,7 @@ export const chat = {
   storySearched: "{n} 件の資料を検索",
   storyCited: "{n} 件を引用",
   storyCitedNone: "引用なし",
+  storyClarify: "聞き返した",
   storyNoSearch: "資料は検索していません",
   storyDetail: "詳細",
   storyMore: "ほか {n} 件",

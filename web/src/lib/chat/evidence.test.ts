@@ -48,6 +48,12 @@ describe("parseRetrieveHits / searchStory（検索の過程）", () => {
     expect(story.cited).toBe(1);
     expect(story.files).toEqual([{ title: "x02-保守記録.xlsx", cited: true }, { title: "w01-規程.docx", cited: false }]);
   });
+  it("聞き返しで終えたターン（specs/031）は clarify。引用が無くても注意にしない", () => {
+    expect(searchStory([step({})], []).clarify).toBe(false);
+    const sys = step({ id: "c", name: "system" as ToolCall["name"], input: { kind: "clarify", reason: "document_unspecified" }, output: null });
+    expect(searchStory([step({}), sys], []).clarify).toBe(true);
+    expect(searchStory([step({}), step({ id: "a", name: "ask_user" as ToolCall["name"], output: null })], []).clarify).toBe(true);
+  });
   it("再ランキング前の候補（candidates）は探した文書に数えない", () => {
     const cands = step({ id: "c", name: "candidates", output: { hits: [{ title: "雑音.pdf", heading: "", score: 0.9 }] } });
     expect(searchStory([step({}), cands], []).searched).toBe(2);
@@ -77,7 +83,7 @@ describe("parseRetrieveHits / searchStory（検索の過程）", () => {
     expect(story.searched).toBe(2);
   });
   it("検索していなければ 0 件", () => {
-    expect(searchStory([], [])).toEqual({ searched: 0, cited: 0, files: [] });
+    expect(searchStory([], [])).toEqual({ searched: 0, cited: 0, files: [], clarify: false });
   });
 });
 

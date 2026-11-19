@@ -118,6 +118,9 @@ export function AgentActivity({
             <span className="text-muted-2">›</span>
             {story.cited > 0 ? (
               <span className="inline-flex items-center gap-1.5">{check}{interpolate(t.chat.storyCited, { n: String(story.cited) })}</span>
+            ) : story.clarify ? (
+              // 聞き返しで終えたターンは、引用が無いのが当然。注意にせず「聞き返し」と言う（specs/031）
+              <span className="inline-flex items-center gap-1.5">{check}{t.chat.storyClarify}</span>
             ) : (
               // 探したのに 1 つも引用していない回答は、根拠をたどれない。済みの印でなく注意として出す
               <span className="inline-flex items-center gap-1.5 font-medium text-danger">

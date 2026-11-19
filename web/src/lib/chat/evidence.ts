@@ -97,6 +97,8 @@ export interface SearchStory {
   cited: number;
   /** 見つけた文書名（引用したものを先に） */
   files: { title: string; cited: boolean }[];
+  /** 聞き返しで終えたターンか（モデルの ask_user か、システムの聞き返し。specs/031）。引用が無いのは当然 */
+  clarify: boolean;
 }
 
 /** これより低い関連度は「関連なし」とみなす（検索が件数を満たすために返した雑音）。 */
@@ -129,7 +131,8 @@ export function searchStory(steps: ToolCall[], sources: Source[]): SearchStory {
   for (const t of citedTitles) if (!titles.includes(t)) titles.push(t);
   const files = titles.map((title) => ({ title, cited: citedTitles.has(title) }));
   files.sort((a, b) => Number(b.cited) - Number(a.cited));
-  return { searched: titles.length, cited: sources.length, files };
+  const clarify = steps.some((s) => s.name === "ask_user" || (s.name === "system" && s.input?.kind === "clarify"));
+  return { searched: titles.length, cited: sources.length, files, clarify };
 }
 
 const FADE_CHUNK = 8;
