@@ -13,6 +13,8 @@ import { StatusIcon, TOOL_ICONS, hasInputData, inputSectionLabel, isExpandable, 
 import { ToolInputBlock } from "./step-input";
 import { ToolOutputBlock } from "./step-output";
 import { ToolStepCard, ToolStepLog, ToolStepTimeline } from "./step-views";
+import { StagedSteps } from "./staged";
+import type { FlowRoute } from "@/lib/chat/flow";
 
 export interface Props {
   steps: ToolCall[];
@@ -21,6 +23,10 @@ export interface Props {
   onToggleStep: (id: string) => void;
   /** 「システムの処理」を最初から開いておく（管理者が報告を読むとき。specs/028 R14） */
   systemOpen?: boolean;
+  /** 実行経路（あれば、経路の段階ごとに分けて並べる。システムの処理はその段階の中に。specs/029 T36） */
+  route?: FlowRoute;
+  /** 回答を送るまでの時間（段階の一覧の「回答を送信」の区切り） */
+  durationMs?: number;
 }
 
 /** フラットな steps を「ルート(parentId なし)」と「子(parentId 別)」に分ける。 */
@@ -174,10 +180,13 @@ export function SystemGroup({ steps, expandedMap, onToggleStep, t, defaultOpen =
   );
 }
 
-export function ToolSteps({ steps, variant, expandedMap, onToggleStep, systemOpen }: Props) {
+export function ToolSteps({ steps, variant, expandedMap, onToggleStep, systemOpen, route, durationMs }: Props) {
   const { t } = useT();
-  // 生の記録（log）は全部を時刻順に出す。ほかは、システムの処理を末尾の 1 組に畳む
+  // 生の記録（log）は全部を時刻順に出す
   if (variant === "log") return <ToolStepLog steps={steps} dict={t} />;
+  // 経路があれば段階ごとに（上の経路と同じ区切り・同じ時間）。無い古い回答は、システムの処理を末尾の 1 組に畳む
+  if (route)
+    return <StagedSteps route={route} steps={steps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={durationMs} t={t} />;
 
   const system = steps.filter((s) => s.name === "system" && !s.parentId);
   const { roots, childrenOf } = groupSteps(steps.filter((s) => !system.includes(s)));

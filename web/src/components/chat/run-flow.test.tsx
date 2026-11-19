@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FlowRail, RunFlow } from "@/components/chat/run-flow";
+import { ToolSteps } from "@/components/chat/tool-steps";
+import type { ToolCall } from "@/lib/types";
 import { flowOf, routeOf, type FlowStep } from "@/lib/chat/flow";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -129,3 +131,32 @@ describe("FlowRail（実行中の段階の列）", () => {
     expect(html).toMatch(/text-accent[^"]*"><span class="h-1.5[^>]*><\/span>調査/);
   });
 });
+
+describe("ToolSteps を経路の段階ごとに（specs/029 T36）", () => {
+  const render = (name: string, durationMs?: number) => {
+    const steps = stepsOf(name);
+    return wrap(
+      <ToolSteps steps={steps as unknown as ToolCall[]} variant="card" expandedMap={{}} onToggleStep={() => {}} route={routeOf(steps)} durationMs={durationMs} />,
+    );
+  };
+
+  it("経路と同じ順・同じ区切りで段階を並べ、システムの処理はその段階の中に置く（末尾にまとめない）", () => {
+    const html = render("gap");
+    const order = [...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1]);
+    expect(order[0]).toBe("understand-1");
+    expect(order).toContain("investigate-2");
+    expect(order).toContain("review-2");
+    expect(html).not.toContain("システムの処理");
+    // 調査の段階の中にモデルの応答
+    const inv = html.slice(html.indexOf('data-stage="investigate-1"'), html.indexOf('data-stage="review-1"'));
+    expect(inv).toContain("モデルの応答");
+  });
+
+  it("確定の後に「回答を送信」の区切りを置く", () => {
+    const html = render("answer", 2790);
+    expect(html).toContain("data-sent-line");
+    expect(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).toContain("回答を送信 2.79s");
+    expect(html.indexOf("data-sent-line")).toBeGreaterThan(html.indexOf('data-stage="finalize-1"'));
+  });
+});
+

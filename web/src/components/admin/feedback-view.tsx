@@ -340,6 +340,8 @@ function FeedbackDetailPane({
             expandedMap={expanded}
             onToggleStep={(sid) => setExpanded((x) => ({ ...x, [sid]: !x[sid] }))}
             systemOpen
+            route={route ?? undefined}
+            durationMs={turn.durationMs}
           />
         </div>
       </section>

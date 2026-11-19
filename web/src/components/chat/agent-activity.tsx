@@ -181,7 +181,14 @@ export function AgentActivity({
                 onSelect={setOnly}
               />
             )}
-            <ToolSteps steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps} variant={variant} expandedMap={expandedMap} onToggleStep={onToggleStep} />
+            <ToolSteps
+              steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps}
+              variant={variant}
+              expandedMap={expandedMap}
+              onToggleStep={onToggleStep}
+              route={guided ? route : undefined}
+              durationMs={running ? undefined : durationMs}
+            />
           </CitedTitlesContext.Provider>
         </div>
       )}
