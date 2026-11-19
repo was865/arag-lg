@@ -297,6 +297,22 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
         return update
 
 
+def tool_target(name: str, args: dict[str, Any]) -> str:
+    """ツールが何を対象にしたか（検索のクエリ・読んだ文書や節）。記録の要約に使う。"""
+    key = {
+        "search": "query",
+        "list_documents": "query",
+        "keyword_search": "terms",
+        "get_outline": "document",
+        "read_document": "document",
+        "read_section": "section",
+    }.get(name)
+    v = args.get(key) if key else None
+    if isinstance(v, list):
+        v = "・".join(str(x) for x in v)
+    return str(v)[:60] if v else ""
+
+
 def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
     """モデルの応答（ツールを選ぶ・回答を書く）を、測った時間とともに記録する（specs/029 T35）。
 
@@ -306,10 +322,16 @@ def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
     """
     ctx.stats.model_records += 1
     n = ctx.stats.model_records
-    tools = [c["name"] for c in last.tool_calls] if isinstance(last, AIMessage) else []
+    calls = list(last.tool_calls) if isinstance(last, AIMessage) else []
+    tools = [c["name"] for c in calls]
     usage = getattr(last, "usage_metadata", None) or {}
     if tools:
-        summary = f"ツールを選んだ: {'・'.join(LABELS.get(t, (t,))[0] for t in tools)}"
+        picked = [
+            LABELS.get(c["name"], (c["name"],))[0]
+            + (f"「{w}」" if (w := tool_target(c["name"], c["args"])) else "")
+            for c in calls
+        ]
+        summary = f"ツールを選んだ: {'・'.join(picked)}"
     elif isinstance(last, AIMessage) and last.text.strip():
         summary = "回答を書いた"
     else:
@@ -641,6 +663,9 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         text = result.text if isinstance(result, ToolMessage) else ""
         n = len(_MATERIAL.findall(text))
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
+        # 何を探した・読んだかを要約の頭に（システムが行った検索と同じ形「…」・資料 n 件）
+        if (what := tool_target(name, call["args"])) and name not in {"calculate", "table_query"}:
+            summary = f"「{what}」・{summary}"
         output: dict[str, Any] = {"result": text[:2000]}
         if name == "table_query":
             rows = _TABLE_RESULT.search(text)

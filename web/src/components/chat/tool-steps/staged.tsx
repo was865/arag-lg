@@ -24,8 +24,8 @@ import { SentMark, StopMark, detailOf } from "@/components/chat/flow-parts";
 
 interface Stage {
   stop: FlowStop;
-  tools: ToolCall[];
-  system: ToolCall[];
+  /** 段階のステップ（起きた順。モデルの応答 → それが選んだ検索 → …） */
+  own: ToolCall[];
 }
 
 /** 停留所ごとに、渡されたステップ（絞り込み済み）を分ける。どの停留所にも入らないものは最後にまとめる。 */
@@ -38,7 +38,7 @@ export function stagesOf(route: FlowRoute, steps: ToolCall[]): { stages: Stage[]
     const own = roots.filter((s) => ids.has(s.id) && !used.has(s.id));
     own.forEach((s) => used.add(s.id));
     if (!own.length) continue;
-    stages.push({ stop, tools: own.filter((s) => s.name !== "system"), system: own.filter((s) => s.name === "system") });
+    stages.push({ stop, own });
   }
   return { stages, rest: roots.filter((s) => !used.has(s.id)) };
 }
@@ -195,9 +195,9 @@ export function StagedSteps({
 
   return (
     <div className="flex flex-col px-2 py-1.5 max-md:px-1.5">
-      {stages.map(({ stop, tools, system }) => (
+      {stages.map(({ stop, own }) => (
         <Fragment key={stop.key}>
-          {stage(stop.key, name(stop), [...tools, ...system], stop.current)}
+          {stage(stop.key, name(stop), own, stop.current)}
           {stop.node === "finalize" && durationMs && durationMs > 0 ? (
             <div
               data-sent-line
@@ -253,8 +253,8 @@ export function StageTimeline({
     const ids = new Set(s.stepIds);
     const own = roots.filter((x) => ids.has(x.id) && !used.has(x.id));
     own.forEach((x) => used.add(x.id));
-    // エージェントのステップを先に、その段階のシステムの処理を後に
-    items.push({ kind: "stop", s, rows: [...own.filter((x) => x.name !== "system"), ...own.filter((x) => x.name === "system")] });
+    // 起きた順（モデルの応答 → それが選んだ検索 → …）
+    items.push({ kind: "stop", s, rows: own });
     if (s.node === "finalize" && !running && durationMs && durationMs > 0) items.push({ kind: "sent" });
   }
   const rest = roots.filter((x) => !used.has(x.id));
@@ -386,7 +386,7 @@ export function CardSteps({
   );
   const system = (list: ToolCall[]) =>
     list.length > 0 && (
-      <div data-system className="flex flex-col gap-px px-3.5 pb-1.5 pl-[38px] first:pt-[7px] max-md:px-3 max-md:pl-[30px]">
+      <div data-system className="flex flex-col gap-px px-3.5 py-1 pl-[38px] first:pt-[7px] max-md:px-3 max-md:pl-[30px]">
         {list.map((s) => (
           <SubStepRow key={s.id} step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} />
         ))}
@@ -394,7 +394,7 @@ export function CardSteps({
     );
   return (
     <div className="flex flex-col [&>*:last-child]:border-b-0">
-      {stages.map(({ stop, tools, system: sys }) => (
+      {stages.map(({ stop, own }) => (
         <Fragment key={stop.key}>
           {/* 段階の名前を左の列に（上の経路と同じ印）。段階の境目だけに線を引き、段階の中のカードはつなげて見せる */}
           <div
@@ -411,8 +411,8 @@ export function CardSteps({
               <span className={cn("text-caption leading-snug", stop.current ? "text-accent" : "text-muted")}>{name(stop)}</span>
             </div>
             <div className="flex min-w-0 flex-col [&_[data-system]]:border-b-0 [&>[data-step]>div]:border-b-0">
-              {tools.map(card)}
-              {system(sys)}
+              {/* 起きた順に。続くシステムの処理は 1 つの淡い塊にまとめる */}
+              {runs(own).map((r) => (r.system ? <Fragment key={r.key}>{system(r.steps)}</Fragment> : card(r.steps[0]!)))}
             </div>
           </div>
           {stop.node === "finalize" && durationMs && durationMs > 0 ? (
@@ -434,5 +434,17 @@ export function CardSteps({
       )}
     </div>
   );
+}
+
+/** 起きた順の列を、エージェントのステップ 1 つずつと、続くシステムの処理のまとまりに分ける（カードの見方） */
+function runs(list: ToolCall[]): { key: string; system: boolean; steps: ToolCall[] }[] {
+  const out: { key: string; system: boolean; steps: ToolCall[] }[] = [];
+  for (const s of list) {
+    const sys = s.name === "system";
+    const last = out.at(-1);
+    if (sys && last?.system) last.steps.push(s);
+    else out.push({ key: s.id, system: sys, steps: [s] });
+  }
+  return out;
 }
 

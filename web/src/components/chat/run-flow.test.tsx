@@ -203,5 +203,16 @@ describe("カードの見方（利用者の設定。specs/029 T38）", () => {
     const inv2 = html.slice(html.indexOf('data-stage="investigate-2"'));
     expect(inv2.replace(/<[^>]+>/g, " ")).toMatch(/^[^]*?調査（2 周目）/);
   });
+
+  it("段階の中は起きた順（モデルの応答 → それが選んだ検索）", () => {
+    for (const variant of ["card", "timeline"] as const) {
+      const steps = stepsOf("tool_then_answer");
+      const html = wrap(<RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} variant={variant} />);
+      const model = html.indexOf('data-step="system-model-1"');
+      const search = html.search(/data-step="(?!system|primer|understand)[^"]+"/);
+      expect(model, variant).toBeGreaterThan(-1);
+      expect(model, variant).toBeLessThan(search);
+    }
+  });
 });
 

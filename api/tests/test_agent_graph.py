@@ -914,5 +914,10 @@ async def test_each_model_call_is_recorded_with_its_time() -> None:
     # 時間は測ったもの（1 以上）。節点の名前は runner が付ける
     assert all(isinstance(c["duration_ms"], int) and c["duration_ms"] >= 1 for c in calls)
     assert calls[0]["output"]["chose"] == ["search"]
+    assert calls[0]["summary"] == "ツールを選んだ: 検索「MX-17」"
+    # モデルが呼んだ検索も、何を探したかを要約に出す（システムの検索と同じ形）
+    done = [e["step"] for e in custom if e["type"] == "step" and e["step"]["status"] == "done"]
+    search = next(s for s in done if s["name"] == "search" and s["input"].get("by") != "system")
+    assert search["summary"].startswith("「MX-17」・資料")
     assert calls[1]["output"]["chose"] == []
     assert calls[0]["id"] != calls[1]["id"]

@@ -46,7 +46,7 @@ export function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; ex
   const showInput = hasInputData(step.input);
   const showOutput = step.output != null;
   return (
-    <div>
+    <div data-step={step.id}>
       <button
         type="button"
         onClick={expandable ? onToggle : undefined}
