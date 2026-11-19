@@ -16,7 +16,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from arag.agent.citations import format_material, wrap_material
 from arag.agent.context import Emit, RunContext
 from arag.agent.steps import Step, StepClock, record_system
-from arag.agent.table import EXAMPLES, TableError, describe_tables, error_hint, parse_tables, run_query
+from arag.agent.table import (
+    EXAMPLES,
+    Table,
+    TableError,
+    describe_tables,
+    error_hint,
+    merge_parts,
+    parse_tables,
+    run_query,
+)
 from arag.agent.table import render as render_table
 from arag.agent.table import summarize as summarize_table
 from arag.db.models import Content, Document, Section
@@ -1003,6 +1012,30 @@ async def op_table_query(
     return out
 
 
+# 1 枚のシート・1 つの節が予算で分かれた章の見出し（「シート 1（2/12）」。ingest/chunking.py）
+_PART = re.compile(r"^(?P<base>.+)（(?P<i>\d+)/(?P<n>\d+)）$")
+
+
+async def _sheet_tables(ctx: RunContext, sec: Section) -> tuple[list[Table], int]:
+    """章が分かれたシートの一部なら、同じシートの章を順につないだ表（と、つないだ章の数）。そうでなければその章の表。"""
+    m = _PART.match(sec.heading_path)
+    if m is None:
+        return merge_parts([parse_tables(sec.text)]), 1
+    base, n = m.group("base"), int(m.group("n"))
+    names = [f"{base}（{i}/{n}）" for i in range(1, n + 1)]
+    async with ctx.sessionmaker() as s:
+        parts = list(
+            await s.scalars(
+                select(Section)
+                .where(Section.content_hash == sec.content_hash, Section.heading_path.in_(names))
+                .order_by(Section.ordinal)
+            )
+        )
+    if len(parts) < 2:
+        return merge_parts([parse_tables(sec.text)]), 1
+    return merge_parts([parse_tables(p.text) for p in parts]), len(parts)
+
+
 async def _table_query(
     ctx: RunContext, source: str, where: str, compute: str, table: int, call_id: str = ""
 ) -> str | _Failure:
@@ -1013,7 +1046,9 @@ async def _table_query(
             "セクション ID を指定してください。"
         )
     sec, doc = found
-    tables = parse_tables(sec.text)
+    # シートが章に分かれていたら、全部の章をつないで集計する
+    # （続きの章には見出しの行が無く、1 章だけでは数え違える）
+    tables, joined = await _sheet_tables(ctx, sec)
     if not tables:
         return _Failure(
             f"「{doc.filename}」のこの箇所に表はありません。"
@@ -1031,6 +1066,8 @@ async def _table_query(
         hint = EXAMPLES if "使える列" in str(e) else error_hint(target)
         return _Failure(f"表を集計できませんでした: {e}\n{hint}")
     body = render_table(result, where, compute)
+    if joined > 1:
+        body += f"\n（このシートは {joined} 個の章に分かれていたので、全部の章をつないで集計した）"
     if call_id:
         ctx.table_outputs[call_id] = summarize_table(result, compute)
     if len(tables) > 1:

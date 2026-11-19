@@ -8,7 +8,7 @@ import ast
 import re
 import unicodedata
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal, DivisionByZero, InvalidOperation
 from typing import Any
 
@@ -344,6 +344,38 @@ class QueryResult:
     is_aggregate: bool = False  # compute が集計関数の式か
     aggregate: Decimal | None = None  # 集計関数の式の値
     picks: list[Pick] = field(default_factory=list)
+
+
+def merge_parts(parts: list[list[Table]]) -> list[Table]:
+    """1 枚のシートが章・チャンクに分かれた表をつなぐ（最初の表の見出しの下に、続きの表の行を足す）。
+
+    取り込みは題名の行だけをチャンクごとに繰り返し、見出しの行（部品番号・名称…）は最初にしか無い。
+    そのため続きの表では最初のデータの行が見出しに読まれている。題名が同じで列の数が同じなら、それを行に戻す。
+    続きでない表（別の題名・別の列）はそのまま後ろに残す。
+    """
+    flat = [t for tables in parts for t in tables]
+    if not flat:
+        return []
+    base, rest = flat[0], []
+    rows, totals, notes = list(base.rows), list(base.totals), list(base.notes)
+    for t in flat[1:]:
+        if t.header == base.header and t.title == base.title:
+            head: list[list[str]] = []
+        elif base.title and t.title == base.title and len(t.header) == len(base.header):
+            head = [t.header]
+        else:
+            rest.append(t)
+            continue
+        for r in head + t.rows:
+            if (n := note_text(r)) is not None:
+                notes.append(n)
+            elif is_total_row(r):
+                totals.append(r)
+            else:
+                rows.append(r)
+        totals += t.totals
+        notes += [n for n in t.notes if n not in notes]
+    return [replace(base, rows=rows, totals=totals, notes=notes), *rest]
 
 
 # 「全部の行」のつもりの条件（条件なしと同じ）。小さいモデルは全行を数えるとき where="true" と書く

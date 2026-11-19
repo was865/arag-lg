@@ -225,3 +225,45 @@ def test_blank_and_note_rows_are_not_data_rows() -> None:
     # 先頭のセルだけでも、注記の言い方でなければデータの行のまま
     t2 = parse_tables("| 名称 | 数 |\n|---|---|\n| A | 1 |\n| B |  |")[0]
     assert len(t2.rows) == 2 and t2.notes == []
+
+
+# ── 分かれたシート（3100 の試走: 部品台帳が 12 の章に分かれ、2 つ目からは見出しの行が無かった） ──
+
+PART1 = """| 部品台帳（10月末） |  |  |
+|---|---|---|
+| 部品番号 | 状態 | 在庫 |
+| P-1 | 通常 | 3 |
+| P-2 | 廃止 | 0 |
+"""
+PART2 = """| 部品台帳（10月末） |  |  |
+|---|---|---|
+| P-3 | 廃止 | 0 |
+| P-4 | 通常 | 5 |
+| P-5 | 廃止 | 1 |
+"""
+
+
+def test_split_sheet_parts_are_joined_under_the_first_header() -> None:
+    from arag.agent.table import merge_parts
+
+    joined = merge_parts([parse_tables(PART1), parse_tables(PART2)])
+    t = joined[0]
+    assert t.header == ["部品番号", "状態", "在庫"]
+    assert [r[0] for r in t.rows] == ["P-1", "P-2", "P-3", "P-4", "P-5"]
+    assert len(run_query(t, "状態 == '廃止'").matched) == 3
+
+
+def test_continuing_tables_inside_one_section_are_joined_too() -> None:
+    """1 つの章の中でも、チャンクごとに題名の行が繰り返され、表が 4 つに分かれていた（8 行ずつ）。"""
+    from arag.agent.table import merge_parts
+
+    t = merge_parts([parse_tables(PART1 + "\n" + PART2)])
+    assert len(t) == 1 and len(t[0].rows) == 5
+
+
+def test_tables_that_do_not_continue_are_kept_separately() -> None:
+    from arag.agent.table import merge_parts
+
+    other = parse_tables("| 別の表 |  |\n|---|---|\n| a | b |\n| 1 | 2 |\n")
+    out = merge_parts([parse_tables(PART1), other])
+    assert [r[0] for r in out[0].rows] == ["P-1", "P-2"] and out[1].header == ["a", "b"]
