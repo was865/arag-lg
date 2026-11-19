@@ -30,6 +30,7 @@ export function detailOf(s: FlowStop, t: Dictionary): string {
     case "guard": {
       const kind = s.steps[0]?.input?.kind;
       if (s.outcome === "passed") return c.flowPassed;
+      if (s.outcome === "clarify") return c.flowClarified;
       if (s.outcome === "retried") return c.flowRetried;
       if (s.outcome === "failed") return c.flowFailed;
       return kind === "rewrite_discarded" ? c.flowDiscarded : c.flowEmptyDraft;

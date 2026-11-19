@@ -77,6 +77,29 @@ describe("flowOf（ステップの列 → 通った節点と辺）", () => {
     expect(passedIds(steps)).toEqual(["understand", "primer_search", "finalize"]);
   });
 
+  it("聞き返しの経路: 通らなかった調査・確認を推定で足さない（specs/029 T42）", () => {
+    const head: FlowStep[] = [
+      { id: "understand", name: "understand", status: "done", durationMs: 10, input: { history: false }, output: { kind: "docs" }, node: "understand" },
+      { id: "primer-1", name: "search" as FlowStep["name"], status: "done", durationMs: 10, input: { by: "system", role: "question" }, output: null, node: "understand" },
+    ];
+    const keys = (steps: FlowStep[]) => routeOf(steps).stops.map((s) => `${s.node}${s.outcome ? `:${s.outcome}` : ""}${s.via ? `@${s.via.key}` : ""}`);
+    // システムの聞き返し: 最初の検索 → 確定
+    const sys = [...head, { id: "system-clarify", name: "system", status: "done", durationMs: 0, input: { kind: "clarify", reason: "document_unspecified" }, output: null, node: "finalize" } as FlowStep];
+    expect(keys(sys)).toEqual(["understand", "primer_search@docs", "finalize@clarify"]);
+    expect(routeOf(sys).clarify).toBe(true);
+    // モデルの聞き返し: 調査 → 見張り（聞き返し）→ 確定。確認は通らない
+    const ask: FlowStep[] = [
+      ...head,
+      { id: "call-1", name: "ask_user" as FlowStep["name"], status: "done", durationMs: 1, input: { question: "どれ？" }, output: null, node: "investigate" },
+      { id: "system-guard-clarify", name: "system", status: "done", durationMs: 0, input: { kind: "guard_clarify" }, output: { result: "clarify" }, node: "guard" },
+      { id: "system-clarify", name: "system", status: "done", durationMs: 0, input: { kind: "clarify", reason: "ask_user" }, output: null, node: "finalize" },
+    ];
+    expect(keys(ask)).toEqual(["understand", "primer_search@docs", "investigate@investigate", "guard:clarify", "finalize@use_draft"]);
+    expect(routeOf(ask)).toMatchObject({ clarify: true, usedDraft: false });
+    // 見張りの記録の無い記録（T42 より前）でも、確認を推定で足さない
+    expect(keys(ask.filter((s) => s.id !== "system-guard-clarify"))).not.toContain("review:passed");
+  });
+
   it("下書きへの退避: 見張り → 確定へ飛び、確認からの通過の辺は通らない", () => {
     for (const name of ["empty_after_send_back_uses_draft", "rewrite_reply_uses_draft"]) {
       const steps = stepsOf(name);

@@ -6,7 +6,7 @@ import { LAYOUT, graphLayout, type GraphLayout } from "@/lib/chat/graph-layout";
 import type { Dictionary } from "@/i18n/dictionary";
 
 /** 札を書く分岐（いつもと違う経路）。資料・通過・候補ありはいつもの経路なので書かない */
-const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft"]);
+const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft", "clarify"]);
 
 /** 図に描く 1 つの節点の中身（経路の停留所を節点ごとにまとめたもの） */
 export interface NodeView {

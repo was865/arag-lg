@@ -68,13 +68,14 @@ export function FlowRail({ flow }: { flow: FlowRun }) {
 function summaryOf(r: FlowRoute, running: boolean, t: Dictionary): string | null {
   const c = t.chat;
   if (running) return null;
+  if (r.clarify) return c.flowSummaryClarify;
   if (r.usedDraft) return c.flowSummaryUsedDraft;
   if (r.sentBack > 0) return interpolate(c.flowSummarySentBack, { n: String(r.sentBack) });
   if (r.chat) return c.flowSummaryChat;
   return null;
 }
 /** 経路の札を書く分岐（いつもと違う経路と、続けて聞くを作らなかった「なし」）。資料・通過・候補ありは書かない */
-const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft", "end"]);
+const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft", "clarify", "end"]);
 
 /** 段階の説明（make graph が書き出す節点の説明。名前のホバーで読む）。 */
 const DESCRIPTION = new Map(FLOW_GRAPH.nodes.map((n) => [n.id, n.description]));

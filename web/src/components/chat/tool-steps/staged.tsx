@@ -219,7 +219,7 @@ export function StagedSteps({
 }
 
 /** 経路の札を書く分岐（いつもと違う経路と、続けて聞くを作らなかった「なし」） */
-const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft", "end"]);
+const UNUSUAL_EDGES = new Set(["chat", "send_back", "retry", "use_draft", "clarify", "end"]);
 const DESCRIPTION = new Map(FLOW_GRAPH.nodes.map((n) => [n.id, n.description]));
 
 /**

@@ -208,6 +208,16 @@ async def guard(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any
     last = state["messages"][-1] if state["messages"] else None
     if isinstance(last, ToolMessage) and last.name == ASK_USER:
         # 聞き返しでターンを終える（specs/031 R7）。確認は通さない（問いには資料の事実が無い）
+        # 見張りが確定へ回したことも記録に残す（経路で見張りの停留所にする。specs/029 T42）
+        record_system(
+            emit,
+            "system-guard-clarify",
+            "guard_clarify",
+            "聞き返しで終える",
+            "モデルが聞き返したので、確認を通さずに確定へ進めた",
+            input={"tool": ASK_USER},
+            output={"result": "clarify"},
+        )
         return {"guard": "clarify", "outcome": "clarify"}
     answer = final_answer(last)
     pending = state.get("empty_pending")

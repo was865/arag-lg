@@ -1027,6 +1027,9 @@ async def test_ask_user_ends_the_turn_with_the_question_and_options() -> None:
     steps = [e["step"] for e in custom if e["type"] == "step"]
     assert any(s["name"] == "ask_user" and s["status"] == "done" for s in steps)
     assert any(s["name"] == "system" and s["input"].get("kind") == "clarify" for s in steps)
+    # 見張りが聞き返しで確定へ回したことも記録する（029 T42）。通過の記録は出さない
+    kinds = [s["input"].get("kind") for s in steps if s["name"] == "system"]
+    assert "guard_clarify" in kinds and "guard_passed" not in kinds
     assert not any(s["name"] == "review" for s in steps) and len(model.calls) == 1
     assert not made  # 聞き返しでは続けて聞く候補を作らない
     # 次のターンでは聞き返しを外して答えさせ、外したことを記録に残す

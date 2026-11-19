@@ -84,7 +84,7 @@ export interface FlowRun {
 }
 
 const NODE_IDS = new Set<string>(FLOW_GRAPH.nodes.map((n) => n.id));
-const GUARD_KINDS = new Set(["empty_generation", "rewrite_discarded", "guard_passed"]);
+const GUARD_KINDS = new Set(["empty_generation", "rewrite_discarded", "guard_passed", "guard_clarify"]);
 const FINALIZE_KINDS = new Set(["citation_pruned", "citation_cleanup", "number_check", "clarify"]);
 
 function kindOf(step: FlowStep): string {
@@ -262,7 +262,7 @@ export function flowOf(
 // ── 実際にたどった順の経路（「詳細」の流れの表示。specs/029 R7） ──
 
 /** 経路の 1 つの停留所の結果。確認・見張りだけが持つ。 */
-export type StopOutcome = "sent_back" | "passed" | "skipped" | "retried" | "used_draft" | "failed";
+export type StopOutcome = "sent_back" | "passed" | "skipped" | "retried" | "used_draft" | "failed" | "clarify";
 
 export interface FlowStop {
   /** 一覧を絞るときの鍵（`investigate-2` など。同じ節点を何度も通るので節点名とは別） */
@@ -295,6 +295,8 @@ export interface FlowRoute {
   sentBack: number;
   usedDraft: boolean;
   chat: boolean;
+  /** 聞き返しで終えた（システムの聞き返しか、モデルの ask_user。specs/031） */
+  clarify: boolean;
   inferred: boolean;
 }
 
@@ -306,6 +308,8 @@ function guardOutcome(s: FlowStep): StopOutcome | undefined {
   const kind = kindOf(s);
   // 何もせず通した（T41。これより前の記録には無いので、古い回答では見張りの停留所は出ない）
   if (kind === "guard_passed") return "passed";
+  // モデルの聞き返しで確定へ回した（T42）
+  if (kind === "guard_clarify") return "clarify";
   if (kind === "rewrite_discarded") return "used_draft";
   if (kind !== "empty_generation") return undefined;
   const result = (s.output as Record<string, unknown> | null | undefined)?.result;
@@ -384,8 +388,12 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
   // 差し戻しの後で、まだ何も記録の無い書き直しの周回（実行中）
   const last = rounds[rounds.length - 1];
   if (running && !finalized && (!last || last.review?.name === "review")) fresh();
-  // 古い記録・何もツールを使わない回答でも、確定まで進んだなら調査は通っている
-  if (!rounds.length && finalized) fresh();
+  // 聞き返し（specs/031）: システムは最初の検索の後に調査を通らず確定へ、モデルは見張りから確認を通らず確定へ（T42）
+  const clarifies = top.filter((s) => kindOf(s) === "clarify");
+  const askedEarly = clarifies.some((s) => s.input?.reason === "document_unspecified");
+  const askedByModel = clarifies.some((s) => s.input?.reason === "ask_user");
+  // 古い記録・何もツールを使わない回答でも、確定まで進んだなら調査は通っている（システムの聞き返しは除く）
+  if (!rounds.length && finalized && !askedEarly) fresh();
 
   let sentBack = 0;
   let usedDraft = false;
@@ -403,7 +411,7 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
       const outcome: StopOutcome =
         r.review.name === "review" ? "sent_back" : r.review.input?.skip ? "skipped" : "passed";
       stops.push(stop("review", n, [r.review], { outcome }));
-    } else if (i === rounds.length - 1 && finalized && !usedDraft) {
+    } else if (i === rounds.length - 1 && finalized && !usedDraft && !askedByModel) {
       // 確認の通過を記録していない古い記録。確定まで進んだので、確認は通っている
       stops.push(stop("review", n, [], { outcome: chat ? "skipped" : "passed", inferred: true }));
     }
@@ -434,5 +442,5 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
       else stops.push({ ...stop("investigate", 1, []), current: true });
     }
   }
-  return { stops, rounds: rounds.length, sentBack, usedDraft, chat, inferred };
+  return { stops, rounds: rounds.length, sentBack, usedDraft, chat, clarify: clarifies.length > 0, inferred };
 }
