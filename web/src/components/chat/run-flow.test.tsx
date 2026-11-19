@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FlowRail, RunFlow } from "@/components/chat/run-flow";
-import { ToolSteps } from "@/components/chat/tool-steps";
 import type { ToolCall } from "@/lib/types";
 import { flowOf, routeOf, type FlowStep } from "@/lib/chat/flow";
 import { LocaleProvider } from "@/i18n/context";
@@ -132,31 +131,40 @@ describe("FlowRail（実行中の段階の列）", () => {
   });
 });
 
-describe("ToolSteps を経路の段階ごとに（specs/029 T36）", () => {
-  const render = (name: string, durationMs?: number) => {
+describe("経路とステップを 1 つに（specs/029 T37）", () => {
+  const render = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) => {
     const steps = stepsOf(name);
     return wrap(
-      <ToolSteps steps={steps as unknown as ToolCall[]} variant="card" expandedMap={{}} onToggleStep={() => {}} route={routeOf(steps)} durationMs={durationMs} />,
+      <RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} onSelect={() => {}} {...p} />,
     );
   };
+  const slice = (html: string, a: string, b: string) => html.slice(html.indexOf(a), html.indexOf(b));
 
-  it("経路と同じ順・同じ区切りで段階を並べ、システムの処理はその段階の中に置く（末尾にまとめない）", () => {
+  it("経路: 停留所の下にその段階のステップを置く（同じ順を 2 度並べない。末尾の「システムの処理」も無い）", () => {
     const html = render("gap");
-    const order = [...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1]);
-    expect(order[0]).toBe("understand-1");
-    expect(order).toContain("investigate-2");
-    expect(order).toContain("review-2");
     expect(html).not.toContain("システムの処理");
-    // 調査の段階の中にモデルの応答
-    const inv = html.slice(html.indexOf('data-stage="investigate-1"'), html.indexOf('data-stage="review-1"'));
-    expect(inv).toContain("モデルの応答");
+    expect(html).not.toContain("data-stage"); // 段階ごとの別の一覧は出さない
+    const inv1 = slice(html, 'data-stop="investigate-1"', 'data-stop="review-1"');
+    expect(inv1).toContain("モデルの応答");
+    const review1 = slice(html, 'data-stop="review-1"', 'data-stop="investigate-2"');
+    expect(review1).toMatch(/data-edge="send_back"[^>]*>差し戻し</);
   });
 
-  it("確定の後に「回答を送信」の区切りを置く", () => {
-    const html = render("answer", 2790);
-    expect(html).toContain("data-sent-line");
+  it("経路: 段階に時間のある行が 1 つなら、時間は見出しだけ（行には重ねない）", () => {
+    const html = render("answer");
+    const understand = slice(html, 'data-stop="understand-1"', 'data-stop="primer_search-1"');
+    expect(understand.match(/10ms/g)).toHaveLength(1);
+  });
+
+  it("経路: 確定の後に「回答を送信」と所要時間", () => {
+    const html = render("answer", { durationMs: 2790 });
+    expect(html.indexOf("data-sent")).toBeGreaterThan(html.indexOf('data-stop="finalize-1"'));
     expect(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).toContain("回答を送信 2.79s");
-    expect(html.indexOf("data-sent-line")).toBeGreaterThan(html.indexOf('data-stage="finalize-1"'));
+  });
+
+  it("グラフ: 図の下に段階ごとの一覧。節点で絞ると、その段階だけ", () => {
+    const html = render("gap", { defaultView: "graph", selected: "review" });
+    const order = [...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1]);
+    expect(order).toEqual(["review-1", "review-2"]);
   });
 });
-

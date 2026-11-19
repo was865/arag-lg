@@ -171,6 +171,7 @@ export function AgentActivity({
       {isOpen && (
         <div className="animate-fade-up overflow-hidden card-sunken motion-reduce:animate-none">
           <CitedTitlesContext.Provider value={new Set((sources ?? []).map((x) => x.title))}>
+            {/* 系統が導く流れのターンは、経路とステップを 1 つに（specs/029 T37）。生の記録（log）は時刻順の一覧を下に */}
             {guided && (
               <RunFlow
                 route={route}
@@ -179,16 +180,19 @@ export function AgentActivity({
                 durationMs={durationMs}
                 selected={only}
                 onSelect={setOnly}
+                steps={variant === "log" ? undefined : visibleSteps}
+                expandedMap={expandedMap}
+                onToggleStep={onToggleStep}
               />
             )}
-            <ToolSteps
-              steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps}
-              variant={variant}
-              expandedMap={expandedMap}
-              onToggleStep={onToggleStep}
-              route={guided ? route : undefined}
-              durationMs={running ? undefined : durationMs}
-            />
+            {(!guided || variant === "log") && (
+              <ToolSteps
+                steps={picked ? visibleSteps.filter((s) => picked.has(s.id)) : visibleSteps}
+                variant={variant}
+                expandedMap={expandedMap}
+                onToggleStep={onToggleStep}
+              />
+            )}
           </CitedTitlesContext.Provider>
         </div>
       )}
