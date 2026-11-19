@@ -260,6 +260,20 @@ async def guard(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any
                 "guard": "use_draft",
                 "outcome": "used_draft",
             }
+    # 何もせずに通したことも記録に残す（確認の通過と同じく、見張りが動いたことを追えるように。specs/029 T41）
+    ctx.stats.guard_passes += 1
+    checks = ["empty", "announce_only"] + (["rewrite_reply"] if rewrite_of is not None else [])
+    record_system(
+        emit,
+        f"system-guard-pass-{ctx.stats.guard_passes}",
+        "guard_passed",
+        "見張りの通過",
+        "空の応答・予告だけの回答"
+        + ("・差し戻しへの返事の書き直し" if rewrite_of is not None else "")
+        + "のどれでもないので通した",
+        input={"checks": checks},
+        output={"result": "ok"},
+    )
     return {"rewrite_of": None, "guard": "ok", "outcome": "answered"}
 
 

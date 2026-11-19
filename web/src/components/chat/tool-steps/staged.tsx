@@ -179,7 +179,7 @@ export function StagedSteps({
     <section
       key={key}
       data-stage={key}
-      className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-2 py-1 max-md:grid-cols-1"
+      className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1 max-md:grid-cols-1"
     >
       <h4
         className={cn(
@@ -399,7 +399,7 @@ export function CardSteps({
           {/* 段階の名前を左の列に（上の経路と同じ印）。段階の境目だけに線を引き、段階の中のカードはつなげて見せる */}
           <div
             data-stage={stop.key}
-            className="grid grid-cols-[7.5rem_minmax(0,1fr)] border-b-[0.5px] border-divider max-md:grid-cols-1"
+            className="grid grid-cols-[9.5rem_minmax(0,1fr)] border-b-[0.5px] border-divider max-md:grid-cols-1"
           >
             <div
               title={DESCRIPTION.get(stop.node)}

@@ -143,12 +143,14 @@ describe("routeOf（実際にたどった順の経路）", () => {
     routeOf(stepsOf(name)).stops.map((s) => `${s.node}${s.round > 1 ? s.round : ""}${s.outcome ? `:${s.outcome}` : ""}`);
 
   it("そのまま回答: 確認を 1 度通って確定", () => {
-    expect(path("answer")).toEqual(["understand", "primer_search", "investigate", "review:passed", "finalize"]);
+    // 見張りも、何もせず通したことを停留所にする（T41）
+    expect(path("answer")).toEqual(["understand", "primer_search", "investigate", "guard:passed", "review:passed", "finalize"]);
   });
 
   it("差し戻し: 2 周目の調査と確認を別の停留所にする（×2 とまとめない）", () => {
     expect(path("gap")).toEqual([
-      "understand", "primer_search", "investigate", "review:sent_back", "investigate2", "review2:passed", "finalize",
+      "understand", "primer_search", "investigate", "guard:passed", "review:sent_back",
+      "investigate2", "guard2:passed", "review2:passed", "finalize",
     ]);
     const r = routeOf(stepsOf("gap"));
     expect(r).toMatchObject({ rounds: 2, sentBack: 1, usedDraft: false });
@@ -214,7 +216,7 @@ describe("routeOf の条件つきの辺（specs/029 T32）", () => {
   it("条件つきの辺で着いた停留所に、選ばれた分岐を付ける", () => {
     const v = Object.fromEntries(via(stepsOf("answer")));
     expect(v["primer_search-1"]).toBe("docs");
-    expect(v["review-1"]).toBeNull(); // 見張り → 確認は見張りが何もしないと停留所が無いので付けない
+    expect(v["review-1"]).toBe("ok"); // 見張り → 確認（見張りが通した。T41 から見張りも停留所）
     expect(v["finalize-1"]).toBe("pass");
     expect(Object.fromEntries(via(stepsOf("gap")))["investigate-2"]).toBe("send_back");
     expect(Object.fromEntries(via(stepsOf("chat")))["investigate-1"]).toBe("chat");

@@ -921,3 +921,16 @@ async def test_each_model_call_is_recorded_with_its_time() -> None:
     assert search["summary"].startswith("「MX-17」・資料")
     assert calls[1]["output"]["chose"] == []
     assert calls[0]["id"] != calls[1]["id"]
+
+
+async def test_guard_records_when_it_lets_the_answer_through() -> None:
+    """見張りが何もせず通したときも記録に残す（確認の通過と同じ。specs/029 T41）。"""
+    model = FakeToolModel(messages=script(AIMessage(content="停止する[1]。")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    _, custom = await run(agent, ctx(FakeSearch("MX-17 は即時停止を推奨する。")), "MX-17 はどうする？")
+    passed = [
+        e["step"] for e in custom if e["type"] == "step" and e["step"]["input"].get("kind") == "guard_passed"
+    ]
+    assert len(passed) == 1
+    assert passed[0]["label"] == "見張りの通過"
+    assert passed[0]["input"]["checks"] == ["empty", "announce_only"]

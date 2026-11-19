@@ -47,7 +47,10 @@ describe("RunFlow（グラフの実行経路。specs/029 R7・T35）", () => {
       const html = view("gap");
       expect(html).not.toContain("data-orient");
       const order = [...html.matchAll(/data-stop="([^"]+)"/g)].map((m) => m[1]);
-      expect(order).toEqual(["understand-1", "primer_search-1", "investigate-1", "review-1", "investigate-2", "review-2", "finalize-1"]);
+      expect(order).toEqual([
+        "understand-1", "primer_search-1", "investigate-1", "guard-1-system-guard-pass-1", "review-1",
+        "investigate-2", "guard-2-system-guard-pass-2", "review-2", "finalize-1",
+      ]);
       expect(text(html)).toContain("調査（2 周目）");
       expect(html).toMatch(/data-edge="send_back"[^>]*>差し戻し</);
       // いつもの分岐（資料・通過）は札を書かない
@@ -177,7 +180,6 @@ describe("カードの見方（利用者の設定。specs/029 T38）", () => {
 
   it("経路（停留所の列）の下に、経路の順でカードを並べ、システムの処理はその段階のすぐ後に", () => {
     const html = render("gap", { durationMs: 3000 });
-    expect(html).toMatch(/data-stop="review-1"[^>]*>/); // 経路の停留所
     const order = [...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1]);
     expect(order.indexOf("investigate-1")).toBeLessThan(order.indexOf("review-1"));
     expect(order.indexOf("review-1")).toBeLessThan(order.indexOf("investigate-2"));

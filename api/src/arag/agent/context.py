@@ -35,6 +35,8 @@ class RunStats:
     empty_retries: int = 0
     rewrites_discarded: int = 0  # 差し戻しへの返事・引用の消えた書き直しを捨てた回数（026 T29）
     empty_events: int = 0
+    # 見張りが何もせず通した回数（ステップの ID を周回ごとに分ける。specs/029 T41）
+    guard_passes: int = 0
     empty_failed: bool = False
 
     @property

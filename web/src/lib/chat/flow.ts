@@ -84,7 +84,7 @@ export interface FlowRun {
 }
 
 const NODE_IDS = new Set<string>(FLOW_GRAPH.nodes.map((n) => n.id));
-const GUARD_KINDS = new Set(["empty_generation", "rewrite_discarded"]);
+const GUARD_KINDS = new Set(["empty_generation", "rewrite_discarded", "guard_passed"]);
 const FINALIZE_KINDS = new Set(["citation_pruned", "citation_cleanup", "number_check"]);
 
 function kindOf(step: FlowStep): string {
@@ -292,6 +292,8 @@ const END_EDGE = { key: "end", label: "なし" };
 
 function guardOutcome(s: FlowStep): StopOutcome | undefined {
   const kind = kindOf(s);
+  // 何もせず通した（T41。これより前の記録には無いので、古い回答では見張りの停留所は出ない）
+  if (kind === "guard_passed") return "passed";
   if (kind === "rewrite_discarded") return "used_draft";
   if (kind !== "empty_generation") return undefined;
   const result = (s.output as Record<string, unknown> | null | undefined)?.result;
@@ -301,7 +303,7 @@ function guardOutcome(s: FlowStep): StopOutcome | undefined {
 /**
  * ステップの列から、この回答が実際にたどった順の経路を作る。
  * 調査 → 確認で差し戻されたら、次の調査は「2 周目」として新しい停留所にする（同じ節点を ×2 とまとめない）。
- * 見張りは何かをしたとき（やり直し・下書きへの退避）だけ停留所にする。
+ * 見張りは、通したこと（guard_passed、T41）か何かをしたこと（やり直し・下書きへの退避）の記録があれば停留所にする。
  */
 export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): FlowRoute {
   const running = Boolean(opts.running);

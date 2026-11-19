@@ -222,6 +222,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-review-pass-1",
      "input": {
       "done": [],
@@ -446,6 +492,26 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
@@ -760,6 +826,64 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
@@ -974,6 +1098,65 @@
      },
      "status": "done",
      "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫 6",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -1387,6 +1570,64 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
@@ -2410,6 +2651,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "保存は 5 年",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-review-pass-1",
      "input": {
       "done": [],
@@ -3380,6 +3667,64 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "変更点はトルク値です[1]。在庫数は資料に記載されていません。",
@@ -3653,6 +3998,64 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     },
+     "2": {
+      "section_id": "<uuid-3>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "HP-300 第3版",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       },
+       {
+        "block_type": "text",
+        "body": "SK-300 在庫",
+        "heading": "第1章",
+        "id": "<uuid-3>",
+        "n": 2,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
@@ -4081,6 +4484,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "単価は資料に記載されていません[1]。",
@@ -4199,6 +4648,53 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-2",
      "input": {
       "draft": "単価は 17,800 円です[1]。",
@@ -4286,6 +4782,53 @@
      },
      "status": "done",
      "summary": "「資料に無い数字 17,800」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-3",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -4666,6 +5209,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "資料に記載されていません。",
@@ -4753,6 +5342,53 @@
      },
      "status": "done",
      "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -5084,6 +5720,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "単価は 17,800 円です[1]",
@@ -5171,6 +5853,53 @@
      },
      "status": "done",
      "summary": "「資料に無い数字 17,800」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "シールキット SK-300 の単価は 18,400 円。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -5596,6 +6325,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "| 項目 | HP-300 | HP-320 |\n|---|---|---|\n| 在庫 | 6 [1] | 4 [1] |",
@@ -5763,6 +6538,52 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
@@ -6172,6 +6993,52 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
@@ -6876,6 +7743,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "二回目も資料に記載されていません。",
@@ -6963,6 +7876,53 @@
      },
      "status": "done",
      "summary": "「記載されていません」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -7646,6 +8606,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "本文",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "system-review-pass-1",
      "input": {
       "done": [],
@@ -8022,6 +9028,52 @@
    },
    {
     "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
      "id": "review-1",
      "input": {
       "draft": "P-1042 と P-1043 です[1]",
@@ -8109,6 +9161,53 @@
      },
      "status": "done",
      "summary": "「表の集計を計算していない」のため差し戻し → 回答を書き直し"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-2",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only",
+       "rewrite_reply"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答・差し戻しへの返事の書き直しのどれでもないので通した"
     },
     "type": "step"
    },
@@ -8596,6 +9695,52 @@
      },
      "status": "done",
      "summary": "回答を書いた"
+    },
+    "type": "step"
+   },
+   {
+    "citation_map": {
+     "1": {
+      "section_id": "<uuid-1>",
+      "source_id": "<uuid-2>"
+     }
+    },
+    "sources": [
+     {
+      "id": "<uuid-2>",
+      "score": 0.9,
+      "sections": [
+       {
+        "block_type": "text",
+        "body": "MX-17 は即時停止を推奨する。",
+        "heading": "第1章",
+        "id": "<uuid-1>",
+        "n": 1,
+        "page": 2
+       }
+      ],
+      "title": "規程.pdf"
+     }
+    ],
+    "type": "sources"
+   },
+   {
+    "step": {
+     "id": "system-guard-pass-1",
+     "input": {
+      "checks": [
+       "empty",
+       "announce_only"
+      ],
+      "kind": "guard_passed"
+     },
+     "label": "見張りの通過",
+     "name": "system",
+     "output": {
+      "result": "ok"
+     },
+     "status": "done",
+     "summary": "空の応答・予告だけの回答のどれでもないので通した"
     },
     "type": "step"
    },
