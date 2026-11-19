@@ -152,6 +152,22 @@ NUMBER_NOTE = (
 )
 # 資料の中の表の行（Markdown）
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$\n\s*\|[\s:\-|]+\|\s*$", re.MULTILINE)
+# 件数（「14 件」「50件」）と、同じ文の出典の印
+_COUNT = re.compile(r"\d[\d,]*\s*件")
+_SENTENCE = re.compile(r"[^。\n]+")
+_MARK_N = re.compile(r"\[(\d+)\]")
+
+
+def counts_from_documents(ctx: RunContext, answer: str) -> bool:
+    """件数を書いた文に文書の出典が付いているか（文書の表の行を目で数えた件数。3100 の試走）。"""
+    for sentence in _SENTENCE.findall(answer):
+        if not _COUNT.search(sentence):
+            continue
+        for n in _MARK_N.findall(sentence):
+            cited = ctx.registry.get(int(n))
+            if cited is not None and cited.kind != "system":
+                return True
+    return False
 
 
 def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
@@ -749,8 +765,9 @@ def pick_review(
         "table" not in done
         and ctx.primer is not None
         and ctx.primer.table
-        # 今の値を社内システムで確かめた回答では、文書の表は時点の比較に添えるだけなので計算させない
-        and not (current and checked)
+        # 今の値を社内システムで確かめた回答では、文書の表は時点の比較に添えるだけなので計算させない。
+        # ただし文書の表から件数を数えて書いたら数え直させる（検索で拾った行だけを数えて少なく答える）
+        and not (current and checked and not counts_from_documents(ctx, answer))
         and not any(isinstance(m, ToolMessage) and m.name == "table_query" for m in turn)
         and any(_TABLE_ROW.search(t) for t in _materials(ctx, turn))
     ):

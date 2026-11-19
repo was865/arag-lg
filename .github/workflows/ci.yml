@@ -53,6 +53,34 @@ jobs:
       - run: uv run mypy
       - run: uv run pytest -q
 
+  erp-mcp:
+    # ERP の MCP サーバ（specs/033）。Odoo との契約のテストは ERP_ODOO_TEST=1 のときだけ（CI は mock）
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: mcp/erp } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+
+  sim:
+    # 模擬の世界と文書・題集の答え（specs/034）。world.db の再現と、題集の答えの一致を確かめる
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: sim } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with: { version: "0.13.6", enable-cache: true }
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+
   web:
     runs-on: ubuntu-24.04
     defaults: { run: { working-directory: web } }

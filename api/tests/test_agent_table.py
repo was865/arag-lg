@@ -89,6 +89,15 @@ def test_no_condition_returns_all_rows_and_empty_result_is_stated() -> None:
     assert "0 行" in text and "|" not in text.split("\n", 1)[-1] if "\n" in text else True
 
 
+@pytest.mark.parametrize("where", ["true", "True", "TRUE", "1", "*", "all", "全部", "すべて", "全行"])
+def test_all_rows_spellings_mean_no_condition(where: str) -> None:
+    """「全部の行を数える」つもりの書き方は条件なしとして扱う。
+
+    3100 の試走で where="true" が誤りになり、表を数え直せなかった。
+    """
+    assert len(run_query(ledger(), where).matched) == 4
+
+
 # ── 集計関数（T11） ──
 
 

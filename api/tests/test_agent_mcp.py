@@ -16,7 +16,7 @@ from arag.mcp.registry import ServerSpec, ToolSpec
 
 from .agent_fakes import FakeSearch, FakeToolModel, script, tool_call
 from .mcp_fake import KEY, running
-from .test_agent_graph import ctx, run
+from .test_agent_graph import ctx, run, utility
 
 SCHEMA = {"type": "object", "properties": {"part": {"type": "string"}}, "required": ["part"]}
 
@@ -431,3 +431,35 @@ async def test_next_cursor_and_trace_are_kept_in_the_record() -> None:
         await run(agent, c, "在庫は？")
     rec = next(x for x in c.registry.items() if x.kind == "system").record
     assert rec is not None and rec["next_cursor"] == "50" and rec["trace"]["id"] == "t2"
+
+
+TABLE = "| 部品 | 在庫 | 発注点 |\n|---|---|---|\n| P-1042 | 6 | 10 |\n| P-1043 | 4 | 4 |"
+
+
+async def _counted(answer: str) -> tuple[list[Any], FakeToolModel]:
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(
+            messages=script(
+                tool_call(t.agent_name, part="P-1042"), AIMessage(content=answer), AIMessage(content="ok[2]")
+            )
+        )
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        u = utility('{"kind": "docs", "queries": ["発注点を下回る部品"], "table": true}')
+        c = ctx(FakeSearch(TABLE), mcp=mcp_run(t), utility_model=u)
+        _, custom = await run(agent, c, "今、発注点を下回っている部品は何件ありますか？")
+    return custom, model
+
+
+async def test_counts_read_off_document_tables_are_checked_even_after_systems() -> None:
+    """今の値を社内システムで確かめても、文書の表から数えた件数を書いたら table_query で数え直させる。
+
+    3100 の試走: 在庫の報告のシートを検索で拾った行だけ数えて、11月16日を 14 件と答えた（本当は 50 件）。
+    """
+    custom, _ = await _counted("今は P-1042 が下回っています[2]。報告では 2 件でした[1]。")
+    assert "table" in [s["input"]["kind"] for s in steps_of(custom, "review")]
+
+
+async def test_system_only_answer_to_current_question_is_not_table_checked() -> None:
+    custom, _ = await _counted("今は P-1042 が下回っています[2]。台帳でも P-1042 の在庫は 6 個です[1]。")
+    assert not steps_of(custom, "review")

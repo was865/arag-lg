@@ -346,7 +346,13 @@ class QueryResult:
     picks: list[Pick] = field(default_factory=list)
 
 
+# 「全部の行」のつもりの条件（条件なしと同じ）。小さいモデルは全行を数えるとき where="true" と書く
+ALL_ROWS = frozenset({"true", "1", "*", "all", "全部", "すべて", "全て", "全行"})
+
+
 def run_query(table: Table, where: str = "", compute: str = "") -> QueryResult:
+    if where.strip().lower() in ALL_ROWS:
+        where = ""
     names = table.aliases()
     cond = _parse(where, table, "条件") if where.strip() else None
     calc = _parse(compute, table, "計算式") if compute.strip() else None
