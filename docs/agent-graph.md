@@ -27,7 +27,8 @@ graph TD;
 	guard -. &nbsp;やり直し&nbsp; .-> investigate\3a__start__;
 	guard -. &nbsp;通過&nbsp; .-> review;
 	investigate\3a__end__ --> guard;
-	primer_search --> investigate\3a__start__;
+	primer_search -. &nbsp;聞き返し&nbsp; .-> finalize;
+	primer_search -. &nbsp;調査へ&nbsp; .-> investigate\3a__start__;
 	read_image --> understand;
 	review -. &nbsp;通過&nbsp; .-> finalize;
 	review -. &nbsp;差し戻し&nbsp; .-> investigate\3a__start__;
@@ -64,4 +65,4 @@ graph TD;
 | `finalize` | 確定 | 数字の照合・引用の整形と刈り込み・回答の分類をして、完了を送る |
 | `followups` | 続けて聞く | 完了の後に、続けて聞く質問の候補を作って届ける |
 
-辺の札: `chat` = 雑談・`docs` = 資料・`retry` = やり直し・`use_draft` = 下書き・聞き返し・`ok` = 通過・`send_back` = 差し戻し・`pass` = 通過・`followups` = 候補あり・`end` = なし
+辺の札: `chat` = 雑談・`docs` = 資料・`retry` = やり直し・`use_draft` = 下書き・聞き返し・`investigate` = 調査へ・`clarify` = 聞き返し・`ok` = 通過・`send_back` = 差し戻し・`pass` = 通過・`followups` = 候補あり・`end` = なし

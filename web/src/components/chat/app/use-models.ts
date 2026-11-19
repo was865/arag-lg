@@ -55,5 +55,7 @@ export function useModels() {
     push(interpolate(t.feedback.modelSwitched, { label: m.label }), "success");
   };
 
-  return { models: models ?? [], model, modelId, imageInput, selectModel };
+  // 一覧が届く前は model_id が決まっていない。そのまま送るとサーバーの既定（目録の先頭）で答えてしまい、
+  // 画面に見えているモデルと食い違うので、届くまで送信を止める
+  return { models: models ?? [], model, modelId, modelLoading: models === null, imageInput, selectModel };
 }

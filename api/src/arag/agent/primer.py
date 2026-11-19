@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any
 
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
@@ -22,9 +22,10 @@ from arag.agent.ops import (
     op_read_section,
     op_search,
     read_document,
+    recent_documents,
     weak_result,
 )
-from arag.agent.prior import last_cited_scope
+from arag.agent.prior import cited_documents, last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
 from arag.logging import get_logger
@@ -449,4 +450,70 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
         text=merge_results(texts),
         weak=bool(texts) and all(weak_result(t) for t in texts),
     )
+    question = u.get("question", "")
+    history = state["messages"][: _last_question(state["messages"]) or 0]
+    if u["kind"] == "docs" and not named and document_unspecified(ctx, question, history):
+        try:
+            recent = await recent_documents(ctx)
+        except Exception as e:  # 最近の文書が取れなくても、検索で見つかった文書で聞き返す
+            log.warning("recent_documents_failed", error=str(e)[:200])
+            recent = []
+        options = clarify_options(ctx, question, recent)
+        if len(options) >= 2:
+            return {
+                "clarify": {
+                    "question": CLARIFY_DOCUMENT,
+                    "options": options,
+                    "reason": "document_unspecified",
+                }
+            }
     return None
+
+
+# 「この資料」「その文書」のように、文書そのものを指す言い方（文書の種類の語「手順書」などは含めない）
+_THIS_DOC = re.compile(
+    r"(この|その|あの|上の|さっきの|先ほどの|先程の)\s*(資料|文書|ドキュメント|ファイル|書類|PDF)|"
+    r"\b(this|that)\s+(document|file|pdf)\b",
+    re.IGNORECASE,
+)
+CLARIFY_DOCUMENT = "どの資料についてですか？候補から選ぶか、文書名を書いてもう一度質問してください。"
+CLARIFY_OPTIONS_MAX = 3
+
+
+def document_unspecified(ctx: RunContext, question: str, history: list[AnyMessage]) -> bool:
+    """「この資料」が指す文書が決まらないか（specs/031 R14）。
+
+    添付・範囲で文書が絞られている・画像がある・前のターンで資料を引用した・前のターンが聞き返し、の
+    どれかなら、指す先は決まっている（または続けて聞き返さない）とみなす。
+    """
+    if not _THIS_DOC.search(question):
+        return False
+    if ctx.document_ids is not None or ctx.hooks.read_image is not None:
+        return False
+    last = next((m for m in reversed(history) if isinstance(m, AIMessage) and not m.tool_calls), None)
+    if last is not None and last.additional_kwargs.get("clarify"):
+        return False
+    return not cited_documents(history)
+
+
+# 選択肢に入れる文書の、最も関連の高い文書に対するスコアの比（低いものは偶然に近い一致）
+CLARIFY_SCORE_RATIO = 0.5
+
+
+def clarify_options(ctx: RunContext, question: str, recent: list[str] | None = None) -> list[str]:
+    """「この資料」の候補ごとに、その文書名を添えた質問を選択肢にする。
+
+    候補は、利用者が最近登録した文書（2 つまで）、続けて最初の検索で見つかった文書のうち関連の高いもの
+    （文書ごとの最高スコアが、いちばん高い文書の半分以上）を高い順に。
+    """
+    best: dict[str, float] = {}
+    for c in ctx.registry.items():
+        if c.document_name:
+            best[c.document_name] = max(best.get(c.document_name, 0.0), c.score or 0.0)
+    top = max(best.values(), default=0.0)
+    found = [n for n, sc in sorted(best.items(), key=lambda x: -x[1]) if sc >= top * CLARIFY_SCORE_RATIO]
+    # 「この資料」は、利用者が登録したばかりの文書を指すことが多い。内容の語が無い質問では検索の順は
+    # 当てにならないので、最近の文書を先に置く
+    names = list(dict.fromkeys([*(recent or [])[:2], *found]))
+    body = _THIS_DOC.sub("この資料", question).strip()
+    return [f"{n} {body}" for n in names[:CLARIFY_OPTIONS_MAX]]

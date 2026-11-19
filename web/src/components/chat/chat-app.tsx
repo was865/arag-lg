@@ -133,7 +133,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
     sources: [],
     kbId: null,
   });
-  const { models, model, modelId, imageInput, selectModel } = useModels();
+  const { models, model, modelId, modelLoading, imageInput, selectModel } = useModels();
   const { threads, refreshThreads, renameThread, toggleStar, deleteThread, replaceThread, confirmDialog } = useThreads({
     onDeleted: (id) => {
       forget(id);
@@ -603,6 +603,7 @@ export function ChatApp({ initialRoute }: { initialRoute: Route }) {
               model={model}
               models={models}
               onSelectModel={selectModel}
+              modelLoading={modelLoading}
               running={running}
               scope={scope}
               focusKey={composerFocus}

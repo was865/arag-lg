@@ -64,7 +64,16 @@
     {
       "source": "primer_search",
       "target": "investigate",
-      "kind": "next"
+      "kind": "next",
+      "key": "investigate",
+      "label": "調査へ"
+    },
+    {
+      "source": "primer_search",
+      "target": "finalize",
+      "kind": "skip",
+      "key": "clarify",
+      "label": "聞き返し"
     },
     {
       "source": "investigate",

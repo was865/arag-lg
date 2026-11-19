@@ -70,6 +70,8 @@ describe("聞き返し（specs/031）", () => {
     const turn = done({ steps: [ask] as unknown as Turn["steps"] });
     expect(isClarify(turn)).toBe(true);
     expect(isClarify(done())).toBe(false);
+    const sys = { id: "system-clarify", name: "system", label: "聞き返しで終える", status: "done", input: { kind: "clarify" } };
+    expect(isClarify(done({ steps: [sys] as unknown as Turn["steps"] }))).toBe(true);
     const html = render(<Followups items={["第5章の内容"]} clarify onSend={() => {}} />);
     expect(html).toContain(ja.chat.clarifyTitle);
     expect(html).not.toContain(ja.chat.followupsTitle);

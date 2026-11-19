@@ -96,6 +96,8 @@ EDGE_LABELS: dict[str, str] = {
     "retry": "やり直し",
     # 下書きへの退避と聞き返しは、どちらも確認を通さずに確定へ進む（図では 1 本の辺）
     "use_draft": "下書き・聞き返し",
+    "investigate": "調査へ",
+    "clarify": "聞き返し",
     "ok": "通過",
     "send_back": "差し戻し",
     "pass": "通過",
@@ -138,6 +140,8 @@ class FlowState(TypedDict):
     suggestions: NotRequired[list[str]]
     # 回答の末尾に添える注記（理由の裏付けが無いまま書き直された回答。specs/031 R13）
     caveat: NotRequired[str | None]
+    # 最初の検索の後にシステムが決めた聞き返し（question・options・reason。specs/031 R14）
+    clarify: NotRequired[dict[str, Any] | None]
 
 
 # ターンの始めに戻す値
@@ -159,6 +163,7 @@ FRESH: dict[str, Any] = {
     "followups": False,
     "suggestions": [],
     "caveat": None,
+    "clarify": None,
 }
 
 
@@ -369,7 +374,11 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
     msgs = state["messages"]
     last = msgs[-1] if msgs else None
     if state.get("outcome") == "clarify" and isinstance(last, ToolMessage):
-        return await _finish_clarify(ctx, msgs, last, capture, recorded)
+        question, options = _ask_user_args(msgs, last)
+        return await _finish_clarify(ctx, question, options, "ask_user", capture, recorded)
+    if (pre := state.get("clarify")) is not None:
+        # 最初の検索の後に、システムが決めた聞き返し（specs/031 R14）
+        return await _finish_clarify(ctx, pre["question"], pre["options"], pre["reason"], capture, recorded)
     update: dict[str, Any] = {}
     text = ""
     if isinstance(last, AIMessage) and not last.tool_calls:
@@ -427,18 +436,8 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
 CLARIFY_OPTIONS_MAX = 3
 
 
-async def _finish_clarify(
-    ctx: RunContext,
-    msgs: list[AnyMessage],
-    tool: ToolMessage,
-    capture: Any,
-    recorded: list[dict[str, Any]],
-) -> dict[str, Any]:
-    """聞き返しを回答として確定する。問いを回答に、選択肢を候補にする（続けて聞く候補は作らない）。
-
-    会話の状態には問いを AIMessage（clarify の印付き）として足す。次のターンの質問の理解が問いと
-    選択肢を履歴として読み、続けての聞き返しを止めるのに使う。
-    """
+def _ask_user_args(msgs: list[AnyMessage], tool: ToolMessage) -> tuple[str, list[str]]:
+    """ask_user の呼び出しの問いと選択肢。"""
     call = next(
         (
             c
@@ -453,13 +452,35 @@ async def _finish_clarify(
     question = str(args.get("question") or tool.text).strip()
     raw = args.get("options") or []
     options = list(dict.fromkeys(str(o).strip() for o in raw if str(o).strip()))[:CLARIFY_OPTIONS_MAX]
+    return question, options
+
+
+CLARIFY_REASONS = {
+    "ask_user": "質問の意味を決められないため、モデルが利用者に聞き返した",
+    "document_unspecified": "「この資料」がどの文書か決まらないため、検索で見つかった文書から選んでもらう",
+}
+
+
+async def _finish_clarify(
+    ctx: RunContext,
+    question: str,
+    options: list[str],
+    reason: str,
+    capture: Any,
+    recorded: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """聞き返しを回答として確定する。問いを回答に、選択肢を候補にする（続けて聞く候補は作らない）。
+
+    会話の状態には問いを AIMessage（clarify の印付き）として足す。次のターンの質問の理解が問いと
+    選択肢を履歴として読み、続けての聞き返しを止めるのに使う。
+    """
     record_system(
         tag_node(capture, "finalize"),
         "system-clarify",
         "clarify",
         "聞き返しで終える",
-        f"質問の意味を決められないため、利用者に聞き返した（選択肢 {len(options)} 個）",
-        input={"question": question},
+        f"{CLARIFY_REASONS.get(reason, reason)}（選択肢 {len(options)} 個）",
+        input={"question": question, "reason": reason},
         output={"options": options},
     )
     answer = AIMessage(content=question, additional_kwargs={"clarify": True, "options": options})
@@ -492,6 +513,11 @@ def route_after_understand(state: FlowState) -> Literal["chat", "docs"]:
     """雑談は最初の検索を飛ばして調査へ。"""
     u = state.get("understanding")
     return "chat" if u and u.get("kind") == "chat" else "docs"
+
+
+def route_after_primer(state: FlowState) -> Literal["investigate", "clarify"]:
+    """どの文書か決まらない「この資料」は、調べずに聞き返す（確定へ）。"""
+    return "clarify" if state.get("clarify") else "investigate"
 
 
 def route_after_guard(state: FlowState) -> Literal["retry", "use_draft", "ok"]:
@@ -553,7 +579,9 @@ def build_graph(investigate: Any, *, checkpointer: BaseCheckpointSaver[Any] | No
     g.add_conditional_edges(
         "understand", route_after_understand, {"chat": "investigate", "docs": "primer_search"}
     )
-    g.add_edge("primer_search", "investigate")
+    g.add_conditional_edges(
+        "primer_search", route_after_primer, {"investigate": "investigate", "clarify": "finalize"}
+    )
     g.add_edge("investigate", "guard")
     g.add_conditional_edges(
         "guard",

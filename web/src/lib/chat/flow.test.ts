@@ -66,6 +66,17 @@ describe("flowOf（ステップの列 → 通った節点と辺）", () => {
     expect(flowOf(stepsOf("empty_retry_then_tools")).retried).toBe(1);
   });
 
+  it("システムの聞き返し: 最初の検索 → 確定へ飛び、調査・見張り・確認は通らない（specs/031）", () => {
+    const steps: FlowStep[] = [
+      { id: "understand", name: "understand", status: "done", durationMs: 10, input: { history: false }, output: { kind: "docs" } },
+      { id: "primer-1", name: "search" as FlowStep["name"], status: "done", durationMs: 10, input: { by: "system", role: "question" }, output: null },
+      { id: "system-clarify", name: "system", status: "done", durationMs: 0, input: { kind: "clarify", reason: "document_unspecified" }, output: null },
+    ];
+    expect(edge(steps, "clarify")).toMatchObject({ passed: true, kind: "skip" });
+    expect(edge(steps, "investigate").passed).toBe(false);
+    expect(passedIds(steps)).toEqual(["understand", "primer_search", "finalize"]);
+  });
+
   it("下書きへの退避: 見張り → 確定へ飛び、確認からの通過の辺は通らない", () => {
     for (const name of ["empty_after_send_back_uses_draft", "rewrite_reply_uses_draft"]) {
       const steps = stepsOf(name);

@@ -45,3 +45,8 @@ test("an attached image alone allows submit (specs/017 R7)", () => {
   expect(composerSubmitState({ value: "", attachments: [], running: false }))
     .toEqual({ pending: false, canSubmit: false });
 });
+
+test("モデルの一覧を読み込み中は送信できない", () => {
+  expect(composerSubmitState({ value: "質問", attachments: [], running: false, modelLoading: true }).canSubmit).toBe(false);
+  expect(composerSubmitState({ value: "質問", attachments: [], running: false, modelLoading: false }).canSubmit).toBe(true);
+});

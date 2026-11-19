@@ -165,8 +165,12 @@ export function flowOf(
   const usedDraft =
     top.some((s) => kindOf(s) === "rewrite_discarded") ||
     empties.some((s) => (s.output as Record<string, unknown> | null | undefined)?.result === "used_draft") ||
-    // 聞き返し（specs/031）も確認を通さずに確定へ進む（同じ辺）
-    top.some((s) => kindOf(s) === "clarify");
+    // モデルの聞き返し（ask_user。specs/031）も確認を通さずに確定へ進む（同じ辺）
+    top.some((s) => kindOf(s) === "clarify" && s.input?.reason === "ask_user");
+  // 最初の検索の後にシステムが聞き返した（調査を通らずに確定へ。specs/031 R14）
+  const askedBeforeInvestigate = top.some(
+    (s) => kindOf(s) === "clarify" && s.input?.reason === "document_unspecified",
+  );
   const understand = [...top].reverse().find((s) => s.name === "understand" && s.status !== "running");
   const kind = (understand?.output as Record<string, unknown> | null | undefined)?.kind;
 
@@ -187,8 +191,10 @@ export function flowOf(
     ),
   };
   // 調査・見張り・確認は何も出さずに通ることがある。後ろの節点まで進んでいれば通っている
-  passed.investigate = has("investigate") || has("guard") || has("review") || finalized;
-  passed.guard = has("guard") || has("review") || finalized;
+  // システムの聞き返しは調査・見張り・確認を通らない
+  const viaInvestigate = finalized && !askedBeforeInvestigate;
+  passed.investigate = has("investigate") || has("guard") || has("review") || viaInvestigate;
+  passed.guard = has("guard") || has("review") || viaInvestigate;
   // 下書きへ退避した回答は、最後の見張りから確認を通らずに確定へ進む（退避は差し戻しの後だけなので確認は通っている）
   passed.review = has("review") || (passed.guard && finalized && !usedDraft);
 
@@ -234,6 +240,10 @@ export function flowOf(
         return passed.review && passed.finalize && !usedDraft ? 1 : 0;
       case "chat":
         return kind === "chat" ? 1 : 0;
+      case "clarify":
+        return askedBeforeInvestigate ? 1 : 0;
+      case "investigate":
+        return passed.primer_search && passed.investigate ? 1 : 0;
       case "docs":
         return passed.primer_search ? 1 : 0;
       default:

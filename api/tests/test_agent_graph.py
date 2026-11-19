@@ -1122,3 +1122,67 @@ async def test_rewrite_still_without_support_gets_a_caveat() -> None:
         if e["type"] == "step" and e["step"]["name"] == "system"
     ]
     assert kinds.count("reason_check") == 2 and "reason_caveat" in kinds
+
+
+async def test_this_document_without_a_document_is_asked_back_with_found_documents() -> None:
+    from arag.agent.context import Completion, RunHooks
+
+    from .agent_fakes import fake_hit
+
+    got: list[Completion] = []
+
+    async def completed(x: Completion) -> None:
+        got.append(x)
+
+    model = FakeToolModel(messages=script(AIMessage(content="要点です[1]")))
+    search = FakeSearch()
+    search.hits = [
+        fake_hit("本文 A").model_copy(update={"document_name": "a.pdf"}),
+        fake_hit("本文 B").model_copy(update={"document_name": "b.docx"}),
+        fake_hit("本文 A2").model_copy(update={"document_name": "a.pdf"}),
+    ]
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(search)
+    c.hooks = RunHooks(completed=completed)
+    state, custom = await run(agent, c, "この資料の要点を3つにまとめて")
+    # モデルを呼ばずに聞き返す。選択肢は見つかった文書の名前を添えた質問
+    assert len(model.calls) == 0 and got[0].answer.startswith("どの資料についてですか")
+    assert got[0].suggestions == [
+        "a.pdf この資料の要点を3つにまとめて",
+        "b.docx この資料の要点を3つにまとめて",
+    ]
+    assert state["messages"][-1].additional_kwargs["clarify"] is True
+    step = next(
+        e["step"] for e in custom if e["type"] == "step" and e["step"]["input"].get("kind") == "clarify"
+    )
+    assert step["input"]["reason"] == "document_unspecified"
+    # 続けては聞き返さない（前のターンが聞き返し）
+    got.clear()
+    await run(agent, c, "この資料の要点は？")
+    assert got[0].answer == "要点です[1]"
+
+
+def test_document_unspecified_conditions() -> None:
+    import uuid as _uuid
+
+    from arag.agent.primer import document_unspecified
+
+    c = ctx(FakeSearch())
+    assert document_unspecified(c, "この資料の要点は？", [])
+    assert not document_unspecified(c, "この手順書の締付トルクは？", [])
+    assert not document_unspecified(c, "HP-300 の締付トルクは？", [])
+    scoped = ctx(FakeSearch(), document_ids=[_uuid.uuid4()])
+    assert not document_unspecified(scoped, "この資料の要点は？", [])
+
+
+def test_clarify_options_put_recent_documents_first_and_drop_weak_hits() -> None:
+    from arag.agent.primer import clarify_options
+
+    from .agent_fakes import fake_hit
+
+    c = ctx(FakeSearch())
+    for name, score in [("a.pdf", 0.9), ("b.md", 0.3), ("c.docx", 0.6)]:
+        c.registry.add_hit(fake_hit(name).model_copy(update={"document_name": name, "score": score}))
+    got = clarify_options(c, "この資料の要点は？", ["mine.pdf"])
+    # 最近の文書が先。b.md（0.3 < 0.9 の半分）は外す
+    assert got == ["mine.pdf この資料の要点は？", "a.pdf この資料の要点は？", "c.docx この資料の要点は？"]

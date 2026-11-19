@@ -646,6 +646,27 @@ def format_outline(
     return "\n".join(lines)
 
 
+async def recent_documents(ctx: RunContext, limit: int = 3) -> list[str]:
+    """検索範囲の中で、この利用者が最近登録した文書の名前（新しい順）。「この資料」の候補に使う。"""
+    async with ctx.sessionmaker() as s:
+        scope = await _scope(s, ctx)
+        if scope.empty:
+            return []
+        q = (
+            select(Document.filename)
+            .where(
+                Document.deleted_at.is_(None),
+                Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
+                Document.uploaded_by == ctx.principal.user_id,
+            )
+            .order_by(Document.created_at.desc())
+            .limit(limit)
+        )
+        if scope.document_ids is not None:
+            q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
+        return list((await s.scalars(q)).all())
+
+
 async def op_get_outline(
     ctx: RunContext,
     document: str,

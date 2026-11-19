@@ -16,9 +16,9 @@ export function followupsFor(
   return (turn.suggestions ?? []).slice(0, MAX);
 }
 
-/** このターンが聞き返し（ask_user）で終わったか。候補は聞き返しの選択肢になる（specs/031 R7）。 */
+/** このターンが聞き返しで終わったか（モデルの ask_user か、システムの聞き返し）。候補は選択肢になる（specs/031）。 */
 export function isClarify(turn: Turn): boolean {
-  return turn.steps.some((s) => s.name === "ask_user");
+  return turn.steps.some((s) => s.name === "ask_user" || (s.name === "system" && s.input?.kind === "clarify"));
 }
 
 /** 候補を作っている最中か（最後のターン・完了・実行中でない、のときだけ。specs/028 T24）。 */

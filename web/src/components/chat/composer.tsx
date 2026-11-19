@@ -23,13 +23,20 @@ export function appendSnippet(value: string, snippet: string): string {
   return base + sep + snippet;
 }
 
-/** 送信可否判定。添付が1件でも処理中(pending)なら送信不可。空入力かつ ready 添付・画像なしも不可。 */
+/** 送信可否判定。添付が1件でも処理中(pending)なら送信不可。空入力かつ ready 添付・画像なしも不可。
+ *  モデルの一覧を読み込み中も不可（選んだモデルではなくサーバーの既定で答えてしまう）。 */
 export function composerSubmitState(
-  { value, attachments, running, hasImage = false }: { value: string; attachments: StagedFile[]; running: boolean; hasImage?: boolean },
+  { value, attachments, running, hasImage = false, modelLoading = false }: {
+    value: string;
+    attachments: StagedFile[];
+    running: boolean;
+    hasImage?: boolean;
+    modelLoading?: boolean;
+  },
 ): { pending: boolean; canSubmit: boolean } {
   const pending = attachments.some((a) => a.status === "uploading" || a.status === "processing");
   const hasReady = attachments.some((a) => a.status === "ready");
-  const canSubmit = !running && !pending && (value.trim() !== "" || hasReady || hasImage);
+  const canSubmit = !running && !pending && !modelLoading && (value.trim() !== "" || hasReady || hasImage);
   return { pending, canSubmit };
 }
 
@@ -45,6 +52,8 @@ interface Props {
   models?: ModelOption[];
   /** 内蔵 ModelPicker での選択コールバック（models とセットで指定）。 */
   onSelectModel?: (m: ModelOption) => void;
+  /** モデルの一覧を読み込み中（送信を止める） */
+  modelLoading?: boolean;
   running: boolean;
   /** 添付一式は任意。onAttachFiles 未指定なら添付ボタン・トレイごと非表示（agents 経路）。 */
   attachments?: StagedFile[];
@@ -87,6 +96,7 @@ export function Composer({
   onChangeModel,
   models,
   onSelectModel,
+  modelLoading = false,
   running,
   attachments = [],
   onAttachFiles,
@@ -156,7 +166,7 @@ export function Composer({
     if (focusKey) taRef.current?.focus();
   }, [focusKey]);
 
-  const submitState = composerSubmitState({ value, attachments, running, hasImage: Boolean(image) });
+  const submitState = composerSubmitState({ value, attachments, running, hasImage: Boolean(image), modelLoading });
   const pending = submitState.pending || imageBusy;
   const canSubmit = submitState.canSubmit && !imageBusy;
   const toolBtn = "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border-0 bg-transparent px-2 text-footnote font-medium text-muted hover:bg-divider hover:text-fg max-md:h-8";
