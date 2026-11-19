@@ -13,7 +13,9 @@ def test_mermaid_shows_labels_and_the_investigate_subgraph() -> None:
     text = mermaid()
     assert "understand(理解)" in text and "guard(見張り)" in text
     assert (
-        "&nbsp;差し戻し&nbsp;" in text and "&nbsp;下書きへ&nbsp;" in text and "&nbsp;やり直し&nbsp;" in text
+        "&nbsp;差し戻し&nbsp;" in text
+        and "&nbsp;下書き・聞き返し&nbsp;" in text
+        and "&nbsp;やり直し&nbsp;" in text
     )
     assert "subgraph investigate" in text and "(ツール" in text
 

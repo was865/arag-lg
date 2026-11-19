@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal, NotRequired, TypedDict, cast
 
 from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, RemoveMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, RemoveMessage, ToolMessage
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -36,6 +36,8 @@ from arag.agent.middleware import (
     is_announce_only,
     open_send_back,
     pick_review,
+    reason_caveat,
+    reason_review,
     record_discarded,
     record_empty,
     record_number_check,
@@ -48,7 +50,7 @@ from arag.agent.model_switch import ModelSwitchMiddleware
 from arag.agent.primer import primer_search_node, understand_node
 from arag.agent.query_image import with_image_description
 from arag.agent.steps import Step, StepClock, record_system, tag_node
-from arag.agent.tools import TOOLS
+from arag.agent.tools import ASK_USER, TOOLS
 from arag.logging import get_logger
 
 log = get_logger("arag.agent.flow")
@@ -92,7 +94,8 @@ EDGE_LABELS: dict[str, str] = {
     "chat": "雑談",
     "docs": "資料",
     "retry": "やり直し",
-    "use_draft": "下書きへ",
+    # 下書きへの退避と聞き返しは、どちらも確認を通さずに確定へ進む（図では 1 本の辺）
+    "use_draft": "下書き・聞き返し",
     "ok": "通過",
     "send_back": "差し戻し",
     "pass": "通過",
@@ -133,6 +136,8 @@ class FlowState(TypedDict):
     # 続けて聞く候補を作るか・作った候補
     followups: NotRequired[bool]
     suggestions: NotRequired[list[str]]
+    # 回答の末尾に添える注記（理由の裏付けが無いまま書き直された回答。specs/031 R13）
+    caveat: NotRequired[str | None]
 
 
 # ターンの始めに戻す値
@@ -153,6 +158,7 @@ FRESH: dict[str, Any] = {
     "no_answer_reason": None,
     "followups": False,
     "suggestions": [],
+    "caveat": None,
 }
 
 
@@ -162,6 +168,7 @@ FRESH: dict[str, Any] = {
 async def read_image(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any]:
     """添付画像を文章にして質問に添える（specs/017 R4・R5）。画像が無ければ流れの状態を戻すだけ。"""
     ctx = runtime.context
+    ctx.tool_seen.clear()  # 同じ呼び出しの繰り返しはターンの中だけで見る
     hook = ctx.hooks.read_image
     if hook is None:
         return dict(FRESH)
@@ -194,6 +201,9 @@ async def guard(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any
     """
     ctx, emit = runtime.context, tag_node(runtime.stream_writer, "guard")
     last = state["messages"][-1] if state["messages"] else None
+    if isinstance(last, ToolMessage) and last.name == ASK_USER:
+        # 聞き返しでターンを終える（specs/031 R7）。確認は通さない（問いには資料の事実が無い）
+        return {"guard": "clarify", "outcome": "clarify"}
     answer = final_answer(last)
     pending = state.get("empty_pending")
     draft = state.get("draft")
@@ -298,9 +308,13 @@ async def review(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, An
     done = list(state.get("reviews_done") or [])
     used = calls + state.get("chain", 0)
     found = pick_review(ctx, turn, answer, used, has_tools, done)
+    if found is None and review_skip(ctx, used, has_tools) is None:
+        found = await reason_review(ctx, emit, turn, answer, done)
     if found is None:
+        # 理由の差し戻しの後も裏付けが無ければ、回答に注記を添える（確定で足す）
+        caveat = await reason_caveat(ctx, emit, turn, answer, done)
         record_review_pass(emit, len(done) + 1, review_skip(ctx, used, has_tools), done)
-        return {"send_back": None}
+        return {"send_back": None, "caveat": caveat}
     assert last is not None and last.id is not None
     send_back = open_send_back(ctx, emit, found, answer, searches(ctx, turn))
     return {
@@ -354,6 +368,8 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
     emit = tag_node(capture, "finalize")
     msgs = state["messages"]
     last = msgs[-1] if msgs else None
+    if state.get("outcome") == "clarify" and isinstance(last, ToolMessage):
+        return await _finish_clarify(ctx, msgs, last, capture, recorded)
     update: dict[str, Any] = {}
     text = ""
     if isinstance(last, AIMessage) and not last.tool_calls:
@@ -361,6 +377,19 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
         if checks_numbers(ctx):
             record_number_check(ctx, emit, msgs[turn_start(msgs) :], answer)
         fixed = clean_answer(ctx, emit, last)
+        if caveat := state.get("caveat"):
+            base = fixed or last
+            fixed = AIMessage(
+                content=f"{base.text.rstrip()}\n\n{caveat}", id=last.id, usage_metadata=last.usage_metadata
+            )
+            record_system(
+                emit,
+                "system-reason-caveat",
+                "reason_caveat",
+                "推測の注記",
+                "書き直しても理由の裏付けが無かったので、回答の末尾に推測だと注記した",
+                output={"caveat": caveat},
+            )
         if fixed is not None:
             update["messages"] = [fixed]
         text = (fixed or last).text
@@ -395,6 +424,59 @@ async def finalize(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, 
     return {**update, "no_answer_reason": reason, "followups": want}
 
 
+CLARIFY_OPTIONS_MAX = 3
+
+
+async def _finish_clarify(
+    ctx: RunContext,
+    msgs: list[AnyMessage],
+    tool: ToolMessage,
+    capture: Any,
+    recorded: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """聞き返しを回答として確定する。問いを回答に、選択肢を候補にする（続けて聞く候補は作らない）。
+
+    会話の状態には問いを AIMessage（clarify の印付き）として足す。次のターンの質問の理解が問いと
+    選択肢を履歴として読み、続けての聞き返しを止めるのに使う。
+    """
+    call = next(
+        (
+            c
+            for m in reversed(msgs)
+            if isinstance(m, AIMessage)
+            for c in m.tool_calls
+            if c["id"] == tool.tool_call_id
+        ),
+        None,
+    )
+    args = call["args"] if call else {}
+    question = str(args.get("question") or tool.text).strip()
+    raw = args.get("options") or []
+    options = list(dict.fromkeys(str(o).strip() for o in raw if str(o).strip()))[:CLARIFY_OPTIONS_MAX]
+    record_system(
+        tag_node(capture, "finalize"),
+        "system-clarify",
+        "clarify",
+        "聞き返しで終える",
+        f"質問の意味を決められないため、利用者に聞き返した（選択肢 {len(options)} 個）",
+        input={"question": question},
+        output={"options": options},
+    )
+    answer = AIMessage(content=question, additional_kwargs={"clarify": True, "options": options})
+    if ctx.hooks.completed is not None:
+        await ctx.hooks.completed(
+            Completion(
+                answer=question,
+                reason=None,
+                citations=finalize_citations("", ctx.registry),
+                followups=False,
+                steps=recorded,
+                suggestions=options,
+            )
+        )
+    return {"messages": [answer], "no_answer_reason": None, "followups": False}
+
+
 async def followups(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any] | None:
     """完了の後に、続けて聞く質問の候補を作って届ける（specs/028 R7・T24）。"""
     hook = runtime.context.hooks.followups
@@ -413,9 +495,11 @@ def route_after_understand(state: FlowState) -> Literal["chat", "docs"]:
 
 
 def route_after_guard(state: FlowState) -> Literal["retry", "use_draft", "ok"]:
-    """やり直し（調査へ戻る）・下書きへの退避（確定へ）・通過（確認へ）。"""
+    """やり直し（調査へ戻る）・下書きへの退避か聞き返し（確認を通さず確定へ）・通過（確認へ）。"""
     g = state.get("guard")
-    return "retry" if g == "retry" else "use_draft" if g == "use_draft" else "ok"
+    if g == "retry":
+        return "retry"
+    return "use_draft" if g in ("use_draft", "clarify") else "ok"
 
 
 def route_after_review(state: FlowState) -> Literal["send_back", "pass"]:
@@ -472,7 +556,9 @@ def build_graph(investigate: Any, *, checkpointer: BaseCheckpointSaver[Any] | No
     g.add_edge("primer_search", "investigate")
     g.add_edge("investigate", "guard")
     g.add_conditional_edges(
-        "guard", route_after_guard, {"retry": "investigate", "use_draft": "finalize", "ok": "review"}
+        "guard",
+        route_after_guard,
+        {"retry": "investigate", "use_draft": "finalize", "ok": "review"},
     )
     g.add_conditional_edges("review", route_after_review, {"send_back": "investigate", "pass": "finalize"})
     g.add_conditional_edges("finalize", route_after_finalize, {"followups": "followups", "end": END})

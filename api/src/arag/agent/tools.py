@@ -62,13 +62,16 @@ async def list_documents(runtime: Runtime, query: str | None = None) -> str:
 
 
 @tool
-async def get_outline(document: str, runtime: Runtime) -> str:
-    """文書の章立て（見出しの階層・ページ・セクション ID）を返す。
+async def get_outline(document: str, runtime: Runtime, start: int | None = None) -> str:
+    """文書の章立て（見出しの階層・ページ・セクション ID。節には 1 からの番号）を返す。
+
+    長い文書は先頭と末尾の節を返し、間は「中略」になる。中略の部分は start を渡して読む。
 
     Args:
         document: 文書名（の一部）・文書 ID・出典番号（例 "3"）
+        start: この番号の節から続きを返す（中略の部分を読むとき。省略可）
     """
-    return await op_get_outline(runtime.context, document)
+    return await op_get_outline(runtime.context, document, start)
 
 
 @tool
@@ -134,6 +137,22 @@ async def calculate(expression: str) -> str:
         return f"計算できませんでした: {e}"
 
 
+@tool(return_direct=True)
+def ask_user(question: str, options: list[str]) -> str:
+    """利用者に聞き返す。呼ぶとこのターンは終わり、question が回答として、options が選択肢として出る。
+
+    使うのは、質問が 2 通り以上に取れて、どれを選ぶかで答えがまったく変わり、しかも両方を短く答えることも
+    できないときだけ（例: 名前の似た文書が複数あり、どれのことか資料から決められない）。資料を調べれば
+    決まること・両方を並べて答えられることは聞き返さず、調べて答える。
+
+    Args:
+        question: 利用者への問い（1 文。利用者の質問と同じ言語）
+        options: 選択肢 2〜3 個。それぞれ、そのまま次の質問として送れる文にする
+            （例 「第5章の内容を教えて」「資料の末尾の付録の内容を教えて」）
+    """
+    return question
+
+
 TOOLS = [
     search,
     keyword_search,
@@ -143,7 +162,11 @@ TOOLS = [
     read_document,
     table_query,
     calculate,
+    ask_user,
 ]
+
+# 聞き返しのツール（呼ぶとターンが終わる。specs/031 R7）
+ASK_USER = "ask_user"
 
 LABELS = {
     "search": ("検索", "検索中"),
@@ -154,4 +177,5 @@ LABELS = {
     "read_document": ("文書を読む", "文書を読み込み中"),
     "table_query": ("表の集計", "表を集計中"),
     "calculate": ("計算", "計算中"),
+    "ask_user": ("聞き返し", "聞き返しを用意中"),
 }

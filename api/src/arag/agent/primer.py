@@ -15,7 +15,15 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.ops import find_named_documents, op_search, read_document, weak_result
+from arag.agent.ops import (
+    TOC_SECTION_ID,
+    find_named_documents,
+    op_get_outline,
+    op_read_section,
+    op_search,
+    read_document,
+    weak_result,
+)
 from arag.agent.prior import last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
@@ -124,8 +132,12 @@ async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, s
         text = await _read_scoped(ctx, emit, sid, ([doc[0]], [doc[1]]))
         how = "直接読んだ"
         if text is None:
-            text = await op_search(ctx, emit, sid, question, document_ids=[doc[0]])
-            how = "長いため文書の中を検索した"
+            found = await op_search(ctx, emit, sid, question, document_ids=[doc[0]])
+            # 検索では「最後の章」「目次」のような位置・構成の問いに答えられないので、章立ての先頭と末尾も
+            # 添える（specs/031 R11）
+            outline = await _outline_for(ctx, emit, sid, doc)
+            text = f"{outline}\n\n{found}" if outline else found
+            how = "長いため章立てを添えて文書の中を検索した" if outline else "長いため文書の中を検索した"
     except Exception as e:
         ctx.stats.tool_errors += 1
         clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
@@ -133,6 +145,45 @@ async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, s
     n = len(_BLOCK.findall(text))
     clock.done(f"「{doc[1]}」を{how}・資料 {n} 件", {"result": text[:2000]})
     return text
+
+
+# 長い文書に添える章立ての節の数（先頭・末尾）。全部は文脈を圧迫するので、続きは get_outline の start で
+PRIMER_OUTLINE_HEAD = 20
+PRIMER_OUTLINE_TAIL = 20
+
+
+async def _outline_for(ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, str]) -> str:
+    """名前を書かれた長い文書の章立て（先頭と末尾）。取れなければ空。記録には子のステップで残す。"""
+    clock = StepClock(
+        emit,
+        Step(
+            id=f"{sid}:outline",
+            name="get_outline",
+            parent_id=sid,
+            label="目次を取得",
+            status="running",
+            input={"document": doc[1], "head": PRIMER_OUTLINE_HEAD, "tail": PRIMER_OUTLINE_TAIL},
+            summary="章立てを取得しています",
+        ),
+    )
+    try:
+        text = await op_get_outline(ctx, doc[0], head=PRIMER_OUTLINE_HEAD, tail=PRIMER_OUTLINE_TAIL)
+    except Exception as e:  # 章立てが無くても検索の結果で続ける
+        clock.done(f"取得できなかった（{type(e).__name__}）", {"error": str(e)[:200]}, error=True)
+        return ""
+    toc = ""
+    if m := TOC_SECTION_ID.search(text):
+        # 文書の中の目次の節は短く、章の全体（最後の章・付録まで）が分かるので、本文も添える（引用できる）
+        try:
+            toc = await op_read_section(ctx, m.group(1))
+        except Exception as e:
+            log.warning("toc_read_failed", error=str(e)[:200])
+    clock.done(
+        "章立ての先頭と末尾" + ("と目次の節" if toc else "") + "を添えた",
+        {"result": text[:4000]} | ({"toc": toc[:2000]} if toc else {}),
+    )
+    out = f"<章立て>\n{text}\n</章立て>"
+    return f"{out}\n\n{toc}" if toc else out
 
 
 async def _search(

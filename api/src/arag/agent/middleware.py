@@ -1,5 +1,6 @@
 """調査（create_agent の部分グラフ）の middleware と、回答の流れの節点が使う判断・記録（specs/005・029）。"""
 
+import json
 import re
 import time
 from collections.abc import Awaitable, Callable, Collection
@@ -26,13 +27,14 @@ from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
-from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE
+from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE, OMITTED_MARKS
 from arag.agent.primer import with_primer
 from arag.agent.prior import cited_documents
 from arag.agent.prune import prune_citations
+from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
-from arag.agent.tools import LABELS
+from arag.agent.tools import ASK_USER, LABELS
 from arag.prompts import load_prompt
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -101,6 +103,7 @@ SEND_BACK_TAIL = (
 GAP = re.compile(
     r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|不明|"
     r"分かりません|わかりません|確認(する|が)必要|情報(が)?不足|計算(することは|は)?でき(ません|ない)|"
+    r"特定(することは|することが|は)?でき(ません|ない)|答え(することは|することが|ることは|ることが)?でき(ません|ない)|"
     r"not (mentioned|found|available|specified)|no information|could not find|unknown",
     re.IGNORECASE,
 )
@@ -109,7 +112,20 @@ GAP_NOTE = (
     "（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、"
     "その点に絞った語で search してください。"
     "数の計算が要るなら、値をそろえてから calculate で計算してください。"
-    "調べても見つからない点だけを、見つからないと書いてください。" + KEEP_CITATIONS
+    "調べても見つからない点だけを、見つからないと書いてください。"
+    # 理由・因果を尋ねる質問で、別の資料の事実をつないで理由を作らない（specs/031 R9。KG-2 の廃止の理由）
+    "調べても書かれていなければ、下書きの「書かれていない」はそのまま残してください。"
+    "別々の資料の事実をつないで、資料に書かれていない理由・因果を作らないでください"
+    "（関連しそうな事実を添えるときは、推測だと明記する）。" + KEEP_CITATIONS
+)
+# 省略されたツールの結果（章立ての中略・read_document の打ち切り）を読まずに「分からない」と答えた下書き
+OMITTED_GAP = re.compile(GAP.pattern + r"|表示されていません|省略されて", re.IGNORECASE)
+OMITTED_NOTE = (
+    "この下書きは答えを「分からない」としていますが、このターンのツールの結果の一部が省略されたままです"
+    "（章立ての「中略」や、read_document の「長いため先頭の〜節まで」）。"
+    "省略された部分を読んでから答えてください: 章立ては get_outline に start（中略の最初の番号）を渡す、"
+    "文書の中の目次の節や該当の章は read_section で読む。"
+    "「最後の章」「付録」のように場所で尋ねられたら、末尾の節を確かめる。" + KEEP_CITATIONS
 )
 # モデル自身の検索がこの回数を超えていれば、調べ尽くしたとみなす（システムの最初の検索は数えない）
 GAP_REVIEW_MAX_OWN_SEARCHES = 1
@@ -145,6 +161,23 @@ def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
     return load_prompt("agent_system").format(today=today, citation_rule=citation, unknown_rule=unknown)
 
 
+def asked_last_turn(prior: list[AnyMessage]) -> bool:
+    """直前のターンが聞き返し（ask_user）で終わったか。"""
+    last = next((m for m in reversed(prior) if isinstance(m, AIMessage) and not m.tool_calls), None)
+    return bool(last is not None and last.additional_kwargs.get("clarify"))
+
+
+def no_ask_reason(ctx: RunContext, prior: list[AnyMessage], again: bool) -> str | None:
+    """聞き返し（ask_user）を外す理由。雑談・差し戻しの書き直し・続けての聞き返しでは使わせない。"""
+    if ctx.primer is not None and ctx.primer.kind == "chat":
+        return "chat"
+    if again:
+        return "rewrite"
+    if asked_last_turn(prior):
+        return "asked_last_turn"
+    return None
+
+
 def turn_start(messages: list[AnyMessage]) -> int:
     for i in range(len(messages) - 1, -1, -1):
         if isinstance(messages[i], HumanMessage):
@@ -156,7 +189,7 @@ def turn_start(messages: list[AnyMessage]) -> int:
 class Review:
     """下書きを差し戻す理由（specs/026 ④）。kind は記録と画面で種類を見分けるのに使う。"""
 
-    kind: str  # gap / table / numbers
+    kind: str  # omitted / gap / table / numbers
     trigger: str
     note: str
     label: str
@@ -239,6 +272,19 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
             )
         prompt = system_prompt(ctx)
         overrides: dict[str, Any] = {"messages": compact}
+        if why := no_ask_reason(ctx, msgs[:start], again):
+            # 聞き返しを使わせない場面（specs/031 R8）。ツールの一覧から外す
+            overrides["tools"] = [t for t in request.tools if getattr(t, "name", None) != ASK_USER]
+            if calls == 1 and not again and why == "asked_last_turn":
+                record_system(
+                    emit,
+                    "system-no-ask",
+                    "ask_user_blocked",
+                    "聞き返しの制限",
+                    "前のターンで聞き返したので、このターンは聞き返さずに答えさせる",
+                    input={"reason": why},
+                    output={"removed_tool": ASK_USER},
+                )
         if calls >= ctx.cfg.max_steps:
             prompt += FINAL_NOTE
             overrides["tools"] = []
@@ -387,6 +433,10 @@ def open_send_back(ctx: RunContext, emit: Any, review: Review, answer: str, sear
     """差し戻しを始める（記録に「見直し」のステップを出す）。返す値は状態の send_back に置く。"""
     if review.kind == "gap":
         ctx.stats.gap_reviews += 1
+    elif review.kind == "omitted":
+        ctx.stats.omitted_reviews += 1
+    elif review.kind == "reason":
+        ctx.stats.reason_reviews += 1
     elif review.kind == "table":
         ctx.stats.table_reviews += 1
     else:
@@ -525,7 +575,13 @@ def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[st
     return _check_numbers(ctx, turn, answer).missing
 
 
-REVIEW_NAMES = {"gap": "調べ残しの見直し", "table": "表の集計の確認", "numbers": "数字の確認"}
+REVIEW_NAMES = {
+    "omitted": "省略の読み残し",
+    "gap": "調べ残しの見直し",
+    "table": "表の集計の確認",
+    "numbers": "数字の確認",
+    "reason": "理由の裏付けの確認",
+}
 
 
 def review_skip(ctx: RunContext, calls: int, has_tools: bool) -> str | None:
@@ -575,6 +631,9 @@ def pick_review(
     own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
     # 最初の検索が 0 件・関連度の低い資料だけなら、「見つからない」は資料に無い質問への正しい答え（T17）
     weak = ctx.primer is not None and ctx.primer.weak
+    if "omitted" not in done and (m := OMITTED_GAP.search(answer)) and _omitted_results(ctx, turn):
+        # 章立ての中略・読み切れなかった文書を読まずに「分からない」と答えない（specs/031 R5）
+        return Review("omitted", m.group(0), OMITTED_NOTE, "省略の読み残し")
     if "gap" not in done and not weak and searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
         # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
         if m := GAP.search(answer):
@@ -595,6 +654,88 @@ def pick_review(
                 "numbers", f"資料に無い数字 {shown}", NUMBER_NOTE.format(numbers=shown), "数字の確認"
             )
     return None
+
+
+REASON_NOTE = (
+    "この下書きが挙げた理由は、引用した資料には、質問の事柄の理由としては書かれていません"
+    "（判定: {why}）。その事柄の理由が書かれた資料を、その事柄に絞った語で search してください。"
+    "見つからなければ、結論に「理由は資料に書かれていない」と書き、関連する事実を添えるときは、"
+    "それぞれの資料に書いてあることを分けて書き、つないだ部分は推測と明記してください。" + KEEP_CITATIONS
+)
+
+
+REASON_CAVEAT = (
+    "※ 資料には、この理由はそのまま書かれていません。上の理由は、別々の資料の記述をつないだ推測です。"
+)
+
+
+async def _check_reason(
+    ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str, *, again: bool
+) -> ReasonCheck | None:
+    """回答の理由が引用した資料に書かれているかを確かめ、記録に残す。確かめない場面では None。"""
+    asked = turn[0].text if turn and isinstance(turn[0], HumanMessage) else ""
+    question = ctx.user_question or asked or ctx.question
+    model = ctx.utility_model
+    if model is None or not asks_reason(question):
+        return None
+    nums = sorted({int(n) for n in _MARK.findall(answer)})
+    materials = {n: c.text for n in nums if (c := ctx.registry.get(n)) is not None}
+    if not materials:
+        return None  # 引用の無い回答は「理由は書かれていない」側。調べ残しの見直しに任せる
+    got = await check_reason(model, question, answer, materials)
+    verdict = {True: "裏付けあり", False: "裏付けなし", None: "判定できず"}[got.supported]
+    record_system(
+        emit,
+        "system-reason-recheck" if again else "system-reason-check",
+        "reason_check",
+        "理由の裏付けの再確認" if again else "理由の裏付けの確認",
+        f"{'書き直した' if again else ''}回答の理由が、引用した資料 {len(materials)} 件に"
+        f"書かれているかを確かめた（{verdict}）",
+        duration_ms=got.ms,
+        input={"question": question[:300], "cited": nums, "again": again},
+        output={"supported": got.supported, "why": got.why}
+        | ({"error": got.error} if got.error else {})
+        | ({"raw": got.raw} if got.supported is None and got.raw else {}),
+    )
+    return got
+
+
+async def reason_review(
+    ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str, done: Collection[str]
+) -> Review | None:
+    """理由を尋ねる質問で、回答の理由が引用した資料に書かれているかを補助モデルで確かめる（specs/031 R12）。
+
+    確かめたことは結果にかかわらず記録に残す。裏付けが無ければ差し戻す（ターンに 1 度）。
+    """
+    if "reason" in done:
+        return None
+    got = await _check_reason(ctx, emit, turn, answer, again=False)
+    if got is None or got.supported is not False:
+        return None
+    return Review(
+        "reason", got.why or "理由の裏付けなし", REASON_NOTE.format(why=got.why), "理由の裏付けの確認"
+    )
+
+
+async def reason_caveat(
+    ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str, done: Collection[str]
+) -> str | None:
+    """差し戻した後の書き直しをもう一度確かめ、まだ裏付けが無ければ回答に添える注記を返す（specs/031 R13）。
+
+    小さいモデルは差し戻されても同じ理由を書き直すことがある。そのときは回答を止めず、推測だと明記する。
+    """
+    if "reason" not in done:
+        return None
+    got = await _check_reason(ctx, emit, turn, answer, again=True)
+    return REASON_CAVEAT if got is not None and got.supported is False else None
+
+
+def _omitted_results(ctx: RunContext, turn: list[AnyMessage]) -> bool:
+    """このターンのツールの結果か最初の検索の結果に、省略した部分があるか（章立ての中略・文書の打ち切り）。"""
+    texts: list[str] = [str(m.text) for m in turn if isinstance(m, ToolMessage)]
+    if ctx.primer is not None:
+        texts.append(ctx.primer.text)
+    return any(mark in t for t in texts for mark in OMITTED_MARKS)
 
 
 def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
@@ -631,6 +772,12 @@ _TABLE_RESULT = re.compile(r"（(\d+) 行）。[^\n]*?(\d+) 行。")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
 
 
+DUPLICATE_NOTE = (
+    "同じツールを同じ引数でこのターンに既に呼んでいます（結果は同じなので実行しませんでした）。"
+    "その結果を使ってください。章立ての続きは get_outline に start を、本文は read_section を使います。"
+)
+
+
 class StepMiddleware(AgentMiddleware[Any, RunContext]):
     """ツールの開始・終了を step イベントにし、失敗をモデルへの結果に変える（R10・R23）。"""
 
@@ -648,6 +795,12 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
             emit,
             Step(id=cid, name=name, label=label, status="running", input=dict(call["args"]), summary=running),
         )
+        key = f"{name}:{json.dumps(call['args'], ensure_ascii=False, sort_keys=True)}"
+        if name != ASK_USER and key in ctx.tool_seen:
+            # 同じ引数の呼び出しは結果も同じなので実行しない（specs/031 R4）。黙って省かず記録に残す
+            clock.done("同じ呼び出しの繰り返しのため実行しなかった", {"skipped": "duplicate"})
+            return ToolMessage(content=DUPLICATE_NOTE, tool_call_id=cid, name=name)
+        ctx.tool_seen.add(key)
         ctx.stats.tool_calls += 1
         try:
             result = await handler(request)

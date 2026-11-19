@@ -228,6 +228,7 @@ async def execute_run(
                     c.citations.items,
                     ctx,
                     checkpoint_id,
+                    c.suggestions,
                 )
             )
             done.completion, done.src = c, src
@@ -241,7 +242,8 @@ async def execute_run(
                     "duration_ms": turn.duration_ms,
                     "no_answer_reason": c.reason,
                     **src,
-                    "suggestions": [],
+                    # 聞き返しの選択肢（specs/031 R7）。続けて聞く候補はこの後に届く
+                    "suggestions": c.suggestions,
                     "followups_pending": c.followups,
                 }
             )

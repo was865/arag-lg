@@ -55,6 +55,7 @@ export type ToolName =
   | "table_query"
   | "fetch_document"
   | "calculate"
+  | "ask_user"
   | "summarize"
   | "answer"
   | "web_search"

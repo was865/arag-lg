@@ -27,7 +27,7 @@ import { useToast } from "@/components/feedback/toast-provider";
 import { Icon } from "@/components/icons";
 import { DURATION, EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { Followups, followupsFor, followupsPending } from "@/components/chat/followups";
+import { Followups, followupsFor, followupsPending, isClarify } from "@/components/chat/followups";
 import { dateSeparator, formatTurnTimestamp, sameLocalDay } from "@/lib/datetime";
 
 /** 質問に添えた画像の縮小表示。押すと拡大する（specs/017 R6）。 */
@@ -482,6 +482,7 @@ export function Transcript({
                 <Followups
                   items={followupsFor(turn, isLast, running)}
                   pending={followupsPending(turn, isLast, running)}
+                  clarify={isClarify(turn)}
                   onSend={onFollowup}
                 />
               )}

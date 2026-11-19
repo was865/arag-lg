@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FollowupRows, Followups, followupsFor, followupsPending } from "@/components/chat/followups";
+import { FollowupRows, Followups, followupsFor, followupsPending, isClarify } from "@/components/chat/followups";
 import { SystemFields } from "@/components/chat/tool-steps/system-fields";
 import { LocaleProvider } from "@/i18n/context";
 import { ja } from "@/i18n/locales/ja";
@@ -61,6 +61,18 @@ describe("Followups（続けて聞く、specs/028 R6）", () => {
     };
     find(el)?.();
     expect(sent).toEqual(["次は？"]);
+  });
+});
+
+describe("聞き返し（specs/031）", () => {
+  it("聞き返しで終わったターンは、選択肢の見出しで出す", () => {
+    const ask = { id: "c1", name: "ask_user", label: "聞き返し", status: "done", input: { question: "どれ？" } };
+    const turn = done({ steps: [ask] as unknown as Turn["steps"] });
+    expect(isClarify(turn)).toBe(true);
+    expect(isClarify(done())).toBe(false);
+    const html = render(<Followups items={["第5章の内容"]} clarify onSend={() => {}} />);
+    expect(html).toContain(ja.chat.clarifyTitle);
+    expect(html).not.toContain(ja.chat.followupsTitle);
   });
 });
 

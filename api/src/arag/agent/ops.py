@@ -10,7 +10,7 @@ import uuid
 from typing import Any, NamedTuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from sqlalchemy import select
+from sqlalchemy import String, and_, bindparam, func, literal_column, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.agent.citations import format_material, wrap_material
@@ -30,6 +30,13 @@ log = get_logger("arag.agent.ops")
 
 LIST_MAX = 50
 OUTLINE_MAX = 200
+# 長い文書の章立ては先頭と末尾を出し、間は start で読む（specs/031 R1）
+OUTLINE_HEAD = 120
+OUTLINE_TAIL = 60
+# ツールの結果を省略したことを示す語（確認の「省略の読み残し」が見つけるのに使う。specs/031 R5）
+OUTLINE_OMITTED = "…（中略: "
+DOC_OMITTED = "（長いため先頭の "
+OMITTED_MARKS = (OUTLINE_OMITTED, DOC_OMITTED)
 SECTION_MAX_CHARS = 6000
 # read_document が 1 回で渡す本文の上限（文字）。超えた分は get_outline / read_section で続きを読む
 DOC_READ_MAX_CHARS = 12000
@@ -571,7 +578,82 @@ async def _visible_document(s: AsyncSession, ctx: RunContext, ref: str) -> Docum
     return (await s.scalars(q)).first()
 
 
-async def op_get_outline(ctx: RunContext, document: str) -> str:
+_TOC_HEADING = re.compile(r"^(目次|もくじ|contents|tableofcontents)$", re.IGNORECASE)
+
+
+def _is_toc(heading: str | None) -> bool:
+    """「目 次」「Contents」のような、文書の中の目次の節か（空白・全角の違いは無視する）。"""
+    flat = re.sub(r"\s+", "", unicodedata.normalize("NFKC", heading or ""))
+    return bool(_TOC_HEADING.match(flat))
+
+
+# 章立ての文の、目次の節の案内から ID を取る
+TOC_SECTION_ID = re.compile(r"目次の節「[^」]*」（[^）]*?ID: ([0-9a-f-]{36})）")
+
+
+def _outline_line(i: int, sec: Any) -> str:
+    indent = "  " * max(0, sec.level - 1)
+    page = f"p.{sec.page_start}、" if sec.page_start else ""
+    head = sec.heading_path or "（見出しなし）"
+    return f"{indent}- {i}. {head}（{page}{sec.token_len} トークン、ID: {sec.id}）"
+
+
+def format_outline(
+    filename: str,
+    secs: list[Any],
+    start: int | None = None,
+    *,
+    head: int = OUTLINE_HEAD,
+    tail: int = OUTLINE_TAIL,
+) -> str:
+    """章立ての文（specs/031 R1〜R3）。節には 1 からの番号を付ける。
+
+    長い文書は、先頭 OUTLINE_HEAD 節と末尾 OUTLINE_TAIL 節を出し、間を「中略」として番号の範囲と
+    続きの読み方（start）を示す（「最後の章」が見えないまま「分からない」と答えないように）。
+    start を渡すと、その番号から OUTLINE_MAX 節を出す。文書の中に目次の節があれば先頭で案内する。
+    """
+    total = len(secs)
+    lines = [f"「{filename}」の章立て（{total} 節）。read_section にセクション ID を渡すと本文を読めます:"]
+    toc = next((i for i, sec in enumerate(secs) if _is_toc(sec.heading_path)), None)
+    if toc is not None:
+        sec = secs[toc]
+        page = f"p.{sec.page_start}、" if sec.page_start else ""
+        lines.append(
+            f"（この文書には目次の節「{sec.heading_path}」（{page}ID: {sec.id}）があります。"
+            "章の全体の構成は、この節を read_section で読むと分かります）"
+        )
+    if start is not None:
+        first = min(max(1, start), max(1, total))
+        shown = secs[first - 1 : first - 1 + OUTLINE_MAX]
+        lines += [_outline_line(first + k, sec) for k, sec in enumerate(shown)]
+        last = first - 1 + len(shown)
+        if last < total:
+            lines.append(
+                f"{OUTLINE_OMITTED}第 {last + 1}〜{total} 節は未表示。"
+                f"続きは get_outline に start={last + 1}）"
+            )
+        return "\n".join(lines)
+    if total <= head + tail:
+        lines += [_outline_line(k + 1, sec) for k, sec in enumerate(secs)]
+        return "\n".join(lines)
+    tail_from = total - tail
+    lines += [_outline_line(k + 1, sec) for k, sec in enumerate(secs[:head])]
+    lines.append(
+        f"{OUTLINE_OMITTED}第 {head + 1}〜{tail_from} 節は未表示。"
+        f"読むには get_outline に start={head + 1} を渡す。以下は末尾の {tail} 節）"
+    )
+    lines += [_outline_line(tail_from + k + 1, sec) for k, sec in enumerate(secs[tail_from:])]
+    return "\n".join(lines)
+
+
+async def op_get_outline(
+    ctx: RunContext,
+    document: str,
+    start: int | None = None,
+    *,
+    head: int = OUTLINE_HEAD,
+    tail: int = OUTLINE_TAIL,
+) -> str:
     async with ctx.sessionmaker() as s:
         doc, why = await _find_document(s, ctx, document)
         if doc is None:
@@ -583,19 +665,7 @@ async def op_get_outline(ctx: RunContext, document: str) -> str:
         )
     if not secs:
         return f"「{doc.filename}」には章立てがありません。"
-    lines = [
-        f"「{doc.filename}」の章立て（{len(secs)} 節）。read_section にセクション ID を渡すと本文を読めます:"
-    ]
-    for sec in secs[:OUTLINE_MAX]:
-        indent = "  " * max(0, sec.level - 1)
-        page = f"p.{sec.page_start}、" if sec.page_start else ""
-        lines.append(
-            f"{indent}- {sec.heading_path or '（見出しなし）'}"
-            f"（{page}{sec.token_len} トークン、ID: {sec.id}）"
-        )
-    if len(secs) > OUTLINE_MAX:
-        lines.append(f"…ほか {len(secs) - OUTLINE_MAX} 節")
-    return "\n".join(lines)
+    return format_outline(doc.filename, secs, start, head=head, tail=tail)
 
 
 class DocRead(NamedTuple):
@@ -677,8 +747,9 @@ async def read_document(ctx: RunContext, ref: str, *, budget: int = DOC_READ_MAX
     if rest:
         heads = "、".join(f"「{r.heading_path or '（見出しなし）'}」" for r in rest[:5])
         out += (
-            f"\n\n（長いため先頭の {len(parts)} 節まで。残り {len(rest)} 節: {heads}"
-            f"{' ほか' if len(rest) > 5 else ''}。続きは get_outline と read_section で読む）"
+            f"\n\n{DOC_OMITTED}{len(parts)} 節まで。残り {len(rest)} 節: {heads}"
+            f"{' ほか' if len(rest) > 5 else ''}。"
+            f"続きは get_outline（start={len(parts) + 1}）で章を見て read_section で読む）"
         )
     return DocRead(out, bool(rest), doc.filename, len(parts))
 
@@ -689,6 +760,8 @@ _FILE_TOKEN = re.compile(
     re.IGNORECASE,
 )
 NAMED_DOCS_MAX = 2
+# 名前全体の照合で当てはまった文書の数の上限
+NAMED_SCAN_MAX = 20
 
 
 def named_document_refs(question: str) -> list[str]:
@@ -701,16 +774,66 @@ def named_document_refs(question: str) -> list[str]:
     return out
 
 
+def _flat_name(text: str) -> str:
+    """文書名の照合用: 全角・半角をそろえ、大文字小文字と空白の違いを無くす。"""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", text)).lower()
+
+
+# 拡張子を除いた名前で照合するときの最短の長さ（短い名前は本文の語と偶然に一致する）
+NAME_STEM_MIN = 8
+
+
+def filename_in_question(filename: str, question: str) -> bool:
+    """文書名（拡張子つき、または十分長い拡張子なしの名前）が、質問にそのまま書かれているか（specs/031 R10）。
+
+    「Architect-Professional-学習ハンドブック（iPad 版）.pdf」のように空白・全角の括弧を含む名前は、
+    語の切り出し（named_document_refs）では取れないので、見える文書の名前の側から探す。
+    """
+    q, name = _flat_name(question), _flat_name(filename)
+    if not name:
+        return False
+    if name in q:
+        return True
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    return len(stem) >= NAME_STEM_MIN and stem in q
+
+
 async def find_named_documents(ctx: RunContext, question: str) -> list[tuple[str, str]]:
     """質問に書かれた名前で、見える文書を決める（文書 ID・ファイル名）。1 件に決まる名前だけ。"""
     refs = named_document_refs(question)
-    if not refs:
-        return []
     found: list[tuple[str, str]] = []
     async with ctx.sessionmaker() as s:
         scope = await _scope(s, ctx)
         if scope.empty:
             return []
+        # 名前全体が書かれた文書（空白や全角の括弧を含む名前も）。
+        # 照合は DB の側で行う（文書が多くても漏らさない）
+        flat = func.lower(
+            func.regexp_replace(literal_column("normalize(app.documents.filename, NFKC)"), r"\s+", "", "g")
+        )
+        stem = func.regexp_replace(flat, r"\.[^.]*$", "")
+        qflat = bindparam("qflat", _flat_name(question), type_=String)
+        q_all = select(Document.id, Document.filename).where(
+            Document.deleted_at.is_(None),
+            Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
+            or_(
+                func.strpos(qflat, flat) > 0,
+                and_(func.length(stem) >= NAME_STEM_MIN, func.strpos(qflat, stem) > 0),
+            ),
+        )
+        if scope.document_ids is not None:
+            q_all = q_all.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
+        whole = [
+            r
+            for r in (await s.execute(q_all.limit(NAMED_SCAN_MAX))).all()
+            if filename_in_question(r.filename, question)
+        ]
+        # 長い名前を先に（「a.pdf」と「a.pdf 改訂版」のような包含では長い方が質問の名前）
+        for r in sorted(whole, key=lambda r: -len(r.filename)):
+            if not any(
+                filename_in_question(r.filename, f) or filename_in_question(f, r.filename) for _, f in found
+            ):
+                found.append((str(r.id), r.filename))
         for ref in refs:
             q = select(Document.id, Document.filename).where(
                 Document.deleted_at.is_(None),

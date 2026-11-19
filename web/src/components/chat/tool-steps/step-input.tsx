@@ -12,7 +12,8 @@ export function ToolInputBlock({ step, t }: { step: ToolCall; t: Dictionary }) {
   if ((step.name === "verify" || step.name === "revise") && typeof step.input.model === "string") {
     return <ModelBlock model={step.input.model} />;
   }
-  if (step.name === "system") return <SystemFields data={step.input} t={t} />;
+  // 聞き返し（specs/031）: 問いと選択肢を読める形で
+  if (step.name === "system" || step.name === "ask_user") return <SystemFields data={step.input} t={t} />;
   if (step.name === "understand" && typeof step.input.question === "string") {
     return <div className={cn(boxCls, "whitespace-pre-wrap break-words")}>{step.input.question}</div>;
   }

@@ -149,6 +149,14 @@ export const TOOL_ICONS: Partial<Record<ToolName, React.ReactNode>> = {
       <path d="M2 6.5h12M2 9.8h12M6.2 3v10" stroke="currentColor" strokeWidth="1.2" />
     </>
   ),
+  // 聞き返し（specs/031）: 吹き出しと疑問符
+  ask_user: (
+    <>
+      <path d="M2.5 3.5h11v7H8l-3 2.5v-2.5H2.5v-7z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+      <path d="M6.6 5.9a1.4 1.4 0 1 1 2 1.3c-.4.2-.6.5-.6.9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <circle cx="8" cy="9.2" r=".6" fill="currentColor" />
+    </>
+  ),
   // システムの処理（後ろで行った整形・制御）: 歯車
   system: (
     <>

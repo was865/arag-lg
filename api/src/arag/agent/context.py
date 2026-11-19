@@ -26,6 +26,8 @@ class RunStats:
     tool_errors: int = 0
     # 下書きを差し戻した回数（種類ごとにターンに 1 回まで。specs/026 ④）
     gap_reviews: int = 0
+    omitted_reviews: int = 0
+    reason_reviews: int = 0
     table_reviews: int = 0
     number_reviews: int = 0
     # システムが最初に行った検索の回数（specs/026 ②）
@@ -41,7 +43,13 @@ class RunStats:
 
     @property
     def reviews(self) -> int:
-        return self.gap_reviews + self.table_reviews + self.number_reviews
+        return (
+            self.gap_reviews
+            + self.omitted_reviews
+            + self.reason_reviews
+            + self.table_reviews
+            + self.number_reviews
+        )
 
 
 @dataclass
@@ -67,6 +75,8 @@ class Completion:
     followups: bool  # 続けて聞く候補をこの後に作るか
     # 確定の節点で記録したステップ。ストリームが runner に届く前に保存するので、ここで渡す
     steps: list[dict[str, Any]] = field(default_factory=list)
+    # 聞き返し（ask_user）の選択肢。続けて聞く候補の代わりに出す（specs/031 R7）
+    suggestions: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -111,5 +121,7 @@ class RunContext:
     # 最初の検索の結果の文（understand と primer_search の間で渡す。会話の状態には入れない）
     primer_texts: list[str] = field(default_factory=list)
     hooks: RunHooks = field(default_factory=RunHooks)
+    # このターンで呼んだツールと引数（同じ呼び出しの繰り返しを省く。specs/031 R4）
+    tool_seen: set[str] = field(default_factory=set)
     # 値を書いていない資料の番号を文から外す（ARAG_CITATION_PRUNE、specs/026 T31）
     citation_prune: bool = True

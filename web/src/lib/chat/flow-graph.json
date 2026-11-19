@@ -90,7 +90,7 @@
       "target": "finalize",
       "kind": "skip",
       "key": "use_draft",
-      "label": "下書きへ"
+      "label": "下書き・聞き返し"
     },
     {
       "source": "review",

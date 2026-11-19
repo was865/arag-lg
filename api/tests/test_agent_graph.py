@@ -74,8 +74,8 @@ async def test_system_searches_first_and_model_can_answer_directly() -> None:
     saved = next(m for m in state["messages"] if isinstance(m, HumanMessage))
     assert saved.text == "MX-17 はどうする？"
     assert not any(isinstance(m, ToolMessage) for m in state["messages"])
-    # ツールは強制しない（どのモデルでも同じ流れで動く）。7 つとも渡す
-    assert model.tool_choices == [None] and model.tool_counts == [8]
+    # ツールは強制しない（どのモデルでも同じ流れで動く）。9 つとも渡す
+    assert model.tool_choices == [None] and model.tool_counts == [9]
     assert c.stats.primer_searches == 1 and c.stats.tool_calls == 0 and c.stats.model_calls == 1
     sys = model.calls[0][0]
     assert isinstance(sys, SystemMessage) and "<検索結果>" in sys.text and "必ず付ける" in sys.text
@@ -204,7 +204,7 @@ async def test_step_budget_forces_final_answer_without_tools() -> None:
     c = ctx(FakeSearch("本文"), cfg=AgentCfg(max_steps=3))
     state, _ = await run(agent, c, "q")
     assert state["messages"][-1].text == "まとめ[1]"
-    assert model.tool_counts == [8, 8, 0]  # 3 回目はツールなし
+    assert model.tool_counts == [9, 9, 0]  # 3 回目はツールなし
     assert "最終回答" in model.calls[2][0].text
 
 
@@ -934,3 +934,191 @@ async def test_guard_records_when_it_lets_the_answer_through() -> None:
     assert len(passed) == 1
     assert passed[0]["label"] == "見張りの通過"
     assert passed[0]["input"]["checks"] == ["empty", "announce_only"]
+
+
+# ── 省略の読み残し・同じ呼び出しの繰り返し・聞き返し（specs/031） ──
+
+
+def test_omitted_outline_with_unknown_answer_is_sent_back() -> None:
+    from arag.agent.middleware import pick_review
+    from arag.agent.ops import OUTLINE_OMITTED
+
+    c = ctx(FakeSearch("本文"))
+    outline = ToolMessage(
+        content=f"「a.pdf」の章立て（643 節）\n- 1. 序\n{_omitted_line(OUTLINE_OMITTED)}\n- 643. 用語集",
+        tool_call_id="x",
+        name="get_outline",
+    )
+    turn = [HumanMessage("最後の章は？"), tool_call("get_outline", document="a.pdf"), outline]
+    draft = "末尾は「…ほか 443 節」と省略されており、お答えすることができません。"
+    found = pick_review(c, turn, draft, 2, True)
+    assert found is not None and found.kind == "omitted" and "start" in found.note
+    # 省略が無ければ、この種類の差し戻しはしない（調べ残しの見直しに回る）
+    plain = ToolMessage(content="「a.pdf」の章立て（2 節）", tool_call_id="x", name="get_outline")
+    other = pick_review(c, [turn[0], turn[1], plain], "特定できません。", 2, True)
+    assert other is None or other.kind != "omitted"
+    # ターンに 1 度まで
+    again = pick_review(c, turn, "お答えすることができません。", 2, True, done=["omitted", "gap"])
+    assert again is None
+
+
+def _omitted_line(mark: str) -> str:
+    return f"{mark}第 2〜642 節は未表示。読むには get_outline に start=2 を渡す）"
+
+
+async def test_repeated_identical_tool_call_is_skipped_and_recorded() -> None:
+    model = FakeToolModel(
+        messages=script(
+            tool_call("calculate", expression="1 + 2"),
+            tool_call("calculate", expression="1 + 2"),
+            AIMessage(content="3 です[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("本文"))
+    state, custom = await run(agent, c, "1 + 2 は？")
+    calcs = [s for s in own_steps(custom) if s["status"] == "done"]
+    assert [s["summary"] for s in calcs] == ["1 + 2 = 3", "同じ呼び出しの繰り返しのため実行しなかった"]
+    assert calcs[1]["output"] == {"skipped": "duplicate"}
+    tools = [m for m in state["messages"] if isinstance(m, ToolMessage)]
+    assert "既に呼んでいます" in tools[1].text and c.stats.tool_calls == 1
+    # 次のターンでは同じ呼び出しをし直せる
+    model2 = FakeToolModel(
+        messages=script(tool_call("calculate", expression="1 + 2"), AIMessage(content="3"))
+    )
+    agent2 = build_agent(model2, checkpointer=InMemorySaver())
+    await run(agent2, c, "もう一度")
+    assert c.stats.tool_calls == 2
+
+
+async def test_ask_user_ends_the_turn_with_the_question_and_options() -> None:
+    from arag.agent.context import Completion, RunHooks
+
+    got: list[Completion] = []
+
+    async def completed(x: Completion) -> None:
+        got.append(x)
+
+    made: list[int] = []
+
+    async def followups() -> list[str]:
+        made.append(1)
+        return []
+
+    model = FakeToolModel(
+        messages=script(
+            tool_call(
+                "ask_user",
+                question="どちらの文書のことですか？",
+                options=["第2版の手順書について", "第3版の手順書について", "第3版の手順書について"],
+            ),
+            AIMessage(content="第3版は 52 N·m です[1]"),
+        )
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("第3版 52 N·m"))
+    c.hooks = RunHooks(completed=completed, followups=followups)
+    state, custom = await run(agent, c, "手順書のトルクは？")
+    last = state["messages"][-1]
+    assert isinstance(last, AIMessage) and last.text == "どちらの文書のことですか？"
+    assert last.additional_kwargs["clarify"] is True
+    assert len(got) == 1 and got[0].answer == "どちらの文書のことですか？" and got[0].reason is None
+    assert got[0].suggestions == ["第2版の手順書について", "第3版の手順書について"] and not got[0].followups
+    steps = [e["step"] for e in custom if e["type"] == "step"]
+    assert any(s["name"] == "ask_user" and s["status"] == "done" for s in steps)
+    assert any(s["name"] == "system" and s["input"].get("kind") == "clarify" for s in steps)
+    assert not any(s["name"] == "review" for s in steps) and len(model.calls) == 1
+    assert not made  # 聞き返しでは続けて聞く候補を作らない
+    # 次のターンでは聞き返しを外して答えさせ、外したことを記録に残す
+    got.clear()
+    _, custom2 = await run(agent, c, "第3版の手順書について")
+    assert model.tool_counts[-1] == 8
+    assert any(
+        e["step"]["name"] == "system" and e["step"]["input"].get("kind") == "ask_user_blocked"
+        for e in custom2
+        if e["type"] == "step"
+    )
+    assert got[0].answer == "第3版は 52 N·m です[1]"
+
+
+async def test_reason_not_written_in_the_cited_material_is_sent_back() -> None:
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="KG-2 は漏れ対策のため廃止予定です[1]。"),
+            AIMessage(content="廃止予定の理由は資料に書かれていません。台帳では KG-2 は廃止予定です[1]。"),
+        )
+    )
+    u = utility(
+        '{"kind": "docs", "queries": ["KG-2 廃止予定 理由"], "table": false}',
+        '{"supported": false, "why": "資料はグリスの変更の理由を述べ、KG-2 の廃止の理由は書いていない"}',
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("第3版: 漏れ対策としてグリスを KG-5 に変更した。"), utility_model=u)
+    state, custom = await run(agent, c, "KG-2 はなぜ廃止予定なのですか？")
+    assert state["messages"][-1].text.startswith("廃止予定の理由は資料に書かれていません")
+    steps = [e["step"] for e in custom if e["type"] == "step"]
+    check = [s for s in steps if s["name"] == "system" and s["input"].get("kind") == "reason_check"]
+    first = next(s for s in check if s["id"] == "system-reason-check")
+    assert first["output"]["supported"] is False and first["input"]["cited"] == [1]
+    # 書き直しも確かめ直す（台本が尽きて判定できなければ、注記は付けない）
+    assert any(s["id"] == "system-reason-recheck" for s in check)
+    review = [s for s in steps if s["name"] == "review" and s["status"] == "done"]
+    assert review[-1]["input"]["kind"] == "reason" and "推測と明記" in review[-1]["output"]["note"]
+    assert c.stats.reason_reviews == 1 and len(model.calls) == 2
+
+
+async def test_reason_check_runs_only_for_why_questions_and_is_recorded_when_supported() -> None:
+    model = FakeToolModel(messages=script(AIMessage(content="漏れ対策のためです[1]。")))
+    u = utility(
+        '{"kind": "docs", "queries": ["トルク 変更 理由"], "table": false}',
+        '{"supported": true, "why": "資料に漏れ対策として変更したとある"}',
+    )
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("漏れ対策として締付トルクを 52 N·m に上げた。"), utility_model=u)
+    _, custom = await run(agent, c, "トルクを変えた理由は？")
+    kinds = [
+        e["step"]["input"].get("kind")
+        for e in custom
+        if e["type"] == "step" and e["step"]["name"] == "system"
+    ]
+    assert "reason_check" in kinds and c.stats.reason_reviews == 0 and len(model.calls) == 1
+    # 理由を尋ねない質問では呼ばない（台本の 2 つ目が残る）
+    from arag.agent.reason_check import asks_reason
+
+    assert asks_reason("Why was KG-2 discontinued?") and not asks_reason("KG-2 の単価は？")
+
+
+def test_reason_check_needs_both_the_subject_and_the_link() -> None:
+    from arag.agent.reason_check import parse
+
+    linked = parse(
+        '{"subject": "KG-2 の廃止", "subject_in_material": true, "reason_linked": true, "why": "a"}'
+    )
+    assert linked.supported is True and linked.why == "KG-2 の廃止: a"
+    stitched = parse('{"subject": "KG-2 の廃止", "subject_in_material": false, "reason_linked": true}')
+    assert stitched.supported is False
+    assert parse("判定できません").supported is None
+    assert parse('{"subject": "x"}').supported is None
+
+
+async def test_rewrite_still_without_support_gets_a_caveat() -> None:
+    from arag.agent.middleware import REASON_CAVEAT
+
+    model = FakeToolModel(
+        messages=script(
+            AIMessage(content="KG-2 は漏れ対策のため廃止予定です[1]。"),
+            AIMessage(content="KG-2 は漏れ対策のため廃止予定です[1]。"),
+        )
+    )
+    no = '{"subject": "KG-2 の廃止", "subject_in_material": false, "reason_linked": false}'
+    u = utility('{"kind": "docs", "queries": ["KG-2 廃止 理由"], "table": false}', no, no)
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("第3版: 漏れ対策としてグリスを KG-5 に変更した。"), utility_model=u)
+    state, custom = await run(agent, c, "KG-2 はなぜ廃止予定なのですか？")
+    assert state["messages"][-1].text == f"KG-2 は漏れ対策のため廃止予定です[1]。\n\n{REASON_CAVEAT}"
+    kinds = [
+        e["step"]["input"].get("kind")
+        for e in custom
+        if e["type"] == "step" and e["step"]["name"] == "system"
+    ]
+    assert kinds.count("reason_check") == 2 and "reason_caveat" in kinds

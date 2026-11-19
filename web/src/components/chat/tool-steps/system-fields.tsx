@@ -86,6 +86,7 @@ export function systemValueLabel(key: string, v: unknown, t: Dictionary): string
   if (names && Array.isArray(v) && v.every((x) => typeof x === "string")) {
     return v.length ? v.map((x) => names[x] ?? x).join("・") : "—";
   }
+  if (typeof v === "boolean" && names?.[String(v)]) return names[String(v)];
   return typeof v === "string" && names?.[v] ? names[v] : systemFieldValue(v, t.chat.droppedReasons, t.chat.pruneLabels);
 }
 

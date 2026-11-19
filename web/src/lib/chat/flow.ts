@@ -85,7 +85,7 @@ export interface FlowRun {
 
 const NODE_IDS = new Set<string>(FLOW_GRAPH.nodes.map((n) => n.id));
 const GUARD_KINDS = new Set(["empty_generation", "rewrite_discarded", "guard_passed"]);
-const FINALIZE_KINDS = new Set(["citation_pruned", "citation_cleanup", "number_check"]);
+const FINALIZE_KINDS = new Set(["citation_pruned", "citation_cleanup", "number_check", "clarify"]);
 
 function kindOf(step: FlowStep): string {
   return step.name === "system" ? String(step.input?.kind ?? "") : "";
@@ -164,7 +164,9 @@ export function flowOf(
   const retried = empties.filter((s) => s.input?.retried === true).length;
   const usedDraft =
     top.some((s) => kindOf(s) === "rewrite_discarded") ||
-    empties.some((s) => (s.output as Record<string, unknown> | null | undefined)?.result === "used_draft");
+    empties.some((s) => (s.output as Record<string, unknown> | null | undefined)?.result === "used_draft") ||
+    // 聞き返し（specs/031）も確認を通さずに確定へ進む（同じ辺）
+    top.some((s) => kindOf(s) === "clarify");
   const understand = [...top].reverse().find((s) => s.name === "understand" && s.status !== "running");
   const kind = (understand?.output as Record<string, unknown> | null | undefined)?.kind;
 

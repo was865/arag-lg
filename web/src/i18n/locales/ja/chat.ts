@@ -21,6 +21,8 @@ export const chat = {
   storyRevising: "確認して書き直しています…",
   staleDraft: "確認前の下書き・書き直しています",
   followupsTitle: "続けて聞く",
+  // 聞き返し（ask_user。specs/031）の選択肢の見出し
+  clarifyTitle: "どれについて答えますか",
   followupsLoading: "続けて聞く質問を作っています",
   moreActions: "その他",
   saveMarkdown: "Markdown で保存",
@@ -267,6 +269,13 @@ export const chat = {
     raw: "モデルの出力",
     skip: "見直さなかった理由",
     done: "済んだ確認",
+    question: "利用者への問い",
+    options: "選択肢",
+    removed_tool: "外したツール",
+    supported: "裏付け",
+    why: "判定の根拠",
+    cited: "確かめた資料の番号",
+    toc: "目次の節",
   } as Record<string, string>,
   // 続けて聞く候補を落とした理由の表示名（決まった値のもの）
   droppedReasons: {
@@ -279,7 +288,7 @@ export const chat = {
   // システムの処理の決まった値の表示名（項目名 → 値 → 名前）
   systemValues: {
     // 続けて聞くを作らなかった理由（specs/028 R7）
-    skipped: { user_setting: "利用者の設定でオフ" },
+    skipped: { user_setting: "利用者の設定でオフ", duplicate: "同じ呼び出しの繰り返し" },
     result: {
       pass: "通過",
       retried_ok: "やり直して回答できた",
@@ -287,21 +296,28 @@ export const chat = {
       failed: "回答を生成できなかった",
     },
     pending_review: {
+      omitted: "省略の読み残し",
+      reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
       numbers: "数字の確認",
     },
     review: {
+      omitted: "省略の読み残し",
+      reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
       numbers: "数字の確認",
     },
     // 確認の通過（specs/029）
     done: {
+      omitted: "省略の読み残し",
+      reason: "理由の裏付けの確認",
       gap: "調べ残しの見直し",
       table: "表の集計の確認",
       numbers: "数字の確認",
     },
+    supported: { true: "あり", false: "なし" },
     skip: {
       limit: "回数に余裕が無い",
       chat: "雑談",
@@ -309,6 +325,7 @@ export const chat = {
     reason: {
       no_citations: "引用が消えた",
       reply_to_request: "依頼への返事だった",
+      asked_last_turn: "前のターンで聞き返した",
     },
     used: {
       draft: "差し戻す前の下書き",

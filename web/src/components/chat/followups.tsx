@@ -16,6 +16,11 @@ export function followupsFor(
   return (turn.suggestions ?? []).slice(0, MAX);
 }
 
+/** このターンが聞き返し（ask_user）で終わったか。候補は聞き返しの選択肢になる（specs/031 R7）。 */
+export function isClarify(turn: Turn): boolean {
+  return turn.steps.some((s) => s.name === "ask_user");
+}
+
 /** 候補を作っている最中か（最後のターン・完了・実行中でない、のときだけ。specs/028 T24）。 */
 export function followupsPending(turn: Turn, isLast: boolean, running: boolean): boolean {
   return isLast && !running && turn.status === "done" && Boolean(turn.followupsPending);
@@ -25,11 +30,14 @@ export function followupsPending(turn: Turn, isLast: boolean, running: boolean):
 export function Followups({
   items,
   pending = false,
+  clarify = false,
   onSend,
 }: {
   items: string[];
   /** 候補を作っている最中（骨組みを出す） */
   pending?: boolean;
+  /** 聞き返しの選択肢として出す（見出しを変える） */
+  clarify?: boolean;
   onSend: (text: string) => void;
 }) {
   const { t } = useT();
@@ -48,7 +56,7 @@ export function Followups({
   if (items.length === 0) return null;
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-caption text-muted">{t.chat.followupsTitle}</div>
+      <div className="text-caption text-muted">{clarify ? t.chat.clarifyTitle : t.chat.followupsTitle}</div>
       <FollowupRows items={items} onSend={onSend} />
     </div>
   );
