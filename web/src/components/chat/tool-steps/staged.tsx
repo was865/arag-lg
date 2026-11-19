@@ -372,6 +372,7 @@ export function CardSteps({
 }) {
   const { childrenOf } = groupSteps(steps);
   const { stages, rest } = stagesOf(route, steps);
+  const name = (s: FlowStop) => (s.round > 1 ? `${s.label}（${interpolate(t.chat.flowRound, { n: String(s.round) })}）` : s.label);
   const card = (s: ToolCall) => (
     <div key={s.id} data-step={s.id}>
       <ToolStepCard step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} hasChildren={childrenOf.has(s.id)} />
@@ -385,19 +386,34 @@ export function CardSteps({
   );
   const system = (list: ToolCall[]) =>
     list.length > 0 && (
-      <div data-system className="flex flex-col gap-px border-b-[0.5px] border-divider px-3.5 py-1 pl-[38px] max-md:px-3 max-md:pl-[30px]">
+      <div data-system className="flex flex-col gap-px px-3.5 pb-1.5 pl-[38px] first:pt-[7px] max-md:px-3 max-md:pl-[30px]">
         {list.map((s) => (
           <SubStepRow key={s.id} step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} />
         ))}
       </div>
     );
   return (
-    <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child>*:last-child]:border-b-0">
+    <div className="flex flex-col [&>*:last-child]:border-b-0">
       {stages.map(({ stop, tools, system: sys }) => (
         <Fragment key={stop.key}>
-          <div data-stage={stop.key} className="flex flex-col">
-            {tools.map(card)}
-            {system(sys)}
+          {/* 段階の名前を左の列に（上の経路と同じ印）。段階の境目だけに線を引き、段階の中のカードはつなげて見せる */}
+          <div
+            data-stage={stop.key}
+            className="grid grid-cols-[7.5rem_minmax(0,1fr)] border-b-[0.5px] border-divider max-md:grid-cols-1"
+          >
+            <div
+              title={DESCRIPTION.get(stop.node)}
+              className="flex items-start gap-2 py-[9px] pl-3.5 pr-1 max-md:pb-0 max-md:pl-3"
+            >
+              <span className="mt-px scale-[0.85]">
+                <StopMark s={{ ...stop, current: false }} />
+              </span>
+              <span className={cn("text-caption leading-snug", stop.current ? "text-accent" : "text-muted")}>{name(stop)}</span>
+            </div>
+            <div className="flex min-w-0 flex-col [&_[data-system]]:border-b-0 [&>[data-step]>div]:border-b-0">
+              {tools.map(card)}
+              {system(sys)}
+            </div>
           </div>
           {stop.node === "finalize" && durationMs && durationMs > 0 ? (
             <div data-sent-line title={t.chat.flowSentHint} className="flex items-center gap-2.5 border-b-[0.5px] border-divider px-3.5 py-1.5 text-mini text-muted-2 max-md:px-3">

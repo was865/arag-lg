@@ -189,5 +189,19 @@ describe("カードの見方（利用者の設定。specs/029 T38）", () => {
     const html = render("gap", { selected: "review-1" });
     expect([...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1])).toEqual(["review-1"]);
   });
+
+  it("カードの左の列に段階の名前（周回も）。経路が長く縦になるときは、上の経路の列を出さない", () => {
+    const off: FlowStep = {
+      id: "system-followups", name: "system", status: "done", durationMs: 0,
+      input: { kind: "followups" }, output: { skipped: "user_setting" }, node: "followups",
+    };
+    const steps = [...stepsOf("gap"), off];
+    const html = wrap(
+      <RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} variant="card" durationMs={3000} onSelect={() => {}} />,
+    );
+    expect(html).not.toMatch(/data-stop=/); // 9 つ（送信を含む）なので経路の列は出さない
+    const inv2 = html.slice(html.indexOf('data-stage="investigate-2"'));
+    expect(inv2.replace(/<[^>]+>/g, " ")).toMatch(/^[^]*?調査（2 周目）/);
+  });
 });
 

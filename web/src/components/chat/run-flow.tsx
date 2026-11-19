@@ -181,7 +181,8 @@ export function RunFlow({
         <div className="pt-1">
           <StageTimeline route={route} steps={steps} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={durationMs} running={running} t={t} />
         </div>
-      ) : view === "route" ? (
+      ) : view === "route" && steps && route.stops.length + (sent ? 1 : 0) > 8 ? null : view === "route" ? (
+        // カードで経路が長い（縦になる）ときは、下のカードの左の列が同じ段階を示すので、経路の列は出さない（T39）
         <RouteList route={route} running={running} sent={sent} durationMs={durationMs} selected={selected} onSelect={onSelect} name={name} t={t} />
       ) : (
         <div className="animate-fade-in motion-reduce:animate-none">
