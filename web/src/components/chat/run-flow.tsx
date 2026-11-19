@@ -5,7 +5,7 @@ import { useReducedMotion } from "motion/react";
 import { Segmented } from "@/components/ui/segmented";
 import { FlowGraph, type NodeView } from "@/components/chat/graph-view";
 import { SentMark, StopMark, detailOf } from "@/components/chat/flow-parts";
-import { StageTimeline, StagedSteps } from "@/components/chat/tool-steps/staged";
+import { CardSteps, StageTimeline, StagedSteps } from "@/components/chat/tool-steps/staged";
 import type { ToolCall } from "@/lib/types";
 import { cn, formatMs } from "@/lib/utils";
 import { FLOW_GRAPH, type FlowNodeId, type FlowRoute, type FlowRun, type FlowStop } from "@/lib/chat/flow";
@@ -127,9 +127,12 @@ export function RunFlow({
   onSelect,
   defaultView = "route",
   steps,
+  variant = "card",
   expandedMap = {},
   onToggleStep = () => {},
 }: {
+  /** ステップの見せ方（利用者の設定）。カード: 経路の下にカード。タイムライン: 経路とステップを 1 本の線に（T38） */
+  variant?: "card" | "timeline";
   /** ステップを渡すと、経路とステップを 1 つにして見せる（経路: 停留所の下にステップ、グラフ: 図の下に段階ごとの一覧。T37） */
   steps?: ToolCall[];
   expandedMap?: Record<string, boolean>;
@@ -174,7 +177,7 @@ export function RunFlow({
           />
         </span>
       </div>
-      {view === "route" && steps ? (
+      {view === "route" && steps && variant === "timeline" ? (
         <div className="pt-1">
           <StageTimeline route={route} steps={steps} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={durationMs} running={running} t={t} />
         </div>
@@ -194,7 +197,7 @@ export function RunFlow({
           />
         </div>
       )}
-      {pickedName && onSelect && (view === "graph" || !steps) && (
+      {pickedName && onSelect && (view === "graph" || !steps || variant === "card") && (
         <div className="mt-2 flex animate-fade-in items-center gap-1.5 text-caption text-muted motion-reduce:animate-none">
           <span>{interpolate(t.chat.flowFiltered, { node: pickedName })}</span>
           <span aria-hidden>·</span>
@@ -207,9 +210,13 @@ export function RunFlow({
           </button>
         </div>
       )}
-      {view === "graph" && shown && (
-        <div className="-mx-3.5 mt-2 border-t-[0.5px] border-divider max-md:-mx-3">
-          <StagedSteps route={route} steps={shown} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={running ? undefined : durationMs} t={t} />
+      {shown && (view === "graph" || variant === "card") && (
+        <div className="-mx-3.5 -mb-3 mt-2.5 border-t-[0.5px] border-divider max-md:-mx-3">
+          {variant === "card" ? (
+            <CardSteps route={route} steps={shown} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={running ? undefined : durationMs} t={t} />
+          ) : (
+            <StagedSteps route={route} steps={shown} expandedMap={expandedMap} onToggleStep={onToggleStep} durationMs={running ? undefined : durationMs} t={t} />
+          )}
         </div>
       )}
     </div>

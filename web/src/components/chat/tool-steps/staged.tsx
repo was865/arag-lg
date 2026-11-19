@@ -17,7 +17,8 @@ import { interpolate } from "@/i18n/interpolate";
 import { AutoBadge, StatusIcon, TOOL_ICONS, hasInputData, inputSectionLabel, isBySystem, isExpandable, outputSectionLabel, sectionLabelCls, stepDurationLabel } from "./shared";
 import { ToolInputBlock } from "./step-input";
 import { ToolOutputBlock } from "./step-output";
-import { PurposeNote, SubSteps, groupSteps } from "./index";
+import { PurposeNote, SubStepRow, SubSteps, groupSteps } from "./index";
+import { ToolStepCard } from "./step-views";
 import { FLOW_GRAPH } from "@/lib/chat/flow";
 import { SentMark, StopMark, detailOf } from "@/components/chat/flow-parts";
 
@@ -346,6 +347,76 @@ export function StageTimeline({
         </li>
       )}
     </ol>
+  );
+}
+
+/**
+ * カードの見方（specs/029 T38）。上の経路が地図なので、段階の見出しは出さず、経路の順にカードを並べる。
+ * 各段階のシステムの処理（モデルの応答・確認の通過など）は、その段階のカードのすぐ後に淡い行で。
+ * 確定の後に「回答を送信」の区切り。時間はカードごと（段階の時間は上の経路）。
+ */
+export function CardSteps({
+  route,
+  steps,
+  expandedMap,
+  onToggleStep,
+  durationMs,
+  t,
+}: {
+  route: FlowRoute;
+  steps: ToolCall[];
+  expandedMap: Record<string, boolean>;
+  onToggleStep: (id: string) => void;
+  durationMs?: number;
+  t: Dictionary;
+}) {
+  const { childrenOf } = groupSteps(steps);
+  const { stages, rest } = stagesOf(route, steps);
+  const card = (s: ToolCall) => (
+    <div key={s.id} data-step={s.id}>
+      <ToolStepCard step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} hasChildren={childrenOf.has(s.id)} />
+      {childrenOf.has(s.id) && expandedMap[s.id] && (
+        <div className="animate-fade-up border-b-[0.5px] border-divider bg-surface px-3.5 py-2 pl-10 motion-reduce:animate-none max-md:pl-6">
+          <PurposeNote step={s} />
+          <SubSteps steps={childrenOf.get(s.id)} expandedMap={expandedMap} onToggleStep={onToggleStep} t={t} />
+        </div>
+      )}
+    </div>
+  );
+  const system = (list: ToolCall[]) =>
+    list.length > 0 && (
+      <div data-system className="flex flex-col gap-px border-b-[0.5px] border-divider px-3.5 py-1 pl-[38px] max-md:px-3 max-md:pl-[30px]">
+        {list.map((s) => (
+          <SubStepRow key={s.id} step={s} expanded={!!expandedMap[s.id]} onToggle={() => onToggleStep(s.id)} t={t} />
+        ))}
+      </div>
+    );
+  return (
+    <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child>*:last-child]:border-b-0">
+      {stages.map(({ stop, tools, system: sys }) => (
+        <Fragment key={stop.key}>
+          <div data-stage={stop.key} className="flex flex-col">
+            {tools.map(card)}
+            {system(sys)}
+          </div>
+          {stop.node === "finalize" && durationMs && durationMs > 0 ? (
+            <div data-sent-line title={t.chat.flowSentHint} className="flex items-center gap-2.5 border-b-[0.5px] border-divider px-3.5 py-1.5 text-mini text-muted-2 max-md:px-3">
+              <span className="h-0 flex-1 border-t border-dashed border-divider-strong" />
+              <span className="shrink-0">
+                {t.chat.flowSent} <span className="nums font-mono">{formatMs(durationMs)}</span>
+              </span>
+              <span className="h-0 w-6 border-t border-dashed border-divider-strong" />
+            </div>
+          ) : null}
+        </Fragment>
+      ))}
+      {rest.length > 0 && (
+        <div className="flex flex-col">
+          {rest.filter((s) => s.name !== "system").map(card)}
+          {system(rest.filter((s) => s.name === "system"))}
+        </div>
+      )}
+    </div>
   );
 }
 

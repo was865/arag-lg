@@ -135,7 +135,7 @@ describe("経路とステップを 1 つに（specs/029 T37）", () => {
   const render = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) => {
     const steps = stepsOf(name);
     return wrap(
-      <RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} onSelect={() => {}} {...p} />,
+      <RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} variant="timeline" onSelect={() => {}} {...p} />,
     );
   };
   const slice = (html: string, a: string, b: string) => html.slice(html.indexOf(a), html.indexOf(b));
@@ -168,3 +168,26 @@ describe("経路とステップを 1 つに（specs/029 T37）", () => {
     expect(order).toEqual(["review-1", "review-2"]);
   });
 });
+
+describe("カードの見方（利用者の設定。specs/029 T38）", () => {
+  const render = (name: string, p: Partial<React.ComponentProps<typeof RunFlow>> = {}) => {
+    const steps = stepsOf(name);
+    return wrap(<RunFlow route={routeOf(steps)} flow={flowOf(steps)} steps={steps as unknown as ToolCall[]} variant="card" onSelect={() => {}} {...p} />);
+  };
+
+  it("経路（停留所の列）の下に、経路の順でカードを並べ、システムの処理はその段階のすぐ後に", () => {
+    const html = render("gap", { durationMs: 3000 });
+    expect(html).toMatch(/data-stop="review-1"[^>]*>/); // 経路の停留所
+    const order = [...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1]);
+    expect(order.indexOf("investigate-1")).toBeLessThan(order.indexOf("review-1"));
+    expect(order.indexOf("review-1")).toBeLessThan(order.indexOf("investigate-2"));
+    expect(html).not.toContain("システムの処理");
+    expect(html).toContain("data-sent-line");
+  });
+
+  it("停留所を押すと、その段階のカードだけ", () => {
+    const html = render("gap", { selected: "review-1" });
+    expect([...html.matchAll(/data-stage="([^"]+)"/g)].map((m) => m[1])).toEqual(["review-1"]);
+  });
+});
+

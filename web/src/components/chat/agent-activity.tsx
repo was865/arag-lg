@@ -181,6 +181,7 @@ export function AgentActivity({
                 selected={only}
                 onSelect={setOnly}
                 steps={variant === "log" ? undefined : visibleSteps}
+                variant={variant === "timeline" ? "timeline" : "card"}
                 expandedMap={expandedMap}
                 onToggleStep={onToggleStep}
               />
