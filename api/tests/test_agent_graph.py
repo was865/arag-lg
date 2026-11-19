@@ -1205,3 +1205,81 @@ def test_clarify_options_skip_unrelated_recent_documents_when_the_question_has_c
     assert has_content_terms("この資料の締付トルクはいくつですか？")
     assert not has_content_terms("この資料の要点を3つにまとめて")
     assert not has_content_terms("Summarize this document")
+
+
+def test_document_unspecified_covers_attached_tables_and_english() -> None:
+    """添付・表・本資料・英語の言い方も、指す文書が決まらなければ聞き返す（specs/031 T14）。"""
+    from arag.agent.primer import document_unspecified
+
+    c = ctx(FakeSearch())
+    for q in [
+        "添付の資料の要点を3つにまとめてください。",
+        "添付したファイルの内容を教えて",
+        "この表の合計金額はいくらですか？",
+        "このスライドの結論は？",
+        "本資料の改訂日は？",
+        "Summarize the attached file.",
+        "What is the total in this spreadsheet?",
+    ]:
+        assert document_unspecified(c, q, []), q
+    # 種類の語（手順書・仕様書）は対象にしない。「表計算」「図面」のような語の一部も
+    for q in ["この手順書の締付トルクは？", "価格表の合計は？", "部品台帳の表の見方は？"]:
+        assert not document_unspecified(c, q, []), q
+
+
+def test_reference_unknown_only_without_history() -> None:
+    """初めのターンの「この件」「それは」は指す先が無い（specs/031 T14）。前のターンがあれば決まる。"""
+    from langchain_core.messages import HumanMessage
+
+    from arag.agent.primer import reference_unknown
+
+    for q in [
+        "この件の担当者は誰ですか？",
+        "それはいつまでに対応する必要がありますか？",
+        "あの件はどうなりましたか",
+        "例の件の期限は？",
+    ]:
+        assert reference_unknown(q, []), q
+    for q in [
+        "それぞれの担当者は誰ですか？",
+        "これまでの不良率の推移は？",
+        "HP-300 の件の担当者は？",
+        "その後の対応は？",
+    ]:
+        assert not reference_unknown(q, []), q
+    history = [HumanMessage(content="シールキットの補充は誰が担当？"), AIMessage(content="佐伯さんです[1]")]
+    assert not reference_unknown("それはいつまでに行いますか？", history)
+
+
+async def test_reference_unknown_is_asked_back_without_options() -> None:
+    from arag.agent.context import Completion, RunHooks
+
+    got: list[Completion] = []
+
+    async def completed(x: Completion) -> None:
+        got.append(x)
+
+    model = FakeToolModel(messages=script(AIMessage(content="担当は佐伯です[1]")))
+    agent = build_agent(model, checkpointer=InMemorySaver())
+    c = ctx(FakeSearch("担当 佐伯"))
+    c.hooks = RunHooks(completed=completed)
+    _, custom = await run(agent, c, "この件の担当者は誰ですか？")
+    # 検索の結果は当てにならないので選択肢は出さず、対象を添えて聞き直してもらう
+    assert len(model.calls) == 0 and "「この件」" in got[0].answer and got[0].suggestions == []
+    step = next(
+        e["step"] for e in custom if e["type"] == "step" and e["step"]["input"].get("kind") == "clarify"
+    )
+    assert step["input"]["reason"] == "reference_unknown"
+
+
+def test_clarify_options_fill_up_to_two_when_the_question_names_no_document() -> None:
+    """関連の高い文書が 1 つだけでも、「その文書」は決まらないので次に高い文書で 2 つにする（T14）。"""
+    from arag.agent.primer import clarify_options
+
+    from .agent_fakes import fake_hit
+
+    c = ctx(FakeSearch())
+    for name, score in [("w01.docx", 0.9), ("d01.pdf", 0.3), ("x03.xlsx", 0.2)]:
+        c.registry.add_hit(fake_hit(name).model_copy(update={"document_name": name, "score": score}))
+    got = clarify_options(c, "その文書の改訂日はいつですか？", [])
+    assert [g.split(" ")[0] for g in got] == ["w01.docx", "d01.pdf"]

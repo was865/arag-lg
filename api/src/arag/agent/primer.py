@@ -452,6 +452,16 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     )
     question = u.get("question", "")
     history = state["messages"][: _last_question(state["messages"]) or 0]
+    attached = ctx.document_ids is not None or ctx.hooks.read_image is not None
+    if u["kind"] == "docs" and not named and not attached and (term := reference_unknown(question, history)):
+        # 検索の結果は指す先の手がかりにならないので、選択肢は出さず対象を添えて聞き直してもらう
+        return {
+            "clarify": {
+                "question": CLARIFY_REFERENCE.format(term=term),
+                "options": [],
+                "reason": "reference_unknown",
+            }
+        }
     if u["kind"] == "docs" and not named and document_unspecified(ctx, question, history):
         try:
             recent = await recent_documents(ctx)
@@ -470,13 +480,33 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     return None
 
 
-# 「この資料」「その文書」のように、文書そのものを指す言い方（文書の種類の語「手順書」などは含めない）
+# 「この資料」「その文書」のように、文書そのものを指す言い方（文書の種類の語「手順書」などは含めない）。
+# 添付・本資料・この表・このスライドも、何も添えていなければ指す先が無い（specs/031 T14）
 _THIS_DOC = re.compile(
-    r"(この|その|あの|上の|さっきの|先ほどの|先程の)\s*(資料|文書|ドキュメント|ファイル|書類|PDF)|"
-    r"\b(this|that)\s+(document|file|pdf)\b",
+    r"(この|その|あの|上の|上記の|さっきの|先ほどの|先程の)\s*"
+    r"(資料|文書|ドキュメント|ファイル|書類|PDF|表(?!計算)|図(?!面)|スライド|シート)|"
+    r"添付(?:の|した|された)?\s*(?:資料|文書|ドキュメント|ファイル|書類|PDF)|本資料|当資料|本文書|"
+    r"\b(this|that|the\s+attached|attached)\s+(document|file|pdf|spreadsheet|sheet|slides?|deck|table)\b",
     re.IGNORECASE,
 )
 CLARIFY_DOCUMENT = "どの資料についてですか？候補から選ぶか、文書名を書いてもう一度質問してください。"
+
+# 初めのターンの「この件」「それは」: 会話に前が無いので指す先が無い（specs/031 T14）
+_REF = re.compile(r"(?:この|その|あの|例の|本)件|^\s*(?:それ|あれ|これ)(?:は|が|を|って|について|に関して)")
+CLARIFY_REFERENCE = (
+    "「{term}」が何を指すか分かりませんでした。"
+    "対象（文書名・設備名・件名など）を添えて、もう一度質問してください。"
+)
+
+
+def reference_unknown(question: str, history: list[AnyMessage]) -> str | None:
+    """会話に前のターンが無いのに「この件」「それは」と指していれば、その語を返す（specs/031 T14）。"""
+    if any(isinstance(m, (HumanMessage, AIMessage)) for m in history):
+        return None
+    m = _REF.search(question)
+    return re.sub(r"(は|が|を|って|について|に関して)$", "", m.group(0).strip()) if m else None
+
+
 CLARIFY_OPTIONS_MAX = 3
 
 
@@ -501,11 +531,49 @@ CLARIFY_SCORE_RATIO = 0.5
 
 # 「この資料の〜」で、どの文書にも当てはまる語（要点・まとめなど）。これだけなら内容の語は無い
 _GENERIC_TERMS = {
-    "資料", "文書", "要点", "要約", "概要", "内容", "結論", "目次", "説明", "一覧", "全体", "以下", "箇条",
-    "ポイント", "サマリ", "サマリー", "簡単", "詳細", "詳しく",
-    "summary", "summarize", "summarise", "points", "overview", "document", "file", "pdf", "this", "that",
-    "what", "about", "the", "key", "main", "give", "please", "explain", "list", "tell",
-    "is", "of", "in", "me",
+    "資料",
+    "文書",
+    "要点",
+    "要約",
+    "概要",
+    "内容",
+    "結論",
+    "目次",
+    "説明",
+    "一覧",
+    "全体",
+    "以下",
+    "箇条",
+    "ポイント",
+    "サマリ",
+    "サマリー",
+    "簡単",
+    "詳細",
+    "詳しく",
+    "summary",
+    "summarize",
+    "summarise",
+    "points",
+    "overview",
+    "document",
+    "file",
+    "pdf",
+    "this",
+    "that",
+    "what",
+    "about",
+    "the",
+    "key",
+    "main",
+    "give",
+    "please",
+    "explain",
+    "list",
+    "tell",
+    "is",
+    "of",
+    "in",
+    "me",
 }
 # 漢字・カタカナの 2 文字以上の連なり、英字で始まる語（型番 HP-300 も含む）
 _TERM = re.compile(r"[一-龥々ァ-ヶー]{2,}|[A-Za-z][A-Za-z0-9-]+")
@@ -538,5 +606,11 @@ def clarify_options(ctx: RunContext, question: str, recent: list[str] | None = N
     if has_content_terms(question):
         first = [n for n in first if n in found]
     names = list(dict.fromkeys([*first, *found]))
+    # 関連の高い文書が 1 つだけでも、指す先は決まっていない。次に高い文書で 2 つにする（T14）
+    for n, _ in sorted(best.items(), key=lambda x: -x[1]):
+        if len(names) >= 2:
+            break
+        if n not in names:
+            names.append(n)
     body = _THIS_DOC.sub("この資料", question).strip()
     return [f"{n} {body}" for n in names[:CLARIFY_OPTIONS_MAX]]

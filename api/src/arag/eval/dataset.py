@@ -29,6 +29,9 @@ class Case(BaseModel):
     expect_no_answer: bool = False
     # 続けて尋ねる題（specs/018 R4）。同じスレッドで先に尋ねる質問を順に並べる。採点は query だけ
     turns: list[str] = Field(default_factory=list)
+    # 聞き返すべき題か（specs/031 T12）。True: 聞き返せば正解（事実網羅 1.0）。False: 聞き返さずに答えるべき。
+    # None: 聞き返しを見ない（聞き返しの率にだけ数える）
+    expect_clarify: bool | None = None
 
 
 class Thresholds(BaseModel):

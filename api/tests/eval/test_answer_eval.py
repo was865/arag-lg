@@ -429,3 +429,59 @@ async def test_run_case_uses_acceptable_documents_for_precision_only() -> None:
     r = await run_case(api, case, kb_id="kb1", model_id=None)
     assert set(r.cited_documents) == {"a.pdf", "b.pdf"}
     assert r.citation_precision == 1.0 and r.citation_recall == 1.0
+
+
+# ── 聞き返し（specs/031 T12） ──
+
+
+def test_clarified_detects_model_and_system_clarify() -> None:
+    from arag.eval.answer import clarified
+
+    assert not clarified([{"id": "s", "name": "search", "input": {}}])
+    assert clarified([{"id": "a", "name": "ask_user", "input": {"question": "どれ？"}}])
+    assert clarified(
+        [{"id": "c", "name": "system", "input": {"kind": "clarify", "reason": "document_unspecified"}}]
+    )
+    # 聞き返しを外した記録（ask_user_blocked）は聞き返しではない
+    assert not clarified([{"id": "b", "name": "system", "input": {"kind": "ask_user_blocked"}}])
+
+
+async def test_run_case_scores_expected_clarify() -> None:
+    step = {"id": "c", "name": "system", "parent_id": None, "status": "done", "input": {"kind": "clarify"}}
+    asked = {**COMPLETED, "answer": "どの資料についてですか？", "citation_map": {}, "sources": []}
+    api = FakeApi([("step", {"type": "step", "step": step}), ("run.completed", asked)])
+    # 聞き返すべき題: 聞き返せば事実網羅 1.0
+    r = await run_case(
+        api, Case(id="c", query="この資料の要点は？", expect_clarify=True), kb_id="k", model_id=None
+    )
+    assert r.clarified is True and r.expect_clarify is True and r.fact_coverage == 1.0
+    # 聞き返す必要の無い題で聞き返すと、答えの事実が無いので網羅は 0
+    case = Case(
+        id="n", query="HP-300 の締付トルクは？", expect_clarify=False, key_facts=[KeyFact(any=["52"])]
+    )
+    r2 = await run_case(api, case, kb_id="k", model_id=None)
+    assert r2.clarified is True and r2.fact_coverage == 0.0
+    # 答えた（聞き返さなかった）なら、聞き返すべき題では 0
+    api2 = FakeApi([("run.completed", COMPLETED)])
+    r3 = await run_case(
+        api2, Case(id="c", query="この資料の要点は？", expect_clarify=True), kb_id="k", model_id=None
+    )
+    assert r3.clarified is False and r3.fact_coverage == 0.0
+
+
+def test_summarize_clarify_rates() -> None:
+    rs = [
+        _result(id="a", clarified=True, expect_clarify=True),
+        _result(id="b", clarified=False, expect_clarify=True),
+        _result(id="c", clarified=True, expect_clarify=False),
+        _result(id="d", clarified=False, expect_clarify=False),
+        _result(id="e", clarified=False, expect_clarify=False),
+        _result(id="f"),  # 聞き返しを見ない題
+    ]
+    s = summarize(rs)
+    assert s["clarify_rate"] == pytest.approx(2 / 6)
+    assert s["clarify_recall"] == 0.5
+    assert s["over_clarify_rate"] == pytest.approx(1 / 3)
+    assert summarize([_result(id="f")])["clarify_recall"] is None
+    md = to_markdown({"suite": "demo", "model_id": None, "summary": s, "cases": [r.__dict__ for r in rs]})
+    assert "| 聞き返すべき題で聞き返した |" in md and "| a | completed/聞き返し |" in md

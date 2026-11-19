@@ -468,6 +468,7 @@ def _ask_user_args(msgs: list[AnyMessage], tool: ToolMessage) -> tuple[str, list
 CLARIFY_REASONS = {
     "ask_user": "質問の意味を決められないため、モデルが利用者に聞き返した",
     "document_unspecified": "「この資料」がどの文書か決まらないため、検索で見つかった文書から選んでもらう",
+    "reference_unknown": "初めのターンの「この件」「それ」は指す先が無いため、対象を添えて聞き直してもらう",
 }
 
 

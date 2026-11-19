@@ -70,6 +70,7 @@ uv run python -m arag.cli gc                     # ごみ箱の期限切れと�
 uv run python -m arag.cli sync-payload           # Qdrant の payload を DB に合わせる
 uv run python -m arag.eval run --suite agentic_rag_demo --variant default dbsf   # 検索の評価
 uv run python -m arag.eval answer --suite agentic_rag_demo_ext                  # 回答の評価
+uv run python -m arag.eval answer --suite harukaze_clarify                      # 聞き返しの評価（harukaze_mix の KB を使う）
 cd .. && make eval-api-down
 ```
 

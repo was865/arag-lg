@@ -1,0 +1,143 @@
+# 聞き返しの題集（specs/031 T12）。資料と KB は harukaze_mix のものを使う（先に harukaze_mix を ingest）。
+# 2026-11-19 作成。聞き返すべき題（expect_clarify: true）と、聞き返さずに答えるべき題（false）を半分ずつ。
+# - 聞き返すべき題: 指す先が質問からも会話からも決まらず、どれを選ぶかで答えがまったく変わるもの
+# - 答えるべき題: 種類の語（手順書・仕様書）で両方を短く答えられるもの、文書名・型番・前のターンで決まるもの
+# tags: system（システムの聞き返しの対象）/ model（モデルの判断）/ deictic（指示語）/ named / multiturn / en
+suite: harukaze_clarify
+kb_suite: harukaze_mix
+files_dir: eval/assets/harukaze_mix/docs
+documents:
+- d01-仕様書_HP-300.pdf
+- d02-仕様書_HP-320.pdf
+- e01-Penang-HP-300-overhaul-procedure.docx
+- e02-Aster-Seals-SK-300-datasheet.pdf
+- p01-月次報告_2026-09.pptx
+- p02-工場紹介_浜松第二工場.pptx
+- p03-新人安全教育.pptx
+- s01-月次点検票_PM-04_走査.pdf
+- s02-支払条件変更のお知らせ_走査.pdf
+- w01-設備保全規程.docx
+- w02-HP-300分解手順書_第2版.docx
+- w03-HP-300分解手順書_第3版.docx
+- w04-品質会議議事録_2026-09.docx
+- x01-部品台帳.xlsx
+- x02-保守記録_2026-09.xlsx
+- x03-価格表_2026下期.xlsx
+thresholds: {}
+cases:
+# ── 聞き返すべき題 ──
+- id: hc01-this-doc
+  query: この資料の締付トルクはいくつですか？
+  tags: [ja, system]
+  expect_clarify: true
+- id: hc02-that-doc
+  query: その文書の改訂日はいつですか？
+  tags: [ja, system]
+  expect_clarify: true
+- id: hc03-earlier-doc
+  # 初めのターンなので「さっき」の資料は無い
+  query: さっきの資料の保証期間は何か月ですか？
+  tags: [ja, system]
+  expect_clarify: true
+- id: hc04-attached
+  # 何も添付していない
+  query: 添付の資料の要点を3つにまとめてください。
+  tags: [ja, system]
+  expect_clarify: true
+- id: hc05-this-table
+  query: この表の合計金額はいくらですか？
+  tags: [ja, system]
+  expect_clarify: true
+- id: hc06-en-this-doc
+  query: Summarize this document in three bullet points.
+  tags: [en, system]
+  expect_clarify: true
+- id: hc07-this-matter
+  # 初めのターンの「この件」は指す先が無い
+  query: この件の担当者は誰ですか？
+  tags: [ja, deictic]
+  expect_clarify: true
+- id: hc08-pronoun
+  query: それはいつまでに対応する必要がありますか？
+  tags: [ja, deictic]
+  expect_clarify: true
+- id: hc09-price
+  # 価格表には多くの品目がある。どれかで答えがまったく変わり、全部を並べるのも答えにならない
+  query: 価格はいくらですか？
+  tags: [ja, model]
+  expect_clarify: true
+# ── 聞き返さずに答えるべき題 ──
+- id: hn01-kind-word
+  # 「手順書」は種類の語。第2版と第3版の両方を短く答えられる
+  query: 手順書の締付トルクはいくつですか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  acceptable_documents: [w02-HP-300分解手順書_第2版.docx, w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: ['52']
+- id: hn02-two-models
+  # HP-300 と HP-320 の両方を並べて答えられる
+  query: ポンプの最大吐出量はいくつですか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [d01-仕様書_HP-300.pdf, d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: [300 L/min, 300L/min, '300']
+  - any: [320 L/min, 320L/min, '320']
+- id: hn03-model-number
+  query: HP-300 の締付トルクはいくつですか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  acceptable_documents: [w02-HP-300分解手順書_第2版.docx, w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: ['52']
+- id: hn04-named
+  query: w03-HP-300分解手順書_第3版.docx の作業の所要時間は何分ですか？
+  tags: [ja, named]
+  expect_clarify: false
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [75分, 75 分]
+- id: hn05-this-doc-after-turn
+  # 前のターンで資料を引用したので「この資料」は決まる
+  turns: [HP-300 分解手順書の第3版では、締付トルクはいくつですか？]
+  query: この資料では、作業の所要時間は何分ですか？
+  tags: [ja, system, multiturn]
+  expect_clarify: false
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [75分, 75 分]
+- id: hn06-pronoun-after-turn
+  # 前のターンがあるので「それ」は決まる
+  turns: [シールキット SK-300 の在庫補充は誰が担当しますか？]
+  query: それはいつまでに行いますか？
+  tags: [ja, deictic, multiturn]
+  expect_clarify: false
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: [10月31日, 2026年10月31日, 10/31]
+- id: hn07-spec-warranty
+  # 両方の仕様書で同じ値
+  query: 仕様書に書かれている保証期間は何か月ですか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [d01-仕様書_HP-300.pdf, d02-仕様書_HP-320.pdf]
+  key_facts:
+  - any: [18か月, 18 か月, 18ヶ月, 18カ月]
+- id: hn08-meeting
+  # 会議の議事録は 1 つだけ
+  query: 品質会議で決まった不良率の目標はいくつですか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  key_facts:
+  - any: [0.5%, 0.5 %]
+- id: hn09-latest-grease
+  query: 最新の分解手順書では、軸受にどのグリスを使いますか？
+  tags: [ja, model]
+  expect_clarify: false
+  relevant_documents: [w03-HP-300分解手順書_第3版.docx]
+  key_facts:
+  - any: [KG-5]

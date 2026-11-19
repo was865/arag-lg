@@ -69,6 +69,9 @@ class CaseResult:
     # 評価者の判定（主張ごと）と、評価者に見せた資料。人手ラベルとの一致確認（E2）に使う
     claims: list[dict[str, Any]] = field(default_factory=list)
     judge_sources: list[dict[str, Any]] = field(default_factory=list)
+    # 聞き返しで終えたか（モデルの ask_user かシステムの聞き返し）と、題の期待（specs/031 T12）
+    clarified: bool = False
+    expect_clarify: bool | None = None
 
 
 # ── 純関数 ──────────────────────────────────────────────────────────────
@@ -135,6 +138,14 @@ def trajectory(steps: list[dict[str, Any]]) -> Trajectory:
         "retrieve_attempts": sum(1 for s in steps if s.get("parent_id") and s["name"] == "retrieve"),
         "rewrites": sum(1 for s in steps if s["name"] == "rewrite_query"),
     }
+
+
+def clarified(steps: list[dict[str, Any]]) -> bool:
+    """聞き返しで終えたターンか（モデルの ask_user か、システムの聞き返し。specs/031）。"""
+    return any(
+        s["name"] == "ask_user" or (s["name"] == "system" and (s.get("input") or {}).get("kind") == "clarify")
+        for s in steps
+    )
 
 
 _DATE = re.compile(r"(\d{4})\s*(?:年|/|-|\.)\s*(\d{1,2})\s*(?:月|/|-|\.)\s*(\d{1,2})\s*日?")
@@ -245,6 +256,10 @@ def _block(rs: list[CaseResult]) -> dict[str, Any]:
         "p95_ms": _pct(durs, 0.95),
         "no_answer_rate": _mean([float(r.no_answer) for r in rs]),
         "wrong_fact_rate": _mean([float(bool(r.wrong_facts_found)) for r in rs if r.wrong_checked]),
+        # 聞き返し（specs/031 T12）: 全体の率と、聞き返すべき題で聞き返した率・必要の無い題で聞き返した率
+        "clarify_rate": _mean([float(r.clarified) for r in rs]),
+        "clarify_recall": _mean([float(r.clarified) for r in rs if r.expect_clarify is True]),
+        "over_clarify_rate": _mean([float(r.clarified) for r in rs if r.expect_clarify is False]),
         "failed": sum(1 for r in rs if r.status != "completed"),
     }
 
@@ -276,6 +291,9 @@ ROWS = [
     ("p95 (ms)", "p95_ms"),
     ("回答不能率", "no_answer_rate"),
     ("誤りの記述", "wrong_fact_rate"),
+    ("聞き返し率", "clarify_rate"),
+    ("聞き返すべき題で聞き返した", "clarify_recall"),
+    ("聞き返す必要の無い題で聞き返した", "over_clarify_rate"),
     ("失敗", "failed"),
 ]
 
@@ -304,6 +322,8 @@ def to_markdown(result: dict[str, Any]) -> str:
     for c in result["cases"]:
         excerpt = (c.get("error") or c["answer"]).replace("\n", " ").replace("|", "／")[:60]
         state = c["status"] + (f"/{c['no_answer_reason']}" if c.get("no_answer_reason") else "")
+        if c.get("clarified"):
+            state += "/聞き返し"
         lines.append(
             f"| {c['id']} | {state} | {_fmt(c['citation_recall'])} | {_fmt(c['citation_precision'])} | "
             f"{_fmt(c['fact_coverage'])} | {_fmt(c['faithfulness'])} | "
@@ -353,6 +373,7 @@ async def run_case(
     else:
         event, data, steps, _ = await ask(case.query, thread_id)
     traj = trajectory(list(steps.values()))
+    asked = clarified(list(steps.values()))
     facts = [f.any for f in case.key_facts]
     if event != "run.completed":
         return CaseResult(
@@ -363,7 +384,7 @@ async def run_case(
             citation_precision=0.0 if case.relevant_documents else 1.0,
             fact_coverage=_coverage(facts_matched("", facts)), faithfulness=None, unsupported_claims=[],
             tokens=0, duration_ms=0, no_answer=True, no_answer_reason=None,
-            error=data.get("message"), **traj,
+            error=data.get("message"), expect_clarify=case.expect_clarify, **traj,
         )  # fmt: skip
     answer = data["answer"]
     cited = cited_documents(data)
@@ -373,6 +394,9 @@ async def run_case(
     if case.expect_no_answer:
         # 答えの無い題は、資料に無いと答えたか（回答不能を含む）だけを見る
         matched = [declined]
+    if case.expect_clarify:
+        # 聞き返すべき題は、聞き返したかだけを見る（specs/031 T12）
+        matched = [asked]
     wrong_found = wrong_facts_found(answer, [f.any for f in case.wrong_facts])
     faith: float | None = None
     unsupported: list[str] = []
@@ -410,6 +434,8 @@ async def run_case(
         wrong_facts_found=wrong_found,
         claims=claims,
         judge_sources=sources if judge is not None else [],
+        clarified=asked,
+        expect_clarify=case.expect_clarify,
         **traj,
     )
 

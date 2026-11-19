@@ -168,9 +168,8 @@ export function flowOf(
     // モデルの聞き返し（ask_user。specs/031）も確認を通さずに確定へ進む（同じ辺）
     top.some((s) => kindOf(s) === "clarify" && s.input?.reason === "ask_user");
   // 最初の検索の後にシステムが聞き返した（調査を通らずに確定へ。specs/031 R14）
-  const askedBeforeInvestigate = top.some(
-    (s) => kindOf(s) === "clarify" && s.input?.reason === "document_unspecified",
-  );
+  // 理由が ask_user 以外（document_unspecified・reference_unknown。T14）は、どれも最初の検索の後
+  const askedBeforeInvestigate = top.some((s) => kindOf(s) === "clarify" && s.input?.reason !== "ask_user");
   const understand = [...top].reverse().find((s) => s.name === "understand" && s.status !== "running");
   const kind = (understand?.output as Record<string, unknown> | null | undefined)?.kind;
 
@@ -390,7 +389,7 @@ export function routeOf(steps: FlowStep[], opts: { running?: boolean } = {}): Fl
   if (running && !finalized && (!last || last.review?.name === "review")) fresh();
   // 聞き返し（specs/031）: システムは最初の検索の後に調査を通らず確定へ、モデルは見張りから確認を通らず確定へ（T42）
   const clarifies = top.filter((s) => kindOf(s) === "clarify");
-  const askedEarly = clarifies.some((s) => s.input?.reason === "document_unspecified");
+  const askedEarly = clarifies.some((s) => s.input?.reason !== "ask_user");
   const askedByModel = clarifies.some((s) => s.input?.reason === "ask_user");
   // 古い記録・何もツールを使わない回答でも、確定まで進んだなら調査は通っている（システムの聞き返しは除く）
   if (!rounds.length && finalized && !askedEarly) fresh();

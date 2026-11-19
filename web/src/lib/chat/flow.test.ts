@@ -87,6 +87,9 @@ describe("flowOf（ステップの列 → 通った節点と辺）", () => {
     const sys = [...head, { id: "system-clarify", name: "system", status: "done", durationMs: 0, input: { kind: "clarify", reason: "document_unspecified" }, output: null, node: "finalize" } as FlowStep];
     expect(keys(sys)).toEqual(["understand", "primer_search@docs", "finalize@clarify"]);
     expect(routeOf(sys).clarify).toBe(true);
+    // 指す先の無い「この件」（reference_unknown、031 T14）も同じ
+    const ref = sys.map((s) => (s.id === "system-clarify" ? { ...s, input: { kind: "clarify", reason: "reference_unknown" } } : s));
+    expect(keys(ref)).toEqual(["understand", "primer_search@docs", "finalize@clarify"]);
     // モデルの聞き返し: 調査 → 見張り（聞き返し）→ 確定。確認は通らない
     const ask: FlowStep[] = [
       ...head,
