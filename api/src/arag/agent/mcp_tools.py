@@ -80,6 +80,30 @@ def asks_current(question: str) -> bool:
     return bool(CURRENT.search(question))
 
 
+# 質問の内容語（漢字・カタカナの 2 字以上の並び、英数字の語）
+_TERMS = re.compile(r"[一-鿿々]{2,}|[ァ-ヺー]{2,}|[A-Za-z][A-Za-z0-9-]{2,}")
+
+
+def touches_systems(question: str, run: McpRun) -> bool:
+    """質問の語が、使える社内システムの名前・説明・ツールの説明のどれかに出てくるか。
+
+    文書に無いと答えた下書きを社内システムへ差し戻すのは、関係のありそうな質問だけにする
+    （ペナン工場の生産台数・空調機の製造元などで、関係の無いシステムを呼んでいた。specs/032 T25）。
+    """
+    catalog = " ".join(
+        f"{t.server.label} {t.server.description} {t.description}" for t in run.usable.values()
+    ).lower()
+    for term in _TERMS.findall(question):
+        word = term.lower()
+        if word in catalog:
+            return True
+        # 長い複合語（「出荷検査不良率」など）は 3 字ずつでも見る（2 字では「製造元」が「製造課」に当たる）
+        if len(word) >= 4 and not word.isascii():
+            if any(word[i : i + 3] in catalog for i in range(len(word) - 2)):
+                return True
+    return False
+
+
 def current_note(down: list[str], *, review: bool = False) -> str:
     """今の値の注意（review なら差し戻しの文）。応答しないシステムがあれば名前を添える（R17）。"""
     base = CURRENT_REVIEW_NOTE if review else CURRENT_NOTE

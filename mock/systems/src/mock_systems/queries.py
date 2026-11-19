@@ -277,9 +277,10 @@ def find_people(con: sqlite3.Connection, ident: Identity, term: str) -> dict[str
 def search_issues(
     con: sqlite3.Connection, ident: Identity, term: str = "", status: str | None = None
 ) -> dict[str, Any]:
-    sql = "SELECT * FROM issues WHERE (title LIKE ? OR source LIKE ? OR no LIKE ?)"
-    q = like(term)
-    args: list[Any] = [q, q, q]
+    # 空白で区切った語は、すべてを含むもの（モデルは「PM-04 異音」のように語を並べて探す）
+    words = term.split() or [""]
+    sql = "SELECT * FROM issues WHERE " + " AND ".join("(title LIKE ? OR source LIKE ? OR no LIKE ?)" for _ in words)
+    args: list[Any] = [like(w) for w in words for _ in range(3)]
     if status and status.strip():
         if status.strip() in {"未完了", "未完", "open"}:
             sql += " AND status <> '完了'"

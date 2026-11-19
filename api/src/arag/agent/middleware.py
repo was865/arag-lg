@@ -27,7 +27,13 @@ from langgraph.types import Command
 from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
-from arag.agent.mcp_tools import SYSTEM_GAP_NOTE, asks_current, current_note, record_removed
+from arag.agent.mcp_tools import (
+    SYSTEM_GAP_NOTE,
+    asks_current,
+    current_note,
+    record_removed,
+    touches_systems,
+)
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
 from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE, OMITTED_MARKS
 from arag.agent.primer import with_primer
@@ -347,7 +353,7 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
             response = await handler(request.override(system_message=SystemMessage(prompt), **overrides))
         except Exception as e:
             if send_back:
-                finish_send_back(emit, send_back, None, error=str(e)[:300])
+                finish_send_back(emit, send_back, None, error=str(e)[:300], ctx=ctx)
             raise
         record_model_call(ctx, emit, t0, response.result[-1] if response.result else None)
         update = self._after_response(ctx, emit, state, response)
@@ -367,7 +373,7 @@ class AgentPolicyMiddleware(AgentMiddleware[InvestigateState, RunContext]):
             record_empty(ctx, emit, {**pending, "retried": True}, {"result": "retried_ok"})
             update["empty_pending"] = None
         if send_back := state.get("send_back"):
-            finish_send_back(emit, send_back, last)
+            finish_send_back(emit, send_back, last, ctx=ctx)
             update["send_back"] = None
             # ツールを呼ばずに書き直したなら、取り消すかを見張りが判断する
             update["rewrite_of"] = None if last.tool_calls else send_back["input"]["draft"]
@@ -392,6 +398,15 @@ def tool_target(name: str, args: dict[str, Any]) -> str:
     return str(v)[:60] if v else ""
 
 
+def tool_title(name: str, ctx: RunContext | None) -> str:
+    """記録の要約に書くツールの名前。社内システムのツールは「ERP（資材・購買）の get_stock」。"""
+    if ctx is not None and ctx.mcp is not None and is_mcp_tool(name):
+        spec = ctx.mcp.usable.get(name)
+        if spec is not None:
+            return f"{spec.server.label}の {spec.name}"
+    return LABELS.get(name, (name,))[0]
+
+
 def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
     """モデルの応答（ツールを選ぶ・回答を書く）を、測った時間とともに記録する（specs/029 T35）。
 
@@ -406,7 +421,7 @@ def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
     usage = getattr(last, "usage_metadata", None) or {}
     if tools:
         picked = [
-            LABELS.get(c["name"], (c["name"],))[0]
+            tool_title(c["name"], ctx)
             + (f"「{w}」" if (w := tool_target(c["name"], c["args"])) else "")
             for c in calls
         ]
@@ -432,7 +447,12 @@ def record_model_call(ctx: RunContext, emit: Any, t0: float, last: Any) -> None:
 
 
 def finish_send_back(
-    emit: Any, send_back: dict[str, Any], redo: AnyMessage | None, *, error: str | None = None
+    emit: Any,
+    send_back: dict[str, Any],
+    redo: AnyMessage | None,
+    *,
+    error: str | None = None,
+    ctx: RunContext | None = None,
 ) -> None:
     """差し戻しのステップを閉じる（書き直しで呼んだツール、または書き直したこと）。"""
     started = float(send_back["started"])
@@ -445,7 +465,7 @@ def finish_send_back(
     else:
         tools = [c["name"] for c in redo.tool_calls] if isinstance(redo, AIMessage) else []
         summary = f"「{send_back['input']['trigger']}」のため差し戻し → " + (
-            f"{'・'.join(tools)} を実行" if tools else "回答を書き直し"
+            f"{'・'.join(tool_title(n, ctx) for n in tools)} を実行" if tools else "回答を書き直し"
         )
         output, status = {"note": send_back["note"], "next_tools": tools}, "done"
     step = Step(
@@ -716,6 +736,7 @@ def pick_review(
         and ctx.mcp.usable
         and not checked
         and (m := GAP.search(answer))
+        and touches_systems(ctx.user_question or _asked(turn) or ctx.question, ctx.mcp)
     ):
         # 文書に無いと答えた（最初の検索が弱くても）: 社内システムに記録があるかもしれない（specs/032 R15）
         note = SYSTEM_GAP_NOTE.format(catalog=ctx.mcp.catalog)

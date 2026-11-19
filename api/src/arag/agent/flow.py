@@ -238,7 +238,7 @@ async def guard(state: FlowState, runtime: Runtime[RunContext]) -> dict[str, Any
             out = {"result": "used_draft", "pending_review": state.get("draft_kind")}
             record_empty(ctx, emit, {**detail, "retried": retried}, out)
             if send_back := state.get("send_back"):
-                finish_send_back(emit, send_back, draft)
+                finish_send_back(emit, send_back, draft, ctx=ctx)
             return {
                 "messages": [RemoveMessage(id=last.id), draft],
                 "empty_pending": None,

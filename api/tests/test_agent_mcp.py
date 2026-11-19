@@ -52,6 +52,14 @@ def systems(custom: list[Any]) -> dict[str, dict[str, Any]]:
     }
 
 
+def systems_all(custom: list[Any], kind: str) -> list[dict[str, Any]]:
+    return [
+        e["step"]
+        for e in custom
+        if e["type"] == "step" and e["step"]["name"] == "system" and e["step"]["input"].get("kind") == kind
+    ]
+
+
 def steps_of(custom: list[Any], name: str) -> list[dict[str, Any]]:
     return [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == name]
 
@@ -206,6 +214,10 @@ async def test_current_question_is_sent_back_until_system_is_checked() -> None:
     # 文書だけの下書きを差し戻し、記録に「今の値の確認」
     review = steps_of(custom, "review")[0]
     assert review["input"]["kind"] == "current" and review["label"] == "今の値の確認"
+    # 要約には内部のツール名（erp__get_stock）ではなく、システムの名前とツールを書く
+    assert steps_of(custom, "review")[-1]["summary"].endswith("ERP（資材・購買）の get_stock を実行")
+    chose = [x["summary"] for x in systems_all(custom, "model_call")]
+    assert "ツールを選んだ: ERP（資材・購買）の get_stock" in chose
     assert any("この下書きは文書（ある時点の記録）だけ" in m.text for m in model.calls[1])
     assert c.stats.current_reviews == 1 and c.mcp is not None and c.mcp.calls == 1
     assert "今は 15 個" in state["messages"][-1].text
@@ -293,7 +305,7 @@ async def test_unfound_answer_is_sent_back_to_systems() -> None:
         )
         agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
         c = ctx(FakeSearch(), mcp=mcp_run(t))
-        _, custom = await run(agent, c, "組立ライン1号で 10 月に行った保全作業は？")
+        _, custom = await run(agent, c, "SK-300 の 10 月の在庫の動きは？")
     review = steps_of(custom, "review")[0]
     assert review["input"]["kind"] == "system_gap" and review["label"] == "社内システムの確認"
     assert any("ERP（資材・購買）: 部品・在庫・発注" in m.text for m in model.calls[1])
@@ -308,3 +320,24 @@ async def test_unfound_answer_without_systems_is_not_sent_back_to_systems() -> N
         c = ctx(FakeSearch(), mcp=mcp_run(t, usable=False))
         await run(agent, c, "組立ライン1号で 10 月に行った保全作業は？")
     assert c.stats.system_gap_reviews == 0
+
+
+async def test_unfound_answer_unrelated_to_systems_is_not_sent_back() -> None:
+    """質問の語がどのシステムの説明にも無ければ、文書に無いという答えを差し戻さない（hm57・hm59）。"""
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="資料からは見つかりませんでした。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        c = ctx(FakeSearch(), mcp=mcp_run(t))
+        await run(agent, c, "ペナン工場の9月の生産台数は？")
+    assert c.stats.system_gap_reviews == 0 and c.mcp is not None and c.mcp.calls == 0
+
+
+def test_question_touches_systems() -> None:
+    from arag.agent.mcp_tools import touches_systems
+
+    t = spec("http://x")
+    m = mcp_run(t)
+    assert touches_systems("SK-300 の在庫は？", m)
+    assert touches_systems("What is the current stock?", m) is False
+    assert not touches_systems("クリーンルーム空調機 CR-02 の製造元はどこですか？", m)

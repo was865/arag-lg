@@ -22,8 +22,10 @@ export function recordFromOutput(o: Record<string, unknown>): SystemRecord | nul
 export function SystemRecordView({ record, t, meta = true }: { record: SystemRecord; t: Dictionary; meta?: boolean }) {
   const rows: { k: string; v: React.ReactNode }[] = [];
   if (meta) {
-    rows.push({ k: t.chat.systemFetchedAt, v: formatFetchedAt(record.fetchedAt) });
-    if (record.basis) rows.push({ k: t.chat.systemBasis, v: record.basis });
+    const fetched = formatFetchedAt(record.fetchedAt);
+    rows.push({ k: t.chat.systemFetchedAt, v: fetched });
+    // 「ERP の現在の値（… 取得）」のように取得の時刻を言い直すだけの時点は重ねて出さない
+    if (record.basis && !(fetched && record.basis.includes(fetched))) rows.push({ k: t.chat.systemBasis, v: record.basis });
     if (record.tool) rows.push({ k: t.chat.systemTool, v: record.tool });
     const args = Object.entries(record.args ?? {}).filter(([, v]) => v !== "" && v != null);
     if (args.length) rows.push({ k: t.chat.systemArgs, v: args.map(([k, v]) => `${k}=${String(v)}`).join("・") });

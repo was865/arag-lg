@@ -1,5 +1,7 @@
 # 社内システム（MCP）の題集（specs/032 T23）。資料と KB は harukaze_mix のものを使う（先に harukaze_mix を ingest）。
-# 状態: 候補（2026-11-19 作成・未確認）。題は 1 問ずつ利用者と確かめて確定する（018 R5）。
+# 状態: 確定（2026-11-20）。利用者の指示で、1 問ずつ seed.py・元の文書と突き合わせて確定した（018 R5 の代わり）。
+#   確定のときの直し: hs12 に差（2 個）、hs17 は保全の記録か課題（Q-001）のどちらでもよい、
+#   hs27 は課題の管理を呼ぶこと（呼ばなければ拒否に気付けない）、hs28 は「初めて下回った」も当たり。
 # 値は mock/systems の seed.py（MOCK_TODAY=2026-11-18）と eval/assets/harukaze_mix/docs の元の表で確かめた。
 # 準備: make up-mock → uv run python -m arag.cli eval-users --suite harukaze_systems
 # tags: docs（文書だけ・対照）/ system（システムだけ）/ cross（文書とシステムをまたぐ）/ time（時点の違い）/
@@ -131,6 +133,7 @@ cases:
   key_facts:
   - any: ['9']
   - any: ['7']
+  - any: ['2 個', '2個', '2つ']
   expect_caveat:
   - any: [9月30日, 9/30, '2026-09-30']
 - id: hs13-time-kg2
@@ -179,7 +182,7 @@ cases:
   as_user: hozen
   relevant_documents: [w04-品質会議議事録_2026-09.docx]
   acceptable_documents: [w03-HP-300分解手順書_第3版.docx]
-  expect_tools: [cmms]
+  expect_tools: ['cmms|tickets']  # 作業の記録・作業指示 WO-1098 か課題 Q-001 で分かる
   key_facts:
   - any: [第3版]
   - any: [10月14日, 10/14, '2026-10-14']
@@ -271,6 +274,7 @@ cases:
   as_user: hinsho
   faults: {tickets: deny}
   relevant_documents: [w04-品質会議議事録_2026-09.docx]
+  expect_tools: [tickets]
   key_facts:
   - any: [締付トルク]
   - any: [シールキット, SK-300]
@@ -284,7 +288,7 @@ cases:
   expect_tools: [tickets]
   key_facts:
   - any: ['0.4']
-  - any: [継続, 来月も]
+  - any: [継続, 来月も, 初めて]
   must_not:
   - any: [不良率の目標は達成済みです]
 # ── 英語 ──

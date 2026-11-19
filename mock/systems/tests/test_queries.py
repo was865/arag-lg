@@ -66,6 +66,8 @@ def test_people_never_show_private_phone(con) -> None:  # type: ignore[no-untype
 def test_issues(con) -> None:  # type: ignore[no-untyped-def]
     res = q.search_issues(con("tickets"), who(), "品質会議", status="未完了")
     assert _col(res, "課題番号") == ["Q-003"]
+    # 空白で区切った語は、すべてを含む課題（「PM-04 異音」で「PM-04 の異音」が当たる）
+    assert _col(q.search_issues(con("tickets"), who(), "PM-04 異音"), "課題番号") == ["Q-004"]
     # 一覧に最新の経過（最後のコメント）を添える
     assert "0.4%" in _col(res, "最新の経過")[0]
     res = q.get_issue(con("tickets"), who(), "q-002")
