@@ -32,7 +32,9 @@ from docling_core.types.doc.labels import DocItemLabel
 # v2: ページをまたぐ表の続きを結合
 # v3: 1 か所にしか出ないページヘッダを本文に戻す・続けて並ぶ同じ深さの見出しを 1 段ずつ入れ子にする
 # v4: Excel の合計行など、表の下で 1 セルずつに分かれた断片を表の行に戻す
-CHUNKER_VERSION = "hybrid-md-v4"
+# v5: PDF の柱（ページヘッダ）から章を決め、見出しパスの頭に置く（specs/031 T19）。
+# 柱から章の決まらない文書（Word・Markdown・短い PDF など）の結果は v4 と同じ
+CHUNKER_VERSION = "hybrid-md-v5"
 HEADING_SEP = " > "
 
 BlockType = Literal["text", "table", "figure", "code", "formula", "list"]
@@ -258,6 +260,91 @@ def keep_unique_page_headers(doc: DoclingDocument) -> DoclingDocument:
     return out
 
 
+def _flat(text: str) -> str:
+    """章の照合用。空白を除いて比べる（数字は残す。「第2章」と「第3章」を分ける）。"""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", text)).lower()
+
+
+def running_chapters(doc: DoclingDocument) -> list[tuple[int, str]]:
+    """各ページの柱（繰り返すページヘッダ）から章を決め、(始まりのページ, 章の名前) を返す（specs/031 T19）。
+
+    PDF の見出しは docling がすべて同じ深さにし、章の扉の「第 N 章」は本文になることもあるので、
+    見出しからは章と節を分けられない。柱は「第2章 本番運用」のように章ごとに変わる。
+    - 2 ページ以上に出る柱を候補にし、ほかの候補と範囲が重なるもの（本の題名・図の文字の取り違え）は、
+      重なりの多いものから外す。章が 2 つ以上残らなければ章は無い
+    - 章の始まりは、前の章の柱の後で、章の名前と同じ見出しのあるページ（扉）。無ければ柱の最初のページ
+    """
+    pages: dict[str, set[int]] = defaultdict(set)
+    names: dict[str, str] = {}
+    for item, _ in doc.iterate_items(included_content_layers={ContentLayer.FURNITURE}):
+        if not (isinstance(item, TextItem) and item.label == DocItemLabel.PAGE_HEADER):
+            continue
+        text = item.text.strip()
+        if not text or _PAGE_NO.match(text):
+            continue
+        key = _flat(text)
+        names.setdefault(key, text)
+        pages[key].update(p.page_no for p in item.prov)
+    spans = {k: (min(ps), max(ps)) for k, ps in pages.items() if len(ps) >= 2}
+
+    def overlaps(a: str, b: str) -> bool:
+        return spans[a][0] <= spans[b][1] and spans[b][0] <= spans[a][1]
+
+    while True:
+        counts = {k: sum(overlaps(k, o) for o in spans if o != k) for k in spans}
+        worst = max(counts, key=lambda k: (counts[k], -len(pages[k])), default=None)
+        if worst is None or counts[worst] == 0:
+            break
+        del spans[worst]
+    if len(spans) < 2:
+        return []
+    heads = [
+        (p.page_no, _flat(item.text))
+        for item, _ in doc.iterate_items()
+        if isinstance(item, (SectionHeaderItem, TextItem)) and item.text.strip()
+        for p in item.prov[:1]
+    ]
+    out: list[tuple[int, str]] = []
+    prev_end = 0
+    for key in sorted(spans, key=lambda k: spans[k][0]):
+        first, last = spans[key]
+        doors = [
+            pg for pg, h in heads if prev_end < pg <= first and len(h) >= 2 and h in key and h != key[:2]
+        ]
+        out.append((min(doors) if doors else first, names[key]))
+        prev_end = last
+    return out
+
+
+def drop_chapter_doors(doc: DoclingDocument, chapters: list[tuple[int, str]]) -> DoclingDocument:
+    """章の扉の小さな札（「第 2 章」「付 録」）が本文になったものを外した複製を返す。
+
+    札は前の節の本文の末尾に混ざる。章は見出しパスの頭に置くので、外しても失わない（T19）。
+    """
+    names = [_flat(n) for _, n in chapters]
+    out = doc.model_copy(deep=True)
+    for item, _ in out.iterate_items():
+        if not (isinstance(item, TextItem) and item.label == DocItemLabel.TEXT):
+            continue
+        t = _flat(item.text)
+        if 2 <= len(t) <= 6 and any(t in n for n in names):
+            item.content_layer = ContentLayer.FURNITURE
+    return out
+
+
+# 見出しの末尾に付いたカードの番号（「POC から本番運用へ。 2」）
+_CARD_NO = re.compile(r"([。．.])\s+\d{1,2}$")
+
+
+def _with_chapter(headings: list[str], chapter: str | None) -> list[str]:
+    """見出しパスの頭に章を置く。章と重なる見出し（扉の「第 2 章」・章の題）は重ねない。"""
+    if not chapter:
+        return headings
+    heads = [_CARD_NO.sub(r"\1", h) for h in headings]
+    c = _flat(chapter)
+    return [chapter, *(h for h in heads if _flat(h) not in c)]
+
+
 def nest_stacked_headings(doc: DoclingDocument) -> DoclingDocument:
     """同じ深さの見出しが本文を挟まずに続くとき、後の見出しを 1 段深くした複製を返す。
 
@@ -301,6 +388,9 @@ def chunk_document(
         serializer_provider=_MarkdownTableProvider(),
     )
     pieces: list[_Piece] = []
+    chapters = running_chapters(doc) if page_unit == "page" else []
+    if chapters:
+        doc = drop_chapter_doors(doc, chapters)
     doc = nest_stacked_headings(keep_unique_page_headers(doc))
     if page_unit == "page":
         doc = merge_continued_tables(doc)
@@ -319,6 +409,10 @@ def chunk_document(
         headings = [h.strip() for h in (dc.meta.headings or []) if h.strip()]
         boxes = _boxes(dc)
         pages = sorted({b["page"] for b in boxes})
+        if chapters and pages:
+            # 柱から決めた章を見出しパスの頭に（specs/031 T19）
+            chapter = next((name for start, name in reversed(chapters) if start <= pages[0]), None)
+            headings = _with_chapter(headings, chapter)
         draft = ChunkDraft(
             ordinal=len(pieces),
             section_ordinal=-1,

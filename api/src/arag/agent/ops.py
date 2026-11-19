@@ -598,6 +598,24 @@ def _outline_line(i: int, sec: Any) -> str:
     return f"{indent}- {i}. {head}（{page}{sec.token_len} トークン、ID: {sec.id}）"
 
 
+def _chapters(secs: list[Any]) -> list[tuple[str, int, int, int | None]]:
+    """見出しの最上位（「第2章 運用 > 2.1 節」の「第2章 運用」）ごとの (名前, 最初の節, 最後の節, ページ)。
+
+    下に節を持つ最上位が 2 つ以上あるときだけ返す（見出しが平らな文書では節の一覧と同じなので出さない）。
+    """
+    parts: list[list[Any]] = []
+    for i, sec in enumerate(secs, start=1):
+        top = (sec.heading_path or "").split(" > ")[0]
+        if parts and parts[-1][0] == top:
+            parts[-1][2] = i
+        else:
+            parts.append([top, i, i, sec.page_start])
+    nested = [p for p in parts if p[0] and p[2] > p[1]]
+    if len(nested) < 2:
+        return []
+    return [(p[0], p[1], p[2], p[3]) for p in parts if p[0] and p[2] > p[1]]
+
+
 def format_outline(
     filename: str,
     secs: list[Any],
@@ -605,6 +623,7 @@ def format_outline(
     *,
     head: int = OUTLINE_HEAD,
     tail: int = OUTLINE_TAIL,
+    chapter: int | None = None,
 ) -> str:
     """章立ての文（specs/031 R1〜R3）。節には 1 からの番号を付ける。
 
@@ -622,6 +641,18 @@ def format_outline(
             f"（この文書には目次の節「{sec.heading_path}」（{page}ID: {sec.id}）があります。"
             "章の全体の構成は、この節を read_section で読むと分かります）"
         )
+    if start is None and total > head + tail and (parts := _chapters(secs)):
+        # 中略の間の章も見えるよう、見出しの最上位（章）の一覧を先に出す（specs/031 T20）
+        lines.append("章の一覧（見出しの最上位。節の番号の範囲と始まりのページ）:")
+        lines += [f"- {name}（第 {a}〜{b} 節" + (f"、p.{p}〜" if p else "") + "）" for name, a, b, p in parts]
+        if chapter is not None:
+            # 質問が指す章（「第2章の最後の節」）は、中略の間でもその章の節を全部出す
+            pat = re.compile(rf"^第\s*{chapter}\s*章")
+            hit = next((x for x in parts if pat.match(x[0])), None)
+            if hit is not None:
+                lines.append(f"第{chapter}章の節（第 {hit[1]}〜{hit[2]} 節）:")
+                lines += [_outline_line(i, secs[i - 1]) for i in range(hit[1], hit[2] + 1)]
+        lines.append("節の一覧:")
     if start is not None:
         first = min(max(1, start), max(1, total))
         shown = secs[first - 1 : first - 1 + OUTLINE_MAX]
@@ -674,6 +705,7 @@ async def op_get_outline(
     *,
     head: int = OUTLINE_HEAD,
     tail: int = OUTLINE_TAIL,
+    chapter: int | None = None,
 ) -> str:
     async with ctx.sessionmaker() as s:
         doc, why = await _find_document(s, ctx, document)
@@ -686,7 +718,7 @@ async def op_get_outline(
         )
     if not secs:
         return f"「{doc.filename}」には章立てがありません。"
-    return format_outline(doc.filename, secs, start, head=head, tail=tail)
+    return format_outline(doc.filename, secs, start, head=head, tail=tail, chapter=chapter)
 
 
 class DocRead(NamedTuple):

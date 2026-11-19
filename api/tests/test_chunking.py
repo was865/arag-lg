@@ -184,3 +184,75 @@ def test_sheet_total_row_fragments_join_the_table() -> None:
     t = next(c for c in r.chunks if "PM-04" in c.text and "09-02" in c.text)
     total = next(line for line in t.text.splitlines() if line.startswith("| 合計"))
     assert total.split("|")[3].strip() == "150"  # 停止時間の列に入る
+
+
+def _handbook_doc() -> DoclingDocument:
+    """章の扉の「第 N 章」が本文になり、章は各ページのヘッダ（柱）にだけ出る PDF（学習ハンドブック）。
+
+    p1 目次・p2 第1章の扉（「第 1 章」は見出し）・p3〜4 第1章（柱あり）・p5 第1章のまとめ（柱なし）・
+    p6 第2章の扉（「第 2 章」は本文）・p7〜8 第2章（柱あり）。偶数ページの柱は本の題名。
+    """
+    doc = DoclingDocument(name="ハンドブック")
+    for p in range(1, 9):
+        doc.add_page(page_no=p, size=Size(width=600, height=800))
+    fur = ContentLayer.FURNITURE
+
+    def head(text: str, p: int) -> None:
+        doc.add_text(DocItemLabel.PAGE_HEADER, text, prov=prov(p), content_layer=fur)
+
+    doc.add_heading("目 次", level=1, prov=prov(1))
+    doc.add_text(DocItemLabel.TEXT, "第1章 設計の基本 / 第2章 本番運用", prov=prov(1))
+    doc.add_heading("第 1 章", level=1, prov=prov(2))
+    doc.add_heading("設計の 基本", level=1, prov=prov(2))
+    doc.add_text(DocItemLabel.TEXT, "この章では設計を学ぶ。", prov=prov(2))
+    for p in (3, 4):
+        head("第1章 設計の基本" if p % 2 else "学習ハンドブック", p)
+        doc.add_heading(f"1.{p - 2} 節 {p}", level=1, prov=prov(p))
+        doc.add_text(DocItemLabel.TEXT, f"第1章の本文 {p}。", prov=prov(p))
+    head("第1章 設計の基本", 5)
+    doc.add_heading("まとめの カード。 2", level=1, prov=prov(5))
+    doc.add_text(DocItemLabel.TEXT, "第1章のまとめ。", prov=prov(5))
+    doc.add_text(DocItemLabel.TEXT, "第 2 章", prov=prov(6))
+    doc.add_heading("本番運用", level=1, prov=prov(6))
+    doc.add_text(DocItemLabel.TEXT, "この章では運用を学ぶ。", prov=prov(6))
+    for p in (6, 7, 8):
+        head("学習ハンドブック", p)
+    for p in (7, 8):
+        if p % 2:
+            head("第2章 本番運用", p)
+        doc.add_heading(f"2.{p - 6} 節 {p}", level=1, prov=prov(p))
+        doc.add_text(DocItemLabel.TEXT, f"第2章の本文 {p}。", prov=prov(p))
+    head("図", 8)  # 図の中の文字を柱と取り違えたもの（1 ページだけ）は使わない
+    head("第2章 本番運用", 8)
+    head("層", 3)  # 2 ページに出ても、章をまたぐもの（3〜7）は使わない
+    head("層", 7)
+    return doc
+
+
+def test_running_headers_become_chapters() -> None:
+    """各ページの柱（ページヘッダ）から章を決め、見出しパスの頭に章を置く（specs/031 T19）。"""
+    from arag.ingest.chunking import running_chapters
+
+    doc = _handbook_doc()
+    # 本の題名（全体にわたる柱）は章にしない。章の始まりは扉（章の名前と同じ見出しのページ）
+    assert running_chapters(doc) == [(2, "第1章 設計の基本"), (6, "第2章 本番運用")]
+    res = chunk_document(doc, CharTokenizer(max_tokens=200))
+    by_text = {c.text: c.heading_path for c in res.chunks}
+    assert by_text["第1章の本文 3。"] == "第1章 設計の基本 > 1.1 節 3"
+    # 柱の無い章末のまとめも、次の章の扉より前なので第1章。カードの番号（「。 2」）は外す
+    # 扉の「第 2 章」（本文になったもの）は前の節の本文に混ぜない
+    assert by_text["第1章のまとめ。"] == "第1章 設計の基本 > まとめの カード。"
+    # 扉の「第 2 章」「本番運用」は章と重なるので重ねない
+    assert by_text["この章では運用を学ぶ。"] == "第2章 本番運用"
+    assert by_text["第2章の本文 7。"] == "第2章 本番運用 > 2.1 節 7"
+    # 章より前（目次）はそのまま
+    assert any(h == "目 次" for h in by_text.values())
+    heads = [s.heading_path for s in res.sections]
+    assert "第2章 本番運用 > 2.2 節 8" in heads
+
+
+def test_no_chapters_without_running_headers() -> None:
+    from arag.ingest.chunking import running_chapters
+
+    assert running_chapters(regulation_doc()) == []
+    assert running_chapters(_letter_doc()) == []

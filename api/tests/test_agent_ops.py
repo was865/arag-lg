@@ -108,3 +108,50 @@ def test_filename_with_spaces_and_fullwidth_brackets_is_found_in_the_question() 
     assert not filename_in_question("a.md", "a の内容")
     assert filename_in_question("a.md", "a.md を要約して")
     assert not filename_in_question(name, "学習ハンドブックの最後の章")
+
+
+def test_long_outline_lists_chapters_with_section_ranges() -> None:
+    """節の多い文書は、見出しの最上位（章）の一覧を先頭に出す。中略の間の章も見える（specs/031 T20）。"""
+    from types import SimpleNamespace
+
+    from arag.agent.ops import format_outline
+
+    def sec(i: int, path: str) -> object:
+        return SimpleNamespace(
+            id=f"id-{i}", level=path.count(" > ") + 1, heading_path=path, page_start=i, token_len=5
+        )
+
+    paths = ["目 次"]
+    for n, name in enumerate(["第1章 設計", "第2章 運用", "第3章 監査"], start=1):
+        paths += [name] + [f"{name} > {n}.{k} 節" for k in range(1, 20)]
+    paths += [f"付録 用語集 > 語{k}" for k in range(1, 6)]
+    secs = [sec(i, p) for i, p in enumerate(paths, start=1)]
+    # 最初の検索に添える章立て（先頭と末尾 20 節）では、中略の間の章が見えない
+    out = format_outline("a.pdf", secs, head=20, tail=20)
+    assert "章の一覧" in out
+    assert "- 第2章 運用（第 22〜41 節、p.22〜）" in out
+    assert "- 付録 用語集（第 62〜66 節、p.62〜）" in out
+    # 見出しが平らな（章の無い）文書には出さない
+    assert "章の一覧" not in format_outline("a.pdf", _secs(643))
+    # 全部の節を出せるなら一覧は要らない
+    assert "章の一覧" not in format_outline("a.pdf", secs)
+
+
+def test_outline_lists_sections_of_the_asked_chapter() -> None:
+    """「第2章の最後の節」のように章を指す質問には、その章の節を全部出す（中略の間でも。T20）。"""
+    from types import SimpleNamespace
+
+    from arag.agent.ops import format_outline
+
+    paths = ["目 次"]
+    for n, name in enumerate(["第1章 設計", "第2章 運用", "第3章 監査"], start=1):
+        paths += [name] + [f"{name} > {n}.{k} 節" for k in range(1, 20)]
+    secs = [
+        SimpleNamespace(id=f"id-{i}", level=1, heading_path=p, page_start=i, token_len=5)
+        for i, p in enumerate(paths, start=1)
+    ]
+    out = format_outline("a.pdf", secs, head=20, tail=20, chapter=2)
+    part = out.split("第2章の節")[1].split("節の一覧")[0]
+    assert "- 22. 第2章 運用（" in part and "- 41. 第2章 運用 > 2.19 節（" in part
+    assert "第1章 設計 > 1.1" not in part
+    assert "第2章の節" not in format_outline("a.pdf", secs, head=20, tail=20, chapter=9)

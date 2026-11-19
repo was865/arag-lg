@@ -66,6 +66,7 @@ make eval-api
 cd api
 uv run python -m arag.cli ingest-dir ../eval/assets/agentic_rag_demo --kb <KB の ID>   # まとめて入庫
 uv run python -m arag.cli reindex --all          # 解析し直さずに再索引（--dry-run で対象だけ）
+# 分割の版を上げたとき、結果の変わる文書が少なければ --content-hash で絞る（hybrid-md-v5 で変わるのは柱から章の決まる PDF だけ）
 uv run python -m arag.cli gc                     # ごみ箱の期限切れと孤立した内容を回収
 uv run python -m arag.cli sync-payload           # Qdrant の payload を DB に合わせる
 uv run python -m arag.eval run --suite agentic_rag_demo --variant default dbsf   # 検索の評価

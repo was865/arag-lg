@@ -142,7 +142,7 @@ async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, s
             found = await op_search(ctx, emit, sid, question, document_ids=[doc[0]])
             # 検索では「最後の章」「目次」のような位置・構成の問いに答えられないので、章立ての先頭と末尾も
             # 添える（specs/031 R11）
-            outline = await _outline_for(ctx, emit, sid, doc)
+            outline = await _outline_for(ctx, emit, sid, doc, question)
             text = f"{outline}\n\n{found}" if outline else found
             how = "長いため章立てを添えて文書の中を検索した" if outline else "長いため文書の中を検索した"
     except Exception as e:
@@ -159,8 +159,16 @@ PRIMER_OUTLINE_HEAD = 20
 PRIMER_OUTLINE_TAIL = 20
 
 
-async def _outline_for(ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, str]) -> str:
+_CHAPTER_NO = re.compile(r"第\s*(\d{1,2})\s*章")
+
+
+async def _outline_for(
+    ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, str], question: str = ""
+) -> str:
     """名前を書かれた長い文書の章立て（先頭と末尾）。取れなければ空。記録には子のステップで残す。"""
+    # 質問が章を指すなら（「第2章の最後の節」）、その章の節も全部添える（T20）
+    m = _CHAPTER_NO.search(question)
+    chapter = int(m.group(1)) if m else None
     clock = StepClock(
         emit,
         Step(
@@ -169,12 +177,15 @@ async def _outline_for(ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, st
             parent_id=sid,
             label="目次を取得",
             status="running",
-            input={"document": doc[1], "head": PRIMER_OUTLINE_HEAD, "tail": PRIMER_OUTLINE_TAIL},
+            input={"document": doc[1], "head": PRIMER_OUTLINE_HEAD, "tail": PRIMER_OUTLINE_TAIL}
+            | ({"chapter": chapter} if chapter is not None else {}),
             summary="章立てを取得しています",
         ),
     )
     try:
-        text = await op_get_outline(ctx, doc[0], head=PRIMER_OUTLINE_HEAD, tail=PRIMER_OUTLINE_TAIL)
+        text = await op_get_outline(
+            ctx, doc[0], head=PRIMER_OUTLINE_HEAD, tail=PRIMER_OUTLINE_TAIL, chapter=chapter
+        )
     except Exception as e:  # 章立てが無くても検索の結果で続ける
         clock.done(f"取得できなかった（{type(e).__name__}）", {"error": str(e)[:200]}, error=True)
         return ""
@@ -228,7 +239,9 @@ def structure_question(question: str) -> bool:
     return bool(_STRUCTURE.search(question))
 
 
-async def _read_structure(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str]) -> str:
+async def _read_structure(
+    ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str], question: str = ""
+) -> str:
     """構成を問う続けての質問に、前のターンの文書の章立てと目次の節を添える（specs/031 T15）。"""
     sid = f"primer-{index}"
     label, purpose = ROLES["structure"]
@@ -250,7 +263,7 @@ async def _read_structure(ctx: RunContext, emit: Emit, index: int, doc: tuple[st
         ),
     )
     ctx.stats.primer_searches += 1
-    text = await _outline_for(ctx, emit, sid, doc)
+    text = await _outline_for(ctx, emit, sid, doc, question)
     if not text:
         clock.done("章立てを取得できなかった", {"result": ""})
         return ""
@@ -523,7 +536,7 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
         )
         if len(ids) == 1:
             base = u["start"] + len(u["extra"]) * 2 + 1
-            if text := await _read_structure(ctx, emit, base, (ids[0], names[0])):
+            if text := await _read_structure(ctx, emit, base, (ids[0], names[0]), question):
                 texts = [text, *texts]
     ctx.primer_texts = texts
     ctx.primer = Primer(
