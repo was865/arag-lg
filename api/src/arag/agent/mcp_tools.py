@@ -124,31 +124,58 @@ def touches_systems(question: str, run: McpRun) -> bool:
 
 
 SYSTEM_MISSED_NOTE = (
-    "質問の「{term}」は{label}にある記録ですが、{label}はまだ確かめていません。"
-    "{label}のツールで確かめ、文書の値と違えば両方を時点付きで書き直してください。"
+    "質問の{items} で確かめられる記録ですが、まだ呼んでいません。"
+    "それらのツールで確かめ、文書の値と違えば両方を時点付きで書き直してください。"
 )
 
 
-def missed_systems(question: str, run: McpRun, called: set[str]) -> list[tuple[str, str]]:
-    """質問の語のうち、まだ呼んでいない社内システムにだけある語（システムの表示名・語）。
+def system_missed_note(missed: list[tuple[str, str, str]]) -> str:
+    """呼んでいないツールを全部挙げた差し戻しの文（差し戻しは 1 回だけなので一度に挙げる）。"""
+    items = "、".join(f"「{term}」は{label}の {tool}" for label, tool, term in missed)
+    return SYSTEM_MISSED_NOTE.format(items=items)
 
-    複数のシステムにまたがる質問で、1 つのシステムを呼んだだけで残り（内線 → 社員名簿など）を
-    文書の古い値で答えるのを防ぐ（デモの試走）。呼んだシステム・ほかのシステムにもある語は数えない。
+
+def missed_systems(question: str, run: McpRun, called: set[str]) -> list[tuple[str, str, str]]:
+    """質問の語のうち、まだ呼んでいないツールでしか確かめられない語（システムの表示名・ツール名・語）。
+
+    called は呼んだツールの名前（agent_name）。複数のシステムにまたがる質問で 1 つのシステムだけ呼び、
+    残り（内線 → 社員名簿）を文書の古い値で答えるのを防ぐ。呼んだシステムでも、別のツールにしか無い記録
+    （保全の作業指示だけ呼び、作業の記録を呼ばない）は同じく数える（デモの試走）。
+    ほかのシステム・ほかのツールにも出てくる語は数えない。
     """
-    catalogs: dict[str, tuple[str, str]] = {}
+    called_servers = {run.usable[n].server.name for n in called if n in run.usable}
+    servers: dict[str, str] = {}
     for t in run.usable.values():
-        label, text = catalogs.get(t.server.name, (t.server.label, ""))
-        catalogs[t.server.name] = (label, f"{text} {t.server.description} {t.description}".lower())
-    out: list[tuple[str, str]] = []
-    for name, (label, text) in catalogs.items():
-        if name in called:
-            continue
-        others = [x for n, (_, x) in catalogs.items() if n != name]
-        for term in _TERMS.findall(question):
+        head = servers.get(t.server.name, t.server.description.lower())
+        servers[t.server.name] = f"{head} {t.description.lower()}"
+    # 部品番号・設備ID など数字を含む語は、ツールの説明の例に出てくるだけなので数えない
+    terms: list[str] = [w for w in _TERMS.findall(question) if not any(c.isdigit() for c in w)]
+
+    def unique(own: str, others: list[str]) -> str | None:
+        for term in terms:
             word = term.lower()
-            if word in text and not any(word in x for x in others):
-                out.append((label, term))
-                break
+            if word in own and not any(word in x for x in others):
+                return term
+        return None
+
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for name, t in run.usable.items():
+        srv = t.server.name
+        if name in called or srv in seen:
+            continue
+        if srv in called_servers:
+            # 呼んだシステムの、呼んでいないツール: そのツールの説明にだけある語
+            others = [u.description.lower() for n, u in run.usable.items() if n != name]
+            if term := unique(t.description.lower(), others):
+                out.append((t.server.label, t.name, term))
+        else:
+            # 呼んでいないシステム: システム全体の説明にだけある語。ツールは語を説明に持つものを選ぶ
+            seen.add(srv)
+            if term := unique(servers[srv], [x for s, x in servers.items() if s != srv]):
+                tools = [u for u in run.usable.values() if u.server.name == srv]
+                pick = next((u for u in tools if term.lower() in u.description.lower()), tools[0])
+                out.append((t.server.label, pick.name, term))
     return out
 
 

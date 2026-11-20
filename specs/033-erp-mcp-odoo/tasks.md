@@ -30,3 +30,5 @@
 - [x] T15 harukaze_plant を mock と Odoo のアダプタで流す（値の違う題は無かった。design §11） — R24
 - [x] T16 `docs/demo-erp.md` の台本と、3100 で一度通す — R25
 - [x] T17 書き戻しの設計を別の仕様の草案にする — R22
+- [x] T18 複数のシステムを使い切る試走で見えた穴を埋める（design §12）: 呼んでいないツールの差し戻し（system_missed）、
+  `list_below_reorder` の `without_orders`・不足の大きい順 — R2・R25

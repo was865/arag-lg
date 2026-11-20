@@ -4,7 +4,7 @@ import re
 import uuid
 from typing import Any
 
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from arag.agent.config import AgentCfg
@@ -483,10 +483,26 @@ def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
         m = mcp_run(erp)
         m.usable[people.agent_name] = people
         q = "MS-30 は今足りていますか？発注の問い合わせ先の担当者と内線も教えてください。"
-        assert missed_systems(q, m, called={"erp"}) == [("社員名簿", "内線")]
-        assert missed_systems(q, m, called={"erp", "directory"}) == []
+        assert missed_systems(q, m, called={erp.agent_name}) == [("社員名簿", "find_people", "内線")]
+        assert missed_systems(q, m, called={erp.agent_name, people.agent_name}) == []
         # どのシステムにも出てくる語・呼んだシステムの語だけなら差し戻さない
-        assert missed_systems("SK-300 の在庫は？", m, called={"erp"}) == []
+        assert missed_systems("SK-300 の在庫は？", m, called={erp.agent_name}) == []
+
+
+def test_missed_systems_also_names_an_uncalled_tool_of_a_called_system() -> None:
+    """デモの試走: 保全の作業指示だけ呼び、「最近の保全作業の記録」（作業の記録のツール）を呼ばなかった。"""
+    from arag.agent.mcp_tools import missed_systems
+
+    with running() as (url, _):
+        stock = spec(url)
+        # 説明の例に出てくる部品番号（「例 SK-300」）は語として数えない
+        moves = ToolSpec(stock.server, "list_stock_moves", "部品の入出庫の履歴（例 SK-300）", SCHEMA)
+        m = mcp_run(stock)
+        m.usable[moves.agent_name] = moves
+        q = "SK-300 の今の在庫と、最近の入出庫の履歴は？"
+        want = [("ERP（資材・購買）", "list_stock_moves", "入出庫")]
+        assert missed_systems(q, m, called={stock.agent_name}) == want
+        assert missed_systems(q, m, called={stock.agent_name, moves.agent_name}) == []
 
 
 async def test_answer_is_sent_back_to_a_system_the_question_needs_but_was_not_called() -> None:
@@ -510,3 +526,48 @@ async def test_answer_is_sent_back_to_a_system_the_question_needs_but_was_not_ca
     assert {r["input"]["kind"] for r in reviews} == {"system_missed"}
     note = next(r["output"]["note"] for r in reviews if r.get("output"))
     assert "社員名簿" in note and "内線" in note
+
+
+async def test_system_missed_review_names_every_uncalled_tool_at_once() -> None:
+    """差し戻しは 1 回だけなので、呼んでいないツールを全部挙げる。
+
+    デモの試走: 内線だけ挙げ、仕入先のリードタイムは文書の値のままだった。
+    """
+    with running() as (url, _):
+        erp, people = spec(url), directory_spec(url)
+        sup = ToolSpec(erp.server, "list_suppliers", "仕入先（名前・リードタイム・担当者）", SCHEMA)
+        model = FakeToolModel(
+            messages=script(
+                tool_call(erp.agent_name, part="P-1043"),
+                AIMessage(content="今は 15 個です[1]。リードタイムは 14 日、内線は 2201 です。"),
+                AIMessage(content="今は 15 個です[1]。"),
+            )
+        )
+        agent = build_agent(
+            model,
+            checkpointer=InMemorySaver(),
+            extra_tools=[build_tool(erp), build_tool(people), build_tool(sup)],
+        )
+        m = mcp_run(erp)
+        m.usable[people.agent_name] = people
+        m.usable[sup.agent_name] = sup
+        c = ctx(FakeSearch("x"), mcp=m)
+        _, custom = await run(
+            agent, c, "MS-30 は今足りていますか？仕入先のリードタイムと問い合わせ先の内線も教えてください。"
+        )
+    note = next(r["output"]["note"] for r in steps_of(custom, "review") if r.get("output"))
+    assert "find_people" in note and "内線" in note
+    assert "list_suppliers" in note
+
+
+def test_called_tools_survive_history_summary() -> None:
+    """履歴の要約でツールの結果が消えても、このターンに呼んだツールは呼んだと数える。
+
+    デモの試走: 要約のあと list_below_reorder を呼んでいないと差し戻し、同じ呼び出しを繰り返させた。
+    """
+    from arag.agent.middleware import called_mcp_tools
+
+    c = ctx(FakeSearch("x"))
+    c.tool_seen.update({'erp__list_below_reorder:{"without_orders": true}', 'search:{"query": "x"}'})
+    msg = ToolMessage(content="x", tool_call_id="1", name="directory__find_people")
+    assert called_mcp_tools(c, [msg]) == {"erp__list_below_reorder", "directory__find_people"}

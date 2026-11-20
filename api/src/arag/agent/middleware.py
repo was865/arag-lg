@@ -29,11 +29,11 @@ from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
 from arag.agent.mcp_tools import (
     SYSTEM_GAP_NOTE,
-    SYSTEM_MISSED_NOTE,
     asks_current,
     current_note,
     missed_systems,
     record_removed,
+    system_missed_note,
     touches_systems,
 )
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
@@ -45,7 +45,7 @@ from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import ASK_USER, LABELS
-from arag.mcp.registry import is_mcp_tool, server_of
+from arag.mcp.registry import is_mcp_tool
 from arag.prompts import load_prompt
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -753,14 +753,14 @@ def pick_review(
         return Review("current", "今の値を社内システムで確かめていない", note, "今の値の確認")
     if "system_missed" not in done and checked and ctx.mcp is not None and ctx.mcp.usable:
         # 複数のシステムにまたがる質問で、呼んでいないシステムにしか無い記録（内線など）を文書の値で答えた
-        called = {
-            server_of(m.name or "") for m in turn if isinstance(m, ToolMessage) and is_mcp_tool(m.name or "")
-        }
+        called = called_mcp_tools(ctx, turn)
         q = ctx.user_question or _asked(turn) or ctx.question
         if missed := missed_systems(q, ctx.mcp, called):
-            label, term = missed[0]
-            note = SYSTEM_MISSED_NOTE.format(label=label, term=term)
-            return Review("system_missed", f"{label}を確かめていない（{term}）", note, "残りのシステムの確認")
+            note = system_missed_note(missed)
+            why = (
+                "・".join(f"{label}の {tool}（{term}）" for label, tool, term in missed) + "を確かめていない"
+            )
+            return Review("system_missed", why, note, "残りのシステムの確認")
     if (
         "system_gap" not in done
         and ctx.mcp is not None
@@ -922,9 +922,20 @@ _TABLE_RESULT = re.compile(r"（(\d+) 行）。[^\n]*?(\d+) 行。")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
 
 
+def called_mcp_tools(ctx: RunContext, turn: list[AnyMessage]) -> set[str]:
+    """このターンに呼んだ社内システムのツール（エージェントのツール名）。
+
+    履歴の要約で結果のメッセージが消えても数えられるよう、呼び出しの記録（tool_seen）からも拾う。
+    """
+    seen = {k.split(":", 1)[0] for k in ctx.tool_seen}
+    seen |= {m.name or "" for m in turn if isinstance(m, ToolMessage)}
+    return {n for n in seen if is_mcp_tool(n)}
+
+
 DUPLICATE_NOTE = (
     "同じツールを同じ引数でこのターンに既に呼んでいます（結果は同じなので実行しませんでした）。"
     "その結果を使ってください。章立ての続きは get_outline に start を、本文は read_section を使います。"
+    "前の結果に求める値が無かったなら、別のツールか別の語で探すか、見つからなかったと答えてください。"
 )
 
 
