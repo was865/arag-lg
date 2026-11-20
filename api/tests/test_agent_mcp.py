@@ -463,3 +463,50 @@ async def test_counts_read_off_document_tables_are_checked_even_after_systems() 
 async def test_system_only_answer_to_current_question_is_not_table_checked() -> None:
     custom, _ = await _counted("今は P-1042 が下回っています[2]。台帳でも P-1042 の在庫は 6 個です[1]。")
     assert not steps_of(custom, "review")
+
+
+# ── 複数のシステムにまたがる質問（デモの試走: ERP は呼んだが、内線を名簿で確かめず手引きの古い値を答えた） ──
+
+
+def directory_spec(url: str) -> ToolSpec:
+    srv = ServerSpec(
+        uuid.uuid4(), "directory", "社員名簿", url, "identity", None, None, "社員の部署・役職・内線"
+    )
+    return ToolSpec(srv, "find_people", "社員を探す（氏名・部署・役職・内線）", SCHEMA)
+
+
+def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
+    from arag.agent.mcp_tools import missed_systems
+
+    with running() as (url, _):
+        erp, people = spec(url), directory_spec(url)
+        m = mcp_run(erp)
+        m.usable[people.agent_name] = people
+        q = "MS-30 は今足りていますか？発注の問い合わせ先の担当者と内線も教えてください。"
+        assert missed_systems(q, m, called={"erp"}) == [("社員名簿", "内線")]
+        assert missed_systems(q, m, called={"erp", "directory"}) == []
+        # どのシステムにも出てくる語・呼んだシステムの語だけなら差し戻さない
+        assert missed_systems("SK-300 の在庫は？", m, called={"erp"}) == []
+
+
+async def test_answer_is_sent_back_to_a_system_the_question_needs_but_was_not_called() -> None:
+    with running() as (url, _):
+        erp, people = spec(url), directory_spec(url)
+        model = FakeToolModel(
+            messages=script(
+                tool_call(erp.agent_name, part="P-1043"),
+                AIMessage(content="今は 15 個です[1]。内線は 2201 です。"),
+                AIMessage(content="今は 15 個です[1]。"),
+            )
+        )
+        agent = build_agent(
+            model, checkpointer=InMemorySaver(), extra_tools=[build_tool(erp), build_tool(people)]
+        )
+        m = mcp_run(erp)
+        m.usable[people.agent_name] = people
+        c = ctx(FakeSearch("x"), mcp=m)
+        _, custom = await run(agent, c, "MS-30 は今足りていますか？問い合わせ先の内線も教えてください。")
+    reviews = steps_of(custom, "review")
+    assert {r["input"]["kind"] for r in reviews} == {"system_missed"}
+    note = next(r["output"]["note"] for r in reviews if r.get("output"))
+    assert "社員名簿" in note and "内線" in note

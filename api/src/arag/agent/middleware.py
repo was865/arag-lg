@@ -29,8 +29,10 @@ from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
 from arag.agent.mcp_tools import (
     SYSTEM_GAP_NOTE,
+    SYSTEM_MISSED_NOTE,
     asks_current,
     current_note,
+    missed_systems,
     record_removed,
     touches_systems,
 )
@@ -43,7 +45,7 @@ from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tools import ASK_USER, LABELS
-from arag.mcp.registry import is_mcp_tool
+from arag.mcp.registry import is_mcp_tool, server_of
 from arag.prompts import load_prompt
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -512,6 +514,8 @@ def open_send_back(ctx: RunContext, emit: Any, review: Review, answer: str, sear
         ctx.stats.current_reviews += 1
     elif review.kind == "system_gap":
         ctx.stats.system_gap_reviews += 1
+    elif review.kind == "system_missed":
+        ctx.stats.system_missed_reviews += 1
     else:
         ctx.stats.number_reviews += 1
     send_back: dict[str, Any] = {
@@ -654,6 +658,7 @@ REVIEW_NAMES = {
     "table": "表の集計の確認",
     "current": "今の値の確認",
     "system_gap": "社内システムの確認",
+    "system_missed": "残りのシステムの確認",
     "numbers": "数字の確認",
     "reason": "理由の裏付けの確認",
 }
@@ -746,6 +751,16 @@ def pick_review(
         # 今の値を問われたのに、ある時点の文書だけで答えた（specs/032 R15）
         note = current_note(ctx.mcp.down, review=True)
         return Review("current", "今の値を社内システムで確かめていない", note, "今の値の確認")
+    if "system_missed" not in done and checked and ctx.mcp is not None and ctx.mcp.usable:
+        # 複数のシステムにまたがる質問で、呼んでいないシステムにしか無い記録（内線など）を文書の値で答えた
+        called = {
+            server_of(m.name or "") for m in turn if isinstance(m, ToolMessage) and is_mcp_tool(m.name or "")
+        }
+        q = ctx.user_question or _asked(turn) or ctx.question
+        if missed := missed_systems(q, ctx.mcp, called):
+            label, term = missed[0]
+            note = SYSTEM_MISSED_NOTE.format(label=label, term=term)
+            return Review("system_missed", f"{label}を確かめていない（{term}）", note, "残りのシステムの確認")
     if (
         "system_gap" not in done
         and ctx.mcp is not None

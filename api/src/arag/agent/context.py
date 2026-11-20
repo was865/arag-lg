@@ -36,6 +36,7 @@ class RunStats:
     table_reviews: int = 0
     current_reviews: int = 0
     system_gap_reviews: int = 0
+    system_missed_reviews: int = 0
     number_reviews: int = 0
     # システムが最初に行った検索の回数（specs/026 ②）
     primer_searches: int = 0
@@ -57,6 +58,7 @@ class RunStats:
             + self.table_reviews
             + self.current_reviews
             + self.system_gap_reviews
+            + self.system_missed_reviews
             + self.number_reviews
         )
 

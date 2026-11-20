@@ -123,6 +123,35 @@ def touches_systems(question: str, run: McpRun) -> bool:
     return False
 
 
+SYSTEM_MISSED_NOTE = (
+    "質問の「{term}」は{label}にある記録ですが、{label}はまだ確かめていません。"
+    "{label}のツールで確かめ、文書の値と違えば両方を時点付きで書き直してください。"
+)
+
+
+def missed_systems(question: str, run: McpRun, called: set[str]) -> list[tuple[str, str]]:
+    """質問の語のうち、まだ呼んでいない社内システムにだけある語（システムの表示名・語）。
+
+    複数のシステムにまたがる質問で、1 つのシステムを呼んだだけで残り（内線 → 社員名簿など）を
+    文書の古い値で答えるのを防ぐ（デモの試走）。呼んだシステム・ほかのシステムにもある語は数えない。
+    """
+    catalogs: dict[str, tuple[str, str]] = {}
+    for t in run.usable.values():
+        label, text = catalogs.get(t.server.name, (t.server.label, ""))
+        catalogs[t.server.name] = (label, f"{text} {t.server.description} {t.description}".lower())
+    out: list[tuple[str, str]] = []
+    for name, (label, text) in catalogs.items():
+        if name in called:
+            continue
+        others = [x for n, (_, x) in catalogs.items() if n != name]
+        for term in _TERMS.findall(question):
+            word = term.lower()
+            if word in text and not any(word in x for x in others):
+                out.append((label, term))
+                break
+    return out
+
+
 def current_note(down: list[str], *, review: bool = False) -> str:
     """今の値の注意（review なら差し戻しの文）。応答しないシステムがあれば名前を添える（R17）。"""
     base = CURRENT_REVIEW_NOTE if review else CURRENT_NOTE

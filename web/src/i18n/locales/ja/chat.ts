@@ -362,6 +362,7 @@ export const chat = {
       table: "表の集計の確認",
       current: "今の値の確認",
       system_gap: "社内システムの確認",
+      system_missed: "残りのシステムの確認",
       numbers: "数字の確認",
     },
     review: {
@@ -372,6 +373,7 @@ export const chat = {
       table: "表の集計の確認",
       current: "今の値の確認",
       system_gap: "社内システムの確認",
+      system_missed: "残りのシステムの確認",
       numbers: "数字の確認",
     },
     // 確認の通過（specs/029）
@@ -383,6 +385,7 @@ export const chat = {
       table: "表の集計の確認",
       current: "今の値の確認",
       system_gap: "社内システムの確認",
+      system_missed: "残りのシステムの確認",
       numbers: "数字の確認",
     },
     supported: { true: "あり", false: "なし" },
