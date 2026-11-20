@@ -41,3 +41,4 @@ requirements は EARS（「〜のとき、システムは〜する」）、tasks
 | [033](033-erp-mcp-odoo/) | 本物の ERP（Odoo）につなぐ ERP の MCP サーバと、今の値の実感の画面 |
 | [034](034-realistic-dataset/) | 実際の規模の模擬の業務データ（模擬器・文書の生成・スナップショット） |
 | [035](035-erp-write-back/) | ERP への書き戻し（提案 → 確認 → 1 項目だけ書く）— 草案 |
+| [036](036-tool-call-inspector/) | 社内システムの呼び出しを技術者が確かめられる表示（呼び出しの式・SQL / RPC・モデルに渡した文） |

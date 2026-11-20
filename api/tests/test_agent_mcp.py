@@ -91,6 +91,11 @@ async def test_calls_system_and_cites_it_with_time() -> None:
     started = next(s for s in steps_of(custom, t.agent_name) if s["status"] == "running")
     assert started["summary"] == "ERP（資材・購買） に問い合わせ中: get_stock part=P-1042"
     assert step["output"]["columns"] == ["部品番号", "現在庫", "発注点"]
+    # 技術者が確かめられる呼び出しの中身（specs/036 R1・R2・R7・R8）
+    out = step["output"]
+    assert out["server"] == "erp" and out["tool"] == "get_stock" and out["args"] == {"part": "P-1042"}
+    assert isinstance(out["rtt_ms"], int) and out["rtt_ms"] >= 0
+    assert out["result"] == tool_msg.text  # モデルに渡した文そのもの
     # プロンプト: 使えるシステムがあるターンだけ社内システムの節を足す
     sys = model.calls[0][0]
     assert isinstance(sys, SystemMessage) and "社内の文書と社内システムの結果だけを根拠に" in sys.text
@@ -135,6 +140,9 @@ async def test_forbidden_is_not_filled_in() -> None:
         c = ctx(FakeSearch("x"), mcp=mcp_run(t))
         state_, custom = await run(agent, c, "仕入単価は？")
     assert "見る権限が無い" in state_["messages"][-2].text
+    # 表が返らなくても、何をどう呼んだかは段階に残す（specs/036 R1）
+    step = steps_of(custom, t.agent_name)[-1]["output"]
+    assert step["tool"] == "get_stock" and step["args"] == {"part": "P-2011"} and "rtt_ms" in step
     assert systems(custom)["mcp_denied"]["output"]["message"] == "見る権限がありません"
     assert not any(x.kind == "system" for x in c.registry.items())
 

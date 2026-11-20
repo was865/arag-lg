@@ -6,6 +6,7 @@ import type { Dictionary } from "@/i18n/dictionary";
 import { AutoBadge, LOG_DETAIL_MAX, StatusIcon, TOOL_ICONS, hasInputData, inputSectionLabel, isBySystem, isExpandable, outputSectionLabel, sectionLabelCls, stepDurationLabel } from "./shared";
 import { ToolInputBlock } from "./step-input";
 import { ToolOutputBlock } from "./step-output";
+import { SystemCallView } from "./system-call";
 
 export function ToolStepCard({ step, expanded, onToggle, t, hasChildren = false }: { step: ToolCall; expanded: boolean; onToggle: () => void; t: Dictionary; hasChildren?: boolean }) {
   // 子（検索の明細など）を持つ段階は、開閉で子を出す。自分の入力・出力は子と同じ内容なので出さない
@@ -51,6 +52,8 @@ export function ToolStepCard({ step, expanded, onToggle, t, hasChildren = false 
       </button>
       {expandable && expanded && !hasChildren && (
         <div className="flex flex-col gap-2.5 border-t-[0.5px] border-dashed border-divider bg-surface px-3.5 pb-3.5 pl-10 pt-2 max-md:pl-3.5">
+          {/* 社内システムの呼び出しは、入力と出力をまとめて技術的な中身まで見せる（specs/036） */}
+          {step.name === "system_query" ? <SystemCallView step={step} t={t} /> : <>
           {showInput && (
             <div>
               <div className={sectionLabelCls}>{inputSectionLabel(step, t)}</div>
@@ -63,6 +66,7 @@ export function ToolStepCard({ step, expanded, onToggle, t, hasChildren = false 
               <ToolOutputBlock step={step} t={t} />
             </div>
           )}
+          </>}
         </div>
       )}
     </div>
@@ -98,6 +102,7 @@ export function ToolStepTimeline({ step, expanded, onToggle, isLast, t, hasChild
         </button>
         {expandable && expanded && !hasChildren && (
           <div className="flex flex-col gap-2 pt-2">
+            {step.name === "system_query" ? <SystemCallView step={step} t={t} /> : <>
             {showInput && (
               <div>
                 <div className={sectionLabelCls}>{inputSectionLabel(step, t)}</div>
@@ -110,6 +115,7 @@ export function ToolStepTimeline({ step, expanded, onToggle, isLast, t, hasChild
                 <ToolOutputBlock step={step} t={t} />
               </div>
             )}
+            </>}
           </div>
         )}
       </div>

@@ -73,3 +73,14 @@ def test_issues(con) -> None:  # type: ignore[no-untyped-def]
     res = q.get_issue(con("tickets"), who(), "q-002")
     assert res["issue"]["状態"] == "完了"
     assert len(res["rows"]) == 2
+
+
+def test_traced_call_returns_the_sql_it_ran(con) -> None:  # type: ignore[no-untyped-def]
+    """呼び出しごとに発行した SQL（値を埋め込んだ文）を trace に返す（specs/036 R3）。"""
+    from mock_systems.common import traced
+
+    res = traced(q.list_work_records, con("cmms"), who("製造課"), equipment="PM-04")
+    qs = res["trace"]["queries"]
+    assert qs and all(x["lang"] == "sql" for x in qs)
+    assert any("PM-04" in x["text"] for x in qs) and not any("?" in x["text"] for x in qs)
+    assert res["trace"]["backend"] == "sqlite" and isinstance(res["trace"]["ms"], (int, float))

@@ -17,6 +17,7 @@ import { interpolate } from "@/i18n/interpolate";
 import { AutoBadge, StatusIcon, TOOL_ICONS, hasInputData, inputSectionLabel, isBySystem, isExpandable, outputSectionLabel, sectionLabelCls, stepDurationLabel } from "./shared";
 import { ToolInputBlock } from "./step-input";
 import { ToolOutputBlock } from "./step-output";
+import { SystemCallView } from "./system-call";
 import { PurposeNote, SubStepRow, SubSteps, groupSteps } from "./index";
 import { ToolStepCard } from "./step-views";
 import { FLOW_GRAPH } from "@/lib/chat/flow";
@@ -121,6 +122,9 @@ function StageRow({
             </div>
           ) : hits ? (
             <SearchDetail step={step} hits={hits} />
+          ) : step.name === "system_query" ? (
+            // 社内システムの呼び出しは、呼び出しの式・問い合わせ・MCP・モデルに渡した文まで（specs/036）
+            <SystemCallView step={step} t={t} />
           ) : (
             <>
               {hasInputData(step.input) && (

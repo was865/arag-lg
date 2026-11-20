@@ -995,8 +995,14 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
         if is_mcp_tool(name):
             rec = ctx.table_outputs.pop(cid, None)
             output.update(rec or {})
+            # モデルに渡した文をそのまま（specs/036 R8。社内システムの結果は max_chars までなので切らない）
+            output["result"] = text
             secs = (time.perf_counter() - clock.t0) or 0.0
-            summary = f"{rec['system']}・{rec['total']} 行・{secs:.1f} 秒" if rec else text[:120]
+            summary = (
+                f"{rec['system']}・{rec['total']} 行・{secs:.1f} 秒"
+                if rec and "columns" in rec
+                else text[:120]
+            )
         if n and text.startswith(KEYWORD_FALLBACK_NOTE):
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
         elif n and text.startswith(KEYWORD_RELAX_NOTE):

@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from erp_mcp import querylog
 from erp_mcp.clock import today
 from erp_mcp.model import (
     ErpForbidden,
@@ -46,6 +47,8 @@ class MockBackend:
     def __init__(self, db: Path, rights: dict[str, list[str]], usable: list[str]) -> None:
         self.con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, check_same_thread=False)
         self.con.row_factory = sqlite3.Row
+        # 発行した SQL（値を埋め込んだ文）を呼び出しごとに記録する（specs/036 R3）
+        self.con.set_trace_callback(querylog.sql_trace)
         self.rights = {k: frozenset(v) for k, v in rights.items()}
         self.usable = frozenset(usable)
 

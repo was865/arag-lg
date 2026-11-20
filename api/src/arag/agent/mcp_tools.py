@@ -379,9 +379,12 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
     ep = spec.server.endpoint(m.box)
     limit = spec.server.timeout_sec or m.timeout_sec
     t0 = time.perf_counter()
+    # 何をどう呼んだか（画面の「詳細」で技術者が確かめる。specs/036 R1・R2）
+    meta = ctx.table_outputs[call_id] = {"server": server, "tool": spec.name, "args": args}
     try:
         res = await call_tool(ep, auth_headers(ep, m.caller, m.identity_key), spec.name, args, limit)
     except McpError as e:
+        meta["rtt_ms"] = round((time.perf_counter() - t0) * 1000)
         if m.on_health is not None and not isinstance(e, McpAuthError):
             await m.on_health(server, f"{type(e).__name__}: {e}", round((time.perf_counter() - t0) * 1000))
         kind = (
@@ -407,7 +410,10 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
             f"社内システム「{label}」を確かめられませんでした（{e}）。"
             "推測で値を埋めず、確かめられなかったことを回答に書き、文書で答えられる部分を答えてください。"
         )
+    meta["rtt_ms"] = round((time.perf_counter() - t0) * 1000)
     data = res.data
+    if data is not None and isinstance(data.get("trace"), dict):
+        meta["trace"] = data["trace"]
     if m.on_health is not None:
         down = data is not None and data.get("error") == "unavailable"
         reason = str(data.get("message") or "応答しない") if down and data is not None else None
@@ -496,16 +502,18 @@ async def invoke(ctx: RunContext, emit: Any, call_id: str, spec: ToolSpec, args:
         },
     )
     # 画面の「詳細」に出す構造（モデルに渡す文は変えない）
-    ctx.table_outputs[call_id] = {
-        "system": label,
-        "columns": cols,
-        "rows": rows[:20],
-        "total": total,
-        "fetched_at": fetched,
-        "basis": basis,
-        "n": n,
-        **({"trace": trace} if trace else {}),
-    }
+    meta.update(
+        {
+            "system": label,
+            "columns": cols,
+            "rows": rows[:20],
+            "total": total,
+            "fetched_at": fetched,
+            "basis": basis,
+            "n": n,
+            **({"trace": trace} if trace else {}),
+        }
+    )
     if cut:
         record_system(
             emit,

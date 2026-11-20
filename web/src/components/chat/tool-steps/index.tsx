@@ -12,6 +12,7 @@ import type { Dictionary } from "@/i18n/dictionary";
 import { StatusIcon, TOOL_ICONS, hasInputData, inputSectionLabel, isExpandable, outputSectionLabel, sectionLabelCls, stepDurationLabel } from "./shared";
 import { ToolInputBlock } from "./step-input";
 import { ToolOutputBlock } from "./step-output";
+import { SystemCallView } from "./system-call";
 import { ToolStepCard, ToolStepLog, ToolStepTimeline } from "./step-views";
 
 export interface Props {
@@ -79,7 +80,12 @@ export function SubStepRow({ step, expanded, onToggle, t }: { step: ToolCall; ex
           <SearchDetail step={step} hits={hits} />
         </div>
       )}
-      {expandable && expanded && !hits && (
+      {expandable && expanded && !hits && step.name === "system_query" && (
+        <div className="pb-2 pl-[26px] pt-1">
+          <SystemCallView step={step} t={t} />
+        </div>
+      )}
+      {expandable && expanded && !hits && step.name !== "system_query" && (
         <div className="flex flex-col gap-2 pb-2 pl-[26px] pt-1">
           {showInput && (
             <div>

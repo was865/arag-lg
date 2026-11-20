@@ -91,6 +91,8 @@ export interface RerankHit {
 export interface ToolCall {
   id: string;
   name: ToolName;
+  /** サーバのステップ名のまま（社内システムの「<サーバ>__<ツール>」。specs/036） */
+  rawName?: string;
   parentId?: string;
   label: string;
   status: ToolStatus;

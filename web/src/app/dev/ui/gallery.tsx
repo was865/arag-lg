@@ -23,13 +23,51 @@ import { Input, SearchField, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/feedback/toast-provider";
 import { DURATION } from "@/lib/motion";
 import { SystemRecordView } from "@/components/chat/tool-steps/system-record";
+import { SystemCallView } from "@/components/chat/tool-steps/system-call";
+import { CodeBlock } from "@/components/ui/code-block";
 import { ChangeList } from "@/components/chat/tool-steps/system-record-live";
 import { TimeCompare } from "@/components/chat/time-compare";
 import { changeViews } from "@/lib/chat/system-changes";
 import type { Source } from "@/lib/types";
 import { SYSTEM_META } from "@/lib/file-types";
 import { useT } from "@/i18n/context";
-import type { SystemRecord } from "@/lib/types";
+import type { SystemRecord, ToolCall } from "@/lib/types";
+
+const SAMPLE_CALL: ToolCall = {
+  id: "sample-call",
+  name: "system_query",
+  rawName: "erp__list_suppliers",
+  label: "社内システム: ERP（Odoo）",
+  status: "done",
+  durationMs: 52,
+  input: { term: "S-42" },
+  summary: "ERP（Odoo）・1 行・0.1 秒",
+  output: {
+    server: "erp",
+    tool: "list_suppliers",
+    args: { term: "S-42" },
+    rtt_ms: 52,
+    system: "ERP（Odoo）",
+    columns: ["仕入先コード", "仕入先名", "所在地", "リードタイム（日）", "担当者"],
+    rows: [["S-42", "有限会社富士興産", "静岡県富士市", 5, "池田"]],
+    total: 1,
+    fetched_at: "2026-11-21T01:11:34+09:00",
+    basis: "ERP（Odoo）の現在の値（2026-11-21 01:11 取得）",
+    result: '<資料 n="16" 文書="ERP（Odoo）" 種類="社内システム">\n| 仕入先コード | 仕入先名 |\n|---|---|\n| S-42 | 有限会社富士興産 |\n（全 1 行）\n</資料>',
+    trace: {
+      id: "1146447afe0843e4",
+      ms: 29,
+      calls: 2,
+      cached: false,
+      backend: "odoo",
+      erp_user: "erp-viewer",
+      queries: [
+        { lang: "odoo", text: "res.partner.search_read([['supplier_rank', '>', 0], ['ref', 'ilike', 'S-42']], fields=['ref', 'name', 'city'], order='ref')", ms: 10.9, rows: 1 },
+        { lang: "odoo", text: "product.supplierinfo.search_read([['partner_id', 'in', [35]]], fields=['partner_id', 'delay'])", ms: 11, rows: 23 },
+      ],
+    },
+  },
+};
 
 const SAMPLE_RECORD: SystemRecord = {
   system: "ERP（資材・購買）",
@@ -405,6 +443,27 @@ function Board({ theme }: { theme: "theme-light" | "theme-dark" }) {
       <Block title="社内システムの結果（出典パネル・「詳細」で同じ部品。specs/032）">
         <Card className="p-3">
           <SystemRecordView record={SAMPLE_RECORD} t={t} />
+        </Card>
+      </Block>
+
+      <Block title="等幅の文（CodeBlock。SQL・RPC・JSON。コピー付き。specs/036）">
+        <CodeBlock
+          code={"SELECT * FROM suppliers WHERE code LIKE '%S-42%' ORDER BY code"}
+          lang="sql"
+          label="SQL"
+          meta="#1 · 0.4 ms · 1 件"
+        />
+        <CodeBlock
+          code={"res.partner.search_read([['supplier_rank', '>', 0], ['ref', 'ilike', 'S-42']], fields=['ref', 'name'], order='ref')"}
+          lang="odoo"
+          label="Odoo RPC"
+          meta="#1 · 10.9 ms · 1 件"
+        />
+      </Block>
+
+      <Block title="社内システムの呼び出しの中身（「詳細」。specs/036）">
+        <Card className="p-3">
+          <SystemCallView step={SAMPLE_CALL} t={t} />
         </Card>
       </Block>
 

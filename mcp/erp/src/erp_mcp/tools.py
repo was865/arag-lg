@@ -11,7 +11,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
-from erp_mcp import clock
+from erp_mcp import clock, querylog
 from erp_mcp.audit import Audit
 from erp_mcp.config import UserMap
 from erp_mcp.identity import Identity
@@ -72,9 +72,11 @@ class Service:
         t0 = time.perf_counter()
         cached = self.cache.get(key)
         kind = "ok"
+        log = querylog.QueryLog()
         try:
             if cached is None:
-                full = await self.guard.run(lambda: produce(who))
+                with querylog.collect() as log:
+                    full = await self.guard.run(lambda: produce(who))
                 full["fetched_at"] = clock.now().isoformat(timespec="seconds")
                 full["basis"] = f"{self.label}の現在の値（{full['fetched_at'][:16].replace('T', ' ')} 取得）"
                 self.cache.put(key, full)
@@ -92,6 +94,8 @@ class Service:
         out["trace"] = {
             "id": trace_id, "erp_user": who.login, "backend": self.backend.name, "ms": ms,
             "cached": cached is not None, "calls": 0 if cached is not None else out.pop("_calls", 1),
+            # 発行した問い合わせ（specs/036 R3・R5）。使い回しの答えは何も発行していないので空
+            **log.dump(),
         }  # fmt: skip
         out.pop("_calls", None)
         self.audit.write(

@@ -2,6 +2,9 @@
 
 import os
 import sqlite3
+import time
+from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
@@ -93,10 +96,36 @@ def now() -> datetime:
 
 
 def open_ro(path: Path) -> sqlite3.Connection:
-    """読み取り専用で開く（書けない。R6）。"""
+    """読み取り専用で開く（書けない。R6）。発行した SQL は呼び出しごとに記録する（specs/036 R3）。"""
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
     con.row_factory = sqlite3.Row
+    con.set_trace_callback(_sql_trace)
     return con
+
+
+# 呼び出しごとの SQL の記録（specs/036 R3・R5）
+MAX_QUERIES = 30
+MAX_TEXT = 4000
+_LOG: ContextVar[list[dict[str, Any]] | None] = ContextVar("mock_query_log", default=None)
+
+
+def _sql_trace(statement: str) -> None:
+    log = _LOG.get()
+    if log is not None and len(log) < MAX_QUERIES:
+        log.append({"lang": "sql", "text": statement.strip()[:MAX_TEXT], "ms": None, "rows": None})
+
+
+def traced(fn: Callable[..., dict[str, Any]], *args: Any, **kw: Any) -> dict[str, Any]:
+    """fn を呼び、発行した SQL（値を埋め込んだ文）と時間を trace に足して返す。"""
+    log: list[dict[str, Any]] = []
+    token = _LOG.set(log)
+    t0 = time.perf_counter()
+    try:
+        out = fn(*args, **kw)
+    finally:
+        _LOG.reset(token)
+    trace = {"backend": "sqlite", "ms": round((time.perf_counter() - t0) * 1000, 1), "calls": len(log), "queries": log}
+    return {**out, "trace": trace}
 
 
 def like(term: str) -> str:

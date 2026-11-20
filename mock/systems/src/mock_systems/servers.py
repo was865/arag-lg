@@ -18,7 +18,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from mock_systems import queries as q
-from mock_systems.common import Identity, IdentityError, forbidden, open_ro, verify_identity
+from mock_systems.common import Identity, IdentityError, forbidden, open_ro, traced, verify_identity
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
@@ -118,7 +118,7 @@ def _call(
     req = ctx.request_context.request
     if getattr(getattr(req, "state", None), "deny", False):
         return forbidden(SYSTEMS[system][0], "この利用者にはこのシステムを見る権限がありません。")
-    return fn(con, ident, **kw)
+    return traced(fn, con, ident, **kw)
 
 
 def create(system: str, data_dir: Path) -> FastMCP:

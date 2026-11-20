@@ -17,6 +17,7 @@ from typing import Any
 
 import httpx
 
+from erp_mcp import querylog
 from erp_mcp.clock import today
 from erp_mcp.model import (
     ErpError,
@@ -128,7 +129,13 @@ class OdooBackend:
         uid = await self._uid(who)
         kw.setdefault("context", {"lang": "ja_JP", "tz": "Asia/Tokyo"})
         pw = password(who.login, self.secret)
-        return await self._rpc("object", "execute_kw", self.db, uid, pw, model, method, list(args), kw)
+        t0 = time.perf_counter()
+        out = await self._rpc("object", "execute_kw", self.db, uid, pw, model, method, list(args), kw)
+        # 問い合わせを記録する（specs/036 R3・R4）。pw・context は入れない。認証（login）は _x を通らない
+        shown = [repr(a) for a in args] + [f"{k}={v!r}" for k, v in kw.items() if k != "context"]
+        rows = len(out) if isinstance(out, list) else (out if isinstance(out, int) else None)
+        querylog.add("odoo", f"{model}.{method}({', '.join(shown)})", querylog.since(t0), rows)
+        return out
 
     async def _all(
         self,
