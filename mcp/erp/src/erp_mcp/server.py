@@ -88,14 +88,19 @@ def create(service: Service, *, label: str) -> FastMCP:
         return await service.call(_identity(ctx), "get_stock", {"part": part}, lambda who: service.get_stock(who, part))
 
     @tool
-    async def list_below_reorder(ctx: Context[Any, Any, Any], cursor: Cursor = "", limit: Limit = 50) -> dict[str, Any]:
-        """今、発注点を下回っている部品の一覧（現在庫・発注点・不足・未入荷の発注数・仕入先）。廃止の部品は除く。
-        「発注点を下回っている部品は何件・どれ」と問われたらこれを 1 回だけ使う（部品ごとに get_stock を呼ばない）。
-        件数は total を答える。1 つの部品の詳しい在庫は get_stock。
+    async def list_below_reorder(
+        ctx: Context[Any, Any, Any], without_orders: bool = False, cursor: Cursor = "", limit: Limit = 50
+    ) -> dict[str, Any]:
+        """今、発注点を下回っている部品の一覧（現在庫・発注点・不足・未入荷の発注数・仕入先）。不足の大きい順。
+        廃止の部品は除く。「発注点を下回っている部品は何件・どれ」と問われたらこれを 1 回だけ使う
+        （部品ごとに get_stock を呼ばない）。件数は total を答える。1 つの部品の詳しい在庫は get_stock。
+
+        Args:
+            without_orders: true なら未入荷の発注が無い部品だけ（「下回っていて発注もしていない部品」）
         """
         return await service.call(
-            _identity(ctx), "list_below_reorder", {}, lambda who: service.list_below_reorder(who),
-            cursor=cursor, limit=limit,
+            _identity(ctx), "list_below_reorder", {"without_orders": without_orders},
+            lambda who: service.list_below_reorder(who, without_orders), cursor=cursor, limit=limit,
         )  # fmt: skip
 
     @tool

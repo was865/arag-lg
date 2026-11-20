@@ -210,8 +210,13 @@ class Service:
             ),
         )  # fmt: skip
 
-    async def list_below_reorder(self, who: ErpUser) -> Table:
-        """使える倉庫の在庫が発注点を下回っている部品（廃止を除く）を全部。部品ごとに get_stock を呼ばせない。"""
+    async def list_below_reorder(self, who: ErpUser, without_orders: bool = False) -> Table:
+        """使える倉庫の在庫が発注点を下回っている部品（廃止を除く）を全部、不足の大きい順に。
+
+        部品ごとに get_stock を呼ばせない。without_orders なら未入荷の発注が無い部品だけ
+        （「下回っていて発注もしていない部品」をモデルに数えさせない。デモの試走）。
+        未入荷の発注数は在庫の単位の数（単位の列が別にある）。
+        """
         found = await self.backend.find_parts(who, "", "通常", CAP)
         nos = [p.part_no for p in found.items]
         stock = await self.backend.stock(who, nos)
@@ -223,20 +228,28 @@ class Service:
         open_qty: dict[str, float] = {}
         for po in pos.items:
             open_qty[po.part_no] = open_qty.get(po.part_no, 0) + max(po.qty - po.received_qty, 0)
-        rows = [
-            [p.part_no, p.name, _num(q), _num(p.reorder_point), _num(p.reorder_point - q),
-             _qty(open_qty.get(p.part_no, 0), p.uom), p.supplier_code, p.uom]
-            for p in sorted(found.items, key=lambda p: p.part_no)
+        short = [
+            (p, q, open_qty.get(p.part_no, 0.0))
+            for p in found.items
             if (q := usable.get(p.part_no, 0.0)) < p.reorder_point
+        ]
+        short.sort(key=lambda x: (-(x[0].reorder_point - x[1]), x[0].part_no))
+        bare = sum(1 for _, _, o in short if o == 0)
+        rows = [
+            [p.part_no, p.name, _num(q), _num(p.reorder_point), _num(p.reorder_point - q), _num(o),
+             p.supplier_code, p.uom]
+            for p, q, o in short
+            if not without_orders or o == 0
         ]  # fmt: skip
         return self._table(
-            "発注点を下回る部品",
+            "発注点を下回る部品" + ("（未入荷の発注なし）" if without_orders else ""),
             ["部品番号", "名称", "現在庫", "発注点", "不足", "未入荷の発注数", "仕入先コード", "単位"],
             rows,
             calls=found.calls + stock.calls + pos.calls,
             note=(
-                f"発注点を下回っている部品は {len(rows)} 件（廃止の部品を除く）。"
-                f"現在庫は使える倉庫（{'・'.join(sorted(self.usable))}）の合計。"
+                f"発注点を下回っている部品は {len(short)} 件、うち未入荷の発注が無いものは {bare} 件"
+                f"（廃止の部品を除く）。{'未入荷の発注が無いものだけを載せた。' if without_orders else ''}"
+                f"不足の大きい順。現在庫は使える倉庫（{'・'.join(sorted(self.usable))}）の合計。"
             ),
         )
 

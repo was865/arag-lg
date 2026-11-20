@@ -19,7 +19,7 @@ async def _call(service: Service, tool: str, depts: tuple[str, ...] = ("購買�
         "find_parts": lambda w: service.find_parts(w, kw.get("term", ""), kw.get("status", "")),
         "po": lambda w: service.list_purchase_orders(w, PoQuery(**kw.get("q", {})), kw.get("overdue", False)),
         "moves": lambda w: service.list_stock_moves(w, kw["part"], None, None),
-        "below": lambda w: service.list_below_reorder(w),
+        "below": lambda w: service.list_below_reorder(w, kw.get("without_orders", False)),
     }[tool]
     args = {k: str(v) for k, v in kw.items() if k != "cursor"}
     return await service.call(ident, tool, args, produce, cursor=kw.get("cursor", ""))
@@ -46,10 +46,24 @@ async def test_below_reorder_lists_every_short_part_in_one_call(service: Service
     out = await _call(service, "below")
     assert out["columns"][:5] == ["部品番号", "名称", "現在庫", "発注点", "不足"]
     nos = [r[0] for r in out["rows"]]
-    assert out["total"] == len(nos) == 49 and nos == sorted(nos)
+    assert out["total"] == len(nos) == 49
     assert "P-1043" in nos and "P-1042" not in nos
     assert all(r[2] < r[3] and r[4] == r[3] - r[2] for r in out["rows"])
+    # 不足の大きい順（「不足の大きいものから 3 つ」をそのまま読める）
+    short = [r[4] for r in out["rows"]]
+    assert short == sorted(short, reverse=True)
     assert "49 件" in out["note"] and "廃止" in out["note"]
+
+
+async def test_below_reorder_without_open_orders(service: Service) -> None:
+    """「発注点を下回り、未入荷の発注も無い部品」をツールで絞る（デモの試走でモデルが 49 件全部をそう答えた）。"""
+    every = await _call(service, "below")
+    col = every["columns"].index("未入荷の発注数")
+    assert all(isinstance(r[col], (int, float)) for r in every["rows"])
+    want = [r[0] for r in every["rows"] if r[col] == 0]
+    out = await _call(service, "below", without_orders=True)
+    assert [r[0] for r in out["rows"]] == want and out["total"] == len(want) < 49
+    assert f"未入荷の発注が無いものは {len(want)} 件" in every["note"]
 
 
 async def test_purchase_order_by_number(service: Service) -> None:
