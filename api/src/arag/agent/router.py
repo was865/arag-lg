@@ -13,6 +13,7 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from arag.agent.adapters.redis_stream import EventSink, read_events, request_cancel, stream_exists
 from arag.agent.catalog import load_catalog
 from arag.agent.config import ModelCatalog, ModelNotFound
 from arag.agent.events import CitationRef, SourceView
@@ -26,7 +27,6 @@ from arag.agent.service import (
     get_thread,
 )
 from arag.agent.steps import Step
-from arag.agent.stream import EventSink, read_events, request_cancel, stream_exists
 from arag.agent.thread_search import Match, search_threads
 from arag.audit import AuditEvent
 from arag.auth.principal import CurrentPrincipal, OptionalPrincipal, Principal

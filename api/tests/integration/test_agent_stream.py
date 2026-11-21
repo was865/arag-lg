@@ -8,7 +8,13 @@ import pytest
 from pydantic import ValidationError
 from redis.asyncio import Redis
 
-from arag.agent.stream import EventSink, is_cancelled, read_events, request_cancel, stream_exists
+from arag.agent.adapters.redis_stream import (
+    EventSink,
+    is_cancelled,
+    read_events,
+    request_cancel,
+    stream_exists,
+)
 from arag.settings import Settings
 
 pytestmark = pytest.mark.integration

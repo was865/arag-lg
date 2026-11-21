@@ -12,7 +12,7 @@ import unicodedata
 from collections.abc import Callable
 from typing import Any
 
-from arag.agent.numbers import numbers_in
+from arag.agent.domain.numbers import numbers_in
 
 # 文の終わり: 句点・感嘆符・疑問符（直後の引用記号まで同じ文）と改行。表の行・箇条書きは 1 行が 1 文
 _END = re.compile(r"[。．！？!?]+(?:[ \t]*\[\d+\](?!\())*|\n")

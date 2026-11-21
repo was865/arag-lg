@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.graph import build_agent
 from arag.agent.middleware import (
     ANNOUNCE_NOTE,
@@ -17,7 +18,6 @@ from arag.agent.middleware import (
     prior_placeholder,
 )
 from arag.agent.prior import cited_documents, turns
-from arag.agent.tool_output import ToolOutput
 from arag.agent.understand import history_text
 from arag.auth.principal import Principal
 
@@ -173,8 +173,8 @@ async def test_extra_queries_are_searched_and_duplicates_dropped() -> None:
 class KeywordMissSearch(FakeSearch):
     """語の完全一致（must_contain）では何も返さない検索。"""
 
-    async def __call__(self, _s: Any, _p: Any, req: Any) -> Any:
-        res = await super().__call__(_s, _p, req)
+    async def __call__(self, _p: Any, req: Any) -> Any:
+        res = await super().__call__(_p, req)
         return res.model_copy(update={"hits": []}) if req.must_contain else res
 
 
@@ -476,7 +476,7 @@ async def test_summarization_is_recorded() -> None:
 
 
 def test_send_back_notes_ask_to_keep_citation_numbers() -> None:
-    from arag.agent.review_rules import GAP_NOTE, NUMBER_NOTE, OMITTED_NOTE, STRUCTURE_NOTE, TABLE_NOTE
+    from arag.agent.domain.review_rules import GAP_NOTE, NUMBER_NOTE, OMITTED_NOTE, STRUCTURE_NOTE, TABLE_NOTE
 
     for note in (GAP_NOTE, TABLE_NOTE, NUMBER_NOTE, OMITTED_NOTE, STRUCTURE_NOTE):
         assert "書き直すときも" in note and "出典番号" in note
@@ -1347,7 +1347,7 @@ async def test_structure_question_attaches_toc_of_the_prior_document(monkeypatch
 
 
 def test_ungrounded_chapter_titles() -> None:
-    from arag.agent.review_rules import ungrounded_chapters
+    from arag.agent.domain.review_rules import ungrounded_chapters
 
     materials = [TOC_BODY]
     answer = (

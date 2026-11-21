@@ -12,10 +12,9 @@ from typing import Any, NamedTuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from arag.agent.citations import format_material, wrap_material
 from arag.agent.context import Emit, RunContext
-from arag.agent.steps import Step, StepClock, record_system
-from arag.agent.table import (
+from arag.agent.domain.citations import format_material, wrap_material
+from arag.agent.domain.table import (
     EXAMPLES,
     Table,
     TableError,
@@ -25,9 +24,10 @@ from arag.agent.table import (
     parse_tables,
     run_query,
 )
-from arag.agent.table import render as render_table
-from arag.agent.table import summarize as summarize_table
-from arag.agent.tool_output import ToolOutput
+from arag.agent.domain.table import render as render_table
+from arag.agent.domain.table import summarize as summarize_table
+from arag.agent.domain.tool_output import ToolOutput
+from arag.agent.steps import Step, StepClock, record_system
 from arag.db.models import Document, Section
 from arag.logging import get_logger
 from arag.prompts import load_prompt
@@ -145,8 +145,7 @@ async def _run_search(ctx: RunContext, req: SearchRequest) -> SearchResult:
     k, per = req.top_k, ctx.cfg.per_document
     if per > 0:
         req = req.model_copy(update={"top_k": min(k * 2, req.candidate_k)})
-    async with ctx.sessionmaker() as s:
-        res = await ctx.search(s, ctx.principal, req)
+    res = await ctx.search(ctx.principal, req)
     if per > 0:
         res = res.model_copy(update={"hits": diversify(res.hits, k=k, per_document=per)})
     return res

@@ -2,7 +2,7 @@
 
 import pytest
 
-from arag.agent.table import TableError, parse_tables, render, run_query, summarize, to_value
+from arag.agent.domain.table import TableError, parse_tables, render, run_query, summarize, to_value
 
 LEDGER = """前書き
 
@@ -148,7 +148,7 @@ def test_bad_aggregates_are_rejected(compute: str) -> None:
 
 
 def test_every_error_carries_columns_and_an_example() -> None:
-    from arag.agent.table import error_hint
+    from arag.agent.domain.table import error_hint
 
     hint = error_hint(ledger())
     assert "使える列: 部品番号" in hint and "例" in hint and "max(" in hint
@@ -244,7 +244,7 @@ PART2 = """| 部品台帳（10月末） |  |  |
 
 
 def test_split_sheet_parts_are_joined_under_the_first_header() -> None:
-    from arag.agent.table import merge_parts
+    from arag.agent.domain.table import merge_parts
 
     joined = merge_parts([parse_tables(PART1), parse_tables(PART2)])
     t = joined[0]
@@ -255,14 +255,14 @@ def test_split_sheet_parts_are_joined_under_the_first_header() -> None:
 
 def test_continuing_tables_inside_one_section_are_joined_too() -> None:
     """1 つの章の中でも、チャンクごとに題名の行が繰り返され、表が 4 つに分かれていた（8 行ずつ）。"""
-    from arag.agent.table import merge_parts
+    from arag.agent.domain.table import merge_parts
 
     t = merge_parts([parse_tables(PART1 + "\n" + PART2)])
     assert len(t) == 1 and len(t[0].rows) == 5
 
 
 def test_tables_that_do_not_continue_are_kept_separately() -> None:
-    from arag.agent.table import merge_parts
+    from arag.agent.domain.table import merge_parts
 
     other = parse_tables("| 別の表 |  |\n|---|---|\n| a | b |\n| 1 | 2 |\n")
     out = merge_parts([parse_tables(PART1), other])

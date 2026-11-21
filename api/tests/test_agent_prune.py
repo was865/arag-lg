@@ -1,7 +1,7 @@
 """引用の刈り込み（specs/026 T31）。値を書いていない資料の番号を、その文から外す。"""
 
-from arag.agent.citations import CitationRegistry, finalize_citations
-from arag.agent.prune import prune_citations
+from arag.agent.domain.citations import CitationRegistry, finalize_citations
+from arag.agent.domain.prune import prune_citations
 
 MATERIALS = {
     1: "第3版: ケーシングボルトの締付トルクは 52 N·m とする。",

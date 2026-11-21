@@ -1,5 +1,6 @@
 """ツールの結果の構造（specs/037 R5〜R7）。"""
 
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.ops import (
     OUTLINE_HEAD,
     OUTLINE_MAX,
@@ -8,7 +9,6 @@ from arag.agent.ops import (
     format_outline,
     outline_omits,
 )
-from arag.agent.tool_output import ToolOutput
 
 
 def test_artifact_round_trip() -> None:

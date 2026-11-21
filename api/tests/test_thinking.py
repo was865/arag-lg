@@ -2,7 +2,7 @@
 
 import pytest
 
-from arag.agent.thinking import ThinkSplitter, split_thinking
+from arag.agent.domain.thinking import ThinkSplitter, split_thinking
 from arag.llm import _reasoning_of, chat_model
 
 QWEN = "<think>\nMX-17 の判定を確かめる。\n</think>\n\nMX-17 は停止候補です [1]。"

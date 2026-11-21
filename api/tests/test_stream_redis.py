@@ -1,6 +1,6 @@
 """イベントの中継に使う Redis クライアントの読み取りタイムアウト。"""
 
-from arag.agent.stream import READ_BLOCK_MS, redis_client
+from arag.agent.adapters.redis_stream import READ_BLOCK_MS, redis_client
 
 
 def test_socket_timeout_outlasts_blocking_read() -> None:

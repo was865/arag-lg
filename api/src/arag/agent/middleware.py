@@ -22,16 +22,12 @@ from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
 from langgraph.types import Command
 
-from arag.agent.answer_text import drop_repeated_tail
-from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
-from arag.agent.mcp_tools import record_removed
-from arag.agent.numbers import numbers_in
-from arag.agent.primer import with_primer
-from arag.agent.prior import cited_documents
-from arag.agent.prune import prune_citations
-from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
-from arag.agent.review_rules import (
+from arag.agent.domain.answer_text import drop_repeated_tail
+from arag.agent.domain.citations import normalize_markers, strip_unknown
+from arag.agent.domain.numbers import numbers_in
+from arag.agent.domain.prune import prune_citations
+from arag.agent.domain.review_rules import (
     KEEP_CITATIONS,
     REASON,
     REASON_LABEL,
@@ -41,9 +37,13 @@ from arag.agent.review_rules import (
     ToolResult,
     pick,
 )
+from arag.agent.domain.thinking import split_thinking
+from arag.agent.domain.tool_output import ToolOutput
+from arag.agent.mcp_tools import record_removed
+from arag.agent.primer import with_primer
+from arag.agent.prior import cited_documents
+from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
-from arag.agent.thinking import split_thinking
-from arag.agent.tool_output import ToolOutput
 from arag.agent.tools import ASK_USER, LABELS
 from arag.mcp.registry import is_mcp_tool
 from arag.prompts import load_prompt

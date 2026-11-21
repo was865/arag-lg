@@ -14,8 +14,8 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-from arag.agent.numbers import NumberCheck, check_numbers
-from arag.agent.system_questions import (
+from arag.agent.domain.numbers import NumberCheck, check_numbers
+from arag.agent.domain.system_questions import (
     SYSTEM_GAP_NOTE,
     asks_current,
     current_note,
@@ -23,11 +23,11 @@ from arag.agent.system_questions import (
     system_missed_note,
     touches_systems,
 )
-from arag.agent.tool_output import ToolOutput
+from arag.agent.domain.tool_output import ToolOutput
 
 if TYPE_CHECKING:
-    from arag.agent.citations import CitationRegistry
     from arag.agent.context import McpRun, Primer
+    from arag.agent.domain.citations import CitationRegistry
 
 # 差し戻しの依頼に添える（書き直しで出典番号が落ちて引用が付かなくなるのを防ぐ）。
 # 「[n]」と書くと小さいモデルがそのまま写すので、実際の数字の例で示す

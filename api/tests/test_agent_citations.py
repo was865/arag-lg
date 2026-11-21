@@ -2,7 +2,7 @@
 
 import uuid
 
-from arag.agent.citations import (
+from arag.agent.domain.citations import (
     CitationRegistry,
     cited_numbers,
     excerpt,

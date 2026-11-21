@@ -8,7 +8,7 @@ from typing import Any
 from arag.agent import ops
 from arag.agent.context import RunContext
 from arag.agent.documents import DocumentStore, Listing
-from arag.agent.tool_output import ToolOutput
+from arag.agent.domain.tool_output import ToolOutput
 from arag.auth.principal import Principal
 from tests.agent_fakes import FakeSearch, null_sessionmaker
 

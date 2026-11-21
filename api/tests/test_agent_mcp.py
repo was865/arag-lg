@@ -267,7 +267,7 @@ async def test_past_question_is_not_sent_back() -> None:
 
 
 def test_asks_current() -> None:
-    from arag.agent.system_questions import asks_current
+    from arag.agent.domain.system_questions import asks_current
 
     asked = ["今の在庫は？", "現在の状態", "WO-1107 は終わった？", "まだ未入荷？", "Is it still open?"]
     # 社内システムにしか無い記録（仕入単価・作業指示・最近の記録）も確かめさせる
@@ -357,7 +357,7 @@ async def test_unfound_answer_unrelated_to_systems_is_not_sent_back() -> None:
 
 
 def test_question_touches_systems() -> None:
-    from arag.agent.system_questions import touches_systems
+    from arag.agent.domain.system_questions import touches_systems
 
     t = spec("http://x")
     m = mcp_run(t)
@@ -484,7 +484,7 @@ def directory_spec(url: str) -> ToolSpec:
 
 
 def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
-    from arag.agent.system_questions import missed_systems
+    from arag.agent.domain.system_questions import missed_systems
 
     with running() as (url, _):
         erp, people = spec(url), directory_spec(url)
@@ -499,7 +499,7 @@ def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
 
 def test_missed_systems_also_names_an_uncalled_tool_of_a_called_system() -> None:
     """デモの試走: 保全の作業指示だけ呼び、「最近の保全作業の記録」（作業の記録のツール）を呼ばなかった。"""
-    from arag.agent.system_questions import missed_systems
+    from arag.agent.domain.system_questions import missed_systems
 
     with running() as (url, _):
         stock = spec(url)

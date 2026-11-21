@@ -4,8 +4,9 @@ from typing import Any
 
 from langchain.tools import ToolRuntime, tool
 
-from arag.agent.calc import CalcError, evaluate
 from arag.agent.context import RunContext
+from arag.agent.domain.calc import CalcError, evaluate
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.ops import (
     op_get_outline,
     op_keyword_search,
@@ -15,7 +16,6 @@ from arag.agent.ops import (
     op_search,
     op_table_query,
 )
-from arag.agent.tool_output import ToolOutput
 
 Runtime = ToolRuntime[RunContext]
 # 資料を返すツールは、モデルに渡す文と構造（ToolOutput.artifact）を分けて返す（specs/037 R5）

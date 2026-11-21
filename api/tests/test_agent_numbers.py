@@ -1,6 +1,6 @@
 """回答の数字の照合（specs/026 R15）。"""
 
-from arag.agent.numbers import numbers_in, ungrounded
+from arag.agent.domain.numbers import numbers_in, ungrounded
 
 SRC = ["| P-1042 | SK-300 | 18400 | 6 | 10 |", "保存は五年間。再点検は十四日以内。不良率 0.8 %。合計 = 73600"]
 
@@ -48,7 +48,7 @@ PM04 = [
 
 
 def test_sum_of_grounded_numbers_in_the_answer_is_derived() -> None:
-    from arag.agent.numbers import check_numbers
+    from arag.agent.domain.numbers import check_numbers
 
     answer = "停止時間は合計 135 分です。\n- 30 分 [1]\n- 25 分 [1]\n- 80 分 [1]"
     assert ungrounded(answer, PM04) == []
@@ -64,7 +64,7 @@ def test_sum_is_not_derived_when_a_part_is_not_grounded() -> None:
 
 
 def test_difference_of_two_grounded_numbers_is_derived() -> None:
-    from arag.agent.numbers import check_numbers
+    from arag.agent.domain.numbers import check_numbers
 
     res = check_numbers("80 分と 25 分で、差は 55 分です", PM04)
     assert res.missing == [] and res.derived == [{"value": "55", "op": "diff", "from": ["80", "25"]}]

@@ -1,9 +1,9 @@
 """確認（差し戻し）の規則の登録（specs/037 R8〜R10）。LangChain のメッセージを使わずに確かめる。"""
 
-from arag.agent.citations import CitationRegistry
 from arag.agent.context import Primer, RunStats
-from arag.agent.review_rules import REVIEW_LABELS, RULES, Draft, ToolResult, pick
-from arag.agent.tool_output import ToolOutput
+from arag.agent.domain.citations import CitationRegistry
+from arag.agent.domain.review_rules import REVIEW_LABELS, RULES, Draft, ToolResult, pick
+from arag.agent.domain.tool_output import ToolOutput
 
 TABLE = "| 部品 | 在庫 |\n|---|---|\n| A | 4 |"
 

@@ -80,9 +80,11 @@ make up-mock        # 模擬の社内システム（MCP）を起動して登録�
 
 ## エージェントの層（`specs/037`）
 
-- 規則（`citations`・`numbers`・`table`・`calc`・`prune`・`tool_output`・`review_rules`・`system_questions`）は LangChain・SQLAlchemy などを import しない。処理（`ops`）は DB を直接読まず `RunContext.docs`（`DocumentStore`）を通す。`arag.mcp` の中核と `arag.search` は `arag.agent` に依存しない。`api/tests/test_layering.py` が検査する。
-- ツールの結果は文（モデルに渡す）と構造（`ToolOutput` → `ToolMessage.artifact`）に分ける。確認・記録の要約は構造を読み、モデルに渡す文の言い回しを読まない。
-- 確認（差し戻し）の種類を足すときは `review_rules.RULES` に 1 行足す（順が優先順）。回数は `RunStats.review_counts` に種類ごとに入る。
+- `api/src/arag/agent/domain/`（規則: 引用・数字・表・計算・回答の文・確認の規則・社内システムの質問の見分け）は LangChain・SQLAlchemy などを import せず、`domain` と `search.schemas` だけに依存する。
+- `agent/` の直下は処理（LangGraph の流れ・middleware・ツール・`ops`）。DB は直接読まず、口を通す: 文書は `RunContext.docs`（`documents.DocumentStore`）、検索は `RunContext.search`（`SearchFn`、session は実装の側で開く）。`agent/adapters/`（SQL・Redis・checkpoint の実装）を import しない。組み立ての入口は `runner`・`router`。
+- `arag.mcp` の中核と `arag.search` は `arag.agent` に依存しない。以上は `api/tests/test_layering.py` が検査する。
+- ツールの結果は文（モデルに渡す）と構造（`domain/tool_output.ToolOutput` → `ToolMessage.artifact`）に分ける。確認・記録の要約は構造を読み、モデルに渡す文の言い回しを読まない。
+- 確認（差し戻し）の種類を足すときは `domain/review_rules.RULES` に 1 行足す（順が優先順）。回数は `RunStats.review_counts` に種類ごとに入る。
 
 ## ライセンス
 

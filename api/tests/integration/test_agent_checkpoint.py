@@ -6,7 +6,7 @@ import psycopg
 import pytest
 from langgraph.graph import END, START, StateGraph
 
-from arag.agent.checkpoint import delete_thread, open_checkpointer
+from arag.agent.adapters.checkpoint import delete_thread, open_checkpointer
 
 pytestmark = pytest.mark.integration
 

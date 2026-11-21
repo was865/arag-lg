@@ -8,17 +8,18 @@ from typing import Any
 from langchain_core.language_models import BaseChatModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.citations import CitationRegistry, FinalCitations
 from arag.agent.config import AgentCfg
-from arag.agent.documents import DocumentStore, SqlDocumentStore
-from arag.agent.tool_output import ToolOutput
+from arag.agent.documents import DocumentStore
+from arag.agent.domain.citations import CitationRegistry, FinalCitations
+from arag.agent.domain.tool_output import ToolOutput
 from arag.auth.principal import Principal
 from arag.mcp.client import Caller
 from arag.mcp.registry import ToolSpec
 from arag.search.schemas import SearchRequest, SearchResult
 from arag.secrets import SecretBox
 
-SearchFn = Callable[[AsyncSession, Principal, SearchRequest], Awaitable[SearchResult]]
+# 検索の口（specs/037 R15）。DB の session は実装の側で開く
+SearchFn = Callable[[Principal, SearchRequest], Awaitable[SearchResult]]
 Emit = Callable[[dict[str, Any]], None]
 
 
@@ -178,6 +179,9 @@ class RunContext:
     @property
     def docs(self) -> DocumentStore:
         if self.document_store is None:
+            # 既定は SQL の実装（つなぎの層）。口の型だけを上で import する
+            from arag.agent.adapters.sql_documents import SqlDocumentStore
+
             self.document_store = SqlDocumentStore(
                 self.sessionmaker,
                 self.principal,

@@ -16,8 +16,8 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool, StructuredTool
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from arag.agent.citations import _attr, _body
 from arag.agent.context import McpRun, RunContext
+from arag.agent.domain.citations import _attr, _body
 from arag.agent.steps import record_system
 from arag.mcp.client import (
     Caller,

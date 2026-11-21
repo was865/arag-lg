@@ -14,9 +14,9 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from arag.agent.adapters.redis_stream import read_events, request_cancel
 from arag.agent.runner import ResolvedModels, Runner, RunnerDeps, claim, execute_run, reap_stale
 from arag.agent.service import RunRequest, create_run
-from arag.agent.stream import read_events, request_cancel
 from arag.auth.principal import Principal
 from arag.db.models import AuditLog, Citation, Message, Run, Thread
 from arag.errors import ApiError

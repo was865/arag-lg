@@ -8,8 +8,8 @@ from qdrant_client import AsyncQdrantClient
 
 from arag import analytics_router, audit_router, feedback_admin_router, health, llm_admin_router
 from arag.agent import router as router_agent
+from arag.agent.adapters.redis_stream import redis_client
 from arag.agent.openapi import install_event_schemas
-from arag.agent.stream import redis_client
 from arag.db.engine import make_engine, make_sessionmaker
 from arag.errors import install_error_handlers
 from arag.health import Check

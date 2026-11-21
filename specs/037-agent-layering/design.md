@@ -2,13 +2,16 @@
 
 ## 0. 層
 
-| 層 | 中身 | 依存してよいもの |
+| 層 | 場所 | 依存してよいもの |
 |---|---|---|
-| 規則（domain） | `citations`・`numbers`・`table`・`calc`・`answer_text`・`prune`・`tool_output`・`review_rules` | 標準ライブラリ・pydantic・`search.schemas` |
-| 処理（application） | `ops`（ツールの中身）・`primer`・`understand`・`flow` の節点 | 規則・口（`DocumentStore`・`SearchFn`・`search.hooks`） |
-| つなぎ（adapters） | `tools`・`middleware`・`model_switch`（LangChain）、`documents.SqlDocumentStore`（SQLAlchemy）、`stream`（Redis）、`router`（FastAPI）、`runner` | すべて |
+| 規則（domain） | `agent/domain/`: `citations`・`numbers`・`table`・`calc`・`answer_text`・`prune`・`thinking`・`tool_output`・`review_rules`・`system_questions` | 標準ライブラリ・pydantic・`domain`・`search.schemas`（型は `TYPE_CHECKING` で `context` を見てよい） |
+| 処理（application） | `agent/` の直下: `ops`・`primer`・`understand`・`flow`・`middleware`・`tools`・`context`・`documents`（口） | 規則・口（`DocumentStore`・`SearchFn`・`search.hooks`）・LangChain / LangGraph |
+| つなぎ（adapters） | `agent/adapters/`: `sql_documents`（SQLAlchemy）・`redis_stream`（Redis）・`checkpoint`（Postgres） | すべて |
+| 入口 | `agent/runner.py`・`agent/router.py` | すべて（実装を選んで口に渡す） |
 
-物理的なフォルダ分け（R14）は後で行う。今回は `test_layering.py` の一覧で層を決め、import を検査する。
+LangGraph / LangChain は処理の層の実行の土台として使う（グラフ・middleware・ツールを枠組みの外へ包み直すことはしない）。
+`context.py` は `sessionmaker` の型を持つため SQLAlchemy を import する（ツールの引数の型を pydantic が実行時に解く）。
+`RunContext.docs` の既定（SQL の実装）は関数の中で遅れて import し、処理の層の最上位は `adapters` に依存しない。
 
 ## 1. 依存の向き（R1〜R4）
 
@@ -19,7 +22,7 @@
 
 ## 2. ツールの結果（R5〜R7）
 
-`agent/tool_output.py`（規則の層）:
+`agent/domain/tool_output.py`（規則の層）:
 
 ```python
 @dataclass(frozen=True)
@@ -43,7 +46,7 @@ class ToolOutput:
 
 ## 3. 確認の規則（R8〜R10）
 
-`agent/review_rules.py`（規則の層。LangChain を import しない）:
+`agent/domain/review_rules.py`（規則の層。LangChain を import しない）:
 
 ```python
 @dataclass(frozen=True)
@@ -70,7 +73,7 @@ RULES: tuple[ReviewRule, ...] = (omitted, current, system_missed, system_gap, ga
 
 ## 4. 文書の読み出しの口（R11）
 
-`agent/documents.py`:
+`agent/documents.py`（口）と `agent/adapters/sql_documents.py`（実装）:
 
 ```python
 class DocumentStore(Protocol):
@@ -89,6 +92,10 @@ class DocumentStore(Protocol):
 - `RunContext.docs` は省略時に `SqlDocumentStore` を作って返す（呼び元・テストの組み立ては変えない）。
 - 返す ORM の行（`Document`・`Section`）はそのまま使う（読み取りだけ。値の型を新しく作らない）。
 
-## 5. runner（R12）
+## 5. 検索の口（R15）
+
+- `SearchFn = Callable[[Principal, SearchRequest], Awaitable[SearchResult]]`。runner の `search_fn` が session を開いて `search.service.search` を呼ぶ。
+
+## 6. runner（R12）
 
 - `build_context(deps, req) -> RunContext` を `execute_run` から分ける。

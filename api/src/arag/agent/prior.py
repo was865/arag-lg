@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 
-from arag.agent.thinking import split_thinking
+from arag.agent.domain.thinking import split_thinking
 
 _DOC = re.compile(r'<資料 n="(\d+)" 文書="([^"]*)"')
 _MARK = re.compile(r"\[(\d+)\](?!\()")

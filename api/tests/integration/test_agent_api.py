@@ -11,7 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.stream import EventSink, is_cancelled
+from arag.agent.adapters.redis_stream import EventSink, is_cancelled
 from arag.db.models import Message, Run
 from arag.settings import Settings
 

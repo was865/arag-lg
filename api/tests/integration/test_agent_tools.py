@@ -65,8 +65,9 @@ def make_ctx(
 ) -> RunContext:
     deps = _deps(qdrant_index, reranker=reranker or FakeReranker())
 
-    async def fn(s: AsyncSession, principal: Principal, req: SearchRequest):  # type: ignore[no-untyped-def]
-        return await search(s, deps, principal, req)
+    async def fn(principal: Principal, req: SearchRequest):  # type: ignore[no-untyped-def]
+        async with sm() as s:
+            return await search(s, deps, principal, req)
 
     return RunContext(principal=p, sessionmaker=sm, search=fn, utility_model=utility, **kw)
 
