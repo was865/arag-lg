@@ -607,7 +607,7 @@ async def test_empty_after_send_back_uses_the_draft() -> None:
 
 
 async def test_empty_without_draft_ends_as_empty_generation() -> None:
-    from arag.agent.runner import _classify
+    from arag.agent.flow import classify as _classify
 
     model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="")))
     agent = build_agent(model, checkpointer=InMemorySaver())

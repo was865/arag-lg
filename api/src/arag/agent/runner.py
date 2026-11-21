@@ -26,9 +26,6 @@ from arag.agent.citations import CitationRegistry, Cited, FinalCitations, finali
 from arag.agent.config import AgentCfg
 from arag.agent.context import Completion, RunContext, RunHooks, SearchFn
 from arag.agent.flow import NO_ANSWER_TEXT
-
-# _classify は以前の場所（テストが使う）
-from arag.agent.flow import classify as _classify  # noqa: F401
 from arag.agent.followups import HISTORY_TURNS, TIMEOUT_SEC, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.mcp_tools import HealthCache, build_tool, prepare
@@ -166,6 +163,23 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
         await agent.aupdate_state(config, {"messages": fix}, as_node="investigate")
 
 
+def build_context(deps: RunnerDeps, req: dict[str, Any]) -> RunContext:
+    """run の要求（runs.request）から実行文脈を作る（specs/037 R12）。"""
+    pr = req["principal"]
+    return RunContext(
+        principal=Principal(user_id=pr["user_id"], role=pr.get("role", "member"), email=pr.get("email")),
+        sessionmaker=deps.sessionmaker,
+        search=deps.search,
+        question=req["query"],
+        user_question=req["query"],
+        kb_ids=_uuids(req.get("kb_ids")),
+        document_ids=_uuids(req.get("document_ids")),
+        include_archived=bool(req.get("include_archived")),
+        cfg=AgentCfg.clamped(req.get("agent_cfg")),
+        citation_prune=deps.citation_prune,
+    )
+
+
 async def execute_run(
     deps: RunnerDeps, run_id: uuid.UUID, *, on_answered: Callable[[], None] | None = None
 ) -> str:
@@ -180,22 +194,9 @@ async def execute_run(
         req = dict(run.request)
         thread_id, message_id, model_id = run.thread_id, run.message_id, run.model_id
     sink = EventSink(deps.redis, str(run_id), ttl_sec=deps.events_ttl_sec)
-    pr = req["principal"]
-    principal = Principal(user_id=pr["user_id"], role=pr.get("role", "member"), email=pr.get("email"))
-    cfg = AgentCfg.clamped(req.get("agent_cfg"))
     turn = _Turn()
-    ctx = RunContext(
-        principal=principal,
-        sessionmaker=deps.sessionmaker,
-        search=deps.search,
-        question=req["query"],
-        user_question=req["query"],
-        kb_ids=_uuids(req.get("kb_ids")),
-        document_ids=_uuids(req.get("document_ids")),
-        include_archived=bool(req.get("include_archived")),
-        cfg=cfg,
-        citation_prune=deps.citation_prune,
-    )
+    ctx = build_context(deps, req)
+    principal, cfg = ctx.principal, ctx.cfg
     checkpoint_id: str | None = None
     status, code, err = "completed", None, ""
     done = _Done()
