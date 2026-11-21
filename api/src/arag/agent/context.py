@@ -30,15 +30,8 @@ class RunStats:
     tool_errors: int = 0
     # 社内システム（MCP）を呼んだ回数（specs/032 R17）
     mcp_calls: int = 0
-    # 下書きを差し戻した回数（種類ごとにターンに 1 回まで。specs/026 ④）
-    gap_reviews: int = 0
-    omitted_reviews: int = 0
-    reason_reviews: int = 0
-    table_reviews: int = 0
-    current_reviews: int = 0
-    system_gap_reviews: int = 0
-    system_missed_reviews: int = 0
-    number_reviews: int = 0
+    # 下書きを差し戻した回数（確認の種類 → 回数。種類ごとにターンに 1 回まで。specs/026 ④・037 R10）
+    review_counts: dict[str, int] = field(default_factory=dict)
     # システムが最初に行った検索の回数（specs/026 ②）
     primer_searches: int = 0
     # 空の生成（ツール呼び出しも本文も無い応答。specs/026 R25）: やり直した回数（run に 1 度）・記録した回数・
@@ -52,16 +45,13 @@ class RunStats:
 
     @property
     def reviews(self) -> int:
-        return (
-            self.gap_reviews
-            + self.omitted_reviews
-            + self.reason_reviews
-            + self.table_reviews
-            + self.current_reviews
-            + self.system_gap_reviews
-            + self.system_missed_reviews
-            + self.number_reviews
-        )
+        return sum(self.review_counts.values())
+
+    def reviewed(self, kind: str) -> int:
+        return self.review_counts.get(kind, 0)
+
+    def count_review(self, kind: str) -> None:
+        self.review_counts[kind] = self.reviewed(kind) + 1
 
 
 @dataclass

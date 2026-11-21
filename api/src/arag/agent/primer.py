@@ -15,7 +15,6 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.mcp_tools import asks_current, current_note
 from arag.agent.ops import (
     TOC_SECTION_ID,
     find_named_documents,
@@ -27,6 +26,7 @@ from arag.agent.ops import (
 )
 from arag.agent.prior import cited_documents, last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
+from arag.agent.system_questions import asks_current, current_note
 from arag.agent.tool_output import ToolOutput
 from arag.agent.understand import MAX_QUERIES, Understanding, understand
 from arag.logging import get_logger

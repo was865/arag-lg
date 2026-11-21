@@ -114,9 +114,12 @@ async def flow(
             "stats": {
                 k: v
                 for k, v in vars(c.stats).items()
-                if k in {"model_calls", "tool_calls", "gap_reviews", "table_reviews", "number_reviews"}
-                or k.startswith("empty")
-                or k == "rewrites_discarded"
+                if k in {"model_calls", "tool_calls"} or k.startswith("empty") or k == "rewrites_discarded"
+            }
+            | {
+                "gap_reviews": c.stats.reviewed("gap"),
+                "table_reviews": c.stats.reviewed("table"),
+                "number_reviews": c.stats.reviewed("numbers"),
             },
         }
     )

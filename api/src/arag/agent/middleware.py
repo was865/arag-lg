@@ -3,9 +3,7 @@
 import json
 import re
 import time
-import unicodedata
 from collections.abc import Awaitable, Callable, Collection
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NotRequired, cast
 from zoneinfo import ZoneInfo
@@ -27,20 +25,22 @@ from langgraph.types import Command
 from arag.agent.answer_text import drop_repeated_tail
 from arag.agent.citations import normalize_markers, strip_unknown
 from arag.agent.context import RunContext
-from arag.agent.mcp_tools import (
-    SYSTEM_GAP_NOTE,
-    asks_current,
-    current_note,
-    missed_systems,
-    record_removed,
-    system_missed_note,
-    touches_systems,
-)
-from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
+from arag.agent.mcp_tools import record_removed
+from arag.agent.numbers import numbers_in
 from arag.agent.primer import with_primer
 from arag.agent.prior import cited_documents
 from arag.agent.prune import prune_citations
 from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
+from arag.agent.review_rules import (
+    KEEP_CITATIONS,
+    REASON,
+    REASON_LABEL,
+    REVIEW_LABELS,
+    Draft,
+    Review,
+    ToolResult,
+    pick,
+)
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
 from arag.agent.tool_output import ToolOutput
@@ -98,9 +98,6 @@ def is_announce_only(answer: str) -> bool:
     )
 
 
-# 差し戻しの依頼に添える（書き直しで出典番号が落ちて引用が付かなくなるのを防ぐ）。
-# 「[n]」と書くと小さいモデルがそのまま写すので、実際の数字の例で示す
-KEEP_CITATIONS = "書き直すときも、根拠にした資料の出典番号（[3] など、実際の番号）を残してください。"
 # すべての差し戻しの依頼の末尾に付ける（R22）。依頼を利用者の発言と取り違えて返事・お詫びを書き、
 # それが回答になるのを防ぐ（Gemma 4 12B の hm52: 英語の質問に、日本語の依頼への返事で答えた）
 SEND_BACK_TAIL = (
@@ -110,66 +107,6 @@ SEND_BACK_TAIL = (
     "本文を書くときは、返事・お詫び・経緯の説明は書かず、"
     "利用者の元の質問への回答そのものを、元の質問と同じ言語で書いてください。"
 )
-# 下書きが「資料に無い」「確認が必要」などと調べ残しを認めているか（日本語・英語）
-GAP = re.compile(
-    r"記載(されていない|されていません|がない|がありません|はありません)|見つかりません|見つからな|見当たりません|見当たらな|不明|"
-    r"確認(することは|することが|が|は)?でき(ません|ない|なかった)|"
-    r"分かりません|わかりません|確認(する|が)必要|情報(が)?不足|計算(することは|は)?でき(ません|ない)|"
-    r"特定(することは|することが|は)?でき(ません|ない)|答え(することは|することが|ることは|ることが)?でき(ません|ない)|"
-    r"not (mentioned|found|available|specified)|no information|could not find|unknown",
-    re.IGNORECASE,
-)
-GAP_NOTE = (
-    "この下書きには、資料で確かめられていない点があります。回答する前に、まだ調べていない資料"
-    "（台帳・一覧・記録・議事録・規程など、その点が書かれていそうな種類）を、"
-    "その点に絞った語で search してください。"
-    "数の計算が要るなら、値をそろえてから calculate で計算してください。"
-    "調べても見つからない点だけを、見つからないと書いてください。"
-    # 理由・因果を尋ねる質問で、別の資料の事実をつないで理由を作らない（specs/031 R9。KG-2 の廃止の理由）
-    "調べても書かれていなければ、下書きの「書かれていない」はそのまま残してください。"
-    "別々の資料の事実をつないで、資料に書かれていない理由・因果を作らないでください"
-    "（関連しそうな事実を添えるときは、推測だと明記する）。" + KEEP_CITATIONS
-)
-# 省略されたツールの結果（章立ての中略・read_document の打ち切り）を読まずに「分からない」と答えた下書き
-OMITTED_GAP = re.compile(GAP.pattern + r"|表示されていません|省略されて", re.IGNORECASE)
-OMITTED_NOTE = (
-    "この下書きは答えを「分からない」としていますが、このターンのツールの結果の一部が省略されたままです"
-    "（章立ての「中略」や、read_document の「長いため先頭の〜節まで」）。"
-    "省略された部分を読んでから答えてください: 章立ては get_outline に start（中略の最初の番号）を渡す、"
-    "文書の中の目次の節や該当の章は read_section で読む。"
-    "「最後の章」「付録」のように場所で尋ねられたら、末尾の節を確かめる。" + KEEP_CITATIONS
-)
-# モデル自身の検索がこの回数を超えていれば、調べ尽くしたとみなす（システムの最初の検索は数えない）
-GAP_REVIEW_MAX_OWN_SEARCHES = 1
-SEARCH_TOOLS = {"search", "keyword_search"}
-TABLE_NOTE = (
-    "この質問は、表の行を条件で選ぶ・数える・集計する必要があります。目で比べたり暗算したりすると誤ります。"
-    "回答する前に table_query を使ってください（source に表のある資料の出典番号、where に行の条件、"
-    "必要なら compute に行ごとの計算式）。その結果どおりに答えてください。" + KEEP_CITATIONS
-)
-NUMBER_NOTE = (
-    "この下書きの数字 {numbers} は、資料にも計算結果にも見当たりません。"
-    "資料の値はそのまま書き写してください。計算した値なら calculate か table_query で計算し直してください。"
-    "資料に無い数字は書かないでください。" + KEEP_CITATIONS
-)
-# 資料の中の表の行（Markdown）
-_TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$\n\s*\|[\s:\-|]+\|\s*$", re.MULTILINE)
-# 件数（「14 件」「50件」）と、同じ文の出典の印
-_COUNT = re.compile(r"\d[\d,]*\s*件")
-_SENTENCE = re.compile(r"[^。\n]+")
-_MARK_N = re.compile(r"\[(\d+)\]")
-
-
-def counts_from_documents(ctx: RunContext, answer: str) -> bool:
-    """件数を書いた文に文書の出典が付いているか（文書の表の行を目で数えた件数。3100 の試走）。"""
-    for sentence in _SENTENCE.findall(answer):
-        if not _COUNT.search(sentence):
-            continue
-        for n in _MARK_N.findall(sentence):
-            cited = ctx.registry.get(int(n))
-            if cited is not None and cited.kind != "system":
-                return True
-    return False
 
 
 def system_prompt(ctx: RunContext, now: datetime | None = None) -> str:
@@ -227,16 +164,6 @@ def turn_start(messages: list[AnyMessage]) -> int:
         if isinstance(messages[i], HumanMessage):
             return i
     return 0
-
-
-@dataclass(frozen=True, slots=True)
-class Review:
-    """下書きを差し戻す理由（specs/026 ④）。kind は記録と画面で種類を見分けるのに使う。"""
-
-    kind: str  # omitted / gap / table / numbers
-    trigger: str
-    note: str
-    label: str
 
 
 class InvestigateState(AgentState[Any]):
@@ -502,22 +429,7 @@ def finish_send_back(
 
 def open_send_back(ctx: RunContext, emit: Any, review: Review, answer: str, searches: int) -> dict[str, Any]:
     """差し戻しを始める（記録に「見直し」のステップを出す）。返す値は状態の send_back に置く。"""
-    if review.kind == "gap":
-        ctx.stats.gap_reviews += 1
-    elif review.kind == "omitted":
-        ctx.stats.omitted_reviews += 1
-    elif review.kind == "reason":
-        ctx.stats.reason_reviews += 1
-    elif review.kind == "table":
-        ctx.stats.table_reviews += 1
-    elif review.kind == "current":
-        ctx.stats.current_reviews += 1
-    elif review.kind == "system_gap":
-        ctx.stats.system_gap_reviews += 1
-    elif review.kind == "system_missed":
-        ctx.stats.system_missed_reviews += 1
-    else:
-        ctx.stats.number_reviews += 1
+    ctx.stats.count_review(review.kind)
     send_back: dict[str, Any] = {
         "id": f"review-{ctx.stats.reviews}",
         "label": review.label,
@@ -624,44 +536,43 @@ def record_empty(ctx: RunContext, emit: Any, inp: dict[str, Any], out: dict[str,
     )
 
 
+def draft_of(ctx: RunContext, turn: list[AnyMessage], answer: str) -> Draft:
+    """このターンのメッセージと実行文脈を、確認の規則に渡す値に写す（specs/037 R9）。"""
+    results = [
+        ToolResult(
+            name=m.name or "",
+            text=str(m.text),
+            ok=m.status != "error",
+            out=ToolOutput.from_artifact(str(m.text), m.artifact),
+            mcp=is_mcp_tool(m.name or ""),
+        )
+        for m in turn
+        if isinstance(m, ToolMessage)
+    ]
+    # 履歴の要約で結果のメッセージが消えても数えられるよう、呼び出しの記録（tool_seen）からも拾う
+    called = {k.split(":", 1)[0] for k in ctx.tool_seen} | {r.name for r in results}
+    return Draft(
+        answer=answer,
+        question=ctx.user_question or _asked(turn) or ctx.question,
+        results=results,
+        registry=ctx.registry,
+        primer=ctx.primer,
+        primer_searches=ctx.stats.primer_searches,
+        mcp=ctx.mcp,
+        mcp_called={n for n in called if is_mcp_tool(n)},
+        check_numbers=checks_numbers(ctx),
+        number_sources=[ctx.question, datetime.now(TZ).strftime("%Y年%m月%d日")],
+    )
+
+
 def searches(ctx: RunContext, turn: list[AnyMessage]) -> int:
     """このターンの検索の回数（システムが最初に行った分を含む）。"""
-    own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
-    return own + ctx.stats.primer_searches
-
-
-def _materials(ctx: RunContext, turn: list[AnyMessage]) -> list[str]:
-    """このターンにモデルへ渡した資料（最初の検索結果とツールの結果）。"""
-    out = [str(m.text) for m in turn if isinstance(m, ToolMessage) and m.status != "error"]
-    if ctx.primer and ctx.primer.text:
-        out.append(ctx.primer.text)
-    return out
+    return draft_of(ctx, turn, "").searches
 
 
 def checks_numbers(ctx: RunContext) -> bool:
     # 雑談と、一般知識で補ってよい設定では照合しない
     return ctx.cfg.admit_unknown and (ctx.primer is None or ctx.primer.kind != "chat")
-
-
-def _check_numbers(ctx: RunContext, turn: list[AnyMessage], answer: str) -> NumberCheck:
-    today = datetime.now(TZ).strftime("%Y年%m月%d日")
-    return check_numbers(answer, [*_materials(ctx, turn), ctx.question, today])
-
-
-def _ungrounded(ctx: RunContext, turn: list[AnyMessage], answer: str) -> list[str]:
-    return _check_numbers(ctx, turn, answer).missing
-
-
-REVIEW_NAMES = {
-    "omitted": "省略の読み残し",
-    "gap": "調べ残しの見直し",
-    "table": "表の集計の確認",
-    "current": "今の値の確認",
-    "system_gap": "社内システムの確認",
-    "system_missed": "残りのシステムの確認",
-    "numbers": "数字の確認",
-    "reason": "理由の裏付けの確認",
-}
 
 
 def review_skip(ctx: RunContext, calls: int, has_tools: bool) -> str | None:
@@ -682,7 +593,7 @@ def record_review_pass(emit: Any, n: int, skip: str | None, done: Collection[str
     else:
         summary = "当てはまる見直しが無いので通した"
         if done:
-            summary += "（" + "・".join(REVIEW_NAMES.get(k, k) for k in done) + " は済み）"
+            summary += "（" + "・".join(REVIEW_LABELS.get(k, k) for k in done) + " は済み）"
     record_system(
         emit,
         f"system-review-pass-{n}",
@@ -692,31 +603,6 @@ def record_review_pass(emit: Any, n: int, skip: str | None, done: Collection[str
         input={"skip": skip, "done": list(done)},
         output={"result": "pass"},
     )
-
-
-# 回答に書いた「第N章: 見出し」（区切りの後に見出しが続くもの。「第1章と第2章」は見出しではない）
-_CHAPTER = re.compile(r"第\s*(\d+)\s*章\s*\**\s*(?:[>＞:：\-—・|]\s*|\s+)\**\s*([^\n\[［（(]+)")
-STRUCTURE_NOTE = (
-    "この下書きの章の見出し（{titles}）は、資料に見当たりません。章の構成は、get_outline か、文書の中の"
-    "目次の節を read_section で読んで確かめ、資料に書かれたとおりの見出しだけを書いてください。"
-    + KEEP_CITATIONS
-)
-
-
-def _flat(s: str) -> str:
-    return re.sub(r"[\s*|_`]+", "", unicodedata.normalize("NFKC", s)).lower()
-
-
-def ungrounded_chapters(answer: str, materials: list[str]) -> list[str]:
-    """回答の「第N章: 見出し」のうち、見出しが資料に無いもの（specs/031 T17）。"""
-    pool = _flat("\n".join(materials))
-    out: list[str] = []
-    for m in _CHAPTER.finditer(answer):
-        title = m.group(2).strip().strip("*").strip()
-        key = _flat(title)[:10]
-        if len(key) >= 3 and key not in pool:
-            out.append(f"第{m.group(1)}章 {title}")
-    return out
 
 
 def _asked(turn: list[AnyMessage]) -> str:
@@ -733,77 +619,11 @@ def pick_review(
 ) -> Review | None:
     """最終回答の下書きを差し戻すなら、その理由を返す。回数に余裕が無い・雑談のときは差し戻さない。
 
-    done はこのターンで済んだ確認の種類（種類ごとに 1 度まで）。
+    規則は review_rules.RULES の順に確かめる。done はこのターンで済んだ確認の種類（種類ごとに 1 度まで）。
     """
     if review_skip(ctx, calls, has_tools):
         return None
-    own = sum(1 for m in turn if isinstance(m, ToolMessage) and m.name in SEARCH_TOOLS)
-    # 最初の検索が 0 件・関連度の低い資料だけなら、「見つからない」は資料に無い質問への正しい答え（T17）
-    weak = ctx.primer is not None and ctx.primer.weak
-    if "omitted" not in done and (m := OMITTED_GAP.search(answer)) and _omitted_results(ctx, turn):
-        # 章立ての中略・読み切れなかった文書を読まずに「分からない」と答えない（specs/031 R5）
-        return Review("omitted", m.group(0), OMITTED_NOTE, "省略の読み残し")
-    current = ctx.mcp is not None and asks_current(ctx.user_question or _asked(turn) or ctx.question)
-    checked = any(
-        isinstance(m, ToolMessage) and is_mcp_tool(m.name or "") and m.status != "error" for m in turn
-    )
-    if "current" not in done and current and ctx.mcp is not None and ctx.mcp.usable and not checked:
-        # 今の値を問われたのに、ある時点の文書だけで答えた（specs/032 R15）
-        note = current_note(ctx.mcp.down, review=True)
-        return Review("current", "今の値を社内システムで確かめていない", note, "今の値の確認")
-    if "system_missed" not in done and checked and ctx.mcp is not None and ctx.mcp.usable:
-        # 複数のシステムにまたがる質問で、呼んでいないシステムにしか無い記録（内線など）を文書の値で答えた
-        called = called_mcp_tools(ctx, turn)
-        q = ctx.user_question or _asked(turn) or ctx.question
-        if missed := missed_systems(q, ctx.mcp, called):
-            note = system_missed_note(missed)
-            why = (
-                "・".join(f"{label}の {tool}（{term}）" for label, tool, term in missed) + "を確かめていない"
-            )
-            return Review("system_missed", why, note, "残りのシステムの確認")
-    if (
-        "system_gap" not in done
-        and ctx.mcp is not None
-        and ctx.mcp.usable
-        and not checked
-        and (m := GAP.search(answer))
-        and touches_systems(ctx.user_question or _asked(turn) or ctx.question, ctx.mcp)
-    ):
-        # 文書に無いと答えた（最初の検索が弱くても）: 社内システムに記録があるかもしれない（specs/032 R15）
-        note = SYSTEM_GAP_NOTE.format(catalog=ctx.mcp.catalog)
-        return Review("system_gap", m.group(0), note, "社内システムの確認")
-    if "gap" not in done and not weak and searches(ctx, turn) and own <= GAP_REVIEW_MAX_OWN_SEARCHES:
-        # 複数の資料を照合する質問で、小さいモデルは 1 回の検索だけで「資料に無い」と答えがち
-        if m := GAP.search(answer):
-            return Review("gap", m.group(0), GAP_NOTE, "調べ残しの見直し")
-    if (
-        "table" not in done
-        and ctx.primer is not None
-        and ctx.primer.table
-        # 今の値を社内システムで確かめた回答では、文書の表は時点の比較に添えるだけなので計算させない。
-        # ただし文書の表から件数を数えて書いたら数え直させる（検索で拾った行だけを数えて少なく答える）
-        and not (current and checked and not counts_from_documents(ctx, answer))
-        and not any(isinstance(m, ToolMessage) and m.name == "table_query" for m in turn)
-        and any(_TABLE_ROW.search(t) for t in _materials(ctx, turn))
-    ):
-        # 表の行を目で比べると誤る（在庫 4・発注点 4 を「下回る」と答えるなど）
-        return Review("table", "表の集計を計算していない", TABLE_NOTE, "表の集計の確認")
-    if "structure" not in done and (made := ungrounded_chapters(answer, _materials(ctx, turn))):
-        # 資料に無い章の見出しを作った（目次を見ずに、検索で拾った見出しから章立てを組み立てた。T17）
-        shown = "・".join(made[:5])
-        return Review(
-            "structure",
-            f"資料に無い章の見出し {shown}",
-            STRUCTURE_NOTE.format(titles=shown),
-            "章の見出しの確認",
-        )
-    if "numbers" not in done and checks_numbers(ctx):
-        if missing := _ungrounded(ctx, turn, answer):
-            shown = "・".join(missing[:8])
-            return Review(
-                "numbers", f"資料に無い数字 {shown}", NUMBER_NOTE.format(numbers=shown), "数字の確認"
-            )
-    return None
+    return pick(draft_of(ctx, turn, answer), done)
 
 
 REASON_NOTE = (
@@ -857,14 +677,12 @@ async def reason_review(
 
     確かめたことは結果にかかわらず記録に残す。裏付けが無ければ差し戻す（ターンに 1 度）。
     """
-    if "reason" in done:
+    if REASON in done:
         return None
     got = await _check_reason(ctx, emit, turn, answer, again=False)
     if got is None or got.supported is not False:
         return None
-    return Review(
-        "reason", got.why or "理由の裏付けなし", REASON_NOTE.format(why=got.why), "理由の裏付けの確認"
-    )
+    return Review(REASON, got.why or "理由の裏付けなし", REASON_NOTE.format(why=got.why), REASON_LABEL)
 
 
 async def reason_caveat(
@@ -874,19 +692,10 @@ async def reason_caveat(
 
     小さいモデルは差し戻されても同じ理由を書き直すことがある。そのときは回答を止めず、推測だと明記する。
     """
-    if "reason" not in done:
+    if REASON not in done:
         return None
     got = await _check_reason(ctx, emit, turn, answer, again=True)
     return REASON_CAVEAT if got is not None and got.supported is False else None
-
-
-def _omitted_results(ctx: RunContext, turn: list[AnyMessage]) -> bool:
-    """このターンのツールの結果か最初の検索の結果に、省略した部分があるか（章立ての中略・文書の打ち切り）。"""
-    if ctx.primer is not None and ctx.primer.omitted:
-        return True
-    return any(
-        ToolOutput.from_artifact(str(m.text), m.artifact).omitted for m in turn if isinstance(m, ToolMessage)
-    )
 
 
 def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
@@ -895,7 +704,7 @@ def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answ
     if not found:
         return
     t0 = time.perf_counter()
-    res = _check_numbers(ctx, turn, answer)
+    res = draft_of(ctx, turn, answer).numbers
     took = elapsed_ms(t0)
     missing = res.missing
     # 回答の内訳から和・差で確かめた数字も、黙って通さず記録に残す（R24）
@@ -918,16 +727,6 @@ def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answ
 
 
 _MARK = re.compile(r"\[(\d+)\](?!\()")
-
-
-def called_mcp_tools(ctx: RunContext, turn: list[AnyMessage]) -> set[str]:
-    """このターンに呼んだ社内システムのツール（エージェントのツール名）。
-
-    履歴の要約で結果のメッセージが消えても数えられるよう、呼び出しの記録（tool_seen）からも拾う。
-    """
-    seen = {k.split(":", 1)[0] for k in ctx.tool_seen}
-    seen |= {m.name or "" for m in turn if isinstance(m, ToolMessage)}
-    return {n for n in seen if is_mcp_tool(n)}
 
 
 DUPLICATE_NOTE = (
