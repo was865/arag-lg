@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from arag.agent.citations import CitationRegistry, FinalCitations
 from arag.agent.config import AgentCfg
+from arag.agent.documents import DocumentStore, SqlDocumentStore
 from arag.agent.tool_output import ToolOutput
 from arag.auth.principal import Principal
 from arag.mcp.client import Caller
@@ -171,3 +172,17 @@ class RunContext:
     citation_prune: bool = True
     # 社内システム（MCP）の状態（使えるツール・外したサーバ・呼んだ回数。specs/032）。無ければ文書だけ
     mcp: McpRun | None = None
+    # 文書の読み出しの口（specs/037 R11）。省略時は sessionmaker と検索範囲から SQL の実装を作る
+    document_store: DocumentStore | None = None
+
+    @property
+    def docs(self) -> DocumentStore:
+        if self.document_store is None:
+            self.document_store = SqlDocumentStore(
+                self.sessionmaker,
+                self.principal,
+                kb_ids=self.kb_ids,
+                document_ids=self.document_ids,
+                include_archived=self.include_archived,
+            )
+        return self.document_store

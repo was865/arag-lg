@@ -20,6 +20,9 @@ PURE = [
 ]
 FRAMEWORKS = ("langchain", "langchain_core", "langgraph", "sqlalchemy", "fastapi", "redis", "qdrant_client")
 
+# 処理の層（R11）: DB を直接読まず、口（DocumentStore・SearchFn）を通す
+APPLICATION = ["arag.agent.ops"]
+
 # 社内システムの中核（R1）と検索（R2）はエージェントに依存しない
 NO_AGENT = [
     "arag.mcp.client",
@@ -66,6 +69,12 @@ def _agent_modules() -> list[str]:
 def test_rules_do_not_import_frameworks(module: str) -> None:
     bad = sorted(m for m in imports(module) if m.split(".")[0] in FRAMEWORKS)
     assert not bad, f"{module} は規則の層なので {bad} を import しない"
+
+
+@pytest.mark.parametrize("module", APPLICATION)
+def test_application_does_not_query_the_database(module: str) -> None:
+    bad = sorted(m for m in imports(module) if m.split(".")[0] == "sqlalchemy")
+    assert not bad, f"{module} は DB を直接読まない（DocumentStore を通す）: {bad}"
 
 
 @pytest.mark.parametrize("module", NO_AGENT)
