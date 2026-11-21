@@ -17,6 +17,7 @@ from arag.agent.middleware import (
     prior_placeholder,
 )
 from arag.agent.prior import cited_documents, turns
+from arag.agent.tool_output import ToolOutput
 from arag.agent.understand import history_text
 from arag.auth.principal import Principal
 
@@ -949,6 +950,8 @@ def test_omitted_outline_with_unknown_answer_is_sent_back() -> None:
         content=f"「a.pdf」の章立て（643 節）\n- 1. 序\n{_omitted_line(OUTLINE_OMITTED)}\n- 643. 用語集",
         tool_call_id="x",
         name="get_outline",
+        # 省略は文ではなく構造で判断する（specs/037 R6）
+        artifact=ToolOutput("", omitted=True).artifact(),
     )
     turn = [HumanMessage("最後の章は？"), tool_call("get_outline", document="a.pdf"), outline]
     draft = "末尾は「…ほか 443 節」と省略されており、お答えすることができません。"
@@ -1311,12 +1314,12 @@ async def test_structure_question_attaches_toc_of_the_prior_document(monkeypatch
     """続けての「目次を教えて」も、前のターンで引用した 1 つの文書の章立てと目次の節を添える（T15・T16）。"""
     import arag.agent.primer as primer
 
-    async def outline(_ctx: Any, _doc: Any, **_kw: Any) -> str:
-        return f"（この文書には目次の節「目 次」（p.4、ID: {TOC_ID}）があります）\n- 1. 目 次"
+    async def outline(_ctx: Any, _doc: Any, **_kw: Any) -> ToolOutput:
+        return ToolOutput(f"（この文書には目次の節「目 次」（p.4、ID: {TOC_ID}）があります）\n- 1. 目 次")
 
-    async def section(_ctx: Any, sid: str) -> str:
+    async def section(_ctx: Any, sid: str) -> ToolOutput:
         assert sid == TOC_ID
-        return f'<資料 n="9" 文書="規程.pdf" 見出し="目 次">\n{TOC_BODY}\n</資料>'
+        return ToolOutput(f'<資料 n="9" 文書="規程.pdf" 見出し="目 次">\n{TOC_BODY}\n</資料>', materials=1)
 
     monkeypatch.setattr(primer, "op_get_outline", outline)
     monkeypatch.setattr(primer, "op_read_section", section)

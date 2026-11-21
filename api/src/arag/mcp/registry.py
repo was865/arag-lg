@@ -123,3 +123,16 @@ async def department_names(session: AsyncSession, user_id: str) -> tuple[str, ..
         .order_by(Department.name)
     )
     return tuple(rows.scalars())
+
+
+async def user_departments(session: AsyncSession, user_id: str) -> tuple[frozenset[str], tuple[str, ...]]:
+    """所属部門の ID と名前（共有の判定と、身元に入れる部門名）。"""
+    rows = (
+        await session.execute(
+            select(Department.id, Department.name)
+            .join(DepartmentMember, DepartmentMember.department_id == Department.id)
+            .where(DepartmentMember.user_id == user_id)
+            .order_by(Department.name)
+        )
+    ).all()
+    return frozenset(str(r[0]) for r in rows), tuple(r[1] for r in rows)

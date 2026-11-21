@@ -5,10 +5,10 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from arag.agent.catalog import secret_box
 from arag.db.models import McpServer, McpServerShare, McpTool
 from arag.mcp.client import Caller, McpError, auth_headers, list_tools
 from arag.mcp.registry import server_spec
+from arag.secrets import secret_box
 from arag.settings import Settings
 
 # 模擬の社内システム（mock/systems、compose の mock-systems）。名前・表示名・ポート・説明

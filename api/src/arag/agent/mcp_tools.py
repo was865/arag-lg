@@ -15,13 +15,11 @@ from typing import Any
 
 from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool, StructuredTool
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.agent.citations import _attr, _body
 from arag.agent.context import McpRun, RunContext
 from arag.agent.steps import record_system
-from arag.db.models import Department, DepartmentMember
 from arag.mcp.client import (
     Caller,
     McpAuthError,
@@ -31,7 +29,7 @@ from arag.mcp.client import (
     call_tool,
     ping,
 )
-from arag.mcp.registry import ToolSpec, usable_server_ids
+from arag.mcp.registry import ToolSpec, usable_server_ids, user_departments
 from arag.secrets import SecretBox
 
 # システムの処理の種類（記録の input.kind）と画面の名前
@@ -207,19 +205,6 @@ class HealthCache:
 
     def put(self, name: str, reason: str | None) -> None:
         self.seen[name] = (time.monotonic(), reason)
-
-
-async def user_departments(session: AsyncSession, user_id: str) -> tuple[frozenset[str], tuple[str, ...]]:
-    """所属部門の ID と名前（共有の判定と、身元に入れる部門名）。"""
-    rows = (
-        await session.execute(
-            select(Department.id, Department.name)
-            .join(DepartmentMember, DepartmentMember.department_id == Department.id)
-            .where(DepartmentMember.user_id == user_id)
-            .order_by(Department.name)
-        )
-    ).all()
-    return frozenset(str(r[0]) for r in rows), tuple(r[1] for r in rows)
 
 
 async def prepare(

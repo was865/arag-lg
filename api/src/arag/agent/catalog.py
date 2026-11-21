@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from arag.agent.config import ModelCatalog, ModelSpec
 from arag.db.models import LlmCredential, LlmModel
 from arag.llm import has_credentials
-from arag.secrets import SecretBox
+from arag.secrets import SecretBox, secret_box
 from arag.settings import Settings
 
 # provider → model 文字列の接頭辞
@@ -23,10 +23,6 @@ PROVIDER_PREFIX = {
     "google_genai": "google_genai",
     "openai_compatible": "openai",
 }
-
-
-def secret_box(settings: Settings) -> SecretBox | None:
-    return SecretBox.from_setting(settings.secret_key.get_secret_value())
 
 
 def db_spec(m: LlmModel, cred: LlmCredential | None, box: SecretBox | None) -> ModelSpec:

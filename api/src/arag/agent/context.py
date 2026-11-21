@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from arag.agent.citations import CitationRegistry, FinalCitations
 from arag.agent.config import AgentCfg
+from arag.agent.tool_output import ToolOutput
 from arag.auth.principal import Principal
 from arag.mcp.client import Caller
 from arag.mcp.registry import ToolSpec
@@ -76,6 +77,8 @@ class Primer:
     weak: bool = False
     # 質問の種類ごとの注意（検索結果の外、締めの行の後ろに添える指示。specs/031 T16）
     note: str = ""
+    # 検索結果に省略した部分がある（章立ての中略など。省略の読み残しの確認に使う。specs/037 R7）
+    omitted: bool = False
 
 
 @dataclass
@@ -170,7 +173,7 @@ class RunContext:
     # table_query の結果の構造（ツールの呼び出し ID → table.summarize）。記録にだけ出す（specs/028 T8）
     table_outputs: dict[str, dict[str, Any]] = field(default_factory=dict)
     # 最初の検索の結果の文（understand と primer_search の間で渡す。会話の状態には入れない）
-    primer_texts: list[str] = field(default_factory=list)
+    primer_texts: list[ToolOutput] = field(default_factory=list)
     hooks: RunHooks = field(default_factory=RunHooks)
     # このターンで呼んだツールと引数（同じ呼び出しの繰り返しを省く。specs/031 R4）
     tool_seen: set[str] = field(default_factory=set)

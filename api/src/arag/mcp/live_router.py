@@ -8,15 +8,14 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from arag.agent.catalog import secret_box
-from arag.agent.mcp_tools import user_departments
 from arag.agent.service import get_thread
 from arag.db.models import McpServer, Message
 from arag.deps import CtxDep, get_settings
 from arag.errors import ApiError, not_found
 from arag.mcp import live
 from arag.mcp.client import Caller
-from arag.mcp.registry import server_spec
+from arag.mcp.registry import server_spec, user_departments
+from arag.secrets import secret_box
 from arag.settings import Settings
 
 router = APIRouter(tags=["mcp-live"])

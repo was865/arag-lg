@@ -10,7 +10,6 @@ import time
 import unicodedata
 import uuid
 from collections.abc import Callable
-from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -27,6 +26,7 @@ from arag.ingest.index import DENSE, SPARSE
 from arag.ingest.sparse import SparseEncoder, SparseVector
 from arag.logging import get_logger
 from arag.search.config import SearchConfig
+from arag.search.hooks import candidates_hook, stage_hook
 from arag.search.query import QdrantQuery, build_filter, build_query
 from arag.search.rerank import Reranker, RerankError
 from arag.search.schemas import PathHit, SearchHit, SearchRequest, SearchResult, SearchTrace, StageTiming
@@ -56,16 +56,6 @@ def _encode_sparse(factory: Callable[[], SparseEncoder], text: str) -> SparseVec
     if enc is None:
         enc = cache[id(factory)] = factory()
     return enc.encode_query(text)
-
-
-# 段が終わるたびに呼ばれる（呼び出し側が画面へ逐次送るため。呼んだタスクの中だけで有効）
-stage_hook: ContextVar[Callable[[StageTiming], None] | None] = ContextVar("search_stage_hook", default=None)
-
-
-# rerank の前の候補（融合した順）。画面で「何が候補に上がったか」を見せるために送る
-candidates_hook: ContextVar[Callable[[list[dict[str, Any]]], None] | None] = ContextVar(
-    "search_candidates_hook", default=None
-)
 
 
 class _Clock:

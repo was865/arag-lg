@@ -9,20 +9,10 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from arag.agent import ops
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
-from arag.agent.ops import (
-    code_terms,
-    find_named_documents,
-    op_get_outline,
-    op_keyword_search,
-    op_list_documents,
-    op_read_document,
-    op_read_section,
-    op_search,
-    op_table_query,
-    read_document,
-)
+from arag.agent.ops import code_terms, find_named_documents, read_document
 from arag.auth.principal import Principal
 from arag.db.models import Section
 from arag.ingest.index import QdrantIndex
@@ -33,6 +23,35 @@ from .test_search import ALICE_P, FakeReranker, World, _deps
 from .test_search import world as world  # fixture をこのモジュールでも使う
 
 pytestmark = pytest.mark.integration
+
+
+# ツールの中身は ToolOutput を返す（specs/037 R5）。ここでは主にモデルに渡す文を確かめる
+async def op_search(*a: Any, **k: Any) -> str:
+    return (await ops.op_search(*a, **k)).text
+
+
+async def op_keyword_search(*a: Any, **k: Any) -> str:
+    return (await ops.op_keyword_search(*a, **k)).text
+
+
+async def op_list_documents(*a: Any, **k: Any) -> str:
+    return (await ops.op_list_documents(*a, **k)).text
+
+
+async def op_get_outline(*a: Any, **k: Any) -> str:
+    return (await ops.op_get_outline(*a, **k)).text
+
+
+async def op_read_section(*a: Any, **k: Any) -> str:
+    return (await ops.op_read_section(*a, **k)).text
+
+
+async def op_read_document(*a: Any, **k: Any) -> str:
+    return (await ops.op_read_document(*a, **k)).text
+
+
+async def op_table_query(*a: Any, **k: Any) -> str:
+    return (await ops.op_table_query(*a, **k)).text
 
 
 def make_ctx(
@@ -84,6 +103,9 @@ async def test_search_registers_numbers_within_scope(
     # 前のターンの番号など解決できない指定は無視して、絞らずに検索する
     out4 = await op_search(ctx, ev, "c4", "MX-17", document_ids=["[99]"])
     assert out4.startswith("注意: 文書の指定 [99]") and "絞らずに検索" in out4 and '<資料 n="1"' in out4
+    # 構造: 資料の数（文の中の資料の囲みと同じ）。関連度は低くない
+    got = await ops.op_search(ctx, ev, "c5", "MX-17")
+    assert got.materials == got.text.count("<資料 n=") >= 1 and not got.weak
 
 
 async def test_crag_rewrites_when_scores_are_low(
@@ -102,6 +124,8 @@ async def test_crag_rewrites_when_scores_are_low(
     out = await op_search(ctx, ev, "c1", "MX-17 対応")
     # 書き換えても低いままなら、関連が薄いことを結果に添える
     assert out.startswith("注意: ") and "見つからなかった" in out
+    low = await ops.op_search(ctx, Events(), "c9", "MX-17 対応")
+    assert low.weak and low.materials > 0
     # 同じ ID は上書きされる。検索ごとに、内部の段が終わった順に出て、結果の行が最後に来る
     first_seen = {s["id"]: s["name"] for s in ev.steps()}
     names = list(first_seen.values())
@@ -140,6 +164,8 @@ async def test_keyword_search_requires_all_terms(
     out2 = await op_keyword_search(ctx, ev, "c2", ["MX-17", "存在しない語"])
     assert out2.startswith("注意: すべての語を含む資料が無かったため、型番・番号だけで") and "<資料 " in out2
     assert "「存在しない語」の内容を search で" in out2
+    got2 = await ops.op_keyword_search(ctx, Events(), "c2b", ["MX-17", "存在しない語"])
+    assert got2.fallback == "codes" and got2.materials > 0
     done = [s for s in ev.steps() if s["status"] == "done" and s["name"] == "retrieve"]
     assert [s["label"] for s in done] == ["検索", "型番のみで再検索"]
     assert {s["parent_id"] for s in done} == {"c2"} and len({s["id"] for s in done}) == 2
@@ -150,6 +176,8 @@ async def test_keyword_search_requires_all_terms(
     ev3 = Events()
     out3 = await op_keyword_search(ctx, ev3, "c3", ["存在しない語", "別の語"])
     assert out3.startswith("注意: 語をすべて含む") and "<資料 " in out3
+    got3 = await ops.op_keyword_search(ctx, Events(), "c3b", ["存在しない語", "別の語"])
+    assert got3.fallback == "semantic"
     done3 = [s for s in ev3.steps() if s["status"] == "done" and s["name"] == "retrieve"]
     assert [s["input"]["mode"] for s in done3] == ["keyword", "hybrid"]
     assert done3[0]["output"]["fallback"] == "semantic" and done3[1]["label"] == "セマンティック検索で補完"

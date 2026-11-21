@@ -37,13 +37,13 @@ from arag.agent.mcp_tools import (
     touches_systems,
 )
 from arag.agent.numbers import NumberCheck, check_numbers, numbers_in
-from arag.agent.ops import KEYWORD_FALLBACK_NOTE, KEYWORD_RELAX_NOTE, OMITTED_MARKS
 from arag.agent.primer import with_primer
 from arag.agent.prior import cited_documents
 from arag.agent.prune import prune_citations
 from arag.agent.reason_check import ReasonCheck, asks_reason, check_reason
 from arag.agent.steps import Step, StepClock, elapsed_ms, record_system
 from arag.agent.thinking import split_thinking
+from arag.agent.tool_output import ToolOutput
 from arag.agent.tools import ASK_USER, LABELS
 from arag.mcp.registry import is_mcp_tool
 from arag.prompts import load_prompt
@@ -882,10 +882,11 @@ async def reason_caveat(
 
 def _omitted_results(ctx: RunContext, turn: list[AnyMessage]) -> bool:
     """このターンのツールの結果か最初の検索の結果に、省略した部分があるか（章立ての中略・文書の打ち切り）。"""
-    texts: list[str] = [str(m.text) for m in turn if isinstance(m, ToolMessage)]
-    if ctx.primer is not None:
-        texts.append(ctx.primer.text)
-    return any(mark in t for t in texts for mark in OMITTED_MARKS)
+    if ctx.primer is not None and ctx.primer.omitted:
+        return True
+    return any(
+        ToolOutput.from_artifact(str(m.text), m.artifact).omitted for m in turn if isinstance(m, ToolMessage)
+    )
 
 
 def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answer: str) -> None:
@@ -916,9 +917,6 @@ def record_number_check(ctx: RunContext, emit: Any, turn: list[AnyMessage], answ
     )
 
 
-_MATERIAL = re.compile(r"<資料 n=")
-# table_query の結果の先頭（「表…（8 行）。条件 … に合う行: 2 行。」）
-_TABLE_RESULT = re.compile(r"（(\d+) 行）。[^\n]*?(\d+) 行。")
 _MARK = re.compile(r"\[(\d+)\](?!\()")
 
 
@@ -981,15 +979,15 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
                 status="error",
             )
         text = result.text if isinstance(result, ToolMessage) else ""
-        n = len(_MATERIAL.findall(text))
+        out = ToolOutput.from_artifact(text, result.artifact if isinstance(result, ToolMessage) else None)
+        n = out.materials
         summary = f"資料 {n} 件" if n else (text[:120] if name == "calculate" else "完了")
         # 何を探した・読んだかを要約の頭に（システムが行った検索と同じ形「…」・資料 n 件）
         if (what := tool_target(name, call["args"])) and name not in {"calculate", "table_query"}:
             summary = f"「{what}」・{summary}"
         output: dict[str, Any] = {"result": text[:2000]}
         if name == "table_query":
-            rows = _TABLE_RESULT.search(text)
-            summary = f"{rows.group(1)} 行中 {rows.group(2)} 行" if rows else text[:120]
+            summary = f"{out.rows[0]} 行中 {out.rows[1]} 行" if out.rows else text[:120]
             # 画面で行・件数・集計を見せるための構造（モデルに渡す文は変えない。specs/028 T8）
             output.update(ctx.table_outputs.pop(cid, {}))
         if is_mcp_tool(name):
@@ -1003,9 +1001,9 @@ class StepMiddleware(AgentMiddleware[Any, RunContext]):
                 if rec and "columns" in rec
                 else text[:120]
             )
-        if n and text.startswith(KEYWORD_FALLBACK_NOTE):
+        if n and out.fallback == "semantic":
             summary = f"完全一致 0 件 → セマンティック検索で資料 {n} 件"
-        elif n and text.startswith(KEYWORD_RELAX_NOTE):
+        elif n and out.fallback == "codes":
             summary = f"完全一致 0 件 → 型番のみで資料 {n} 件"
         clock.done(summary, output)
         return result
