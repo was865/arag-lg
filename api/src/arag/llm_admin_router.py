@@ -12,12 +12,13 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
-from arag.agent.catalog import PROVIDER_PREFIX, db_spec, load_catalog, secret_box
+from arag.agent.catalog import PROVIDER_PREFIX, db_spec, load_catalog
 from arag.agent.config import ModelNotFound, ModelSpec
 from arag.audit import AuditEvent
 from arag.db.models import LlmCredential, LlmModel
 from arag.deps import CtxDep, get_settings
 from arag.errors import ApiError
+from arag.secrets import secret_box
 from arag.settings import Settings
 
 router = APIRouter(tags=["llm-admin"])

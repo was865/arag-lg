@@ -22,21 +22,18 @@ from redis.asyncio import Redis
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from arag.agent.citations import CitationRegistry, Cited, FinalCitations, finalize_citations
+from arag.agent.adapters.redis_stream import EventSink, is_cancelled, redis_client
 from arag.agent.config import AgentCfg
 from arag.agent.context import Completion, RunContext, RunHooks, SearchFn
+from arag.agent.domain.citations import CitationRegistry, Cited, FinalCitations, finalize_citations
+from arag.agent.domain.thinking import ThinkSplitter
 from arag.agent.flow import NO_ANSWER_TEXT
-
-# _classify は以前の場所（テストが使う）
-from arag.agent.flow import classify as _classify  # noqa: F401
 from arag.agent.followups import HISTORY_TURNS, TIMEOUT_SEC, Followups, excerpts, suggest
 from arag.agent.graph import build_agent
 from arag.agent.mcp_tools import HealthCache, build_tool, prepare
 from arag.agent.model_switch import ModelChainError
 from arag.agent.service import RUNS_CHANNEL, delete_messages_from
 from arag.agent.steps import Step, record_system, tag_node
-from arag.agent.stream import EventSink, is_cancelled, redis_client
-from arag.agent.thinking import ThinkSplitter
 from arag.audit import AuditEvent, write_audit
 from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
@@ -166,6 +163,23 @@ async def _repair_dangling_tool_calls(agent: Any, config: dict[str, Any]) -> Non
         await agent.aupdate_state(config, {"messages": fix}, as_node="investigate")
 
 
+def build_context(deps: RunnerDeps, req: dict[str, Any]) -> RunContext:
+    """run の要求（runs.request）から実行文脈を作る（specs/037 R12）。"""
+    pr = req["principal"]
+    return RunContext(
+        principal=Principal(user_id=pr["user_id"], role=pr.get("role", "member"), email=pr.get("email")),
+        sessionmaker=deps.sessionmaker,
+        search=deps.search,
+        question=req["query"],
+        user_question=req["query"],
+        kb_ids=_uuids(req.get("kb_ids")),
+        document_ids=_uuids(req.get("document_ids")),
+        include_archived=bool(req.get("include_archived")),
+        cfg=AgentCfg.clamped(req.get("agent_cfg")),
+        citation_prune=deps.citation_prune,
+    )
+
+
 async def execute_run(
     deps: RunnerDeps, run_id: uuid.UUID, *, on_answered: Callable[[], None] | None = None
 ) -> str:
@@ -180,22 +194,9 @@ async def execute_run(
         req = dict(run.request)
         thread_id, message_id, model_id = run.thread_id, run.message_id, run.model_id
     sink = EventSink(deps.redis, str(run_id), ttl_sec=deps.events_ttl_sec)
-    pr = req["principal"]
-    principal = Principal(user_id=pr["user_id"], role=pr.get("role", "member"), email=pr.get("email"))
-    cfg = AgentCfg.clamped(req.get("agent_cfg"))
     turn = _Turn()
-    ctx = RunContext(
-        principal=principal,
-        sessionmaker=deps.sessionmaker,
-        search=deps.search,
-        question=req["query"],
-        user_question=req["query"],
-        kb_ids=_uuids(req.get("kb_ids")),
-        document_ids=_uuids(req.get("document_ids")),
-        include_archived=bool(req.get("include_archived")),
-        cfg=cfg,
-        citation_prune=deps.citation_prune,
-    )
+    ctx = build_context(deps, req)
+    principal, cfg = ctx.principal, ctx.cfg
     checkpoint_id: str | None = None
     status, code, err = "completed", None, ""
     done = _Done()
@@ -885,8 +886,8 @@ async def main() -> None:
 
     from qdrant_client import AsyncQdrantClient
 
+    from arag.agent.adapters.checkpoint import open_checkpointer
     from arag.agent.catalog import load_catalog
-    from arag.agent.checkpoint import open_checkpointer
     from arag.db.engine import make_engine, make_sessionmaker
     from arag.inference import build_query_image_reader
     from arag.logging import configure_logging
@@ -902,8 +903,9 @@ async def main() -> None:
     qdrant = AsyncQdrantClient(url=settings.qdrant_url)
     sdeps = build_search_deps(settings, qdrant)
 
-    async def search_fn(s: AsyncSession, p: Principal, r: Any) -> Any:
-        return await search(s, sdeps, p, r)
+    async def search_fn(p: Principal, r: Any) -> Any:
+        async with sm() as s:
+            return await search(s, sdeps, p, r)
 
     async def resolve(model_id: str | None) -> ResolvedModels:
         # 画面での目録・鍵の変更を次の実行から効かせる（specs/013-llm-keys R5）

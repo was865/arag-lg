@@ -7,16 +7,14 @@ import re
 import time
 import unicodedata
 import uuid
+from dataclasses import replace
 from typing import Any, NamedTuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from sqlalchemy import String, and_, bindparam, func, literal_column, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from arag.agent.citations import format_material, wrap_material
 from arag.agent.context import Emit, RunContext
-from arag.agent.steps import Step, StepClock, record_system
-from arag.agent.table import (
+from arag.agent.domain.citations import format_material, wrap_material
+from arag.agent.domain.table import (
     EXAMPLES,
     Table,
     TableError,
@@ -26,14 +24,15 @@ from arag.agent.table import (
     parse_tables,
     run_query,
 )
-from arag.agent.table import render as render_table
-from arag.agent.table import summarize as summarize_table
-from arag.db.models import Content, Document, Section
+from arag.agent.domain.table import render as render_table
+from arag.agent.domain.table import summarize as summarize_table
+from arag.agent.domain.tool_output import ToolOutput
+from arag.agent.steps import Step, StepClock, record_system
+from arag.db.models import Document, Section
 from arag.logging import get_logger
 from arag.prompts import load_prompt
+from arag.search.hooks import candidates_hook, stage_hook
 from arag.search.schemas import SearchHit, SearchRequest, SearchResult
-from arag.search.scope import Scope, resolve_scope
-from arag.search.service import candidates_hook, stage_hook
 
 log = get_logger("arag.agent.ops")
 
@@ -42,10 +41,9 @@ OUTLINE_MAX = 200
 # 長い文書の章立ては先頭と末尾を出し、間は start で読む（specs/031 R1）
 OUTLINE_HEAD = 120
 OUTLINE_TAIL = 60
-# ツールの結果を省略したことを示す語（確認の「省略の読み残し」が見つけるのに使う。specs/031 R5）
+# 省略したことを示す語（モデルへの案内。確認は ToolOutput.omitted で判断する。specs/031 R5・037 R6）
 OUTLINE_OMITTED = "…（中略: "
 DOC_OMITTED = "（長いため先頭の "
-OMITTED_MARKS = (OUTLINE_OMITTED, DOC_OMITTED)
 SECTION_MAX_CHARS = 6000
 # read_document が 1 回で渡す本文の上限（文字）。超えた分は get_outline / read_section で続きを読む
 DOC_READ_MAX_CHARS = 12000
@@ -65,18 +63,6 @@ def _uuids(values: list[str] | None) -> list[uuid.UUID]:
 def _ref_number(ref: str) -> int | None:
     m = re.fullmatch(r"\s*\[?\s*(\d{1,4})\s*\]?\s*", ref)
     return int(m.group(1)) if m else None
-
-
-async def _scope(session: AsyncSession, ctx: RunContext) -> Scope:
-    req = SearchRequest(
-        query="範囲",
-        kb_ids=ctx.kb_ids,
-        document_ids=ctx.document_ids,
-        include_archived=ctx.include_archived,
-        top_k=1,
-        candidate_k=1,
-    )
-    return await resolve_scope(session, ctx.principal, req)
 
 
 def _doc_ids_for_search(ctx: RunContext, refs: list[str] | None) -> tuple[list[uuid.UUID] | None, list[str]]:
@@ -120,17 +106,11 @@ def _render_hits(ctx: RunContext, query: str, hits: list[SearchHit]) -> str:
     return "\n\n".join(parts)
 
 
-# 検索結果のどれも関連度が低いときの前置き（最初の検索が空振りしたかの判定にも使う）
+# 検索結果のどれも関連度が低いときの前置き
 LOW_RELEVANCE_NOTE = "注意: どの資料も質問との関連度が低い"
-_HAS_MATERIAL = re.compile(r"<資料 n=")
 
 
-def weak_result(text: str) -> bool:
-    """検索結果が 0 件か、関連度が低い資料だけか。"""
-    return not _HAS_MATERIAL.search(text) or text.startswith(LOW_RELEVANCE_NOTE)
-
-
-# キーワード検索が 0 件で意味検索に切り替えたときの前置き（ステップの要約もこれで見分ける）
+# キーワード検索が 0 件で意味検索に切り替えたときの前置き
 KEYWORD_FALLBACK_NOTE = "注意: 語をすべて含む資料が無かったため、意味の近い資料を示します。"
 # 型番・番号だけに絞って見つかったときの前置き（後ろに語の説明が続く）
 KEYWORD_RELAX_NOTE = "注意: すべての語を含む資料が無かったため、型番・番号だけで探しました。"
@@ -165,8 +145,7 @@ async def _run_search(ctx: RunContext, req: SearchRequest) -> SearchResult:
     k, per = req.top_k, ctx.cfg.per_document
     if per > 0:
         req = req.model_copy(update={"top_k": min(k * 2, req.candidate_k)})
-    async with ctx.sessionmaker() as s:
-        res = await ctx.search(s, ctx.principal, req)
+    res = await ctx.search(ctx.principal, req)
     if per > 0:
         res = res.model_copy(update={"hits": diversify(res.hits, k=k, per_document=per)})
     return res
@@ -372,7 +351,7 @@ async def op_search(
     label: str = "検索",
     running: str = "検索中",
     next_on_empty: str | None = None,
-) -> str:
+) -> ToolOutput:
     """step_tag は同じ呼び出しで 2 回検索するときのステップ ID の区別（親は call_id のまま）。"""
     sid = f"{call_id}:{step_tag}" if step_tag else call_id
     docs, unknown = _doc_ids_for_search(ctx, document_ids)
@@ -467,14 +446,15 @@ async def op_search(
             f"{'（文書を絞らずに検索）' if docs == ctx.document_ids else ''}。"
             "出典番号はターンごとに振り直されます。\n\n" + out
         )
-    if res.hits and _is_low(ctx, res, mode):
+    low = bool(res.hits) and _is_low(ctx, res, mode)
+    if low:
         # 小さいモデルは無関係な資料でも答えを組み立てがちなので、関連の薄さを明示する
         out = (
             f"{LOW_RELEVANCE_NOTE}（最高スコア {_best(res):.2f}）。"
             "質問に直接答える記述が無ければ、資料からは見つからなかったと（質問と同じ言語で）答えること。"
             "言葉が似ているだけの無関係な資料を根拠にしない。\n\n" + out
         )
-    return out
+    return ToolOutput(out, materials=len(res.hits), weak=not res.hits or low)
 
 
 def _is_low(ctx: RunContext, res: SearchResult, mode: str) -> bool:
@@ -483,11 +463,11 @@ def _is_low(ctx: RunContext, res: SearchResult, mode: str) -> bool:
 
 async def op_keyword_search(
     ctx: RunContext, emit: Emit, call_id: str, terms: list[str], *, document_ids: list[str] | None = None
-) -> str:
+) -> ToolOutput:
     """全語の完全一致 → 型番・番号だけ → 意味検索、の順に広げる。各段は子ステップとして見せる。"""
     terms = [t.strip() for t in terms if t.strip()][:10]
     if not terms:
-        return "検索語を 1 つ以上指定してください。"
+        return ToolOutput("検索語を 1 つ以上指定してください。")
     query = " ".join(terms)
     codes = code_terms(terms)
     relax = bool(codes) and len(codes) < len(terms)
@@ -501,7 +481,7 @@ async def op_keyword_search(
         must_contain=terms,
         next_on_empty="codes" if relax else "semantic",
     )
-    if "<資料 " in out:
+    if out.materials:
         return out
     if relax:
         # 「MX-17」「異常時の対応」のように説明的な語が混ざると全語一致しにくい。型番だけで探し直す
@@ -519,11 +499,12 @@ async def op_keyword_search(
             running=f"{dropped}を除外し、型番のみで検索中",
             next_on_empty="semantic",
         )
-        if "<資料 " in out:
-            return (
+        if out.materials:
+            note = (
                 f"{KEYWORD_RELAX_NOTE}{dropped}は資料に無い言い回しかもしれません。"
-                f"一般的な規定や手順も要るなら、{dropped}の内容を search で調べてください。\n\n{out}"
+                f"一般的な規定や手順も要るなら、{dropped}の内容を search で調べてください。"
             )
+            return replace(out.prefixed(note), fallback="codes")
     # 表記ゆれ（「ISO認証」と「ISO 27001認証」など）で 0 件になりやすいので、意味検索で補う
     alt = await op_search(
         ctx,
@@ -535,26 +516,17 @@ async def op_keyword_search(
         label="セマンティック検索で補完",
         running="完全一致なし。セマンティック検索中",
     )
-    return f"{KEYWORD_FALLBACK_NOTE}\n\n{alt}"
+    return replace(alt.prefixed(KEYWORD_FALLBACK_NOTE), fallback="semantic")
 
 
-async def op_list_documents(ctx: RunContext, query: str | None = None) -> str:
-    async with ctx.sessionmaker() as s:
-        scope = await _scope(s, ctx)
-        if scope.empty:
-            return "検索範囲に文書がありません。"
-        q = (
-            select(Document.id, Document.filename, Document.created_at, Content.page_count, Content.status)
-            .join(Content, Content.content_hash == Document.content_hash)
-            .where(Document.deleted_at.is_(None), Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]))
-            .order_by(Document.filename)
-            .limit(LIST_MAX + 1)
-        )
-        if scope.document_ids is not None:
-            q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-        if query and query.strip():
-            q = q.where(Document.filename.ilike(f"%{query.strip()}%"))
-        rows = (await s.execute(q)).all()
+async def op_list_documents(ctx: RunContext, query: str | None = None) -> ToolOutput:
+    return ToolOutput(await _list_documents(ctx, query))
+
+
+async def _list_documents(ctx: RunContext, query: str | None) -> str:
+    rows = await ctx.docs.list_documents(query, LIST_MAX + 1)
+    if rows is None:
+        return "検索範囲に文書がありません。"
     if not rows:
         if not query:
             return "検索範囲に文書がありません。"
@@ -568,23 +540,13 @@ async def op_list_documents(ctx: RunContext, query: str | None = None) -> str:
     return "\n".join(lines)
 
 
-async def _visible_document(s: AsyncSession, ctx: RunContext, ref: str) -> Document | None:
+async def _visible_document(ctx: RunContext, ref: str) -> Document | None:
     n = _ref_number(ref)
     cited = ctx.registry.get(n) if n is not None else None
     ids = [cited.document_id] if cited else _uuids([ref])
     if not ids:
         return None
-    scope = await _scope(s, ctx)
-    if scope.empty:
-        return None
-    q = select(Document).where(
-        Document.id == ids[0],
-        Document.deleted_at.is_(None),
-        Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-    )
-    if scope.document_ids is not None:
-        q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-    return (await s.scalars(q)).first()
+    return await ctx.docs.document(ids[0])
 
 
 _TOC_HEADING = re.compile(r"^(目次|もくじ|contents|tableofcontents)$", re.IGNORECASE)
@@ -686,25 +648,19 @@ def format_outline(
     return "\n".join(lines)
 
 
+def outline_omits(
+    total: int, start: int | None, *, head: int = OUTLINE_HEAD, tail: int = OUTLINE_TAIL
+) -> bool:
+    """format_outline が節を省く（中略を入れる）か。"""
+    if start is not None:
+        first = min(max(1, start), max(1, total))
+        return first - 1 + OUTLINE_MAX < total
+    return total > head + tail
+
+
 async def recent_documents(ctx: RunContext, limit: int = 3) -> list[str]:
     """検索範囲の中で、この利用者が最近登録した文書の名前（新しい順）。「この資料」の候補に使う。"""
-    async with ctx.sessionmaker() as s:
-        scope = await _scope(s, ctx)
-        if scope.empty:
-            return []
-        q = (
-            select(Document.filename)
-            .where(
-                Document.deleted_at.is_(None),
-                Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-                Document.uploaded_by == ctx.principal.user_id,
-            )
-            .order_by(Document.created_at.desc())
-            .limit(limit)
-        )
-        if scope.document_ids is not None:
-            q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-        return list((await s.scalars(q)).all())
+    return await ctx.docs.recent(ctx.principal.user_id, limit)
 
 
 async def op_get_outline(
@@ -715,19 +671,17 @@ async def op_get_outline(
     head: int = OUTLINE_HEAD,
     tail: int = OUTLINE_TAIL,
     chapter: int | None = None,
-) -> str:
-    async with ctx.sessionmaker() as s:
-        doc, why = await _find_document(s, ctx, document)
-        if doc is None:
-            return why
-        secs = list(
-            await s.scalars(
-                select(Section).where(Section.content_hash == doc.content_hash).order_by(Section.ordinal)
-            )
-        )
+) -> ToolOutput:
+    doc, why = await _find_document(ctx, document)
+    if doc is None:
+        return ToolOutput(why)
+    secs = await ctx.docs.sections(doc.content_hash)
     if not secs:
-        return f"「{doc.filename}」には章立てがありません。"
-    return format_outline(doc.filename, secs, start, head=head, tail=tail, chapter=chapter)
+        return ToolOutput(f"「{doc.filename}」には章立てがありません。")
+    return ToolOutput(
+        format_outline(doc.filename, secs, start, head=head, tail=tail, chapter=chapter),
+        omitted=outline_omits(len(secs), start, head=head, tail=tail),
+    )
 
 
 class DocRead(NamedTuple):
@@ -739,25 +693,17 @@ class DocRead(NamedTuple):
     sections: int
 
 
-async def _find_document(s: AsyncSession, ctx: RunContext, ref: str) -> tuple[Document | None, str]:
+async def _find_document(ctx: RunContext, ref: str) -> tuple[Document | None, str]:
     """文書 ID・出典番号・文書名（の一部）から文書を 1 つ決める。決められないときは理由を返す。"""
-    doc = await _visible_document(s, ctx, ref)
+    doc = await _visible_document(ctx, ref)
     if doc is not None:
         return doc, ""
     name = ref.strip()
     if not name or _ref_number(name) is not None or _uuids([name]):
         return None, f"文書「{ref}」は見つかりません（文書名・文書 ID・出典番号のどれかを指定してください）。"
-    scope = await _scope(s, ctx)
-    if scope.empty:
+    rows = await ctx.docs.documents_named(name, 6)
+    if rows is None:
         return None, "検索範囲に文書がありません。"
-    q = select(Document).where(
-        Document.deleted_at.is_(None),
-        Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-        Document.filename.ilike(f"%{name}%"),
-    )
-    if scope.document_ids is not None:
-        q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-    rows = list((await s.scalars(q.order_by(Document.filename).limit(6))).all())
     if len(rows) == 1:
         return rows[0], ""
     if not rows:
@@ -774,15 +720,10 @@ async def read_document(ctx: RunContext, ref: str, *, budget: int = DOC_READ_MAX
 
     budget を超える分は読まず、続きの章を案内する。失敗したときは理由の文を返す。
     """
-    async with ctx.sessionmaker() as s:
-        doc, why = await _find_document(s, ctx, ref)
-        if doc is None:
-            return why
-        secs = list(
-            await s.scalars(
-                select(Section).where(Section.content_hash == doc.content_hash).order_by(Section.ordinal)
-            )
-        )
+    doc, why = await _find_document(ctx, ref)
+    if doc is None:
+        return why
+    secs = await ctx.docs.sections(doc.content_hash)
     if not secs:
         return f"「{doc.filename}」には読める本文がありません。"
     parts: list[str] = []
@@ -864,55 +805,27 @@ async def find_named_documents(ctx: RunContext, question: str) -> list[tuple[str
     """質問に書かれた名前で、見える文書を決める（文書 ID・ファイル名）。1 件に決まる名前だけ。"""
     refs = named_document_refs(question)
     found: list[tuple[str, str]] = []
-    async with ctx.sessionmaker() as s:
-        scope = await _scope(s, ctx)
-        if scope.empty:
-            return []
-        # 名前全体が書かれた文書（空白や全角の括弧を含む名前も）。
-        # 照合は DB の側で行う（文書が多くても漏らさない）
-        flat = func.lower(
-            func.regexp_replace(literal_column("normalize(app.documents.filename, NFKC)"), r"\s+", "", "g")
-        )
-        stem = func.regexp_replace(flat, r"\.[^.]*$", "")
-        qflat = bindparam("qflat", _flat_name(question), type_=String)
-        q_all = select(Document.id, Document.filename).where(
-            Document.deleted_at.is_(None),
-            Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-            or_(
-                func.strpos(qflat, flat) > 0,
-                and_(func.length(stem) >= NAME_STEM_MIN, func.strpos(qflat, stem) > 0),
-            ),
-        )
-        if scope.document_ids is not None:
-            q_all = q_all.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-        whole = [
-            r
-            for r in (await s.execute(q_all.limit(NAMED_SCAN_MAX))).all()
-            if filename_in_question(r.filename, question)
-        ]
-        # 長い名前を先に（「a.pdf」と「a.pdf 改訂版」のような包含では長い方が質問の名前）
-        for r in sorted(whole, key=lambda r: -len(r.filename)):
-            if not any(
-                filename_in_question(r.filename, f) or filename_in_question(f, r.filename) for _, f in found
-            ):
-                found.append((str(r.id), r.filename))
-        for ref in refs:
-            q = select(Document.id, Document.filename).where(
-                Document.deleted_at.is_(None),
-                Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-                Document.filename.ilike(f"%{ref}%"),
-            )
-            if scope.document_ids is not None:
-                q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-            rows = (await s.execute(q.limit(2))).all()
-            if len(rows) == 1 and str(rows[0].id) not in {i for i, _ in found}:
-                found.append((str(rows[0].id), rows[0].filename))
+    # 名前全体が書かれた文書（空白や全角の括弧を含む名前も）
+    candidates = await ctx.docs.named_in(_flat_name(question), NAME_STEM_MIN, NAMED_SCAN_MAX)
+    if candidates is None:
+        return []
+    whole = [(i, f) for i, f in candidates if filename_in_question(f, question)]
+    # 長い名前を先に（「a.pdf」と「a.pdf 改訂版」のような包含では長い方が質問の名前）
+    for doc_id, filename in sorted(whole, key=lambda r: -len(r[1])):
+        if not any(filename_in_question(filename, f) or filename_in_question(f, filename) for _, f in found):
+            found.append((doc_id, filename))
+    for ref in refs:
+        rows = await ctx.docs.documents_named(ref, 2) or []
+        if len(rows) == 1 and str(rows[0].id) not in {i for i, _ in found}:
+            found.append((str(rows[0].id), rows[0].filename))
     return found[:NAMED_DOCS_MAX]
 
 
-async def op_read_document(ctx: RunContext, document: str) -> str:
+async def op_read_document(ctx: RunContext, document: str) -> ToolOutput:
     got = await read_document(ctx, document)
-    return got if isinstance(got, str) else got.text
+    if isinstance(got, str):
+        return ToolOutput(got)
+    return ToolOutput(got.text, materials=got.sections, omitted=got.truncated)
 
 
 async def _visible_section(ctx: RunContext, ref: str) -> tuple[Section, Document] | None:
@@ -922,30 +835,21 @@ async def _visible_section(ctx: RunContext, ref: str) -> tuple[Section, Document
     sec_ids = [cited.section_id] if cited else _uuids([ref])
     if not sec_ids:
         return None
-    async with ctx.sessionmaker() as s:
-        sec = await s.get(Section, sec_ids[0])
-        if sec is None:
-            return None
-        scope = await _scope(s, ctx)
-        if scope.empty:
-            return None
-        q = select(Document).where(
-            Document.content_hash == sec.content_hash,
-            Document.deleted_at.is_(None),
-            Document.kb_id.in_([uuid.UUID(k) for k in scope.kb_ids]),
-        )
-        if scope.document_ids is not None:
-            q = q.where(Document.id.in_([uuid.UUID(d) for d in scope.document_ids]))
-        docs = list(await s.scalars(q.order_by(Document.created_at)))
+    got = await ctx.docs.section(sec_ids[0])
+    if got is None:
+        return None
+    sec, docs = got
     if not docs:
         return None
     return sec, next((d for d in docs if cited and d.id == cited.document_id), docs[0])
 
 
-async def op_read_section(ctx: RunContext, section: str) -> str:
+async def op_read_section(ctx: RunContext, section: str) -> ToolOutput:
     found = await _visible_section(ctx, section)
     if found is None:
-        return f"セクション「{section}」は見つかりません（セクション ID か出典番号を指定してください）。"
+        return ToolOutput(
+            f"セクション「{section}」は見つかりません（セクション ID か出典番号を指定してください）。"
+        )
     sec, doc = found
     text = sec.text
     note = ""
@@ -962,7 +866,7 @@ async def op_read_section(ctx: RunContext, section: str) -> str:
     )
     c = ctx.registry.get(num)
     assert c is not None
-    return format_material(num, c) + note
+    return ToolOutput(format_material(num, c) + note, materials=1)
 
 
 class _Failure(NamedTuple):
@@ -986,7 +890,7 @@ async def op_table_query(
     *,
     emit: Emit | None = None,
     call_id: str = "",
-) -> str:
+) -> ToolOutput:
     """資料の表から、条件に合う行と合計を計算で求める（specs/026 R12・R13）。
 
     失敗した指定はターンの間覚えておき、同じ指定でもう一度呼ばれたら計算せずに止める（T12）。
@@ -1004,11 +908,11 @@ async def op_table_query(
                 input={"source": key[0], "where": key[1], "compute": key[2], "table": key[3]},
                 output={"note": note},
             )
-        return note
+        return ToolOutput(note)
     out = await _table_query(ctx, source, where, compute, table, call_id)
     if isinstance(out, _Failure):
         ctx.table_failures[key] = out.text
-        return out.text
+        return ToolOutput(out.text)
     return out
 
 
@@ -1023,14 +927,7 @@ async def _sheet_tables(ctx: RunContext, sec: Section) -> tuple[list[Table], int
         return merge_parts([parse_tables(sec.text)]), 1
     base, n = m.group("base"), int(m.group("n"))
     names = [f"{base}（{i}/{n}）" for i in range(1, n + 1)]
-    async with ctx.sessionmaker() as s:
-        parts = list(
-            await s.scalars(
-                select(Section)
-                .where(Section.content_hash == sec.content_hash, Section.heading_path.in_(names))
-                .order_by(Section.ordinal)
-            )
-        )
+    parts = await ctx.docs.sheet_sections(sec.content_hash, names)
     if len(parts) < 2:
         return merge_parts([parse_tables(sec.text)]), 1
     return merge_parts([parse_tables(p.text) for p in parts]), len(parts)
@@ -1038,7 +935,7 @@ async def _sheet_tables(ctx: RunContext, sec: Section) -> tuple[list[Table], int
 
 async def _table_query(
     ctx: RunContext, source: str, where: str, compute: str, table: int, call_id: str = ""
-) -> str | _Failure:
+) -> ToolOutput | _Failure:
     found = await _visible_section(ctx, source)
     if found is None:
         return _Failure(
@@ -1083,7 +980,7 @@ async def _table_query(
     )
     c = ctx.registry.get(num)
     assert c is not None
-    return wrap_material(num, c, body)
+    return ToolOutput(wrap_material(num, c, body), materials=1, rows=(len(target.rows), len(result.matched)))
 
 
 def now_ms() -> int:

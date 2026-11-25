@@ -4,8 +4,9 @@ from typing import Any
 
 from langchain.tools import ToolRuntime, tool
 
-from arag.agent.calc import CalcError, evaluate
 from arag.agent.context import RunContext
+from arag.agent.domain.calc import CalcError, evaluate
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.ops import (
     op_get_outline,
     op_keyword_search,
@@ -17,27 +18,35 @@ from arag.agent.ops import (
 )
 
 Runtime = ToolRuntime[RunContext]
+# 資料を返すツールは、モデルに渡す文と構造（ToolOutput.artifact）を分けて返す（specs/037 R5）
+Result = tuple[str, dict[str, Any]]
 
 
 def _emit(runtime: Runtime) -> Any:
     return runtime.stream_writer
 
 
-@tool
-async def search(query: str, runtime: Runtime, document_ids: list[str] | None = None) -> str:
+def _result(out: ToolOutput) -> Result:
+    return out.text, out.artifact()
+
+
+@tool(response_format="content_and_artifact")
+async def search(query: str, runtime: Runtime, document_ids: list[str] | None = None) -> Result:
     """社内文書を意味と語の両方で検索し、関連する箇所を出典番号 [n] 付きで返す。
 
     Args:
         query: 単独で意味が通る検索文（日本語でも英語でもよい）
         document_ids: 特定の文書に絞るときの文書 ID か出典番号（例 ["3"]）
     """
-    return await op_search(
-        runtime.context, _emit(runtime), runtime.tool_call_id or "", query, document_ids=document_ids
+    return _result(
+        await op_search(
+            runtime.context, _emit(runtime), runtime.tool_call_id or "", query, document_ids=document_ids
+        )
     )
 
 
-@tool
-async def keyword_search(terms: list[str], runtime: Runtime, document_ids: list[str] | None = None) -> str:
+@tool(response_format="content_and_artifact")
+async def keyword_search(terms: list[str], runtime: Runtime, document_ids: list[str] | None = None) -> Result:
     """型番・条項番号・製品名など、すべての語をそのまま含む箇所を探す（完全一致）。
 
     内容（「異常時の対応」「保存期間」など）は search で調べる。terms に説明的な語句を入れると一致しにくい。
@@ -46,23 +55,25 @@ async def keyword_search(terms: list[str], runtime: Runtime, document_ids: list[
         terms: 資料にそのまま出る語だけ（例 ["MX-17"]、["第12条"]、["MX-17", "N9"]）
         document_ids: 特定の文書に絞るときの文書 ID か出典番号
     """
-    return await op_keyword_search(
-        runtime.context, _emit(runtime), runtime.tool_call_id or "", terms, document_ids=document_ids
+    return _result(
+        await op_keyword_search(
+            runtime.context, _emit(runtime), runtime.tool_call_id or "", terms, document_ids=document_ids
+        )
     )
 
 
-@tool
-async def list_documents(runtime: Runtime, query: str | None = None) -> str:
+@tool(response_format="content_and_artifact")
+async def list_documents(runtime: Runtime, query: str | None = None) -> Result:
     """検索範囲の文書の一覧（名前・ID・ページ数・登録日）。どんな文書があるか分からないときに使う。
 
     Args:
         query: 文書名の一部で絞り込む（省略可）
     """
-    return await op_list_documents(runtime.context, query)
+    return _result(await op_list_documents(runtime.context, query))
 
 
-@tool
-async def get_outline(document: str, runtime: Runtime, start: int | None = None) -> str:
+@tool(response_format="content_and_artifact")
+async def get_outline(document: str, runtime: Runtime, start: int | None = None) -> Result:
     """文書の章立て（見出しの階層・ページ・セクション ID。節には 1 からの番号）を返す。
 
     長い文書は先頭と末尾の節を返し、間は「中略」になる。中略の部分は start を渡して読む。
@@ -71,21 +82,21 @@ async def get_outline(document: str, runtime: Runtime, start: int | None = None)
         document: 文書名（の一部）・文書 ID・出典番号（例 "3"）
         start: この番号の節から続きを返す（中略の部分を読むとき。省略可）
     """
-    return await op_get_outline(runtime.context, document, start)
+    return _result(await op_get_outline(runtime.context, document, start))
 
 
-@tool
-async def read_section(section: str, runtime: Runtime) -> str:
+@tool(response_format="content_and_artifact")
+async def read_section(section: str, runtime: Runtime) -> Result:
     """章（セクション）の本文を読む。検索で見つけた箇所の前後や、章全体を確かめるときに使う。
 
     Args:
         section: セクション ID（get_outline の結果）か出典番号（その箇所を含む章を読む）
     """
-    return await op_read_section(runtime.context, section)
+    return _result(await op_read_section(runtime.context, section))
 
 
-@tool
-async def read_document(document: str, runtime: Runtime) -> str:
+@tool(response_format="content_and_artifact")
+async def read_document(document: str, runtime: Runtime) -> Result:
     """文書を検索を通さずに先頭から読む（章ごとに出典番号が付く）。文書が決まっていて、その中身を確かめたいときに使う。
 
     長い文書は先頭から上限まで。続きは get_outline と read_section で読む。
@@ -93,13 +104,13 @@ async def read_document(document: str, runtime: Runtime) -> str:
     Args:
         document: 文書名（の一部）・文書 ID・出典番号
     """
-    return await op_read_document(runtime.context, document)
+    return _result(await op_read_document(runtime.context, document))
 
 
-@tool
+@tool(response_format="content_and_artifact")
 async def table_query(
     source: str, runtime: Runtime, where: str = "", compute: str = "", table: int = 1
-) -> str:
+) -> Result:
     """資料の表から、条件に合う行を選び、行数と合計を正確に求める。表の行を選ぶ・数える・合計するときは、
     目で比べたり暗算したりせず、必ずこれを使う。
 
@@ -112,14 +123,16 @@ async def table_query(
             （max / min はその値の行も）。省略可
         table: 資料に表が複数あるときの番号（1 から）
     """
-    return await op_table_query(
-        runtime.context,
-        source,
-        where,
-        compute,
-        table,
-        emit=_emit(runtime),
-        call_id=runtime.tool_call_id or "",
+    return _result(
+        await op_table_query(
+            runtime.context,
+            source,
+            where,
+            compute,
+            table,
+            emit=_emit(runtime),
+            call_id=runtime.tool_call_id or "",
+        )
     )
 
 

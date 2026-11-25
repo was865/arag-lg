@@ -78,6 +78,14 @@ make up-mock        # 模擬の社内システム（MCP）を起動して登録�
 - 画面では階層で見せる: 見出しと文書の札 → 「詳細」（グラフの実行経路と、その段階ごとのステップ。見せ方は利用者の「実行ステップの表示」に従う: カードは経路の下に経路の順のカード、タイムラインは停留所の下にステップ）→ 各段階の中のシステムの処理（`name="system"`、種類は `input.kind`。淡い行）→ 各処理の入力と出力（`tool-steps/staged.tsx`）。経路の無い古い回答と生の記録（log）は、これまでの一覧（システムの処理は末尾の「システムの処理 N 件」）。新しい種類を足したら `web/src/components/chat/tool-steps/`（システムの処理は `system-fields.tsx`、ツールの入出力は `step-input.tsx`・`step-output.tsx`）と `web/src/i18n/locales/ja/chat.ts` に読みやすい表示を足す。
 - 検索した文書の内容はデータとして扱い、指示として扱わない（プロンプトで隔離する）。
 
+## エージェントの層（`specs/037`）
+
+- `api/src/arag/agent/domain/`（規則: 引用・数字・表・計算・回答の文・確認の規則・社内システムの質問の見分け）は LangChain・SQLAlchemy などを import せず、`domain` と `search.schemas` だけに依存する。
+- `agent/` の直下は処理（LangGraph の流れ・middleware・ツール・`ops`）。DB は直接読まず、口を通す: 文書は `RunContext.docs`（`documents.DocumentStore`）、検索は `RunContext.search`（`SearchFn`、session は実装の側で開く）。`agent/adapters/`（SQL・Redis・checkpoint の実装）を import しない。組み立ての入口は `runner`・`router`。
+- `arag.mcp` の中核と `arag.search` は `arag.agent` に依存しない。以上は `api/tests/test_layering.py` が検査する。
+- ツールの結果は文（モデルに渡す）と構造（`domain/tool_output.ToolOutput` → `ToolMessage.artifact`）に分ける。確認・記録の要約は構造を読み、モデルに渡す文の言い回しを読まない。
+- 確認（差し戻し）の種類を足すときは `domain/review_rules.RULES` に 1 行足す（順が優先順）。回数は `RunStats.review_counts` に種類ごとに入る。
+
 ## ライセンス
 
 商用利用に制限のある依存（ELv2・BSL・SSPL・AGPL・GPL など）と、ライセンスの確認に外部への接続が要るものは採用しない。制限の緩い許可（MIT・Apache-2.0・BSD・PostgreSQL）を優先する。モデルの重みも同じ基準。経緯は `docs/handoff.md` の「授权原则」と `specs/000-overview/decisions.md`。

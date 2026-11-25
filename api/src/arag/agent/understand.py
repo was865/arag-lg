@@ -12,8 +12,8 @@ from typing import Any, Literal
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
 
+from arag.agent.domain.thinking import split_thinking
 from arag.agent.prior import turns
-from arag.agent.thinking import split_thinking
 from arag.prompts import load_prompt
 
 MAX_QUERIES = 3

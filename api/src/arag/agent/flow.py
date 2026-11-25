@@ -20,8 +20,8 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.runtime import Runtime
 
-from arag.agent.citations import cited_numbers, finalize_citations
 from arag.agent.context import Completion, RunContext
+from arag.agent.domain.citations import cited_numbers, finalize_citations
 from arag.agent.middleware import (
     ANNOUNCE_NOTE,
     AgentPolicyMiddleware,

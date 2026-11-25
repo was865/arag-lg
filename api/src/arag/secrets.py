@@ -4,7 +4,12 @@
 全部で復号する（鍵の入れ替え）。
 """
 
+from typing import TYPE_CHECKING
+
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+
+if TYPE_CHECKING:
+    from arag.settings import Settings
 
 
 class SecretBox:
@@ -38,3 +43,8 @@ class SecretBox:
     def hint(plain: str) -> str | None:
         """画面に出す末尾 4 文字。"""
         return plain[-4:] if plain else None
+
+
+def secret_box(settings: "Settings") -> SecretBox | None:
+    """設定の鍵から SecretBox を作る（鍵が無い・不正なら None）。"""
+    return SecretBox.from_setting(settings.secret_key.get_secret_value())

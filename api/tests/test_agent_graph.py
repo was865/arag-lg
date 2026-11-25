@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from arag.agent.config import AgentCfg
 from arag.agent.context import RunContext
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.graph import build_agent
 from arag.agent.middleware import (
     ANNOUNCE_NOTE,
@@ -172,8 +173,8 @@ async def test_extra_queries_are_searched_and_duplicates_dropped() -> None:
 class KeywordMissSearch(FakeSearch):
     """語の完全一致（must_contain）では何も返さない検索。"""
 
-    async def __call__(self, _s: Any, _p: Any, req: Any) -> Any:
-        res = await super().__call__(_s, _p, req)
+    async def __call__(self, _p: Any, req: Any) -> Any:
+        res = await super().__call__(_p, req)
         return res.model_copy(update={"hits": []}) if req.must_contain else res
 
 
@@ -361,7 +362,7 @@ async def test_table_question_answered_by_eye_is_sent_back() -> None:
     review = [e["step"] for e in custom if e["type"] == "step" and e["step"]["name"] == "review"][-1]
     assert review["input"]["kind"] == "table" and review["label"] == "表の集計の確認"
     assert "table_query" in review["output"]["note"]
-    assert c.stats.table_reviews == 1 and len(model.calls) == 2
+    assert c.stats.reviewed("table") == 1 and len(model.calls) == 2
 
 
 async def test_numbers_missing_from_sources_are_sent_back_and_recorded() -> None:
@@ -380,7 +381,7 @@ async def test_numbers_missing_from_sources_are_sent_back_and_recorded() -> None
     # 差し戻しても残った数字は、照合の結果として記録に残す（画面で注意として示す）
     check = system_steps(custom)["number_check"]
     assert check["output"]["unverified"] == ["17,800"] and "17,800" in check["summary"]
-    assert c.stats.number_reviews == 1 and len(model.calls) == 2
+    assert c.stats.reviewed("numbers") == 1 and len(model.calls) == 2
 
 
 async def test_numbers_found_in_sources_pass_the_check() -> None:
@@ -475,9 +476,9 @@ async def test_summarization_is_recorded() -> None:
 
 
 def test_send_back_notes_ask_to_keep_citation_numbers() -> None:
-    from arag.agent.middleware import GAP_NOTE, NUMBER_NOTE, TABLE_NOTE
+    from arag.agent.domain.review_rules import GAP_NOTE, NUMBER_NOTE, OMITTED_NOTE, STRUCTURE_NOTE, TABLE_NOTE
 
-    for note in (GAP_NOTE, TABLE_NOTE, NUMBER_NOTE):
+    for note in (GAP_NOTE, TABLE_NOTE, NUMBER_NOTE, OMITTED_NOTE, STRUCTURE_NOTE):
         assert "書き直すときも" in note and "出典番号" in note
 
 
@@ -497,7 +498,7 @@ async def test_no_gap_review_when_first_search_found_nothing_relevant() -> None:
         agent = build_agent(model, checkpointer=InMemorySaver())
         state, _ = await run(agent, c, "社員食堂の営業時間は？")
         assert state["messages"][-1].text == "資料には記載されていません。"
-        assert len(model.calls) == 1 and c.stats.gap_reviews == 0
+        assert len(model.calls) == 1 and c.stats.reviewed("gap") == 0
         assert c.primer is not None and c.primer.weak
 
 
@@ -559,7 +560,7 @@ async def test_sum_from_breakdown_is_not_sent_back_and_is_recorded() -> None:
     agent = build_agent(model, checkpointer=InMemorySaver())
     c = ctx(FakeSearch("| 09-02 | PM-04 | 30 |\n| 09-12 | PM-04 | 25 |\n| 09-19 | PM-04 | 80 |"))
     _, custom = await run(agent, c, "PM-04 の停止時間の合計は？")
-    assert len(model.calls) == 1 and c.stats.number_reviews == 0
+    assert len(model.calls) == 1 and c.stats.reviewed("numbers") == 0
     check = system_steps(custom)["number_check"]
     assert check["output"]["unverified"] == []
     assert check["output"]["derived"] == [{"value": "135", "op": "sum", "from": ["30", "25", "80"]}]
@@ -606,7 +607,7 @@ async def test_empty_after_send_back_uses_the_draft() -> None:
 
 
 async def test_empty_without_draft_ends_as_empty_generation() -> None:
-    from arag.agent.runner import _classify
+    from arag.agent.flow import classify as _classify
 
     model = FakeToolModel(messages=script(AIMessage(content=""), AIMessage(content="")))
     agent = build_agent(model, checkpointer=InMemorySaver())
@@ -949,6 +950,8 @@ def test_omitted_outline_with_unknown_answer_is_sent_back() -> None:
         content=f"「a.pdf」の章立て（643 節）\n- 1. 序\n{_omitted_line(OUTLINE_OMITTED)}\n- 643. 用語集",
         tool_call_id="x",
         name="get_outline",
+        # 省略は文ではなく構造で判断する（specs/037 R6）
+        artifact=ToolOutput("", omitted=True).artifact(),
     )
     turn = [HumanMessage("最後の章は？"), tool_call("get_outline", document="a.pdf"), outline]
     draft = "末尾は「…ほか 443 節」と省略されており、お答えすることができません。"
@@ -1068,7 +1071,7 @@ async def test_reason_not_written_in_the_cited_material_is_sent_back() -> None:
     assert any(s["id"] == "system-reason-recheck" for s in check)
     review = [s for s in steps if s["name"] == "review" and s["status"] == "done"]
     assert review[-1]["input"]["kind"] == "reason" and "推測と明記" in review[-1]["output"]["note"]
-    assert c.stats.reason_reviews == 1 and len(model.calls) == 2
+    assert c.stats.reviewed("reason") == 1 and len(model.calls) == 2
 
 
 async def test_reason_check_runs_only_for_why_questions_and_is_recorded_when_supported() -> None:
@@ -1085,7 +1088,7 @@ async def test_reason_check_runs_only_for_why_questions_and_is_recorded_when_sup
         for e in custom
         if e["type"] == "step" and e["step"]["name"] == "system"
     ]
-    assert "reason_check" in kinds and c.stats.reason_reviews == 0 and len(model.calls) == 1
+    assert "reason_check" in kinds and c.stats.reviewed("reason") == 0 and len(model.calls) == 1
     # 理由を尋ねない質問では呼ばない（台本の 2 つ目が残る）
     from arag.agent.reason_check import asks_reason
 
@@ -1311,12 +1314,12 @@ async def test_structure_question_attaches_toc_of_the_prior_document(monkeypatch
     """続けての「目次を教えて」も、前のターンで引用した 1 つの文書の章立てと目次の節を添える（T15・T16）。"""
     import arag.agent.primer as primer
 
-    async def outline(_ctx: Any, _doc: Any, **_kw: Any) -> str:
-        return f"（この文書には目次の節「目 次」（p.4、ID: {TOC_ID}）があります）\n- 1. 目 次"
+    async def outline(_ctx: Any, _doc: Any, **_kw: Any) -> ToolOutput:
+        return ToolOutput(f"（この文書には目次の節「目 次」（p.4、ID: {TOC_ID}）があります）\n- 1. 目 次")
 
-    async def section(_ctx: Any, sid: str) -> str:
+    async def section(_ctx: Any, sid: str) -> ToolOutput:
         assert sid == TOC_ID
-        return f'<資料 n="9" 文書="規程.pdf" 見出し="目 次">\n{TOC_BODY}\n</資料>'
+        return ToolOutput(f'<資料 n="9" 文書="規程.pdf" 見出し="目 次">\n{TOC_BODY}\n</資料>', materials=1)
 
     monkeypatch.setattr(primer, "op_get_outline", outline)
     monkeypatch.setattr(primer, "op_read_section", section)
@@ -1344,7 +1347,7 @@ async def test_structure_question_attaches_toc_of_the_prior_document(monkeypatch
 
 
 def test_ungrounded_chapter_titles() -> None:
-    from arag.agent.middleware import ungrounded_chapters
+    from arag.agent.domain.review_rules import ungrounded_chapters
 
     materials = [TOC_BODY]
     answer = (

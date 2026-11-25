@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 
-from arag.agent.catalog import secret_box
 from arag.audit import AuditEvent
 from arag.db.models import Department, McpServer, McpServerShare, McpTool
 from arag.deps import CtxDep, get_settings
@@ -16,6 +15,7 @@ from arag.errors import ApiError
 from arag.mcp.client import Caller
 from arag.mcp.registry import SERVER_NAME, department_names
 from arag.mcp.service import refresh_server
+from arag.secrets import secret_box
 from arag.settings import Settings
 
 router = APIRouter(tags=["mcp-admin"])

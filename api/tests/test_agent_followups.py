@@ -7,7 +7,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from arag.agent.citations import Cited
+from arag.agent.domain.citations import Cited
 from arag.agent.followups import (
     EXCERPT_CHARS,
     EXCERPT_TOTAL,

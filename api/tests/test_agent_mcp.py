@@ -231,7 +231,7 @@ async def test_current_question_is_sent_back_until_system_is_checked() -> None:
     chose = [x["summary"] for x in systems_all(custom, "model_call")]
     assert "ツールを選んだ: ERP（資材・購買）の get_stock" in chose
     assert any("この下書きは文書（ある時点の記録）だけ" in m.text for m in model.calls[1])
-    assert c.stats.current_reviews == 1 and c.mcp is not None and c.mcp.calls == 1
+    assert c.stats.reviewed("current") == 1 and c.mcp is not None and c.mcp.calls == 1
     assert "今は 15 個" in state["messages"][-1].text
 
 
@@ -263,11 +263,11 @@ async def test_past_question_is_not_sent_back() -> None:
         c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の在庫 6"), mcp=mcp_run(t))
         _, custom = await run(agent, c, "9 月末の SK-300 の在庫は？")
     assert "current_note" not in systems(custom)
-    assert not steps_of(custom, "review") and c.stats.current_reviews == 0
+    assert not steps_of(custom, "review") and c.stats.reviewed("current") == 0
 
 
 def test_asks_current() -> None:
-    from arag.agent.mcp_tools import asks_current
+    from arag.agent.domain.system_questions import asks_current
 
     asked = ["今の在庫は？", "現在の状態", "WO-1107 は終わった？", "まだ未入荷？", "Is it still open?"]
     # 社内システムにしか無い記録（仕入単価・作業指示・最近の記録）も確かめさせる
@@ -332,7 +332,7 @@ async def test_unfound_answer_is_sent_back_to_systems() -> None:
     review = steps_of(custom, "review")[0]
     assert review["input"]["kind"] == "system_gap" and review["label"] == "社内システムの確認"
     assert any("ERP（資材・購買）: 部品・在庫・発注" in m.text for m in model.calls[1])
-    assert c.stats.system_gap_reviews == 1 and c.mcp is not None and c.mcp.calls == 1
+    assert c.stats.reviewed("system_gap") == 1 and c.mcp is not None and c.mcp.calls == 1
 
 
 async def test_unfound_answer_without_systems_is_not_sent_back_to_systems() -> None:
@@ -342,7 +342,7 @@ async def test_unfound_answer_without_systems_is_not_sent_back_to_systems() -> N
         agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
         c = ctx(FakeSearch(), mcp=mcp_run(t, usable=False))
         await run(agent, c, "組立ライン1号で 10 月に行った保全作業は？")
-    assert c.stats.system_gap_reviews == 0
+    assert c.stats.reviewed("system_gap") == 0
 
 
 async def test_unfound_answer_unrelated_to_systems_is_not_sent_back() -> None:
@@ -353,11 +353,11 @@ async def test_unfound_answer_unrelated_to_systems_is_not_sent_back() -> None:
         agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
         c = ctx(FakeSearch(), mcp=mcp_run(t))
         await run(agent, c, "ペナン工場の9月の生産台数は？")
-    assert c.stats.system_gap_reviews == 0 and c.mcp is not None and c.mcp.calls == 0
+    assert c.stats.reviewed("system_gap") == 0 and c.mcp is not None and c.mcp.calls == 0
 
 
 def test_question_touches_systems() -> None:
-    from arag.agent.mcp_tools import touches_systems
+    from arag.agent.domain.system_questions import touches_systems
 
     t = spec("http://x")
     m = mcp_run(t)
@@ -484,7 +484,7 @@ def directory_spec(url: str) -> ToolSpec:
 
 
 def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
-    from arag.agent.mcp_tools import missed_systems
+    from arag.agent.domain.system_questions import missed_systems
 
     with running() as (url, _):
         erp, people = spec(url), directory_spec(url)
@@ -499,7 +499,7 @@ def test_missed_systems_names_the_uncalled_system_for_question_terms() -> None:
 
 def test_missed_systems_also_names_an_uncalled_tool_of_a_called_system() -> None:
     """デモの試走: 保全の作業指示だけ呼び、「最近の保全作業の記録」（作業の記録のツール）を呼ばなかった。"""
-    from arag.agent.mcp_tools import missed_systems
+    from arag.agent.domain.system_questions import missed_systems
 
     with running() as (url, _):
         stock = spec(url)
@@ -573,9 +573,9 @@ def test_called_tools_survive_history_summary() -> None:
 
     デモの試走: 要約のあと list_below_reorder を呼んでいないと差し戻し、同じ呼び出しを繰り返させた。
     """
-    from arag.agent.middleware import called_mcp_tools
+    from arag.agent.middleware import draft_of
 
     c = ctx(FakeSearch("x"))
     c.tool_seen.update({'erp__list_below_reorder:{"without_orders": true}', 'search:{"query": "x"}'})
     msg = ToolMessage(content="x", tool_call_id="1", name="directory__find_people")
-    assert called_mcp_tools(c, [msg]) == {"erp__list_below_reorder", "directory__find_people"}
+    assert draft_of(c, [msg], "").mcp_called == {"erp__list_below_reorder", "directory__find_people"}

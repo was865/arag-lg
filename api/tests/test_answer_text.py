@@ -2,7 +2,7 @@
 
 # ruff: noqa: E501 — 実際の回答をそのまま使うため
 
-from arag.agent.answer_text import drop_repeated_tail
+from arag.agent.domain.answer_text import drop_repeated_tail
 
 # 実際に出た回答（Qwen3 8B）。最後の段落は 1 つ目の箇条書きの言い直し
 MX17 = """MX-17 の異常時の対応は以下の通りです：

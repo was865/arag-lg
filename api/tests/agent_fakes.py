@@ -149,7 +149,7 @@ class FakeSearch:
         self.hits = [fake_hit(t) for t in texts]
         self.requests: list[SearchRequest] = []
 
-    async def __call__(self, _s: Any, _p: Any, req: SearchRequest) -> SearchResult:
+    async def __call__(self, _p: Any, req: SearchRequest) -> SearchResult:
         self.requests.append(req)
         return SearchResult(hits=self.hits, trace=SearchTrace())
 

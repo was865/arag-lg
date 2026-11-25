@@ -2,7 +2,7 @@
 
 import pytest
 
-from arag.agent.calc import CalcError, evaluate
+from arag.agent.domain.calc import CalcError, evaluate
 
 
 @pytest.mark.parametrize(

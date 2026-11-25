@@ -16,8 +16,8 @@ from typing import Any
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from arag.agent.citations import Cited
-from arag.agent.thinking import split_thinking
+from arag.agent.domain.citations import Cited
+from arag.agent.domain.thinking import split_thinking
 from arag.prompts import load_prompt
 
 MAX_QUESTIONS = 3

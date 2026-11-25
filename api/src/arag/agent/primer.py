@@ -15,7 +15,8 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from arag.agent.context import Emit, Primer, RunContext
-from arag.agent.mcp_tools import asks_current, current_note
+from arag.agent.domain.system_questions import asks_current, current_note
+from arag.agent.domain.tool_output import ToolOutput
 from arag.agent.ops import (
     TOC_SECTION_ID,
     find_named_documents,
@@ -24,7 +25,6 @@ from arag.agent.ops import (
     op_search,
     read_document,
     recent_documents,
-    weak_result,
 )
 from arag.agent.prior import cited_documents, last_cited_scope
 from arag.agent.steps import Step, StepClock, record_system, tag_node
@@ -58,6 +58,11 @@ def merge_results(texts: list[str]) -> str:
     return "\n\n".join(parts)
 
 
+def _weak(out: ToolOutput) -> bool:
+    """資料が無いか、関連度の低い資料だけか（最初の検索の空振り。specs/026 T17）。"""
+    return out.materials == 0 or out.weak
+
+
 def with_primer(question: str, primer: Primer | None) -> str:
     if primer is None or not primer.text:
         return question
@@ -85,7 +90,7 @@ ROLES = {
 
 async def _read_scoped(
     ctx: RunContext, emit: Emit, sid: str, scope: tuple[list[str], list[str]]
-) -> str | None:
+) -> ToolOutput | None:
     """絞った文書が 1 つで、上限に収まるなら、検索せずに文書を読む。長いときは None（検索に任せる）。"""
     clock = StepClock(
         emit,
@@ -111,10 +116,12 @@ async def _read_scoped(
         clock.done(f"長いため全部は読めない（先頭 {got.sections} 節）。検索で絞る", {"truncated": True})
         return None
     clock.done(f"{got.sections} 節を読んだ", {"result": got.text[:2000], "sections": got.sections})
-    return got.text
+    return ToolOutput(got.text, materials=got.sections)
 
 
-async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str], question: str) -> str:
+async def _read_named(
+    ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str], question: str
+) -> ToolOutput:
     """質問に名前が書かれた文書を、検索せずに読む。長くて読み切れないときは、その文書の中を質問で探す。"""
     sid = f"primer-{index}"
     label, purpose = ROLES["named"]
@@ -137,22 +144,30 @@ async def _read_named(ctx: RunContext, emit: Emit, index: int, doc: tuple[str, s
     )
     ctx.stats.primer_searches += 1
     try:
-        text = await _read_scoped(ctx, emit, sid, ([doc[0]], [doc[1]]))
+        out = await _read_scoped(ctx, emit, sid, ([doc[0]], [doc[1]]))
         how = "直接読んだ"
-        if text is None:
+        if out is None:
             found = await op_search(ctx, emit, sid, question, document_ids=[doc[0]])
             # 検索では「最後の章」「目次」のような位置・構成の問いに答えられないので、章立ての先頭と末尾も
             # 添える（specs/031 R11）
             outline = await _outline_for(ctx, emit, sid, doc, question)
-            text = f"{outline}\n\n{found}" if outline else found
+            out = _joined(outline, found) if outline else found
             how = "長いため章立てを添えて文書の中を検索した" if outline else "長いため文書の中を検索した"
     except Exception as e:
         ctx.stats.tool_errors += 1
         clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
-        return f"文書「{doc[1]}」を読めませんでした（{type(e).__name__}）。"
-    n = len(_BLOCK.findall(text))
-    clock.done(f"「{doc[1]}」を{how}・資料 {n} 件", {"result": text[:2000]})
-    return text
+        return ToolOutput(f"文書「{doc[1]}」を読めませんでした（{type(e).__name__}）。")
+    clock.done(f"「{doc[1]}」を{how}・資料 {out.materials} 件", {"result": out.text[:2000]})
+    return out
+
+
+def _joined(head: ToolOutput, body: ToolOutput) -> ToolOutput:
+    """章立てと検索の結果をつなぐ。先頭が章立てなので、関連度の低さの注意は先頭に来ない（資料の数で判断する）。"""
+    return ToolOutput(
+        f"{head.text}\n\n{body.text}",
+        materials=head.materials + body.materials,
+        omitted=head.omitted or body.omitted,
+    )
 
 
 # 長い文書に添える章立ての節の数（先頭・末尾）。全部は文脈を圧迫するので、続きは get_outline の start で
@@ -165,8 +180,8 @@ _CHAPTER_NO = re.compile(r"第\s*(\d{1,2})\s*章")
 
 async def _outline_for(
     ctx: RunContext, emit: Emit, sid: str, doc: tuple[str, str], question: str = ""
-) -> str:
-    """名前を書かれた長い文書の章立て（先頭と末尾）。取れなければ空。記録には子のステップで残す。"""
+) -> ToolOutput | None:
+    """名前を書かれた長い文書の章立て（先頭と末尾）。取れなければ None。記録には子のステップで残す。"""
     # 質問が章を指すなら（「第2章の最後の節」）、その章の節も全部添える（T20）
     m = _CHAPTER_NO.search(question)
     chapter = int(m.group(1)) if m else None
@@ -184,13 +199,14 @@ async def _outline_for(
         ),
     )
     try:
-        text = await op_get_outline(
+        outline = await op_get_outline(
             ctx, doc[0], head=PRIMER_OUTLINE_HEAD, tail=PRIMER_OUTLINE_TAIL, chapter=chapter
         )
     except Exception as e:  # 章立てが無くても検索の結果で続ける
         clock.done(f"取得できなかった（{type(e).__name__}）", {"error": str(e)[:200]}, error=True)
-        return ""
-    toc = ""
+        return None
+    text = outline.text
+    toc: ToolOutput | None = None
     if m := TOC_SECTION_ID.search(text):
         # 文書の中の目次の節は短く、章の全体（最後の章・付録まで）が分かるので、本文も添える（引用できる）
         try:
@@ -199,10 +215,10 @@ async def _outline_for(
             log.warning("toc_read_failed", error=str(e)[:200])
     clock.done(
         "章立ての先頭と末尾" + ("と目次の節" if toc else "") + "を添えた",
-        {"result": text[:4000]} | ({"toc": toc[:2000]} if toc else {}),
+        {"result": text[:4000]} | ({"toc": toc.text[:2000]} if toc else {}),
     )
-    out = f"<章立て>\n{text}\n</章立て>"
-    return f"{out}\n\n{toc}" if toc else out
+    out = ToolOutput(f"<章立て>\n{text}\n</章立て>", omitted=outline.omitted)
+    return _joined(out, toc) if toc else out
 
 
 # 構成を問う質問への注意（specs/031 T16）。検索結果（資料）の中でなく、その外に指示として添える
@@ -242,7 +258,7 @@ def structure_question(question: str) -> bool:
 
 async def _read_structure(
     ctx: RunContext, emit: Emit, index: int, doc: tuple[str, str], question: str = ""
-) -> str:
+) -> ToolOutput | None:
     """構成を問う続けての質問に、前のターンの文書の章立てと目次の節を添える（specs/031 T15）。"""
     sid = f"primer-{index}"
     label, purpose = ROLES["structure"]
@@ -264,12 +280,12 @@ async def _read_structure(
         ),
     )
     ctx.stats.primer_searches += 1
-    text = await _outline_for(ctx, emit, sid, doc, question)
-    if not text:
+    out = await _outline_for(ctx, emit, sid, doc, question)
+    if out is None:
         clock.done("章立てを取得できなかった", {"result": ""})
-        return ""
-    clock.done(f"「{doc[1]}」の章立てと目次を添えた", {"result": text[:2000]})
-    return text
+        return None
+    clock.done(f"「{doc[1]}」の章立てと目次を添えた", {"result": out.text[:2000]})
+    return out
 
 
 async def _search(
@@ -279,7 +295,7 @@ async def _search(
     query: str,
     role: str,
     scope: tuple[list[str], list[str]] | None = None,
-) -> str:
+) -> ToolOutput:
     """scope は（文書 ID, 文書名）。「さっきの資料」のとき、前のターンで引用した文書に絞る。"""
     sid = f"primer-{index}"
     label, purpose = ROLES[role]
@@ -303,21 +319,21 @@ async def _search(
         if scope and scope[0]:
             read = await _read_scoped(ctx, emit, sid, scope) if len(scope[0]) == 1 else None
             if read is not None:
-                text, how = read, "read"
+                out, how = read, "read"
             else:
-                text = await op_search(ctx, emit, sid, query, document_ids=scope[0])
-            if how != "read" and weak_result(text):
+                out = await op_search(ctx, emit, sid, query, document_ids=scope[0])
+            if how != "read" and _weak(out):
                 # 絞った範囲に答えが無いときは、範囲を外して探し直す（記録に残る）
-                text = await op_search(
+                out = await op_search(
                     ctx, emit, sid, query, step_tag="all", label="範囲を外して再検索", running="再検索中"
                 )
         else:
-            text = await op_search(ctx, emit, sid, query)
+            out = await op_search(ctx, emit, sid, query)
     except Exception as e:
         ctx.stats.tool_errors += 1
         clock.done("失敗しました", {"error": str(e)[:300]}, error=True)
-        return f"検索「{query}」は失敗しました（{type(e).__name__}）。"
-    n = len(_BLOCK.findall(text))
+        return ToolOutput(f"検索「{query}」は失敗しました（{type(e).__name__}）。")
+    n = out.materials
     base = distinct_part(query, ctx.question) if role == "understood" else query
     shown = base if len(base) <= 28 else base[:27] + "…"
     if how == "read":
@@ -334,8 +350,8 @@ async def _search(
         )
     found = f"資料 {n} 件" if n else "資料なし"
     summary = f"文書を直接読んだ・{found}" if how == "read" else f"「{shown}」・{found}"
-    clock.done(summary, {"result": text[:2000]})
-    return text
+    clock.done(summary, {"result": out.text[:2000]})
+    return out
 
 
 # 整理したクエリが質問文とほぼ同じなら、同じ資料が返るだけなので検索しない（記録には残す）
@@ -537,15 +553,16 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
         )
         if len(ids) == 1:
             base = u["start"] + len(u["extra"]) * 2 + 1
-            if text := await _read_structure(ctx, emit, base, (ids[0], names[0]), question):
-                texts = [text, *texts]
+            if got := await _read_structure(ctx, emit, base, (ids[0], names[0]), question):
+                texts = [got, *texts]
     ctx.primer_texts = texts
     ctx.primer = Primer(
         kind=u["kind"],
         table=u["table"],
         queries=tuple(u["queries"]),
-        text=merge_results(texts),
-        weak=bool(texts) and all(weak_result(t) for t in texts),
+        text=merge_results([t.text for t in texts]),
+        weak=bool(texts) and all(_weak(t) for t in texts),
+        omitted=any(t.omitted for t in texts),
         note=(note := structure_note(question)) if u["kind"] == "docs" else "",
     )
     if ctx.primer.note:

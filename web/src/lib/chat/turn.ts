@@ -104,7 +104,7 @@ export function toCitationMap(m: ApiCitationMap | undefined | null): CitationMap
 }
 
 // ── 生成中の出典番号 ─────────────────────────────────────────────────
-// サーバは回答の確定時に、番号を「回答に出た順」に振り直す（api/src/arag/agent/citations.py）。
+// サーバは回答の確定時に、番号を「回答に出た順」に振り直す（api/src/arag/agent/domain/citations.py）。
 // 生成中も同じ規則で見せて、完了の瞬間に番号が変わらないようにする。
 
 const MARK_RE = /\[(\d+)\](?!\()/g;
