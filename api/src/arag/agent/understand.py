@@ -33,6 +33,8 @@ class Understanding:
     table: bool = False
     # 「さっきの資料」のように、前のターンの回答が引用した文書を指しているか
     refers_prior: bool = False
+    # 登録した社内システムが持つ今の値・記録を問うているか（社内システムがあるときだけ尋ねる。specs/037 R13）
+    current: bool = False
     # モデルは true と言ったが、質問に「その資料」のような言い方が無いので false にした
     refers_overridden: bool = False
     # モデルは true と言ったが、出力の形の指定（「表にして」）だけなので false にした（specs/026 T28）
@@ -74,6 +76,7 @@ def parse(text: str, question: str) -> Understanding:
         queries=tuple(queries[:MAX_QUERIES]) if kind == "docs" else (),
         table=data.get("table") is True,
         refers_prior=data.get("refers_prior") is True,
+        current=data.get("current") is True,
         raw=text,
     )
 
@@ -136,14 +139,20 @@ def history_text(messages: list[AnyMessage]) -> str:
     return "\n".join(lines)
 
 
-async def understand(model: BaseChatModel | None, history: list[AnyMessage], question: str) -> Understanding:
+async def understand(
+    model: BaseChatModel | None, history: list[AnyMessage], question: str, systems: str = ""
+) -> Understanding:
+    """systems は使える社内システムの説明（McpRun.brief）。あれば、今の値を問う質問かも判断させる。"""
     if model is None:
         return fallback(question, "補助モデルが無い")
+    prompt = load_prompt("agent_understand")
+    if systems:
+        prompt += "\n\n" + load_prompt("agent_understand_systems").replace("{systems}", systems)
     past = history_text(history)
     body = (f"直近の会話:\n{past}\n\n" if past else "") + f"今回の質問:\n{question.strip()}"
     try:
         out = await asyncio.wait_for(
-            model.ainvoke([SystemMessage(load_prompt("agent_understand")), HumanMessage(body)]),
+            model.ainvoke([SystemMessage(prompt), HumanMessage(body)]),
             timeout=TIMEOUT_SEC,
         )
     except Exception as e:

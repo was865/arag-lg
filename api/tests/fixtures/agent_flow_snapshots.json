@@ -127,6 +127,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -457,6 +458,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "kind": "chat",
       "queries": [],
       "raw": "{\"kind\": \"chat\", \"queries\": [], \"table\": false}",
@@ -707,6 +709,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -1494,6 +1497,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -2084,6 +2088,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -2465,6 +2470,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -2944,6 +2950,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -3548,6 +3555,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -4389,6 +4397,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -5114,6 +5123,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -5625,6 +5635,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -6182,6 +6193,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "kind": "docs",
       "queries": [
        "在庫が発注点を下回る部品"
@@ -6881,6 +6893,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "kind": "docs",
       "queries": [
        "在庫が発注点を下回る部品"
@@ -7338,6 +7351,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -8181,6 +8195,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [
@@ -8885,6 +8900,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "kind": "docs",
       "queries": [
        "在庫が発注点を下回る部品"
@@ -9488,6 +9504,7 @@
      "label": "質問の理解",
      "name": "understand",
      "output": {
+      "current": false,
       "error": "補助モデルが無い",
       "kind": "docs",
       "queries": [

@@ -162,7 +162,8 @@ class Draft:
     @cached_property
     def current(self) -> bool:
         """今の値・社内システムにある記録を問う質問か。"""
-        return self.mcp is not None and asks_current(self.question)
+        flagged = self.primer is not None and self.primer.current
+        return self.mcp is not None and asks_current(self.question, flagged)
 
     @cached_property
     def checked(self) -> bool:
