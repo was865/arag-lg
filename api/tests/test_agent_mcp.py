@@ -269,63 +269,29 @@ async def test_past_question_is_not_sent_back() -> None:
 def test_asks_current() -> None:
     from arag.agent.domain.system_questions import asks_current
 
-    # 時を表す言い方は、それだけで今の値の質問
     asked = ["今の在庫は？", "現在の状態", "WO-1107 は終わった？", "まだ未入荷？", "Is it still open?"]
-    asked += ["PM-04 の最近の保全作業", "recent work", "再設定はいつ終わりましたか？"]
-    asked += [
-        "Has the noise on PM-04 been resolved?",
-        "11月16日の在庫の報告のあとで、新しく発注点を下回った部品は？",
-    ]
+    # 社内システムにしか無い記録（仕入単価・作業指示・最近の記録）も確かめさせる
+    asked += ["MS-30 の発注の仕入単価は？", "未着手の作業指示は？", "PM-04 の最近の保全作業", "recent work"]
+    # 「いつ終わりましたか」・英語の「has it been resolved」も進み具合の質問
+    asked += ["再設定はいつ終わりましたか？", "Has the noise on PM-04 been resolved?"]
+    # 時点を言わない在庫・発注点・単価・リードタイム・入出庫・納期遅れは、社内システムの今の値を問う
+    asked += ["軸受 6309ZZ の発注点はいくつですか？", "近接センサ PX-120 はどこにいくつありますか？",
+              "Aster Seals に発注すると、届くまで何日かかりますか？",
+              "軸受 6204ZZ-C3 の標準単価はいくらですか？",
+              "納期を過ぎた発注はありますか？", "納期を過ぎても入荷し終えていない発注を全部挙げてください。",
+              "Oリング P20 の 9 月以降の入出庫を教えてください。", "6206ZZ は今も発注できますか？",
+              "11月16日の在庫の報告のあとで、新しく発注点を下回った部品はいくつありますか？"]  # fmt: skip
     for q in asked:
         assert asks_current(q), q
-    # 何が社内システムの今の値か（在庫・発注点・仕入単価・内線など）は、コードに語を持たず
-    # 補助モデルの判断（flagged）に任せる（specs/037 R13）
-    flagged = ["軸受 6309ZZ の発注点はいくつですか？", "MS-30 の発注の仕入単価は？", "未着手の作業指示は？",
-               "Aster Seals に発注すると、届くまで何日かかりますか？", "納期を過ぎた発注はありますか？",
-               "6206ZZ は発注できますか？"]  # fmt: skip
-    for q in flagged:
-        assert not asks_current(q) and asks_current(q, flagged=True), q
-    # 「今回」「今後」「今年度」は今の値ではない。「〜ています」の「います」は「いま」ではない（hm01）
-    plain = [
-        "今回の会議の決定事項",
-        "今後の予定",
-        "今年度の計画",
-        "記録を何年間保存することになっていますか？",
-    ]
-    plain += ["どのくらいの頻度で行いますか？"]
-    for q in plain:
-        assert not asks_current(q), q
-    # 文書の時点を名指しした質問は、補助モデルが今の値とみなしても文書で答える（台帳・報告・議事録の値）
-    not_asked = ["9 月末の在庫", "10月末の部品台帳で、状態が廃止になっている部品はいくつありますか？",
+    not_asked = ["今回の会議の決定事項", "今後の予定", "今年度の計画", "9 月末の在庫"]
+    # 文書の時点を名指しした質問は文書で答える（台帳・報告・議事録の値）
+    not_asked += ["10月末の部品台帳で、状態が廃止になっている部品はいくつありますか？",
                   "11月16日の在庫の報告で発注点を下回っていた部品は？", "9月30日現在の在庫は？",
                   "SK-300 の 10 月の在庫の動きは？"]  # fmt: skip
+    # 「〜ています」の「います」は「いま」ではない（hm01 で誤って注意を添えていた）
+    not_asked += ["記録を何年間保存することになっていますか？", "どのくらいの頻度で行いますか？"]
     for q in not_asked:
-        assert not asks_current(q, flagged=True), q
-
-
-async def test_system_value_question_without_time_words_follows_the_utility_model() -> None:
-    """時を表す言い方の無い質問（「発注点はいくつ」）は、補助モデルが社内システムの説明を見て判断する（R13）。"""
-    with running() as (url, _):
-        t = spec(url)
-        model = FakeToolModel(
-            messages=script(AIMessage(content="発注点は 10 です[1]。"), AIMessage(content="ok[1]"))
-        )
-        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
-        u = utility('{"kind": "docs", "queries": ["SK-300 の発注点"], "table": false, "current": true}')
-        c = ctx(FakeSearch("部品台帳（9月30日現在）: SK-300 の発注点 10"), mcp=mcp_run(t), utility_model=u)
-        _, custom = await run(agent, c, "SK-300 の発注点はいくつですか？")
-        # 補助モデルには社内システムとツールの説明を見せる
-        seen = "\n".join(str(m.text) for m in u.calls[0])
-        assert (
-            "ERP（資材・購買）" in seen and t.description.splitlines()[0][:20] in seen and '"current"' in seen
-        )
-    understood = [
-        e["step"] for e in custom if e["type"] == "step" and "queries" in (e["step"]["output"] or {})
-    ]
-    assert understood and understood[-1]["output"]["current"] is True
-    assert "今の値の質問" in understood[-1]["summary"]
-    assert "current_note" in systems(custom)
-    assert c.stats.reviewed("current") == 1
+        assert not asks_current(q), q
 
 
 def test_prompt_names_systems_that_do_not_answer() -> None:

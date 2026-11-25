@@ -380,9 +380,7 @@ def _describe(u: Understanding) -> str:
     if u.kind == "chat":
         return "文書を調べる質問ではないと判断"
     head = "・".join(f"「{q}」" for q in u.queries)
-    notes = ("表の集計あり" if u.table else "", "今の値の質問" if u.current else "")
-    tail = "・".join(n for n in notes if n)
-    return f"{head} で検索" + (f"（{tail}）" if tail else "")
+    return f"{head} で検索" + ("（表の集計あり）" if u.table else "")
 
 
 def _drop_similar(emit: Emit, question: str, queries: list[str]) -> list[str]:
@@ -460,7 +458,6 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
                 "queries": list(u.queries),
                 "table": u.table,
                 "refers_prior": u.refers_prior,
-                "current": u.current,
                 "raw": u.raw[:1000],
             }
             | ({"error": u.error} if u.error else {})
@@ -468,13 +465,10 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
             | ({"refers_overridden": True} if u.refers_overridden else {}),
         )
 
-    # 社内システムがあれば、その説明を見せて今の値を問う質問かも判断させる（specs/037 R13）
-    systems = ctx.mcp.brief if ctx.mcp is not None and ctx.mcp.usable else ""
     if first_turn:
         # 質問文での検索は整理を待たずに始める（待ち時間を増やさない）
         u, text = await asyncio.gather(
-            understand(ctx.utility_model, history, question, systems),
-            _search(ctx, emit, 1, question, "question"),
+            understand(ctx.utility_model, history, question), _search(ctx, emit, 1, question, "question")
         )
         finish(u)
         ctx.primer_texts = [text]
@@ -483,7 +477,7 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
         start = 2
     else:
         # 追質問は指示語を含むので、整理したクエリで検索する
-        u = await understand(ctx.utility_model, history, question, systems)
+        u = await understand(ctx.utility_model, history, question)
         finish(u)
         extra = list(u.queries)
         start = 1
@@ -511,7 +505,6 @@ async def understand_node(state: dict[str, Any], runtime: Runtime[RunContext]) -
         "kind": u.kind,
         "queries": list(u.queries),
         "table": u.table,
-        "current": u.current,
         "extra": extra,
         "start": start,
         "scope": {"ids": scope[0], "names": scope[1]},
@@ -566,7 +559,6 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
     ctx.primer = Primer(
         kind=u["kind"],
         table=u["table"],
-        current=bool(u.get("current")),
         queries=tuple(u["queries"]),
         text=merge_results([t.text for t in texts]),
         weak=bool(texts) and all(_weak(t) for t in texts),
@@ -584,12 +576,7 @@ async def primer_search_node(state: dict[str, Any], runtime: Runtime[RunContext]
             input={"asked": question[:300]},
             output={"note": note},
         )
-    if (
-        u["kind"] == "docs"
-        and ctx.mcp is not None
-        and ctx.mcp.usable
-        and asks_current(question, ctx.primer.current)
-    ):
+    if u["kind"] == "docs" and ctx.mcp is not None and ctx.mcp.usable and asks_current(question):
         # 今の値を問う質問: 台帳はある時点の値なので、社内システムで確かめるよう添える（specs/032 R15）
         note = current_note(ctx.mcp.down)
         ctx.primer.note = f"{ctx.primer.note}\n{note}".strip()

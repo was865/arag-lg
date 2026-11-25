@@ -9,20 +9,19 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from arag.agent.context import McpRun
 
-# 今の値・進み具合を問う言い方（文書の値はある時点のもの。specs/032 R15）。
-# 時を表す言葉だけを置く。何が社内システムの今の値か（在庫・発注点・内線など）は、登録した社内システムの
-# 説明を見て補助モデルが判断する（Understanding.current。specs/037 R13）。
+# 今の値・進み具合を問う質問（文書の値はある時点のもの。specs/032 R15）と、
+# 社内システムにしか無い記録（発注の仕入単価・作業指示・最近の記録）を問う質問。
 # 「いま」は「〜ています」の中にも現れるので、語の頭で、後ろが「す・せ・し」でないものだけ
 CURRENT = re.compile(
     r"今(?![回後度年月週日])|(?<![日末])現在|最新|(?<![ぁ-ゖ])いま(?![すせし])|まだ|終わっ|終わりま|終了し|完了し|済ん|進み|"
-    r"未完了|残って|最近|直近|以降|(?:の|た)(?:あと|後)で|"
+    r"未入荷|未完了|残って|最近|直近|以降|(?:の|た)(?:あと|後)で|仕入単価|仕入価格|購入単価|発注残|入荷予定|作業指示|"
     r"\bcurrent(?:ly)?\b|\bnow\b|\blatest\b|\bstill\b|\brecent(?:ly)?\b|"
     r"\bbeen (?:resolved|fixed|completed|closed|done|finished)\b",
     re.IGNORECASE,
 )
 CURRENT_NOTE = (
-    "この質問は今の値・進み具合か、社内システムにある記録（最近の記録・取引の明細など）を問うています。"
-    "<検索結果> の値はある時点の記録（台帳・議事録など。台帳の値と社内システムの明細の値は別のもの）なので、"
+    "この質問は今の値・進み具合か、社内システムにある記録（発注・仕入単価・作業指示・最近の記録など）を問うています。"
+    "<検索結果> の値はある時点の記録（台帳・議事録など。台帳の標準単価は発注の仕入単価ではない）なので、"
     "使える社内システムで確かめてから答え、文書の値と違えば両方を時点付きで書いてください。"
 )
 CURRENT_REVIEW_NOTE = (
@@ -45,8 +44,15 @@ DOWN_NOTE = (
 )
 
 
-# 文書の時点を名指しした質問（「10月末の台帳で」「9月30日現在」「11月16日の報告で」）は文書の値を問うている
-# （specs/034 の評価）。補助モデルが今の値の質問とみなしても、こちらを優先する
+# 時点を言わずに、社内システムが今の値を持つもの（在庫・発注点・単価・リードタイム・入出庫・
+# 納期遅れ・発注の可否）を問う質問。文書の時点を名指ししたとき（「10月末の台帳で」「9月30日現在」
+# 「11月16日の報告で」）は文書の値を問うている（specs/034 の評価）
+RECORD = re.compile(
+    r"在庫|どこにいくつ|発注点|標準単価|単価はいくら|リードタイム|何日かかり|届くまで|入出庫|"
+    r"納期を過ぎ|納期が過ぎ|し終えて(い)?ない|発注でき|内線|"
+    r"\bin stock\b|\breorder\b|\blead time\b|\boverdue\b",
+    re.IGNORECASE,
+)
 DOC_POINT = re.compile(
     r"\d+\s*月\s*(\d+\s*日)?\s*(末|現在|時点|の)|(台帳|報告|議事録|手引き|資料|評価|月報|規程|文書)(で|では|に|には|によると)|"
     r"\bas of\b|\bin the (ledger|report|minutes)\b",
@@ -54,14 +60,10 @@ DOC_POINT = re.compile(
 )
 
 
-def asks_current(question: str, flagged: bool = False) -> bool:
-    """今の値・社内システムにある記録を問う質問か。
-
-    flagged は補助モデルの判断（登録した社内システムが持つ今の値・記録を、時点を言わずに問うているか）。
-    """
+def asks_current(question: str) -> bool:
     if CURRENT.search(question):
         return True
-    return flagged and not DOC_POINT.search(question)
+    return bool(RECORD.search(question)) and not DOC_POINT.search(question)
 
 
 # 質問の内容語（漢字・カタカナの 2 字以上の並び、英数字の語）

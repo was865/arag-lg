@@ -71,8 +71,6 @@ class Primer:
     note: str = ""
     # 検索結果に省略した部分がある（章立ての中略など。省略の読み残しの確認に使う。specs/037 R7）
     omitted: bool = False
-    # 補助モデルの判断: 登録した社内システムが持つ今の値・記録を問う質問（specs/037 R13）
-    current: bool = False
 
 
 @dataclass
@@ -133,19 +131,6 @@ class McpRun:
         """使える社内システムと説明の箇条書き（プロンプト・差し戻しに出す）。"""
         seen = {t.server.label: t.server.description for t in self.usable.values()}
         return "\n".join(f"- {k}: {v}" if v else f"- {k}" for k, v in seen.items())
-
-    @property
-    def brief(self) -> str:
-        """使える社内システムとツールの説明（各ツールは説明の 1 行目）。質問の整理に見せる。"""
-        lines: list[str] = []
-        for label in self.systems:
-            tools = [t for t in self.usable.values() if t.server.label == label]
-            desc = tools[0].server.description
-            lines.append(f"- {label}: {desc}" if desc else f"- {label}")
-            lines += [
-                f"  - {t.description.strip().splitlines()[0][:120]}" for t in tools if t.description.strip()
-            ]
-        return "\n".join(lines)
 
     @property
     def down(self) -> list[str]:
