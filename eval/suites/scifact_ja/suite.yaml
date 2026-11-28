@@ -2,8 +2,8 @@
 adapter: translate
 base: beir_scifact
 to: ja
-# 訳: GPU 機の vLLM（Qwen3-8B-AWQ）。DeepSeek を使うときは model を deepseek:deepseek-v4-pro にし base_url を消す
-model: openai:qwen3-8b
-base_url: http://100.118.110.25:8090/v1
+# 訳: GPU 機の vLLM（Gemma 4 12B。2026-11-28 に Qwen3-8B から替えた）。DeepSeek を使うときは model を deepseek:deepseek-v4-pro にし base_url を消す
+model: openai:gemma4-12b
+base_url: http://100.118.110.25:8093/v1
 model_kwargs: {temperature: 0.2, extra_body: {chat_template_kwargs: {enable_thinking: false}}}
 thresholds: {}

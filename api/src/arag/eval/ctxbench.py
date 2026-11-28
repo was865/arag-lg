@@ -1,9 +1,9 @@
 """文脈付与モデルの比較（所要時間・失敗率・出力の並べ表示）。DB は書き換えない。
 
 uv run python -m arag.eval.ctxbench --suite agentic_rag_demo beir_scifact jqara --docs 10 \\
-    --model openai:qwen3-8b --base-url http://100.118.110.25:8090/v1 \\
+    --model openai:gemma4-12b --base-url http://100.118.110.25:8093/v1 \\
     --kwargs '{"temperature": 0, "extra_body": {"chat_template_kwargs": {"enable_thinking": false}}}' \\
-    --out ../eval/.reports/ctxbench/qwen3-8b.yaml
+    --out ../eval/.reports/ctxbench/gemma4-12b.yaml
 
 既存の文脈（context_source = llm のもの）は「基準」として並べる。
 """

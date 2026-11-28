@@ -93,7 +93,7 @@ make up-mock        # 模擬の社内システム（MCP）を起動して登録�
 ## GPU 機（`compose.gpu.yaml`）
 
 - サービスとポート: `tei-embed` :8081・`tei-rerank-ruri` :8084・`docling-serve` :5001・`gemma` :8093（`--profile llm`。Gemma 4 12B が会話・補助・文脈付与・図の説明を 1 つで兼ねる。2026-11-13 から既定）。
-- 以前の構成（`vllm` :8090 Qwen3-8B は `--profile qwen`、`vllm-vl` :8091 Qwen3-VL は `--profile qwen-vl`）は比較用。`gemma` と同時には載らない（24GB を超える）。この 2 つを同時に起動すると CUDA graph の取得で止まるので、`vllm-vl` は entrypoint で `vllm` の `/health` を待つ（`depends_on` は `docker compose up` でしか効かない。この待ちを外さない）。
+- 以前の構成（Qwen3-8B :8090・Qwen3-VL :8091）は 2026-11-28 に外した。比べ直すときは git の履歴から戻す。
 - モデルを替えるときは harukaze_mix（69 題）で比べてから決める（`eval/.reports/`、手順は `docs/operations.md`）。Qwen3.8-27B の INT4 は 24GB では余裕が無く、長い入力で止まったので見送った（2026-11-12）。
 - VRAM 24GB に全部を同居させている。KV の量（`--kv-cache-memory-bytes`）を増やす前に `nvidia-smi` で空きを確かめる（超えても OOM にならず、WDDM が追い出して静かに遅くなる）。
 - 止まったときの戻し方は `docs/operations.md`。

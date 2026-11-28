@@ -8,7 +8,7 @@
 # 役割ごとに必要なサービスだけ起動できる（specs/016）。例: 埋め込みと rerank だけ
 #   docker compose -f compose.gpu.yaml up -d tei-embed tei-rerank-ruri
 # 会話・文脈付与・図の説明は Gemma 4 12B の 1 つで兼ねる（--profile llm、:8093。2026-11-13 から既定）。
-# 以前の構成（Qwen3-8B :8090 と Qwen3-VL :8091）は --profile qwen / --profile qwen-vl で比較用に残す。
+# 以前の構成（Qwen3-8B :8090・Qwen3-VL :8091）は 2026-11-28 に外した（定義は git の履歴にある）。
 # 比較用（ruri-v3-310m 埋め込み :8083・bge-reranker-v2-m3 :8082）は profile で別起動:
 #   docker compose -f compose.gpu.yaml --profile compare up -d
 name: arag-gpu
@@ -92,93 +92,6 @@ services:
       interval: 10s
       timeout: 5s
       start_period: 1200s
-
-  # ── 以前の構成（比較用）。gemma と同時には載らない（24GB を超える）ので、gemma を止めてから起動する ──
-  # 文脈付与の LLM（開発・評価用、specs/004-retrieval report §5）。profile で別起動:
-  #   docker compose -f compose.gpu.yaml --profile qwen up -d
-  # WSL2 では --gpu-memory-utilization が KV を負に見積もるので KV の量を直接指定する。
-  # ただし起動時の空き容量チェックは --gpu-memory-utilization（既定 0.92）で行われ、他と同居すると必ず失敗するので低くしておく
-  # （実際の確保量には効かない。specs/016 vlm-compare.md）
-  vllm:
-    <<: *gpu
-    profiles: [qwen]
-    image: vllm/vllm-openai:v0.32.0
-    command:
-      - "--model=Qwen/Qwen3-8B-AWQ"
-      - "--served-model-name=qwen3-8b"
-      - "--max-model-len=16384"
-      - "--kv-cache-memory-bytes=2600M"
-      - "--gpu-memory-utilization=${LLM_GPU_UTIL:-0.3}"
-      - "--enable-prefix-caching"
-      # エージェントのツール呼び出し（specs/005-agent）
-      - "--enable-auto-tool-choice"
-      - "--tool-call-parser=hermes"
-      # 思考（enable_thinking: true）を本文と別の欄（reasoning）で返す。思考を切ったときは本文だけが返る
-      - "--reasoning-parser=qwen3"
-    ports: ["8090:8000"]
-    ipc: host
-    volumes: [hf-cache:/root/.cache/huggingface]
-    restart: unless-stopped
-    # vllm-vl が起動完了を待つための目印（2 つを同時に起動すると CUDA graph の取得を取り合い 15 分以上止まる。
-    # 待つのは vllm-vl の entrypoint。depends_on だけでは Docker の自動再起動・画面からの開始で効かない）
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
-      timeout: 5s
-      start_period: 1200s
-
-  # 図の説明（specs/016 R3）。入庫のときだけ必要なので profile で別起動する:
-  #   docker compose -f compose.gpu.yaml --profile qwen-vl up -d
-  # 既定は Qwen3-VL-8B-Instruct-FP8（Apache-2.0）。Qwen2.5-VL-7B-AWQ より図の説明が詳しく速い（specs/016 vlm-compare.md）。
-  # Mac 側の .env: ARAG_VLM_MODEL=openai:qwen3-vl / ARAG_VLM_BASE_URL=http://<GPU機>:8091/v1
-  # 24GB に TEI・vllm（llm）・docling と同居させるので文脈 8192・KV 1500M に固定する（16384 は KV 不足で起動しない）。
-  # 24GB を超えても OOM にならず WDDM が他のメモリを追い出して静かに遅くなるので、KV は必要最小にする。
-  # Qwen3-VL だけで会話も兼ねる構成（vllm を止める）: VLM_MAX_LEN=32768 VLM_KV_BYTES=4700M
-  vllm-vl:
-    <<: *gpu
-    profiles: [qwen-vl]
-    # llm と一緒に起動するときは vllm の起動完了を待つ。vlm だけ（単一モデル構成）なら待たない
-    depends_on:
-      vllm: { condition: service_healthy, required: false }
-    image: vllm/vllm-openai:v0.32.0
-    # depends_on が効くのは `docker compose up` だけで、Docker Engine の自動再起動（restart: unless-stopped）や
-    # Docker Desktop の画面の一括「開始」では 2 つが同時に起動し、CUDA graph の取得で止まる（2026-11-11・11-12 に実際に起きた）。
-    # どこから起動しても順番になるよう、コンテナの中で vllm の /health を待ってから起動する。
-    # - vllm の名前が引けるまで VLM_WAIT_DNS_SECONDS（既定 60 秒）待つ（同時起動では vllm-vl が先に立ち上がることがある）。
-    #   引けなければ vllm は動いていない（vlm だけの構成）とみなして、すぐ起動する。
-    # - 引けたら /health が 200 を返すまで、最大 VLM_WAIT_SECONDS（既定 1500 秒）待つ。待ちきれなければそのまま起動する。
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        dns_end=$$(( $$(date +%s) + $${VLM_WAIT_DNS_SECONDS:-60} ))
-        until getent hosts vllm >/dev/null 2>&1; do
-          if [ "$$(date +%s)" -ge "$$dns_end" ]; then echo "[wait] vllm が見つからないので待たずに起動する"; exec vllm serve "$$@"; fi
-          sleep 2
-        done
-        echo "[wait] vllm の起動完了（/health）を待つ"
-        end=$$(( $$(date +%s) + $${VLM_WAIT_SECONDS:-1500} ))
-        until python3 -c "import urllib.request; urllib.request.urlopen('http://vllm:8000/health', timeout=3)" 2>/dev/null; do
-          if [ "$$(date +%s)" -ge "$$end" ]; then echo "[wait] 待ちきれないので起動する"; break; fi
-          sleep 5
-        done
-        echo "[wait] vllm が起動した。vllm-vl を起動する"
-        exec vllm serve "$$@"
-      - vllm-vl
-    command:
-      - "--model=${VLM_HF_MODEL:-Qwen/Qwen3-VL-8B-Instruct-FP8}"
-      - "--served-model-name=${VLM_SERVED_NAME:-qwen3-vl}"
-      - "--max-model-len=${VLM_MAX_LEN:-8192}"
-      - "--kv-cache-memory-bytes=${VLM_KV_BYTES:-1500M}"
-      - "--gpu-memory-utilization=${VLM_GPU_UTIL:-0.3}"
-      - "--limit-mm-per-prompt={\"image\": 1}"
-      # 1 つのモデルで会話も兼ねる構成に備えてツール呼び出しを有効にする
-      - "--enable-auto-tool-choice"
-      - "--tool-call-parser=hermes"
-    ports: ["8091:8000"]
-    ipc: host
-    volumes: [hf-cache:/root/.cache/huggingface]
-    restart: unless-stopped
 
   # 解析（specs/003-ingestion G1）。cu130 はドライバ CUDA 13.x 以上が必要（GPU 機は 13.4）
   docling-serve:

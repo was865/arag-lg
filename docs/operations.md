@@ -43,21 +43,10 @@ docker compose -f compose.gpu.yaml --profile llm up -d
 | tei-rerank-ruri | 8084 | `curl http://<GPU機>:8084/health` |
 | docling-serve | 5001 | `curl http://<GPU機>:5001/health` |
 | gemma（会話・補助・文脈付与・図の説明。Gemma 4 12B） | 8093 | `curl http://<GPU機>:8093/health`、`/v1/models` |
-| vllm / vllm-vl（以前の Qwen3-8B / Qwen3-VL。比較用、`--profile qwen` / `qwen-vl`） | 8090 / 8091 | 同上。gemma を止めてから起動する |
-
-### vLLM が起動しない・止まった（以前の構成で 2 つを起動するとき）
-
-症状: `/health` が応答しない、`nvidia-smi` で GPU 100% のまま、ログが CUDA graph の取得で止まっている。原因はたいてい 2 つの vLLM の同時起動。
-
-1. `vllm-vl`・`vllm` を止める（`docker compose -f compose.gpu.yaml stop vllm-vl vllm`）。
-2. `vllm` だけ起動し、8090 の `/health` が 200 になるまで待つ（初回はモデルの取得で数分）。
-3. `vllm-vl` を起動する。
-
-`vllm-vl` の entrypoint は `vllm` の `/health` を待つので、普段は順番を気にしなくてよい（ログに `[wait]` が出る）。
 
 ### VRAM
 
-24GB に TEI・docling・2 つの vLLM を同居させている。`nvidia-smi` で 24GB の近くまで使っていたら、`VLM_KV_BYTES`・`--kv-cache-memory-bytes` を増やさない。超えても OOM にならず、共有メモリに追い出されて静かに遅くなる。
+24GB に TEI・docling・gemma を同居させている。`nvidia-smi` で 24GB の近くまで使っていたら、`--kv-cache-memory-bytes`（`GEMMA_KV_BYTES`）を増やさない。超えても OOM にならず、共有メモリに追い出されて静かに遅くなる。
 
 ### コードの更新
 
