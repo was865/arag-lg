@@ -5,6 +5,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -63,20 +64,70 @@ class ToolSpec:
         return agent_tool_name(self.server.name, self.name)
 
 
+def definition_hash(name: str, description: str, input_schema: dict[str, Any], read_only: bool) -> str:
+    """ツールの定義の指紋（specs/038 R1）。移行 0011 にも同じ式がある。"""
+    raw = json.dumps(
+        {"name": name, "description": description, "input_schema": input_schema, "read_only": read_only},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def approve(tool: McpTool, by: str, side_effect: str | None) -> None:
+    """今の定義を審査した定義として固定する（038 R2）。"""
+    tool.approved_hash = tool.def_hash
+    tool.approved_description = tool.description
+    tool.approved_input_schema = dict(tool.input_schema or {})
+    tool.approved_read_only = tool.read_only
+    tool.approved_by = by
+    tool.approved_at = datetime.now(UTC)
+    tool.side_effect = side_effect
+
+
+async def _enabled_rows(session: AsyncSession) -> list[tuple[McpServer, McpTool]]:
+    rows = await session.execute(
+        select(McpServer, McpTool)
+        .join(McpTool, McpTool.server_id == McpServer.id)
+        .where(McpServer.enabled.is_(True), McpTool.enabled.is_(True))
+        .order_by(McpServer.name, McpTool.name)
+    )
+    return [(srv, tool) for srv, tool in rows.all()]
+
+
 async def load_tools(session: AsyncSession) -> list[ToolSpec]:
-    """有効なサーバの、選ばれた読み取り専用のツール（エージェントに組み込む順）。"""
-    rows = (
-        await session.execute(
-            select(McpServer, McpTool)
-            .join(McpTool, McpTool.server_id == McpServer.id)
-            .where(McpServer.enabled.is_(True), McpTool.enabled.is_(True), McpTool.read_only.is_(True))
-            .order_by(McpServer.name, McpTool.name)
+    """有効なサーバの、審査済みで読み取りの、使うと選ばれたツール（エージェントに組み込む順。038 R8）。
+
+    説明は管理者の書き換えがあればそれ（R12）。
+    """
+    return [
+        ToolSpec(
+            server_spec(srv),
+            tool.name,
+            tool.model_description or tool.description,
+            dict(tool.input_schema or {}),
         )
-    ).all()
-    out = []
-    for srv, tool in rows:
-        out.append(ToolSpec(server_spec(srv), tool.name, tool.description, dict(tool.input_schema or {})))
-    return out
+        for srv, tool in await _enabled_rows(session)
+        if tool.usable
+    ]
+
+
+@dataclass(frozen=True)
+class HeldTool:
+    """使うと選ばれているのに、審査の後に定義が変わって渡さないツール（038 R4・R18）。"""
+
+    server: str
+    label: str
+    name: str
+
+
+async def load_held(session: AsyncSession) -> list[HeldTool]:
+    return [
+        HeldTool(srv.name, srv.label, tool.name)
+        for srv, tool in await _enabled_rows(session)
+        if tool.status == "changed"
+    ]
 
 
 def server_spec(srv: McpServer) -> ServerSpec:

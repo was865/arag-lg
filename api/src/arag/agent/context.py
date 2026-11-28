@@ -115,6 +115,8 @@ class McpRun:
     usable: dict[str, ToolSpec] = field(default_factory=dict)
     # 外したサーバ（名前 → (種類, 表示名, 理由)）。最初のモデル呼び出しで記録する
     removed: dict[str, tuple[str, str, str]] = field(default_factory=dict)
+    # 定義が変わって渡さなかったツール（サーバ名 → (表示名, ツール名の一覧)。specs/038 R18）
+    held: dict[str, tuple[str, list[str]]] = field(default_factory=dict)
     calls: int = 0
     recorded: bool = False
     # 呼び出しで分かった死活を知らせる（サーバ名・理由（None なら応答あり）・ミリ秒）。

@@ -13,7 +13,7 @@ from arag.db.models import Department, McpServer, McpServerShare, McpTool
 from arag.deps import CtxDep, get_settings
 from arag.errors import ApiError
 from arag.mcp.client import Caller
-from arag.mcp.registry import SERVER_NAME, department_names
+from arag.mcp.registry import SERVER_NAME, approve, department_names
 from arag.mcp.service import refresh_server
 from arag.secrets import secret_box
 from arag.settings import Settings
@@ -67,12 +67,28 @@ class McpServerPatch(BaseModel):
     enabled: bool | None = None
 
 
+ToolStatus = Literal["unreviewed", "approved", "changed"]
+SideEffect = Literal["read", "write"]
+
+
 class McpToolOut(BaseModel):
     name: str
-    description: str
-    read_only: bool
-    enabled: bool
+    description: str = Field(description="サーバの今の説明")
+    read_only_hint: bool = Field(description="サーバの読み取り専用の印（readOnlyHint）。参考")
+    enabled: bool = Field(description="管理者の「使う」の選択")
+    usable: bool = Field(description="エージェントに渡すか（審査済み・読み取り・使う）")
     input_schema: dict[str, object]
+    fetched_at: datetime
+    status: ToolStatus
+    def_hash: str
+    side_effect: SideEffect | None
+    model_description: str | None
+    approved_hash: str | None
+    approved_description: str | None
+    approved_input_schema: dict[str, object] | None
+    approved_read_only: bool | None
+    approved_by: str | None
+    approved_at: datetime | None
 
 
 class McpShareRow(BaseModel):
@@ -93,6 +109,7 @@ class McpServerOut(BaseModel):
     enabled: bool
     checked_at: datetime | None
     check_error: str | None
+    pending_review: int = Field(description="審査待ち（未審査と定義が変わった）のツールの数")
     tools: list[McpToolOut]
     shares: list[McpShareRow]
 
@@ -107,6 +124,14 @@ class McpToolsIn(BaseModel):
     enabled: list[str] = Field(max_length=200)
 
 
+class McpToolReviewIn(BaseModel):
+    tool: str = Field(min_length=1, max_length=64)
+    def_hash: str = Field(description="管理者が見ていた定義の指紋（変わっていれば 409）")
+    side_effect: SideEffect
+    model_description: str | None = Field(default=None, max_length=2000)
+    enabled: bool
+
+
 class McpSharesIn(BaseModel):
     shares: list[McpShareRow] = Field(max_length=200)
 
@@ -114,11 +139,33 @@ class McpSharesIn(BaseModel):
 # --- 一覧 ---
 
 
+def _tool_out(t: McpTool) -> McpToolOut:
+    return McpToolOut(
+        name=t.name,
+        description=t.description,
+        read_only_hint=t.read_only,
+        enabled=t.enabled,
+        usable=t.usable,
+        input_schema=t.input_schema,
+        fetched_at=t.fetched_at,
+        status=t.status,  # type: ignore[arg-type]
+        def_hash=t.def_hash,
+        side_effect=t.side_effect,  # type: ignore[arg-type]
+        model_description=t.model_description,
+        approved_hash=t.approved_hash,
+        approved_description=t.approved_description,
+        approved_input_schema=t.approved_input_schema,
+        approved_read_only=t.approved_read_only,
+        approved_by=t.approved_by,
+        approved_at=t.approved_at,
+    )
+
+
 async def _server_out(ctx: CtxDep, srv: McpServer) -> McpServerOut:
     s = ctx.session
-    tools = (
-        await s.execute(select(McpTool).where(McpTool.server_id == srv.id).order_by(McpTool.name))
-    ).scalars()
+    tools = list(
+        (await s.execute(select(McpTool).where(McpTool.server_id == srv.id).order_by(McpTool.name))).scalars()
+    )
     shares = list(
         (await s.execute(select(McpServerShare).where(McpServerShare.server_id == srv.id))).scalars()
     )
@@ -142,16 +189,8 @@ async def _server_out(ctx: CtxDep, srv: McpServer) -> McpServerOut:
         enabled=srv.enabled,
         checked_at=srv.checked_at,
         check_error=srv.check_error,
-        tools=[
-            McpToolOut(
-                name=t.name,
-                description=t.description,
-                read_only=t.read_only,
-                enabled=t.enabled,
-                input_schema=t.input_schema,
-            )
-            for t in tools
-        ],
+        pending_review=sum(t.status != "approved" for t in tools),
+        tools=[_tool_out(t) for t in tools],
         shares=[
             McpShareRow(
                 subject_type=r.subject_type,  # type: ignore[arg-type]
@@ -284,7 +323,17 @@ async def _tools(ctx: CtxDep, server_id: uuid.UUID) -> list[McpTool]:
 
 async def _refresh(ctx: CtxDep, settings: Settings, srv: McpServer) -> None:
     caller = Caller(ctx.principal.user_id, await department_names(ctx.session, ctx.principal.user_id))
-    await refresh_server(ctx.session, settings, srv, caller)
+    changed = await refresh_server(ctx.session, settings, srv, caller)
+    if changed:  # 審査の後に定義が変わった（specs/038 R4）。審査し直すまでエージェントに渡さない
+        await ctx.audit(
+            AuditEvent(
+                action="mcp.tool.changed",
+                resource_type="mcp_server",
+                resource_id=str(srv.id),
+                result="error",
+                detail={"name": srv.name, "label": srv.label, "tools": changed},
+            )
+        )
 
 
 @router.post("/v1/admin/mcp-servers/{server_id}/refresh", response_model=McpServerOut)
@@ -317,12 +366,15 @@ async def set_tools(ctx: CtxDep, server_id: uuid.UUID, body: McpToolsIn) -> McpS
     unknown = sorted(want - set(tools))
     if unknown:
         raise ApiError(422, "unknown_tool", f"このサーバに無いツールです: {', '.join(unknown)}")
-    writable = sorted(n for n in want if not tools[n].read_only)
+    # 検査するのは新しく「使う」にするものだけ（定義が変わって止まっているツールの選択は残せる。specs/038 R4）
+    newly = {n for n in want if not tools[n].enabled}
+    pending = sorted(n for n in newly if tools[n].status != "approved")
+    if pending:
+        raise ApiError(422, "not_reviewed", f"審査していないツールは使えません: {', '.join(pending)}")
+    writable = sorted(n for n in newly if tools[n].side_effect != "read")
     if writable:
         raise ApiError(
-            422,
-            "not_read_only",
-            f"読み取り専用の印（readOnlyHint）が無いツールは使えません: {', '.join(writable)}",
+            422, "not_read", f"副作用が「読み取り」でないツールは使えません: {', '.join(writable)}"
         )
     for name, t in tools.items():
         t.enabled = name in want
@@ -332,6 +384,47 @@ async def set_tools(ctx: CtxDep, server_id: uuid.UUID, body: McpToolsIn) -> McpS
             resource_type="mcp_server",
             resource_id=str(srv.id),
             detail={"name": srv.name, "label": srv.label, "enabled": sorted(want)},
+        )
+    )
+    await ctx.session.commit()
+    return await _server_out(ctx, srv)
+
+
+@router.post("/v1/admin/mcp-servers/{server_id}/tools/review", response_model=McpServerOut)
+async def review_tool(ctx: CtxDep, server_id: uuid.UUID, body: McpToolReviewIn) -> McpServerOut:
+    """今の定義を審査する（specs/038 R7〜R11）。見ていた定義から変わっていれば受け付けない。"""
+    _require_admin(ctx)
+    srv = await _get(ctx, server_id)
+    tool = await ctx.session.get(McpTool, (srv.id, body.tool))
+    if tool is None:
+        raise ApiError(404, "not_found", f"このサーバに無いツールです: {body.tool}")
+    if tool.def_hash != body.def_hash:
+        raise ApiError(
+            409, "definition_moved", "見ている間にツールの定義が変わりました。読み直してから審査してください"
+        )
+    if body.enabled and body.side_effect != "read":
+        raise ApiError(422, "not_read", "副作用が「読み取り」でないツールは使えません")
+    before = tool.approved_hash
+    approve(tool, ctx.principal.user_id, body.side_effect)
+    text = (body.model_description or "").strip()
+    tool.model_description = text or None
+    tool.enabled = body.enabled
+    await ctx.audit(
+        AuditEvent(
+            action="mcp.tool.review",
+            resource_type="mcp_server",
+            resource_id=str(srv.id),
+            detail={
+                "name": srv.name,
+                "label": srv.label,
+                "tool": tool.name,
+                "side_effect": body.side_effect,
+                "hash": tool.def_hash,
+                "previous_hash": before,
+                "read_only_hint": tool.read_only,
+                "description_overridden": tool.model_description is not None,
+                "enabled": tool.enabled,
+            },
         )
     )
     await ctx.session.commit()

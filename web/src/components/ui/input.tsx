@@ -95,7 +95,8 @@ export function Field({
   className?: string;
 }) {
   return (
-    <label className={cn("grid gap-1.5", className)}>
+    // content-start: 横に並べた隣の Field が高い（注記がある）ときも、行を伸ばさず入力欄の高さをそろえる
+    <label className={cn("grid content-start gap-1.5", className)}>
       <span className="text-footnote font-medium text-fg-2">{label}</span>
       {children}
       {hint && <span className="text-caption text-muted">{hint}</span>}

@@ -39,7 +39,7 @@ from arag.auth.principal import Principal
 from arag.db.models import Citation, Message, Run, Thread
 from arag.logging import get_logger
 from arag.mcp.live import put_health
-from arag.mcp.registry import ToolSpec, catalog_key, load_tools
+from arag.mcp.registry import ToolSpec, catalog_key, load_held, load_tools
 from arag.secrets import SecretBox
 from arag.storage import Storage
 
@@ -235,6 +235,7 @@ async def execute_run(
                         max_calls=deps.mcp.max_calls,
                         max_rows=deps.mcp.max_rows,
                         max_chars=deps.mcp.max_chars,
+                        held=await load_held(s),
                     )
             except Exception:
                 # 社内システムの準備に失敗しても、文書だけで答える

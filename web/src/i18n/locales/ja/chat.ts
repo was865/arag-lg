@@ -336,6 +336,7 @@ export const chat = {
     systems: "使える社内システム",
     down: "応答しない社内システム",
     tool: "ツール",
+    held_tools: "定義が変わり渡さなかったツール",
     args: "引数",
     max_calls: "呼び出しの上限",
     timeout_sec: "待つ上限（秒）",

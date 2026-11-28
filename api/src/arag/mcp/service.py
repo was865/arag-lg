@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from arag.db.models import McpServer, McpServerShare, McpTool
 from arag.mcp.client import Caller, McpError, auth_headers, list_tools
-from arag.mcp.registry import server_spec
+from arag.mcp.registry import approve, definition_hash, server_spec
 from arag.secrets import secret_box
 from arag.settings import Settings
 
@@ -22,13 +22,15 @@ MOCK_SYSTEMS = [
 
 async def refresh_server(
     session: AsyncSession, settings: Settings, srv: McpServer, caller: Caller, *, accept_changes: bool = False
-) -> None:
-    """ツールの一覧を取り直す。新しい読み取り専用のツールは「使う」にする。消えたツールは外す（R9）。
+) -> list[str]:
+    """ツールの一覧を取り直し、定義の指紋を付け直す（specs/038 R4）。
 
-    取れなければ check_error に理由を残し、ツールの一覧は変えない。
-    使っているツールの説明か入力の型が変わっていたら、そのツールを止めて check_error に書く
-    （道具の説明の差し替えへの備え。decisions.md §17）。
-    登録の CLI（accept_changes）は管理者の確認として受け入れる。
+    審査の後に定義が変わったツールの名前を返す。
+
+    取れなければ check_error に理由を残し、ツールの一覧は変えない。消えたツールは外す。
+    新しいツールは未審査で、エージェントに渡さない（038 R5）。変わったツールは「使う」の選択を残したまま、
+    審査し直すまで渡さない（状態は指紋の比較で決まる）。
+    登録の CLI（accept_changes）は管理者の確認として、取得した定義を審査済みにする（R6）。
     """
     srv.checked_at = datetime.now(UTC)
     try:
@@ -40,7 +42,7 @@ async def refresh_server(
         )
     except McpError as e:
         srv.check_error = f"{type(e).__name__}: {e}"
-        return
+        return []
     srv.check_error = None
     changed: list[str] = []
     old = {
@@ -51,32 +53,25 @@ async def refresh_server(
     for name, row in old.items():
         if name not in names:
             await session.delete(row)
+    now = datetime.now(UTC)
     for t in found:
+        h = definition_hash(t.name, t.description, t.input_schema, t.read_only)
         cur = old.get(t.name)
         if cur is None:
-            session.add(
-                McpTool(
-                    server_id=srv.id,
-                    name=t.name,
-                    description=t.description,
-                    input_schema=t.input_schema,
-                    read_only=t.read_only,
-                    enabled=t.read_only,
-                )
-            )
-        else:
-            moved = cur.description != t.description or cur.input_schema != t.input_schema
-            if moved and cur.enabled and not accept_changes:
-                changed.append(t.name)
-                cur.enabled = False
-            cur.description, cur.input_schema, cur.read_only = t.description, t.input_schema, t.read_only
-            cur.enabled = cur.enabled and t.read_only
-            cur.fetched_at = datetime.now(UTC)
-    if changed:
-        listed = ", ".join(changed)
-        srv.check_error = (
-            f"説明か入力の型が変わったツールを止めました: {listed}（確かめてから「使う」に戻してください）"
-        )
+            cur = McpTool(server_id=srv.id, name=t.name, enabled=False)
+            session.add(cur)
+        elif cur.approved_hash is not None and cur.approved_hash == cur.def_hash and h != cur.def_hash:
+            changed.append(t.name)
+        cur.description, cur.input_schema, cur.read_only = t.description, t.input_schema, t.read_only
+        cur.def_hash, cur.fetched_at = h, now
+        # CLI: 審査したことのあるツールは定義の変化を受け入れ、
+        # 新しいツールは印のあるものだけ読み取りで審査する
+        if accept_changes and cur.status != "approved" and (cur.approved_hash is not None or t.read_only):
+            first = cur.approved_hash is None
+            approve(cur, caller.user_id, cur.side_effect or "read")
+            if first:
+                cur.enabled = True
+    return [] if accept_changes else changed
 
 
 async def register_mock(session: AsyncSession, settings: Settings, base_url: str) -> list[McpServer]:

@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * 社内システム（MCP サーバ）の登録と、エージェントに使わせるツール・使える部門の管理（specs/032 R8〜R11）。
- * 書き込みのツール（readOnlyHint の無いもの）は選べない。変更は次の質問から効く。
+ * 社内システム（MCP サーバ）の登録と使える部門の管理（specs/032 R8〜R11）。
+ * ツールの審査と選択は「ツール」の画面（specs/038）。変更は次の質問から効く。
  */
 import { ListSkeleton } from "@/components/ui/skeleton";
-import createClient from "openapi-fetch";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
+import { SystemsNav } from "@/components/admin/systems-nav";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/feedback/toast-provider";
 import { Icon } from "@/components/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -17,18 +19,17 @@ import { Field, inputClass } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useDepartments } from "@/hooks/use-departments";
-import type { components, paths } from "@/lib/api/schema";
+import { apiErrorMessage as errMessage, mcpClient as client, useMcpAdmin } from "@/hooks/use-mcp-admin";
+import type { components } from "@/lib/api/schema";
 import { formatLocalMinute } from "@/lib/datetime";
 import { SYSTEM_META } from "@/lib/file-types";
 import { cn } from "@/lib/utils";
 
-type Overview = components["schemas"]["McpAdminOut"];
 type Server = components["schemas"]["McpServerOut"];
 type ShareRow = components["schemas"]["McpShareRow"];
 type Stats = components["schemas"]["McpStatsOut"];
 type AuthKind = "none" | "identity" | "bearer";
 
-const client = createClient<paths>({ baseUrl: "/api" });
 const ghostBtn = buttonVariants({ variant: "ghost", size: "sm" });
 
 const AUTH_LABEL: Record<AuthKind, string> = {
@@ -36,11 +37,6 @@ const AUTH_LABEL: Record<AuthKind, string> = {
   bearer: "固定のトークン",
   none: "認証なし",
 };
-
-function errMessage(e: unknown, fallback: string): string {
-  const m = (e as { error?: { message?: string } } | undefined)?.error?.message;
-  return m ?? fallback;
-}
 
 /** 使える範囲の 1 行の表示（全員・部門名）。 */
 export function sharesLabel(shares: ShareRow[]): string {
@@ -52,29 +48,12 @@ export function sharesLabel(shares: ShareRow[]): string {
 export function SystemsView() {
   const push = useToast();
   const { confirm, dialog } = useConfirm();
-  const [data, setData] = useState<Overview | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, reload: refresh } = useMcpAdmin();
   const [editing, setEditing] = useState<Server | "new" | null>(null);
-  const [tools, setTools] = useState<Server | null>(null);
   const [shares, setShares] = useState<Server | null>(null);
   const [stats, setStats] = useState<Server | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
-  const [reload, setReload] = useState(0);
-  const refresh = () => setReload((n) => n + 1);
-
-  useEffect(() => {
-    let alive = true;
-    client.GET("/v1/admin/mcp-servers").then(({ data: d, error: e }) => {
-      if (!alive) return;
-      if (d) {
-        setData(d);
-        setError(null);
-      } else setError(errMessage(e, "一覧を読み込めませんでした"));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [reload]);
+  const pending = data?.servers.reduce((n, s) => n + s.pending_review, 0) ?? 0;
 
   const check = async (s: Server) => {
     setChecking(s.id);
@@ -84,6 +63,8 @@ export function SystemsView() {
     setChecking(null);
     if (e || !r) push(errMessage(e, "確認できませんでした"), "error");
     else if (r.check_error) push(`「${s.label}」に接続できませんでした`, "error");
+    else if (r.pending_review > 0)
+      push(`「${s.label}」のツールを読み直しました（${r.tools.length} 個・審査待ち ${r.pending_review} 個）`);
     else push(`「${s.label}」のツールを読み直しました（${r.tools.length} 個）`);
     refresh();
   };
@@ -123,6 +104,7 @@ export function SystemsView() {
       </AdminHeader>
       <div className="min-h-0 overflow-y-auto">
         <div className="mx-auto flex max-w-[1000px] flex-col gap-5 px-[18px] pb-12 pt-4 max-md:px-3">
+          <SystemsNav current="servers" pending={pending} />
           {error && <p className="m-0 text-footnote text-danger">{error}</p>}
           {!data && !error && <ListSkeleton rows={4} />}
           {data && !data.identity_ready && (
@@ -146,7 +128,7 @@ export function SystemsView() {
               <div className="px-4 pb-2 pt-3.5">
                 <h2 className="m-0 text-callout font-semibold text-fg">社内システム（MCP）</h2>
                 <p className="m-0 mt-0.5 text-caption leading-[1.6] text-muted">
-                  エージェントが読み取りに使うシステムです。選んだ読み取り専用のツールだけを、使える範囲の部門の人の質問で使います。
+                  エージェントが読み取りに使うシステムです。審査して「読み取り」と決め、使うにしたツールだけを、使える範囲の部門の人の質問で使います。
                   問い合わせは利用者の身元で行い、見せる行・列はシステムの側で決まります。変更は次の質問から効きます。
                 </p>
               </div>
@@ -158,7 +140,7 @@ export function SystemsView() {
               ) : (
                 <ul className="m-0 list-none p-0">
                   {data.servers.map((s) => {
-                    const on = s.tools.filter((t) => t.enabled && t.read_only).length;
+                    const on = s.tools.filter((t) => t.usable).length;
                     return (
                       <li
                         key={s.id}
@@ -172,8 +154,11 @@ export function SystemsView() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-body font-semibold text-fg">{s.label}</span>
                             <span className="font-mono text-caption text-muted-2">{s.name}</span>
-                            {!s.enabled && (
-                              <span className="rounded-control bg-surface-2 px-1.5 py-0.5 text-caption text-muted">無効</span>
+                            {!s.enabled && <Badge tone="outline">無効</Badge>}
+                            {s.pending_review > 0 && (
+                              <Link href={`/admin/systems/tools?server=${s.name}&status=pending`} className="no-underline">
+                                <Badge tone="danger">審査待ち {s.pending_review}</Badge>
+                              </Link>
                             )}
                           </div>
                           {s.description && <p className="m-0 mt-0.5 text-caption text-fg-2">{s.description}</p>}
@@ -208,9 +193,9 @@ export function SystemsView() {
                           <button onClick={() => setStats(s)} className={ghostBtn}>
                             呼び出し
                           </button>
-                          <button onClick={() => setTools(s)} className={ghostBtn}>
+                          <Link href={`/admin/systems/tools?server=${s.name}`} className={cn(ghostBtn, "no-underline")}>
                             ツール
-                          </button>
+                          </Link>
                           <button onClick={() => setShares(s)} className={ghostBtn}>
                             使える範囲
                           </button>
@@ -245,17 +230,6 @@ export function SystemsView() {
           onSaved={(msg) => {
             setEditing(null);
             push(msg);
-            refresh();
-          }}
-        />
-      )}
-      {tools && (
-        <ToolsDialog
-          server={tools}
-          onClose={() => setTools(null)}
-          onSaved={() => {
-            setTools(null);
-            push(`「${tools.label}」のツールを保存しました`);
             refresh();
           }}
         />
@@ -537,66 +511,6 @@ function ServerDialog({
       </Field>
       {error && <p className="m-0 text-footnote text-danger">{error}</p>}
       <Buttons busy={busy} label={initial ? "保存" : "登録"} onClose={onClose} />
-    </Shell>
-  );
-}
-
-function ToolsDialog({ server, onClose, onSaved }: { server: Server; onClose: () => void; onSaved: () => void }) {
-  const [on, setOn] = useState(() => new Set(server.tools.filter((t) => t.enabled && t.read_only).map((t) => t.name)));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    setBusy(true);
-    setError(null);
-    const { error: e } = await client.PUT("/v1/admin/mcp-servers/{server_id}/tools", {
-      params: { path: { server_id: server.id } },
-      body: { enabled: [...on] },
-    });
-    setBusy(false);
-    if (e) setError(errMessage(e, "保存できませんでした"));
-    else onSaved();
-  };
-
-  return (
-    <Shell title={`ツール — ${server.label}`} onClose={onClose} onSubmit={() => void submit()}>
-      <p className="m-0 text-caption leading-[1.6] text-muted">
-        エージェントに使わせるツールを選びます。読み取り専用（readOnlyHint）でないツールは選べません。
-      </p>
-      {server.tools.length === 0 ? (
-        <p className="m-0 text-footnote text-muted">ツールがありません。「接続を確認」で読み直してください。</p>
-      ) : (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {server.tools.map((t) => (
-            <li key={t.name} className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-mono text-footnote text-fg">{t.name}</span>
-                  {!t.read_only && (
-                    <span className="rounded-control bg-danger-soft px-1.5 py-0.5 text-caption text-danger">書き込み</span>
-                  )}
-                </div>
-                {t.description && <p className="m-0 mt-0.5 text-caption leading-[1.5] text-muted">{t.description.split("\n")[0]}</p>}
-              </div>
-              <Switch
-                label={`${t.name} を使う`}
-                checked={on.has(t.name)}
-                disabled={!t.read_only}
-                onChange={(v) =>
-                  setOn((s) => {
-                    const n = new Set(s);
-                    if (v) n.add(t.name);
-                    else n.delete(t.name);
-                    return n;
-                  })
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-      {error && <p className="m-0 text-footnote text-danger">{error}</p>}
-      <Buttons busy={busy} label="保存" onClose={onClose} />
     </Shell>
   );
 }

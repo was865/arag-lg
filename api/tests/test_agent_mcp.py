@@ -120,6 +120,21 @@ async def test_filtered_server_is_removed_and_recorded() -> None:
     assert "社内の文書だけを根拠に" in model.calls[0][0].text
 
 
+async def test_held_tools_are_recorded() -> None:
+    """定義が変わって渡さなかったツールはシステムの処理として記録する（specs/038 R18）。"""
+    with running() as (url, _):
+        t = spec(url)
+        model = FakeToolModel(messages=script(AIMessage(content="文書では 6 個です[1]。")))
+        agent = build_agent(model, checkpointer=InMemorySaver(), extra_tools=[build_tool(t)])
+        m = mcp_run(t, usable=False)
+        m.held = {"erp": ("ERP（資材・購買）", ["list_stock_moves"])}
+        c = ctx(FakeSearch("在庫 6"), mcp=m)
+        _, custom = await run(agent, c, "SK-300 の在庫は？")
+    rec = systems(custom)["mcp_held"]
+    assert rec["input"]["server"] == "erp" and rec["output"]["held_tools"] == ["list_stock_moves"]
+    assert "定義が変わり" in rec["summary"]
+
+
 async def test_no_mcp_state_hides_system_tools() -> None:
     with running() as (url, _):
         t = spec(url)

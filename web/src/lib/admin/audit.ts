@@ -45,6 +45,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "mcp.server.refresh": "社内システムのツールを読み直し",
   "mcp.server.tools": "社内システムのツールを選択",
   "mcp.server.shares": "社内システムの使える範囲を変更",
+  "mcp.tool.review": "社内システムのツールを審査",
+  "mcp.tool.changed": "社内システムのツールの定義が変わった",
   "feedback.resolve": "報告を対応済みに",
   "feedback.reopen": "報告を未対応に戻す",
 };

@@ -8,7 +8,7 @@
 import asyncio
 import json
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,7 +28,7 @@ from arag.mcp.client import (
     call_tool,
     ping,
 )
-from arag.mcp.registry import ToolSpec, usable_server_ids, user_departments
+from arag.mcp.registry import HeldTool, ToolSpec, usable_server_ids, user_departments
 from arag.secrets import SecretBox
 
 # システムの処理の種類（記録の input.kind）と画面の名前
@@ -37,6 +37,7 @@ REMOVE_LABELS = {
     "mcp_filtered": "使える範囲の外",
     "mcp_unavailable": "社内システムが応答しない",
 }
+HELD_LABEL = "定義が変わり審査待ちのツール"
 HEALTH_TTL_SEC = 30.0
 
 PING_SEC = 2.0
@@ -76,8 +77,12 @@ async def prepare(
     max_calls: int,
     max_rows: int,
     max_chars: int,
+    held: Sequence[HeldTool] = (),
 ) -> McpRun:
-    """このターンで使えるツールを決める: 利用者の設定（R14）・使える範囲（R10）・死活（R17）。"""
+    """このターンで使えるツールを決める: 利用者の設定（R14）・使える範囲（R10）・死活（R17）。
+
+    held は、使うと選ばれているのに審査の後に定義が変わって渡さないツール（specs/038 R18。記録に出すだけ）。
+    """
     dept_ids, dept_names = await user_departments(session, user_id)
     run = McpRun(
         caller=Caller(user_id, dept_names),
@@ -88,6 +93,9 @@ async def prepare(
         max_rows=max_rows,
         max_chars=max_chars,
     )
+    if use_systems:
+        for h in held:
+            run.held.setdefault(h.server, (h.label, []))[1].append(h.name)
     if not specs:
         return run
     servers = {t.server.name: t.server for t in specs}
@@ -151,6 +159,16 @@ def record_removed(ctx: RunContext, emit: Any) -> None:
             f"社内システム「{label}」のツールを外した: {reason}",
             input={"server": name, "system": label},
             output={"reason": reason},
+        )
+    for name, (label, tools) in m.held.items():
+        record_system(
+            emit,
+            f"system-mcp_held-{name}",
+            "mcp_held",
+            HELD_LABEL,
+            f"社内システム「{label}」のツール {', '.join(tools)} は、審査の後に定義が変わり渡さなかった",
+            input={"server": name, "system": label},
+            output={"held_tools": tools, "reason": "審査の後に定義が変わった（管理者の審査し直しを待つ）"},
         )
 
 

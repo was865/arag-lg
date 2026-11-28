@@ -473,7 +473,14 @@ class McpServer(Base):
 
 
 class McpTool(Base):
-    """MCP サーバのツール（取得したときの説明と入力の型）。enabled は管理者の選択（R9）。"""
+    """MCP サーバのツール（specs/032 R9・038）。
+
+    description・input_schema・read_only（サーバの読み取り専用の印）は最後に取得した今の定義。
+    def_hash はその指紋。
+    approved_* は管理者が審査した定義。side_effect（read / write）は管理者が決める（サーバの印は参考）。
+    enabled は管理者の「使う」の選択。エージェントに渡すのは、審査済み（approved_hash == def_hash）で
+    side_effect が read で enabled のものだけ（038 R8）。
+    """
 
     __tablename__ = "mcp_tools"
 
@@ -486,6 +493,27 @@ class McpTool(Base):
     read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     fetched_at: Mapped[datetime] = _now()
+    def_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="")
+    side_effect: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    approved_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_input_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    approved_read_only: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_at: Mapped[datetime | None] = _ts_nullable()
+    model_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def status(self) -> str:
+        """unreviewed（未審査）/ approved（審査済み）/ changed（審査の後に定義が変わった）。"""
+        if self.approved_hash is None:
+            return "unreviewed"
+        return "approved" if self.approved_hash == self.def_hash else "changed"
+
+    @property
+    def usable(self) -> bool:
+        """エージェントに渡すか（038 R8）。"""
+        return self.enabled and self.side_effect == "read" and self.status == "approved"
 
 
 class McpServerShare(Base):

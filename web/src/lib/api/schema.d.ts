@@ -375,6 +375,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mcp-servers/{server_id}/tools/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Tool
+         * @description 今の定義を審査する（specs/038 R7〜R11）。見ていた定義から変わっていれば受け付けない。
+         */
+        post: operations["review_tool_v1_admin_mcp_servers__server_id__tools_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{user_id}/access": {
         parameters: {
             query?: never;
@@ -2178,6 +2198,11 @@ export interface components {
             label: string;
             /** Name */
             name: string;
+            /**
+             * Pending Review
+             * @description 審査待ち（未審査と定義が変わった）のツールの数
+             */
+            pending_review: number;
             /** Shares */
             shares: components["schemas"]["McpShareRow"][];
             /** Timeout Sec */
@@ -2250,18 +2275,81 @@ export interface components {
         };
         /** McpToolOut */
         McpToolOut: {
-            /** Description */
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By */
+            approved_by: string | null;
+            /** Approved Description */
+            approved_description: string | null;
+            /** Approved Hash */
+            approved_hash: string | null;
+            /** Approved Input Schema */
+            approved_input_schema: {
+                [key: string]: unknown;
+            } | null;
+            /** Approved Read Only */
+            approved_read_only: boolean | null;
+            /** Def Hash */
+            def_hash: string;
+            /**
+             * Description
+             * @description サーバの今の説明
+             */
             description: string;
-            /** Enabled */
+            /**
+             * Enabled
+             * @description 管理者の「使う」の選択
+             */
             enabled: boolean;
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
             /** Input Schema */
             input_schema: {
                 [key: string]: unknown;
             };
+            /** Model Description */
+            model_description: string | null;
             /** Name */
             name: string;
-            /** Read Only */
-            read_only: boolean;
+            /**
+             * Read Only Hint
+             * @description サーバの読み取り専用の印（readOnlyHint）。参考
+             */
+            read_only_hint: boolean;
+            /** Side Effect */
+            side_effect: ("read" | "write") | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unreviewed" | "approved" | "changed";
+            /**
+             * Usable
+             * @description エージェントに渡すか（審査済み・読み取り・使う）
+             */
+            usable: boolean;
+        };
+        /** McpToolReviewIn */
+        McpToolReviewIn: {
+            /**
+             * Def Hash
+             * @description 管理者が見ていた定義の指紋（変わっていれば 409）
+             */
+            def_hash: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Model Description */
+            model_description?: string | null;
+            /**
+             * Side Effect
+             * @enum {string}
+             */
+            side_effect: "read" | "write";
+            /** Tool */
+            tool: string;
         };
         /** McpToolsIn */
         McpToolsIn: {
@@ -4107,6 +4195,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["McpToolsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_tool_v1_admin_mcp_servers__server_id__tools_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpToolReviewIn"];
             };
         };
         responses: {

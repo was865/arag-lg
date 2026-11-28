@@ -2115,6 +2115,11 @@
             "title": "Name",
             "type": "string"
           },
+          "pending_review": {
+            "description": "審査待ち（未審査と定義が変わった）のツールの数",
+            "title": "Pending Review",
+            "type": "integer"
+          },
           "shares": {
             "items": {
               "$ref": "#/components/schemas/McpShareRow"
@@ -2157,6 +2162,7 @@
           "enabled",
           "checked_at",
           "check_error",
+          "pending_review",
           "tools",
           "shares"
         ],
@@ -2379,36 +2385,215 @@
       },
       "McpToolOut": {
         "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "approved_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Description"
+          },
+          "approved_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Hash"
+          },
+          "approved_input_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Input Schema"
+          },
+          "approved_read_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Read Only"
+          },
+          "def_hash": {
+            "title": "Def Hash",
+            "type": "string"
+          },
           "description": {
+            "description": "サーバの今の説明",
             "title": "Description",
             "type": "string"
           },
           "enabled": {
+            "description": "管理者の「使う」の選択",
             "title": "Enabled",
             "type": "boolean"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
           },
           "input_schema": {
             "additionalProperties": true,
             "title": "Input Schema",
             "type": "object"
           },
+          "model_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Description"
+          },
           "name": {
             "title": "Name",
             "type": "string"
           },
-          "read_only": {
-            "title": "Read Only",
+          "read_only_hint": {
+            "description": "サーバの読み取り専用の印（readOnlyHint）。参考",
+            "title": "Read Only Hint",
+            "type": "boolean"
+          },
+          "side_effect": {
+            "anyOf": [
+              {
+                "enum": [
+                  "read",
+                  "write"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Side Effect"
+          },
+          "status": {
+            "enum": [
+              "unreviewed",
+              "approved",
+              "changed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "usable": {
+            "description": "エージェントに渡すか（審査済み・読み取り・使う）",
+            "title": "Usable",
             "type": "boolean"
           }
         },
         "required": [
           "name",
           "description",
-          "read_only",
+          "read_only_hint",
           "enabled",
-          "input_schema"
+          "usable",
+          "input_schema",
+          "fetched_at",
+          "status",
+          "def_hash",
+          "side_effect",
+          "model_description",
+          "approved_hash",
+          "approved_description",
+          "approved_input_schema",
+          "approved_read_only",
+          "approved_by",
+          "approved_at"
         ],
         "title": "McpToolOut",
+        "type": "object"
+      },
+      "McpToolReviewIn": {
+        "properties": {
+          "def_hash": {
+            "description": "管理者が見ていた定義の指紋（変わっていれば 409）",
+            "title": "Def Hash",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model_description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Description"
+          },
+          "side_effect": {
+            "enum": [
+              "read",
+              "write"
+            ],
+            "title": "Side Effect",
+            "type": "string"
+          },
+          "tool": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "def_hash",
+          "side_effect",
+          "enabled"
+        ],
+        "title": "McpToolReviewIn",
         "type": "object"
       },
       "McpToolsIn": {
@@ -6395,6 +6580,60 @@
           }
         },
         "summary": "Set Tools",
+        "tags": [
+          "mcp-admin"
+        ]
+      }
+    },
+    "/v1/admin/mcp-servers/{server_id}/tools/review": {
+      "post": {
+        "description": "今の定義を審査する（specs/038 R7〜R11）。見ていた定義から変わっていれば受け付けない。",
+        "operationId": "review_tool_v1_admin_mcp_servers__server_id__tools_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpToolReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Tool",
         "tags": [
           "mcp-admin"
         ]
